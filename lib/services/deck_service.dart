@@ -12,8 +12,10 @@ class DeckService {
   final List<CardModel> _deck = <CardModel>[];
   final List<CardModel> _discardPile = <CardModel>[];
   final List<CardModel> _hand = <CardModel>[];
+  final List<CardModel> _playedCards = <CardModel>[];
   final List<CardModel> _marketRow = <CardModel>[];
   int _spentMoney = 0;
+  CardModel? _lastDrawn;
 
   UnmodifiableListView<CardModel> get deck => UnmodifiableListView(_deck);
 
@@ -22,14 +24,20 @@ class DeckService {
 
   UnmodifiableListView<CardModel> get hand => UnmodifiableListView(_hand);
 
+  UnmodifiableListView<CardModel> get playedCards =>
+      UnmodifiableListView(_playedCards);
+
   UnmodifiableListView<CardModel> get marketRow =>
       UnmodifiableListView(_marketRow);
 
-  CardModel? get lastDrawn => _hand.isEmpty ? null : _hand.last;
+  CardModel? get lastDrawn => _lastDrawn;
 
   int get availableMoney {
-    final int handMoney = _hand.fold(0, (total, card) => total + card.moneyValue);
-    final int remainingMoney = handMoney - _spentMoney;
+    final int playedMoney = _playedCards.fold(
+      0,
+      (total, card) => total + card.moneyValue,
+    );
+    final int remainingMoney = playedMoney - _spentMoney;
     return remainingMoney < 0 ? 0 : remainingMoney;
   }
 
@@ -46,10 +54,12 @@ class DeckService {
       ..shuffle(_random);
     _discardPile.clear();
     _hand.clear();
+    _playedCards.clear();
     _marketRow
       ..clear()
       ..addAll(_buildMarketRow());
     _spentMoney = 0;
+    _lastDrawn = null;
   }
 
   void resetGame() {
@@ -70,6 +80,7 @@ class DeckService {
 
     final CardModel drawnCard = _deck.removeLast();
     _hand.add(drawnCard);
+    _lastDrawn = drawnCard;
     return drawnCard;
   }
 
@@ -88,6 +99,17 @@ class DeckService {
     }
 
     return drawnCards;
+  }
+
+  bool playCardFromHand(String cardId) {
+    final int handIndex = _hand.indexWhere((card) => card.id == cardId);
+    if (handIndex == -1) {
+      return false;
+    }
+
+    final CardModel playedCard = _hand.removeAt(handIndex);
+    _playedCards.add(playedCard);
+    return true;
   }
 
   bool canAffordCard(CardModel card) {

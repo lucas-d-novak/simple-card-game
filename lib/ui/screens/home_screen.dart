@@ -45,6 +45,12 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void _playCard(String cardId) {
+    setState(() {
+      _deckService.playCardFromHand(cardId);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -68,9 +74,34 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: _deckService.hand
                         .map(
                           (card) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: PlayingCardWidget(
+                          key: ValueKey('hand-card-${card.id}'),
+                          card: card,
+                          actionLabel: 'Play',
+                          actionKey: ValueKey('play-card-${card.id}'),
+                          onActionPressed: () => _playCard(card.id),
+                        ),
+                      ),
+                    )
+                    .toList(),
+                  ),
+            const SizedBox(height: 24),
+            const Text(
+              'Played cards',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            _deckService.playedCards.isEmpty
+                ? const Text('No cards played.',
+                    style: TextStyle(fontSize: 16))
+                : Column(
+                    children: _deckService.playedCards
+                        .map(
+                          (card) => Padding(
                             padding: const EdgeInsets.only(bottom: 12),
                             child: PlayingCardWidget(
-                              key: ValueKey('hand-card-${card.id}'),
+                              key: ValueKey('played-card-${card.id}'),
                               card: card,
                             ),
                           ),

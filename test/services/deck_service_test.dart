@@ -4,14 +4,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:simple_card_game/models/card_model.dart';
 import 'package:simple_card_game/services/deck_service.dart';
 
-void drawUntilAffordable(DeckService service, String cardId) {
+void drawAndPlayUntilAffordable(DeckService service, String cardId) {
+  final CardModel marketCard = service.marketRow.firstWhere((card) => card.id == cardId);
+
   while (service.deckCount > 0) {
-    final marketCard = service.marketRow.firstWhere((card) => card.id == cardId);
     if (service.canAffordCard(marketCard)) {
       return;
     }
 
-    service.drawCard();
+    final CardModel? drawnCard = service.drawCard();
+    if (drawnCard == null) {
+      return;
+    }
+
+    service.playCardFromHand(drawnCard.id);
   }
 }
 
@@ -24,6 +30,7 @@ void main() {
 
       expect(service.deckCount, 6);
       expect(service.hand, isEmpty);
+      expect(service.playedCards, isEmpty);
       expect(service.discardCount, 0);
       expect(service.marketCount, 4);
       expect(service.lastDrawn, isNull);
@@ -52,8 +59,9 @@ void main() {
       expect(service.deckCount, initialDeckCount - 1);
       expect(service.hand, hasLength(1));
       expect(service.hand.single, same(drawnCard));
+      expect(service.playedCards, isEmpty);
       expect(service.lastDrawn, same(drawnCard));
-      expect(service.availableMoney, drawnCard?.moneyValue);
+      expect(service.availableMoney, 0);
     });
 
     test('drawCards draws up to the requested number and tracks the last draw',
@@ -65,24 +73,64 @@ void main() {
       expect(drawnCards, hasLength(2));
       expect(service.deckCount, 4);
       expect(service.hand, equals(drawnCards));
+      expect(service.playedCards, isEmpty);
       expect(service.lastDrawn, same(drawnCards.last));
-      expect(
-        service.availableMoney,
-        drawnCards.fold(0, (total, card) => total + card.moneyValue),
-      );
+      expect(service.availableMoney, 0);
     });
 
-    test('resetGame restores a fresh deck, market row, and empty discard pile',
+    test('playCardFromHand moves a hand card to played and adds its money', () {
+      final DeckService service = DeckService(random: Random(7));
+
+      final List<CardModel> drawnCards = service.drawCards(2);
+      final CardModel cardToPlay = drawnCards.first;
+      final CardModel lastDrawnCard = drawnCards.last;
+
+      expect(service.playCardFromHand(cardToPlay.id), isTrue);
+
+      expect(service.hand.map((card) => card.id), isNot(contains(cardToPlay.id)));
+      expect(service.playedCards, contains(same(cardToPlay)));
+      expect(service.playedCards, hasLength(1));
+      expect(service.lastDrawn, same(lastDrawnCard));
+      expect(service.availableMoney, cardToPlay.moneyValue);
+    });
+
+    test('playCardFromHand rejects unknown and already played cards', () {
+      final DeckService service = DeckService(random: Random(7));
+
+      final CardModel drawnCard = service.drawCard()!;
+
+      expect(service.playCardFromHand('missing-card'), isFalse);
+      expect(service.playCardFromHand(drawnCard.id), isTrue);
+      expect(service.playCardFromHand(drawnCard.id), isFalse);
+      expect(service.playedCards.map((card) => card.id).toList(), [drawnCard.id]);
+    });
+
+    test('lastDrawn remains the most recently drawn card after that card is played',
         () {
       final DeckService service = DeckService(random: Random(7));
 
-      drawUntilAffordable(service, 'm4');
+      final List<CardModel> drawnCards = service.drawCards(2);
+      final CardModel lastDrawnCard = drawnCards.last;
+
+      expect(service.playCardFromHand(lastDrawnCard.id), isTrue);
+
+      expect(service.lastDrawn, same(lastDrawnCard));
+      expect(service.playedCards.last, same(lastDrawnCard));
+    });
+
+    test(
+        'resetGame restores a fresh deck, market row, and clears hand, played, and discard',
+        () {
+      final DeckService service = DeckService(random: Random(7));
+
+      drawAndPlayUntilAffordable(service, 'm4');
       service.buyCardFromMarket('m4');
 
       service.resetGame();
 
       expect(service.deckCount, 6);
       expect(service.hand, isEmpty);
+      expect(service.playedCards, isEmpty);
       expect(service.discardCount, 0);
       expect(service.marketCount, 4);
       expect(service.lastDrawn, isNull);
@@ -96,7 +144,7 @@ void main() {
     test('drawCard reshuffles the discard pile into the deck when needed', () {
       final DeckService service = DeckService(random: Random(7));
 
-      drawUntilAffordable(service, 'm4');
+      drawAndPlayUntilAffordable(service, 'm4');
       expect(service.buyCardFromMarket('m4'), isTrue);
 
       while (service.deckCount > 0) {
@@ -133,6 +181,8 @@ void main() {
     test('buyCardFromMarket rejects unknown ids and unaffordable cards', () {
       final DeckService service = DeckService(random: Random(7));
 
+      service.drawCards(2);
+
       expect(service.buyCardFromMarket('missing-card'), isFalse);
       expect(service.buyCardFromMarket('m2'), isFalse);
 
@@ -145,9 +195,11 @@ void main() {
         () {
       final DeckService service = DeckService(random: Random(7));
 
-      drawUntilAffordable(service, 'm4');
+      drawAndPlayUntilAffordable(service, 'm4');
       final int moneyInHandBeforePurchase = service.availableMoney;
       final int cardsInHandBeforePurchase = service.hand.length;
+      final int playedCardsBeforePurchase = service.playedCards.length;
+      final CardModel? lastDrawnBeforePurchase = service.lastDrawn;
 
       expect(moneyInHandBeforePurchase, greaterThanOrEqualTo(2));
       expect(service.canAffordCard(service.marketRow[3]), isTrue);
@@ -159,7 +211,8 @@ void main() {
       expect(service.discardCount, 1);
       expect(service.discardPile.first.id, 'm4');
       expect(service.hand, hasLength(cardsInHandBeforePurchase));
-      expect(service.lastDrawn, same(service.hand.last));
+      expect(service.playedCards, hasLength(playedCardsBeforePurchase));
+      expect(service.lastDrawn, same(lastDrawnBeforePurchase));
       expect(service.availableMoney, moneyInHandBeforePurchase - 2);
       expect(service.buyCardFromMarket('m4'), isFalse);
       expect(service.marketCount, 3);
@@ -169,7 +222,7 @@ void main() {
     test('buyCardFromMarket supports multiple purchases until money runs out', () {
       final DeckService service = DeckService(random: Random(7));
 
-      drawUntilAffordable(service, 'm1');
+      drawAndPlayUntilAffordable(service, 'm1');
       final int startingMoney = service.availableMoney;
 
       expect(service.buyCardFromMarket('m4'), isTrue);
