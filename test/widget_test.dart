@@ -27,10 +27,18 @@ Finder _discardCount(int count) => find.text('Discard pile: $count');
 
 Finder _availableMoney(int amount) => find.text('Money remaining: $amount');
 
-Finder _playedCard(String cardId) => find.byKey(ValueKey('played-card-$cardId'));
+Finder _playedCard(String cardId) =>
+    find.byKey(ValueKey('played-card-$cardId'));
 
 OutlinedButton _buyButton(WidgetTester tester, String cardId) {
-  return tester.widget<OutlinedButton>(find.byKey(ValueKey('buy-card-$cardId')));
+  return tester
+      .widget<OutlinedButton>(find.byKey(ValueKey('buy-card-$cardId')));
+}
+
+OutlinedButton _shuffleDiscardButton(WidgetTester tester) {
+  return tester.widget<OutlinedButton>(
+    find.byKey(const ValueKey('shuffle-discard-button')),
+  );
 }
 
 Future<void> playUntilAffordable(
@@ -38,7 +46,8 @@ Future<void> playUntilAffordable(
   DeckService service,
   String cardId,
 ) async {
-  final CardModel marketCard = service.marketRow.firstWhere((card) => card.id == cardId);
+  final CardModel marketCard =
+      service.marketRow.firstWhere((card) => card.id == cardId);
 
   while (service.deckCount > 0 || service.hand.isNotEmpty) {
     if (service.canAffordCard(marketCard)) {
@@ -113,7 +122,8 @@ void main() {
     expect(service.hand, hasLength(1));
   });
 
-  testWidgets('reset restores the initial state after draws plays and purchases', (
+  testWidgets(
+      'reset restores the initial state after draws plays and purchases', (
     WidgetTester tester,
   ) async {
     final DeckService service = DeckService(random: Random(7));
@@ -213,9 +223,8 @@ void main() {
 
     expect(_availableMoney(service.availableMoney), findsOneWidget);
     for (final card in service.marketRow) {
-      final Matcher expectedState = service.canAffordCard(card)
-          ? isNotNull
-          : isNull;
+      final Matcher expectedState =
+          service.canAffordCard(card) ? isNotNull : isNull;
       expect(_buyButton(tester, card.id).onPressed, expectedState);
     }
   });
@@ -242,10 +251,33 @@ void main() {
     expect(service.playedCards, hasLength(playedCountBeforePurchase));
     expect(_buyButton(tester, 'm1').onPressed, isNull);
     for (final card in service.marketRow) {
-      final Matcher expectedState = service.canAffordCard(card)
-          ? isNotNull
-          : isNull;
+      final Matcher expectedState =
+          service.canAffordCard(card) ? isNotNull : isNull;
       expect(_buyButton(tester, card.id).onPressed, expectedState);
     }
+  });
+
+  testWidgets(
+      'shuffle new cards mixes the discard pile back into the current deck', (
+    WidgetTester tester,
+  ) async {
+    final DeckService service = DeckService(random: Random(7));
+    await pumpDeckDrawApp(tester, deckService: service);
+
+    expect(_shuffleDiscardButton(tester).onPressed, isNull);
+
+    await playUntilAffordable(tester, service, 'm4');
+    await tapKey(tester, 'buy-card-m4');
+    final int deckCountBeforeShuffle = service.deckCount;
+
+    expect(_discardCount(1), findsOneWidget);
+    expect(_shuffleDiscardButton(tester).onPressed, isNotNull);
+
+    await tapKey(tester, 'shuffle-discard-button');
+
+    expect(_deckCount(deckCountBeforeShuffle + 1), findsOneWidget);
+    expect(_discardCount(0), findsOneWidget);
+    expect(service.deck.map((card) => card.id), contains('m4'));
+    expect(_shuffleDiscardButton(tester).onPressed, isNull);
   });
 }

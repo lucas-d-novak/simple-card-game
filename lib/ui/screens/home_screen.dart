@@ -39,6 +39,12 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void _shuffleDiscardIntoDeck() {
+    setState(() {
+      _deckService.shuffleDiscardIntoDeck();
+    });
+  }
+
   void _buyCard(String cardId) {
     setState(() {
       _deckService.buyCardFromMarket(cardId);
@@ -74,17 +80,17 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: _deckService.hand
                         .map(
                           (card) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: PlayingCardWidget(
-                          key: ValueKey('hand-card-${card.id}'),
-                          card: card,
-                          actionLabel: 'Play',
-                          actionKey: ValueKey('play-card-${card.id}'),
-                          onActionPressed: () => _playCard(card.id),
-                        ),
-                      ),
-                    )
-                    .toList(),
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: PlayingCardWidget(
+                              key: ValueKey('hand-card-${card.id}'),
+                              card: card,
+                              actionLabel: 'Play',
+                              actionKey: ValueKey('play-card-${card.id}'),
+                              onActionPressed: () => _playCard(card.id),
+                            ),
+                          ),
+                        )
+                        .toList(),
                   ),
             const SizedBox(height: 24),
             const Text(
@@ -93,8 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 8),
             _deckService.playedCards.isEmpty
-                ? const Text('No cards played.',
-                    style: TextStyle(fontSize: 16))
+                ? const Text('No cards played.', style: TextStyle(fontSize: 16))
                 : Column(
                     children: _deckService.playedCards
                         .map(
@@ -140,6 +145,14 @@ class _HomeScreenState extends State<HomeScreen> {
               key: const ValueKey('draw-card-button'),
               onPressed: _drawCard,
               child: const Text('Draw 2 cards'),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton(
+              key: const ValueKey('shuffle-discard-button'),
+              onPressed: _deckService.discardCount > 0
+                  ? _shuffleDiscardIntoDeck
+                  : null,
+              child: const Text('Shuffle New Cards Into Deck'),
             ),
             const SizedBox(height: 12),
             OutlinedButton(

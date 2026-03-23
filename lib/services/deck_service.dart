@@ -66,12 +66,18 @@ class DeckService {
     initializeGame();
   }
 
+  bool shuffleDiscardIntoDeck() {
+    if (_discardPile.isEmpty) {
+      return false;
+    }
+
+    _moveDiscardPileIntoDeck();
+    return true;
+  }
+
   CardModel? drawCard() {
     if (_deck.isEmpty && _discardPile.isNotEmpty) {
-      _deck
-        ..addAll(_discardPile)
-        ..shuffle(_random);
-      _discardPile.clear();
+      _moveDiscardPileIntoDeck();
     }
 
     if (_deck.isEmpty) {
@@ -151,5 +157,12 @@ class DeckService {
       CardModel(id: 'm3', name: 'Treasure +3', moneyValue: 3),
       CardModel(id: 'm4', name: 'Treasure +2', moneyValue: 2),
     ];
+  }
+
+  void _moveDiscardPileIntoDeck() {
+    _deck
+      ..addAll(_discardPile)
+      ..shuffle(_random);
+    _discardPile.clear();
   }
 }
