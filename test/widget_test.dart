@@ -3,8 +3,37 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:simple_card_game/main.dart';
+import 'package:simple_card_game/models/card_effect.dart';
 import 'package:simple_card_game/models/card_model.dart';
 import 'package:simple_card_game/services/deck_service.dart';
+
+int gainMoneyAmount(CardModel card) {
+  return card.playEffects
+      .whereType<GainMoneyEffect>()
+      .fold(0, (total, effect) => total + effect.amount);
+}
+
+class ZeroRandom implements Random {
+  @override
+  bool nextBool() => false;
+
+  @override
+  double nextDouble() => 0;
+
+  @override
+  int nextInt(int max) => 0;
+}
+
+class MaxRandom implements Random {
+  @override
+  bool nextBool() => false;
+
+  @override
+  double nextDouble() => 0.999999;
+
+  @override
+  int nextInt(int max) => max - 1;
+}
 
 Future<void> pumpDeckDrawApp(
   WidgetTester tester, {
@@ -29,6 +58,9 @@ Finder _availableMoney(int amount) => find.text('Money remaining: $amount');
 
 Finder _playedCard(String cardId) =>
     find.byKey(ValueKey('played-card-$cardId'));
+
+Finder _marketCard(String cardId) =>
+    find.byKey(ValueKey('market-card-$cardId'));
 
 OutlinedButton _buyButton(WidgetTester tester, String cardId) {
   return tester
@@ -80,7 +112,26 @@ void main() {
     expect(find.text('Draw 2 cards'), findsOneWidget);
     expect(find.text('Reset & Shuffle Deck'), findsOneWidget);
     expect(find.text('Market row'), findsOneWidget);
-    expect(find.byKey(const ValueKey('market-card-m1')), findsOneWidget);
+    expect(_marketCard('m1'), findsOneWidget);
+    expect(_marketCard('m5'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: _marketCard('m1'),
+        matching: find.text('When played: Gain 5 money'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: _marketCard('m5'), matching: find.text('Cost: 3')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: _marketCard('m5'),
+        matching: find.text('When played: Draw 2 cards'),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('drawing 2 cards keeps them in hand until they are played', (
@@ -117,7 +168,7 @@ void main() {
     expect(find.byKey(ValueKey('hand-card-${cardToPlay.id}')), findsNothing);
     expect(_playedCard(cardToPlay.id), findsOneWidget);
     expect(find.text('No cards played.'), findsNothing);
-    expect(_availableMoney(cardToPlay.moneyValue), findsOneWidget);
+    expect(_availableMoney(gainMoneyAmount(cardToPlay)), findsOneWidget);
     expect(service.playedCards.map((card) => card.id), contains(cardToPlay.id));
     expect(service.hand, hasLength(1));
   });
@@ -151,6 +202,7 @@ void main() {
     expect(service.hand, isEmpty);
     expect(service.playedCards, isEmpty);
     expect(find.byKey(const ValueKey('market-card-m4')), findsOneWidget);
+    expect(_marketCard('m5'), findsOneWidget);
   });
 
   testWidgets(
@@ -178,6 +230,30 @@ void main() {
     expect(_discardCount(0), findsOneWidget);
     expect(find.byKey(const ValueKey('hand-card-m4')), findsOneWidget);
     expect(_availableMoney(service.availableMoney), findsOneWidget);
+  });
+
+  testWidgets(
+      'playing Scout draws cards into hand immediately without adding money', (
+    WidgetTester tester,
+  ) async {
+    final DeckService service = DeckService(random: ZeroRandom());
+    await pumpDeckDrawApp(tester, deckService: service);
+
+    await playUntilAffordable(tester, service, 'm5');
+    await tapKey(tester, 'buy-card-m5');
+    await tapKey(tester, 'shuffle-discard-button');
+    await tapKey(tester, 'draw-card-button');
+
+    expect(service.hand.map((card) => card.id).toList(), ['c2', 'm5']);
+    expect(_availableMoney(2), findsOneWidget);
+
+    await tapKey(tester, 'play-card-m5');
+
+    expect(_playedCard('m5'), findsOneWidget);
+    expect(service.hand.map((card) => card.id).toList(), ['c2', 'c5', 'c4']);
+    expect(find.byKey(const ValueKey('hand-card-c5')), findsOneWidget);
+    expect(find.byKey(const ValueKey('hand-card-c4')), findsOneWidget);
+    expect(_availableMoney(2), findsOneWidget);
   });
 
   testWidgets(
@@ -210,6 +286,7 @@ void main() {
     expect(_buyButton(tester, 'm2').onPressed, isNull);
     expect(_buyButton(tester, 'm3').onPressed, isNull);
     expect(_buyButton(tester, 'm4').onPressed, isNull);
+    expect(_buyButton(tester, 'm5').onPressed, isNull);
 
     await tapKey(tester, 'draw-card-button');
 
@@ -218,6 +295,7 @@ void main() {
     expect(_buyButton(tester, 'm2').onPressed, isNull);
     expect(_buyButton(tester, 'm3').onPressed, isNull);
     expect(_buyButton(tester, 'm4').onPressed, isNull);
+    expect(_buyButton(tester, 'm5').onPressed, isNull);
 
     await playUntilAffordable(tester, service, 'm4');
 
@@ -227,6 +305,23 @@ void main() {
           service.canAffordCard(card) ? isNotNull : isNull;
       expect(_buyButton(tester, card.id).onPressed, expectedState);
     }
+  });
+
+  testWidgets('Scout buy button enables once exactly 3 money is available', (
+    WidgetTester tester,
+  ) async {
+    final DeckService service = DeckService(random: MaxRandom());
+    await pumpDeckDrawApp(tester, deckService: service);
+
+    await tapKey(tester, 'draw-card-button');
+    await tapKey(tester, 'play-card-c5');
+
+    expect(_availableMoney(3), findsOneWidget);
+    expect(_buyButton(tester, 'm1').onPressed, isNull);
+    expect(_buyButton(tester, 'm2').onPressed, isNull);
+    expect(_buyButton(tester, 'm3').onPressed, isNotNull);
+    expect(_buyButton(tester, 'm4').onPressed, isNotNull);
+    expect(_buyButton(tester, 'm5').onPressed, isNotNull);
   });
 
   testWidgets(

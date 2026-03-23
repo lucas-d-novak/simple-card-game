@@ -32,7 +32,11 @@ class PlayingCardWidget extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 4),
-            Text('Money value: ${card.moneyValue}'),
+            Text('Cost: ${card.cost}'),
+            for (final effect in card.playEffects) ...[
+              const SizedBox(height: 4),
+              Text('When played: ${effect.description}'),
+            ],
             if (actionLabel != null) ...[
               const SizedBox(height: 12),
               Align(

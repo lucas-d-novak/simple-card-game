@@ -8,7 +8,7 @@ The current gameplay loop is:
 
 1. Start with a shuffled six-card money deck.
 2. Draw two cards into your hand.
-3. Play cards from your hand to generate money.
+3. Play cards from your hand to generate money or trigger card effects.
 4. Buy cards from the market row if you can afford them.
 5. Put purchased cards into the discard pile.
 6. Shuffle the discard pile back into the deck or reset the game.
@@ -57,13 +57,14 @@ flutter devices
 ## What Is Implemented
 
 - A starting deck of six money cards with values 1, 1, 2, 2, 3, and 4
-- A market row with four purchasable cards worth 5, 4, 3, and 2
+- A market row with five purchasable cards, including four treasure cards and `Scout`
 - A hand area for drawn cards
-- A played area for cards that now contribute spendable money
+- A played area for cards that contribute spendable money or trigger effects
 - A discard pile for purchased cards
 - Manual reshuffling of discard cards into the deck
 - Automatic discard-to-deck reshuffle during draw when the deck is empty
 - Reset back to a fresh shuffled game state
+- Card data modeled with separate `cost` and `playEffects` fields
 
 ## Repo Map
 
@@ -71,6 +72,7 @@ flutter devices
 
 - [`lib/main.dart`](lib/main.dart): app entry point, theme, and `DeckDrawApp`
 - [`lib/services/deck_service.dart`](lib/services/deck_service.dart): core game state and rules
+- [`lib/models/card_effect.dart`](lib/models/card_effect.dart): card effect types and display descriptions
 - [`lib/models/card_model.dart`](lib/models/card_model.dart): card data model
 - [`lib/ui/screens/home_screen.dart`](lib/ui/screens/home_screen.dart): main screen and user actions
 - [`lib/ui/widgets/playing_card_widget.dart`](lib/ui/widgets/playing_card_widget.dart): reusable card display widget
@@ -99,7 +101,7 @@ The `android/`, `ios/`, and `web/` folders are the main product targets. The des
 - Drawing uses the deck first.
 - If the deck is empty and the discard pile has cards, drawing reshuffles discard into deck automatically.
 - Drawn cards go to `hand`.
-- Only cards in `playedCards` contribute to `availableMoney`.
+- Only money-gain effects on cards in `playedCards` contribute to `availableMoney`.
 - Buying a market card spends money and moves the bought card into `discardPile`.
 - The market row shrinks when cards are bought; it is not refilled yet.
 - Reset recreates the starting deck and market row and clears hand, played cards, discard pile, and spent money.
@@ -108,19 +110,20 @@ The `android/`, `ios/`, and `web/` folders are the main product targets. The des
 
 Starting deck:
 
-- `c1`: Coin +1
-- `c2`: Coin +1
-- `c3`: Coin +2
-- `c4`: Coin +2
-- `c5`: Coin +3
-- `c6`: Coin +4
+- `c1`: Coin +1, cost 1, when played gain 1 money
+- `c2`: Coin +1, cost 1, when played gain 1 money
+- `c3`: Coin +2, cost 2, when played gain 2 money
+- `c4`: Coin +2, cost 2, when played gain 2 money
+- `c5`: Coin +3, cost 3, when played gain 3 money
+- `c6`: Coin +4, cost 4, when played gain 4 money
 
 Market row:
 
-- `m1`: Treasure +5
-- `m2`: Treasure +4
-- `m3`: Treasure +3
-- `m4`: Treasure +2
+- `m1`: Treasure +5, cost 5, when played gain 5 money
+- `m2`: Treasure +4, cost 4, when played gain 4 money
+- `m3`: Treasure +3, cost 3, when played gain 3 money
+- `m4`: Treasure +2, cost 2, when played gain 2 money
+- `m5`: Scout, cost 3, when played draw 2 cards
 
 ## Fast Onboarding Path
 
@@ -162,10 +165,10 @@ If you are new to the repo and want to get productive quickly:
 
 - Add market refill rules
 - Add turn structure
-- Add card effects beyond money values
+- Add more card effects
 - Add persistence for in-progress games
 - Introduce a state-management approach if the UI outgrows simple `setState()`
 
 ## Current Architecture In One Sentence
 
-This is a test-backed Flutter prototype where a single screen drives an in-memory `DeckService` that manages deck, hand, played cards, discard pile, market cards, and available money.
+This is a test-backed Flutter prototype where a single screen drives an in-memory `DeckService` that manages deck, hand, played cards, discard pile, market cards, and effect-based card resolution.

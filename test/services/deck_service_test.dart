@@ -1,8 +1,26 @@
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:simple_card_game/models/card_effect.dart';
 import 'package:simple_card_game/models/card_model.dart';
 import 'package:simple_card_game/services/deck_service.dart';
+
+int gainMoneyAmount(CardModel card) {
+  return card.playEffects
+      .whereType<GainMoneyEffect>()
+      .fold(0, (total, effect) => total + effect.amount);
+}
+
+class ZeroRandom implements Random {
+  @override
+  bool nextBool() => false;
+
+  @override
+  double nextDouble() => 0;
+
+  @override
+  int nextInt(int max) => 0;
+}
 
 void drawAndPlayUntilAffordable(DeckService service, String cardId) {
   final CardModel marketCard =
@@ -33,7 +51,7 @@ void main() {
       expect(service.hand, isEmpty);
       expect(service.playedCards, isEmpty);
       expect(service.discardCount, 0);
-      expect(service.marketCount, 4);
+      expect(service.marketCount, 5);
       expect(service.lastDrawn, isNull);
       expect(service.availableMoney, 0);
       expect(
@@ -46,8 +64,23 @@ void main() {
       );
       expect(
         service.marketRow.map((card) => card.id).toList(),
-        equals(<String>['m1', 'm2', 'm3', 'm4']),
+        equals(<String>['m1', 'm2', 'm3', 'm4', 'm5']),
       );
+    });
+
+    test('market row includes Scout as a cost 3 draw card', () {
+      final DeckService service = DeckService(random: Random(7));
+
+      final CardModel scout =
+          service.marketRow.firstWhere((card) => card.id == 'm5');
+      final DrawCardsEffect scoutEffect =
+          scout.playEffects.single as DrawCardsEffect;
+
+      expect(scout.name, 'Scout');
+      expect(scout.cost, 3);
+      expect(scout.playEffects, hasLength(1));
+      expect(scoutEffect.count, 2);
+      expect(gainMoneyAmount(scout), 0);
     });
 
     test('drawCard reduces deck size and updates the last drawn card', () {
@@ -93,7 +126,7 @@ void main() {
       expect(service.playedCards, contains(same(cardToPlay)));
       expect(service.playedCards, hasLength(1));
       expect(service.lastDrawn, same(lastDrawnCard));
-      expect(service.availableMoney, cardToPlay.moneyValue);
+      expect(service.availableMoney, gainMoneyAmount(cardToPlay));
     });
 
     test('playCardFromHand rejects unknown and already played cards', () {
@@ -122,6 +155,53 @@ void main() {
       expect(service.playedCards.last, same(lastDrawnCard));
     });
 
+    test('playCardFromHand applies Scout draw effects without adding money', () {
+      final DeckService service = DeckService(random: ZeroRandom());
+
+      drawAndPlayUntilAffordable(service, 'm5');
+      expect(service.buyCardFromMarket('m5'), isTrue);
+      expect(service.shuffleDiscardIntoDeck(), isTrue);
+      expect(service.drawCard()?.id, 'c2');
+      expect(service.drawCard()?.id, 'm5');
+
+      final int handCountBeforePlay = service.hand.length;
+      final int deckCountBeforePlay = service.deckCount;
+      final int availableMoneyBeforePlay = service.availableMoney;
+
+      expect(service.playCardFromHand('m5'), isTrue);
+
+      expect(service.playedCards.last.id, 'm5');
+      expect(service.hand.map((card) => card.id).toList(), ['c2', 'c5', 'c4']);
+      expect(service.hand, hasLength(handCountBeforePlay + 1));
+      expect(service.deckCount, deckCountBeforePlay - 2);
+      expect(service.lastDrawn?.id, 'c4');
+      expect(service.availableMoney, availableMoneyBeforePlay);
+    });
+
+    test('Scout draw effects reuse discard reshuffle behavior when needed', () {
+      final DeckService service = DeckService(random: ZeroRandom());
+
+      drawAndPlayUntilAffordable(service, 'm5');
+      expect(service.buyCardFromMarket('m5'), isTrue);
+      expect(service.shuffleDiscardIntoDeck(), isTrue);
+      expect(service.drawCard()?.id, 'c2');
+      expect(service.drawCard()?.id, 'm5');
+      expect(service.buyCardFromMarket('m4'), isTrue);
+
+      while (service.deckCount > 0) {
+        service.drawCard();
+      }
+
+      expect(service.discardPile.map((card) => card.id).toList(), ['m4']);
+      expect(service.availableMoney, 0);
+      expect(service.playCardFromHand('m5'), isTrue);
+      expect(service.hand.map((card) => card.id), contains('m4'));
+      expect(service.lastDrawn?.id, 'm4');
+      expect(service.deckCount, 0);
+      expect(service.discardCount, 0);
+      expect(service.availableMoney, 0);
+    });
+
     test(
         'resetGame restores a fresh deck, market row, and clears hand, played, and discard',
         () {
@@ -136,12 +216,12 @@ void main() {
       expect(service.hand, isEmpty);
       expect(service.playedCards, isEmpty);
       expect(service.discardCount, 0);
-      expect(service.marketCount, 4);
+      expect(service.marketCount, 5);
       expect(service.lastDrawn, isNull);
       expect(service.availableMoney, 0);
       expect(
         service.marketRow.map((card) => card.id).toList(),
-        equals(<String>['m1', 'm2', 'm3', 'm4']),
+        equals(<String>['m1', 'm2', 'm3', 'm4', 'm5']),
       );
     });
 
@@ -213,7 +293,7 @@ void main() {
       expect(service.buyCardFromMarket('missing-card'), isFalse);
       expect(service.buyCardFromMarket('m2'), isFalse);
 
-      expect(service.marketCount, 4);
+      expect(service.marketCount, 5);
       expect(service.discardCount, 0);
       expect(service.availableMoney, 0);
     });
@@ -235,7 +315,7 @@ void main() {
 
       expect(service.buyCardFromMarket('m4'), isTrue);
 
-      expect(service.marketCount, 3);
+      expect(service.marketCount, 4);
       expect(service.discardCount, 1);
       expect(service.discardPile.first.id, 'm4');
       expect(service.hand, hasLength(cardsInHandBeforePurchase));
@@ -243,7 +323,7 @@ void main() {
       expect(service.lastDrawn, same(lastDrawnBeforePurchase));
       expect(service.availableMoney, moneyInHandBeforePurchase - 2);
       expect(service.buyCardFromMarket('m4'), isFalse);
-      expect(service.marketCount, 3);
+      expect(service.marketCount, 4);
       expect(service.discardCount, 1);
     });
 

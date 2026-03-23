@@ -1,6 +1,7 @@
 import 'dart:collection';
 import 'dart:math';
 
+import 'package:simple_card_game/models/card_effect.dart';
 import 'package:simple_card_game/models/card_model.dart';
 
 class DeckService {
@@ -35,7 +36,7 @@ class DeckService {
   int get availableMoney {
     final int playedMoney = _playedCards.fold(
       0,
-      (total, card) => total + card.moneyValue,
+      (total, card) => total + _moneyFromCard(card),
     );
     final int remainingMoney = playedMoney - _spentMoney;
     return remainingMoney < 0 ? 0 : remainingMoney;
@@ -115,11 +116,12 @@ class DeckService {
 
     final CardModel playedCard = _hand.removeAt(handIndex);
     _playedCards.add(playedCard);
+    _applyCardEffects(playedCard);
     return true;
   }
 
   bool canAffordCard(CardModel card) {
-    return availableMoney >= card.moneyValue;
+    return availableMoney >= card.cost;
   }
 
   bool buyCardFromMarket(String cardId) {
@@ -135,28 +137,101 @@ class DeckService {
 
     final CardModel purchasedCard = _marketRow.removeAt(marketIndex);
     _discardPile.add(purchasedCard);
-    _spentMoney += purchasedCard.moneyValue;
+    _spentMoney += purchasedCard.cost;
     return true;
   }
 
   List<CardModel> _buildStartingDeck() {
     return const <CardModel>[
-      CardModel(id: 'c1', name: 'Coin +1', moneyValue: 1),
-      CardModel(id: 'c2', name: 'Coin +1', moneyValue: 1),
-      CardModel(id: 'c3', name: 'Coin +2', moneyValue: 2),
-      CardModel(id: 'c4', name: 'Coin +2', moneyValue: 2),
-      CardModel(id: 'c5', name: 'Coin +3', moneyValue: 3),
-      CardModel(id: 'c6', name: 'Coin +4', moneyValue: 4),
+      CardModel(
+        id: 'c1',
+        name: 'Coin +1',
+        cost: 1,
+        playEffects: <CardEffect>[GainMoneyEffect(1)],
+      ),
+      CardModel(
+        id: 'c2',
+        name: 'Coin +1',
+        cost: 1,
+        playEffects: <CardEffect>[GainMoneyEffect(1)],
+      ),
+      CardModel(
+        id: 'c3',
+        name: 'Coin +2',
+        cost: 2,
+        playEffects: <CardEffect>[GainMoneyEffect(2)],
+      ),
+      CardModel(
+        id: 'c4',
+        name: 'Coin +2',
+        cost: 2,
+        playEffects: <CardEffect>[GainMoneyEffect(2)],
+      ),
+      CardModel(
+        id: 'c5',
+        name: 'Coin +3',
+        cost: 3,
+        playEffects: <CardEffect>[GainMoneyEffect(3)],
+      ),
+      CardModel(
+        id: 'c6',
+        name: 'Coin +4',
+        cost: 4,
+        playEffects: <CardEffect>[GainMoneyEffect(4)],
+      ),
     ];
   }
 
   List<CardModel> _buildMarketRow() {
     return const <CardModel>[
-      CardModel(id: 'm1', name: 'Treasure +5', moneyValue: 5),
-      CardModel(id: 'm2', name: 'Treasure +4', moneyValue: 4),
-      CardModel(id: 'm3', name: 'Treasure +3', moneyValue: 3),
-      CardModel(id: 'm4', name: 'Treasure +2', moneyValue: 2),
+      CardModel(
+        id: 'm1',
+        name: 'Treasure +5',
+        cost: 5,
+        playEffects: <CardEffect>[GainMoneyEffect(5)],
+      ),
+      CardModel(
+        id: 'm2',
+        name: 'Treasure +4',
+        cost: 4,
+        playEffects: <CardEffect>[GainMoneyEffect(4)],
+      ),
+      CardModel(
+        id: 'm3',
+        name: 'Treasure +3',
+        cost: 3,
+        playEffects: <CardEffect>[GainMoneyEffect(3)],
+      ),
+      CardModel(
+        id: 'm4',
+        name: 'Treasure +2',
+        cost: 2,
+        playEffects: <CardEffect>[GainMoneyEffect(2)],
+      ),
+      CardModel(
+        id: 'm5',
+        name: 'Scout',
+        cost: 3,
+        playEffects: <CardEffect>[DrawCardsEffect(2)],
+      ),
     ];
+  }
+
+  void _applyCardEffects(CardModel card) {
+    for (final CardEffect effect in card.playEffects) {
+      switch (effect) {
+        case GainMoneyEffect():
+          break;
+        case DrawCardsEffect():
+          drawCards(effect.count);
+      }
+    }
+  }
+
+  int _moneyFromCard(CardModel card) {
+    return card.playEffects
+        .whereType<GainMoneyEffect>()
+        .fold(0, (total, effect) => total + effect.amount);
   }
 
   void _moveDiscardPileIntoDeck() {
