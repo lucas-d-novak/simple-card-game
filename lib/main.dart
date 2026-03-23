@@ -19,6 +19,7 @@ class DeckDrawApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        splashFactory: InkRipple.splashFactory,
         useMaterial3: true,
       ),
       home: HomeScreen(deckService: deckService ?? DeckService()),

@@ -33,7 +33,7 @@ class PlayingCardWidget extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text('Money value: ${card.moneyValue}'),
-            if (actionLabel != null && onActionPressed != null) ...[
+            if (actionLabel != null) ...[
               const SizedBox(height: 12),
               Align(
                 alignment: Alignment.centerRight,

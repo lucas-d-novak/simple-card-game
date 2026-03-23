@@ -22,11 +22,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _drawCard() {
-    final CardModel? drawnCard = _deckService.drawCard();
+    final List<CardModel> drawnCards = _deckService.drawCards(2);
 
     setState(() {});
 
-    if (drawnCard == null) {
+    if (drawnCards.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Deck is empty!')),
       );
@@ -57,16 +57,25 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text(
-              'Last drawn card:',
+              'Your hand',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            _deckService.lastDrawn == null
-                ? const Text('No card drawn yet.',
+            _deckService.hand.isEmpty
+                ? const Text('No cards in hand.',
                     style: TextStyle(fontSize: 16))
-                : PlayingCardWidget(
-                    key: const ValueKey('last-drawn-card'),
-                    card: _deckService.lastDrawn!,
+                : Column(
+                    children: _deckService.hand
+                        .map(
+                          (card) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: PlayingCardWidget(
+                              key: ValueKey('hand-card-${card.id}'),
+                              card: card,
+                            ),
+                          ),
+                        )
+                        .toList(),
                   ),
             const SizedBox(height: 24),
             Text(
@@ -80,11 +89,26 @@ class _HomeScreenState extends State<HomeScreen> {
               key: const ValueKey('discard-count-text'),
               style: const TextStyle(fontSize: 16),
             ),
+            const SizedBox(height: 8),
+            Card(
+              key: const ValueKey('hand-money-card'),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text(
+                  'Money remaining: ${_deckService.availableMoney}',
+                  key: const ValueKey('available-money-text'),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
             const SizedBox(height: 24),
             ElevatedButton(
               key: const ValueKey('draw-card-button'),
               onPressed: _drawCard,
-              child: const Text('Draw card'),
+              child: const Text('Draw 2 cards'),
             ),
             const SizedBox(height: 12),
             OutlinedButton(
@@ -111,7 +135,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           card: card,
                           actionLabel: 'Buy',
                           actionKey: ValueKey('buy-card-${card.id}'),
-                          onActionPressed: () => _buyCard(card.id),
+                          onActionPressed: _deckService.canAffordCard(card)
+                              ? () => _buyCard(card.id)
+                              : null,
                         ),
                       ),
                     )

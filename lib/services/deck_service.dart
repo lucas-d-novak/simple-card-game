@@ -11,19 +11,27 @@ class DeckService {
   final Random _random;
   final List<CardModel> _deck = <CardModel>[];
   final List<CardModel> _discardPile = <CardModel>[];
+  final List<CardModel> _hand = <CardModel>[];
   final List<CardModel> _marketRow = <CardModel>[];
-
-  CardModel? _lastDrawn;
+  int _spentMoney = 0;
 
   UnmodifiableListView<CardModel> get deck => UnmodifiableListView(_deck);
 
   UnmodifiableListView<CardModel> get discardPile =>
       UnmodifiableListView(_discardPile);
 
+  UnmodifiableListView<CardModel> get hand => UnmodifiableListView(_hand);
+
   UnmodifiableListView<CardModel> get marketRow =>
       UnmodifiableListView(_marketRow);
 
-  CardModel? get lastDrawn => _lastDrawn;
+  CardModel? get lastDrawn => _hand.isEmpty ? null : _hand.last;
+
+  int get availableMoney {
+    final int handMoney = _hand.fold(0, (total, card) => total + card.moneyValue);
+    final int remainingMoney = handMoney - _spentMoney;
+    return remainingMoney < 0 ? 0 : remainingMoney;
+  }
 
   int get deckCount => _deck.length;
 
@@ -37,10 +45,11 @@ class DeckService {
       ..addAll(_buildStartingDeck())
       ..shuffle(_random);
     _discardPile.clear();
+    _hand.clear();
     _marketRow
       ..clear()
       ..addAll(_buildMarketRow());
-    _lastDrawn = null;
+    _spentMoney = 0;
   }
 
   void resetGame() {
@@ -60,8 +69,29 @@ class DeckService {
     }
 
     final CardModel drawnCard = _deck.removeLast();
-    _lastDrawn = drawnCard;
+    _hand.add(drawnCard);
     return drawnCard;
+  }
+
+  List<CardModel> drawCards(int count) {
+    if (count <= 0) {
+      return const <CardModel>[];
+    }
+
+    final List<CardModel> drawnCards = <CardModel>[];
+    for (int i = 0; i < count; i++) {
+      final CardModel? drawnCard = drawCard();
+      if (drawnCard == null) {
+        break;
+      }
+      drawnCards.add(drawnCard);
+    }
+
+    return drawnCards;
+  }
+
+  bool canAffordCard(CardModel card) {
+    return availableMoney >= card.moneyValue;
   }
 
   bool buyCardFromMarket(String cardId) {
@@ -70,8 +100,14 @@ class DeckService {
       return false;
     }
 
+    final CardModel marketCard = _marketRow[marketIndex];
+    if (!canAffordCard(marketCard)) {
+      return false;
+    }
+
     final CardModel purchasedCard = _marketRow.removeAt(marketIndex);
     _discardPile.add(purchasedCard);
+    _spentMoney += purchasedCard.moneyValue;
     return true;
   }
 
