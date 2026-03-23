@@ -25,12 +25,28 @@ If you only need to get oriented quickly, read this section, then open:
 
 ### Prerequisites
 
-- Flutter SDK installed locally
+- Flutter SDK 3.41.5 installed locally
 - A browser, emulator, or simulator for the platform you want to run
 - Xcode for iOS builds
 - Android Studio or Android SDK tooling for Android builds
 
 This repository is already a Flutter app. You do not need to run `flutter create .`.
+
+### Flutter version policy
+
+This repo intentionally keeps Flutter version management simple:
+
+- CI is pinned to Flutter 3.41.5.
+- Local development should use Flutter 3.41.5 as well.
+- We are not using FVM or another repo-managed Flutter toolchain yet.
+
+Before working in the repo, verify your local SDK:
+
+```bash
+flutter --version
+```
+
+If your local version does not match 3.41.5, switch to that version before making changes. If we decide to upgrade Flutter later, update the pinned version in [`.github/workflows/flutter-ci.yml`](.github/workflows/flutter-ci.yml) and this README in the same PR.
 
 ### Install and run
 
