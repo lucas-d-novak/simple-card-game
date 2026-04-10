@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:simple_card_game/services/game_service.dart';
+import 'package:simple_card_game/ui/screens/game_screen.dart';
 import 'package:simple_card_game/ui/screens/home_screen.dart';
 
 void main() {
@@ -22,7 +23,9 @@ class DeckDrawApp extends StatelessWidget {
         splashFactory: InkRipple.splashFactory,
         useMaterial3: true,
       ),
-      home: HomeScreen(gameService: gameService ?? GameService(numPlayers: 2)),
+      home: gameService != null
+          ? GameScreen(gameService: gameService!)
+          : const HomeScreen(),
     );
   }
 }

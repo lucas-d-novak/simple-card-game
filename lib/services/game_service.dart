@@ -6,11 +6,12 @@ import 'package:simple_card_game/models/player_state.dart';
 import 'package:simple_card_game/services/deck_service.dart';
 
 class GameService {
-  GameService({this.numPlayers = 2}) {
+  GameService({this.numPlayers = 2, this.initialStartingHandSize = 5}) {
     initializeGame();
   }
 
   final int numPlayers;
+  final int initialStartingHandSize;
 
   final List<PlayerState> players = [];
   int currentPlayerIndex = 0;
@@ -42,16 +43,27 @@ class GameService {
     initializeGame();
   }
 
-  void endTurn(int drawCardsAmount) {
+  void endTurn() {
     // 1. Move active player's played cards to their discard pile
     currentPlayer.deckService.discardPlayedCards();
 
     // 2. Advance turn
     currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
 
-    // 3. Draw cards for next player automatically
-    currentPlayer.deckService.drawCards(drawCardsAmount);
+    // 3. Draw up to the initial starting hand size
+    final int currentHandSize = currentPlayer.deckService.hand.length;
+    int cardsToDraw = initialStartingHandSize - currentHandSize;
+    if (cardsToDraw < 0) cardsToDraw = 0;
+    
+    if (cardsToDraw > 0) {
+      currentPlayer.deckService.drawCards(cardsToDraw);
+    }
   }
+
+  // Delegation wrappers for encapsulated UI orchestration
+  List<CardModel> drawCards(int count) => currentPlayer.deckService.drawCards(count);
+  bool playCardFromHand(String cardId) => currentPlayer.deckService.playCardFromHand(cardId);
+  bool shuffleDiscardIntoDeck() => currentPlayer.deckService.shuffleDiscardIntoDeck();
 
   bool canAffordCard(CardModel card) {
     return currentPlayer.deckService.canAfford(card.cost);

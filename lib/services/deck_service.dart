@@ -5,12 +5,11 @@ import 'package:simple_card_game/models/card_effect.dart';
 import 'package:simple_card_game/models/card_model.dart';
 
 class DeckService {
-  DeckService({Random? random, this.maxHandSize}) : _random = random ?? Random() {
+  DeckService({Random? random}) : _random = random ?? Random() {
     initializeLocalDeck();
   }
 
   final Random _random;
-  final int? maxHandSize;
   final List<CardModel> _deck = <CardModel>[];
   final List<CardModel> _discardPile = <CardModel>[];
   final List<CardModel> _hand = <CardModel>[];
@@ -69,9 +68,6 @@ class DeckService {
   }
 
   CardModel? drawCard() {
-    if (maxHandSize != null && _hand.length >= maxHandSize!) {
-      return null;
-    }
 
     if (_deck.isEmpty && _discardPile.isNotEmpty) {
       _moveDiscardPileIntoDeck();

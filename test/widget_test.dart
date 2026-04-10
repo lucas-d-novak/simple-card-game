@@ -109,10 +109,17 @@ GameService createSeededGameService(Random random) {
 }
 
 void main() {
-  testWidgets('DeckDrawApp renders the initial demo state', (
+  testWidgets('DeckDrawApp renders the initial demo state from Main Menu', (
     WidgetTester tester,
   ) async {
     await pumpDeckDrawApp(tester);
+
+    expect(find.text('Welcome to Simple Card Game'), findsOneWidget);
+    expect(find.text('Start Game (2 Players)'), findsOneWidget);
+    
+    // Tap to start game
+    await tester.tap(find.text('Start Game (2 Players)'));
+    await tester.pumpAndSettle();
 
     expect(find.text('Deck Draw Demo - Player 1'), findsOneWidget);
     expect(find.text("Player 1's hand"), findsOneWidget);
@@ -418,8 +425,7 @@ void main() {
     expect(find.text('Deck Draw Demo - Player 2'), findsOneWidget);
     expect(find.text("Player 2's hand"), findsOneWidget);
     
-    // Ensure player 2 drew cards (2 cards)
-    expect(game.players[1].deckService.hand.length, 2);
+    expect(game.players[1].deckService.hand.length, 5);
     
     // Assert Player 1's state is correctly isolated
     expect(game.players[0].deckService.hand.length, p1HandSize - 1, reason: "Hand was preserved");

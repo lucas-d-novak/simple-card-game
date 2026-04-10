@@ -86,21 +86,6 @@ void main() {
       expect(service.availableMoney, 0);
     });
 
-    test('maxHandSize prevents drawing extra cards over the limit', () {
-      final DeckService service = DeckService(random: Random(7), maxHandSize: 3);
-
-      final List<CardModel> drawnCards = service.drawCards(5);
-
-      expect(drawnCards, hasLength(3));
-      expect(service.deckCount, 3);
-      expect(service.hand, equals(drawnCards));
-      
-      // Attempting to draw an individual card also returns null
-      final CardModel? drawOverLimit = service.drawCard();
-      expect(drawOverLimit, isNull);
-      expect(service.hand, hasLength(3));
-    });
-
     test('playCardFromHand moves a hand card to played and adds its money', () {
       final DeckService service = DeckService(random: Random(7));
 
@@ -162,7 +147,7 @@ void main() {
     test('resetGame restores everything to initial state', () {
       final GameService game = GameService(numPlayers: 2);
       game.currentPlayer.deckService.drawCards(2);
-      game.endTurn(2);
+      game.endTurn();
       
       expect(game.currentPlayerIndex, 1);
       
@@ -224,7 +209,7 @@ void main() {
       expect(p1Deck.playedCards.length, 1);
 
       // Trigger endTurn with 3 auto-draw
-      game.endTurn(3);
+      game.endTurn();
 
       // Assert turn advanced
       expect(game.currentPlayerIndex, 1);
@@ -238,7 +223,7 @@ void main() {
       expect(p1Deck.discardPile.first.id, cardIdToPlay);
 
       // Assert player 2 state: automatically drew 3 cards
-      expect(p2Deck.hand.length, 3, reason: 'Next player automatically draws the specified amount');
+      expect(p2Deck.hand.length, 5, reason: "Next player automatically draws up to initialStartingHandSize (5)");
     });
   });
 }
