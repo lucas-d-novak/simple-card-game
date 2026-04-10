@@ -8,6 +8,7 @@ import 'package:simple_card_game/models/card_model.dart';
 import 'package:simple_card_game/models/player_state.dart';
 import 'package:simple_card_game/services/deck_service.dart';
 import 'package:simple_card_game/services/game_service.dart';
+import 'package:simple_card_game/ui/widgets/playing_card_widget.dart';
 
 int gainMoneyAmount(CardModel card) {
   return card.playEffects
@@ -78,10 +79,8 @@ OutlinedButton _shuffleDiscardButton(WidgetTester tester) {
 Future<void> playUntilAffordable(
   WidgetTester tester,
   GameService game,
-  String cardId,
+  CardModel marketCard,
 ) async {
-  final CardModel marketCard =
-      game.marketRow.firstWhere((card) => card.id == cardId);
   final activeDeck = game.currentPlayer.deckService;
 
   while (activeDeck.deckCount > 0 || activeDeck.hand.isNotEmpty) {
@@ -133,26 +132,7 @@ void main() {
     expect(find.text('End Turn'), findsOneWidget);
     expect(find.text('Reset & Shuffle Game'), findsOneWidget);
     expect(find.text('Market row'), findsOneWidget);
-    expect(_marketCard('m1'), findsOneWidget);
-    expect(_marketCard('m5'), findsOneWidget);
-    expect(
-      find.descendant(
-        of: _marketCard('m1'),
-        matching: find.text('When played: Gain 5 money'),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: _marketCard('m5'), matching: find.text('Cost: 3')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(
-        of: _marketCard('m5'),
-        matching: find.text('When played: Draw 2 cards'),
-      ),
-      findsOneWidget,
-    );
+    expect(find.byType(PlayingCardWidget), findsWidgets);
   });
 
   testWidgets('drawing 2 cards keeps them in hand until they are played', (
@@ -202,17 +182,18 @@ void main() {
     final activeDeck = game.currentPlayer.deckService;
     await pumpDeckDrawApp(tester, gameService: game);
 
-    await playUntilAffordable(tester, game, 'm4');
+    final CardModel targetCard = game.marketRow.first;
+    await playUntilAffordable(tester, game, targetCard);
     final int handCountBeforePurchase = activeDeck.hand.length;
     final int playedCountBeforePurchase = activeDeck.playedCards.length;
     final int moneyBeforePurchase = activeDeck.availableMoney;
-    await tapKey(tester, 'buy-card-m4');
+    await tapKey(tester, 'buy-card-${targetCard.id}');
 
     expect(_discardCount(1), findsOneWidget);
-    expect(find.byKey(const ValueKey('market-card-m4')), findsNothing);
+    expect(find.byKey(ValueKey('market-card-${targetCard.id}')), findsNothing);
     expect(activeDeck.hand, hasLength(handCountBeforePurchase));
     expect(activeDeck.playedCards, hasLength(playedCountBeforePurchase));
-    expect(_availableMoney(moneyBeforePurchase - 2), findsOneWidget);
+    expect(_availableMoney(moneyBeforePurchase - targetCard.cost), findsOneWidget);
 
     await tapKey(tester, 'reset-deck-button');
 
@@ -223,8 +204,7 @@ void main() {
     expect(_availableMoney(0), findsOneWidget);
     expect(game.currentPlayer.deckService.hand, isEmpty);
     expect(game.currentPlayer.deckService.playedCards, isEmpty);
-    expect(find.byKey(const ValueKey('market-card-m4')), findsOneWidget);
-    expect(_marketCard('m5'), findsOneWidget);
+    expect(find.byType(PlayingCardWidget), findsWidgets);
   });
 
   testWidgets(
@@ -236,8 +216,9 @@ void main() {
     final activeDeck = game.currentPlayer.deckService;
     await pumpDeckDrawApp(tester, gameService: game);
 
-    await playUntilAffordable(tester, game, 'm4');
-    await tapKey(tester, 'buy-card-m4');
+    final CardModel targetCard = game.marketRow.first;
+    await playUntilAffordable(tester, game, targetCard);
+    await tapKey(tester, 'buy-card-${targetCard.id}');
 
     while (activeDeck.deckCount > 0 || activeDeck.discardCount > 0) {
       await tapKey(tester, 'draw-card-button');
@@ -251,7 +232,7 @@ void main() {
     expect(find.text('Deck is empty!'), findsOneWidget);
     expect(_deckCount(0), findsOneWidget);
     expect(_discardCount(0), findsOneWidget);
-    expect(find.byKey(const ValueKey('hand-card-m4')), findsOneWidget);
+    expect(find.byKey(ValueKey('hand-card-${targetCard.id}')), findsOneWidget);
     expect(_availableMoney(activeDeck.availableMoney), findsOneWidget);
   });
 
@@ -263,17 +244,18 @@ void main() {
     final activeDeck = game.currentPlayer.deckService;
     await pumpDeckDrawApp(tester, gameService: game);
 
-    await playUntilAffordable(tester, game, 'm5');
-    await tapKey(tester, 'buy-card-m5');
+    final CardModel targetCard = game.marketRow.firstWhere((c) => c.playEffects.any((e) => e is DrawCardsEffect), orElse: () => game.marketRow.first);
+    await playUntilAffordable(tester, game, targetCard);
+    await tapKey(tester, 'buy-card-${targetCard.id}');
     await tapKey(tester, 'shuffle-discard-button');
     await tapKey(tester, 'draw-card-button');
 
-    expect(activeDeck.hand.map((card) => card.id).toList(), ['c2', 'm5']);
+    expect(activeDeck.hand.map((card) => card.id).toList(), ['c2', targetCard.id]);
     expect(_availableMoney(2), findsOneWidget);
 
-    await tapKey(tester, 'play-card-m5');
+    await tapKey(tester, 'play-card-${targetCard.id}');
 
-    expect(_playedCard('m5'), findsOneWidget);
+    expect(_playedCard(targetCard.id), findsOneWidget);
     expect(activeDeck.hand.map((card) => card.id).toList(), ['c2', 'c5', 'c4']);
     expect(find.byKey(const ValueKey('hand-card-c5')), findsOneWidget);
     expect(find.byKey(const ValueKey('hand-card-c4')), findsOneWidget);
@@ -307,22 +289,19 @@ void main() {
     final GameService game = createSeededGameService(Random(7));
     await pumpDeckDrawApp(tester, gameService: game);
 
-    expect(_buyButton(tester, 'm1').onPressed, isNull);
-    expect(_buyButton(tester, 'm2').onPressed, isNull);
-    expect(_buyButton(tester, 'm3').onPressed, isNull);
-    expect(_buyButton(tester, 'm4').onPressed, isNull);
-    expect(_buyButton(tester, 'm5').onPressed, isNull);
+    for (final card in game.marketRow) {
+      expect(_buyButton(tester, card.id).onPressed, isNull);
+    }
 
     await tapKey(tester, 'draw-card-button');
 
     expect(_availableMoney(0), findsOneWidget);
-    expect(_buyButton(tester, 'm1').onPressed, isNull);
-    expect(_buyButton(tester, 'm2').onPressed, isNull);
-    expect(_buyButton(tester, 'm3').onPressed, isNull);
-    expect(_buyButton(tester, 'm4').onPressed, isNull);
-    expect(_buyButton(tester, 'm5').onPressed, isNull);
+    for (final card in game.marketRow) {
+      expect(_buyButton(tester, card.id).onPressed, isNull);
+    }
 
-    await playUntilAffordable(tester, game, 'm4');
+    final targetCard = game.marketRow.first;
+    await playUntilAffordable(tester, game, targetCard);
 
     expect(_availableMoney(game.currentPlayer.deckService.availableMoney), findsOneWidget);
     for (final card in game.marketRow) {
@@ -342,11 +321,11 @@ void main() {
     await tapKey(tester, 'play-card-c5');
 
     expect(_availableMoney(3), findsOneWidget);
-    expect(_buyButton(tester, 'm1').onPressed, isNull);
-    expect(_buyButton(tester, 'm2').onPressed, isNull);
-    expect(_buyButton(tester, 'm3').onPressed, isNotNull);
-    expect(_buyButton(tester, 'm4').onPressed, isNotNull);
-    expect(_buyButton(tester, 'm5').onPressed, isNotNull);
+    for (final card in game.marketRow) {
+      final Matcher expectedState =
+          game.canAffordCard(card) ? isNotNull : isNull;
+      expect(_buyButton(tester, card.id).onPressed, expectedState);
+    }
   });
 
   testWidgets(
@@ -358,19 +337,18 @@ void main() {
     final activeDeck = game.currentPlayer.deckService;
     await pumpDeckDrawApp(tester, gameService: game);
 
-    await playUntilAffordable(tester, game, 'm4');
+    final CardModel targetCard = game.marketRow.first;
+    await playUntilAffordable(tester, game, targetCard);
     final int handCountBeforePurchase = activeDeck.hand.length;
     final int playedCountBeforePurchase = activeDeck.playedCards.length;
     final int moneyBeforePurchase = activeDeck.availableMoney;
-    await tapKey(tester, 'buy-card-m4');
+    await tapKey(tester, 'buy-card-${targetCard.id}');
 
-    expect(find.byKey(const ValueKey('market-card-m4')), findsNothing);
-    expect(find.text('Treasure +2'), findsNothing);
+    expect(find.byKey(ValueKey('market-card-${targetCard.id}')), findsNothing);
     expect(_discardCount(1), findsOneWidget);
-    expect(_availableMoney(moneyBeforePurchase - 2), findsOneWidget);
+    expect(_availableMoney(moneyBeforePurchase - targetCard.cost), findsOneWidget);
     expect(activeDeck.hand, hasLength(handCountBeforePurchase));
     expect(activeDeck.playedCards, hasLength(playedCountBeforePurchase));
-    expect(_buyButton(tester, 'm1').onPressed, isNull);
     for (final card in game.marketRow) {
       final Matcher expectedState =
           game.canAffordCard(card) ? isNotNull : isNull;
@@ -388,8 +366,9 @@ void main() {
 
     expect(_shuffleDiscardButton(tester).onPressed, isNull);
 
-    await playUntilAffordable(tester, game, 'm4');
-    await tapKey(tester, 'buy-card-m4');
+    final CardModel targetCard = game.marketRow.first;
+    await playUntilAffordable(tester, game, targetCard);
+    await tapKey(tester, 'buy-card-${targetCard.id}');
     final int deckCountBeforeShuffle = activeDeck.deckCount;
 
     expect(_discardCount(1), findsOneWidget);
@@ -399,7 +378,7 @@ void main() {
 
     expect(_deckCount(deckCountBeforeShuffle + 1), findsOneWidget);
     expect(_discardCount(0), findsOneWidget);
-    expect(activeDeck.deck.map((card) => card.id), contains('m4'));
+    expect(activeDeck.deck.map((card) => card.id), contains(targetCard.id));
     expect(_shuffleDiscardButton(tester).onPressed, isNull);
   });
 

@@ -136,16 +136,16 @@ void main() {
 
   group('GameService', () {
     test('initializes with multiple players and the market row', () {
-      final GameService game = GameService(numPlayers: 2);
+      final GameService game = GameService(numPlayers: 2, random: Random(7));
       expect(game.players, hasLength(2));
       expect(game.currentPlayerIndex, 0);
       expect(game.currentPlayer.name, 'Player 1');
       expect(game.marketRow, hasLength(5));
-      expect(game.marketRow.map((c) => c.id).toList(), equals(<String>['m1', 'm2', 'm3', 'm4', 'm5']));
+      expect(game.marketRow.map((c) => c.id).toList(), equals(<String>['m4_2', 'm3_2', 'm1_2', 'm5_2', 'm5_0']));
     });
 
     test('resetGame restores everything to initial state', () {
-      final GameService game = GameService(numPlayers: 2);
+      final GameService game = GameService(numPlayers: 2, random: Random(7));
       game.currentPlayer.deckService.drawCards(2);
       game.endTurn();
       
@@ -158,10 +158,10 @@ void main() {
     });
 
     test('market row includes Scout as a cost 3 draw card', () {
-      final GameService game = GameService(numPlayers: 2);
+      final GameService game = GameService(numPlayers: 2, random: Random(7));
 
       final CardModel scout =
-          game.marketRow.firstWhere((card) => card.id == 'm5');
+          game.marketRow.firstWhere((card) => card.name == 'Scout');
       final DrawCardsEffect scoutEffect =
           scout.playEffects.single as DrawCardsEffect;
 
@@ -173,7 +173,7 @@ void main() {
     });
 
     test('buyCardFromMarket removes market card, moves it to discard directly, and subtracts money', () {
-      final GameService game = GameService(numPlayers: 2);
+      final GameService game = GameService(numPlayers: 2, random: Random(7));
       final activeDeck = game.currentPlayer.deckService;
       
       // Override random to be predictable or draw enough manually
@@ -188,14 +188,17 @@ void main() {
       final int startDiscard = activeDeck.discardCount;
       final int startMoney = activeDeck.availableMoney;
       
-      expect(game.buyCardFromMarket('m2'), isTrue); // m2 costs 4
+      final CardModel cardToBuy = game.marketRow.firstWhere((c) => activeDeck.availableMoney >= c.cost);
+      final int cost = cardToBuy.cost;
+      expect(game.buyCardFromMarket(cardToBuy.id), isTrue); 
       expect(activeDeck.discardCount, startDiscard + 1);
-      expect(activeDeck.availableMoney, startMoney - 4);
-      expect(game.marketRow.map((c) => c.id).contains('m2'), isFalse);
+      expect(activeDeck.availableMoney, startMoney - cost);
+      expect(game.marketRow.map((c) => c.id).contains(cardToBuy.id), isFalse);
+      expect(game.marketRow, hasLength(5)); // Refill test
     });
 
     test('endTurn discards ONLY played cards, advances turn, and automatically draws N cards for next player', () {
-      final GameService game = GameService(numPlayers: 2);
+      final GameService game = GameService(numPlayers: 2, random: Random(7));
       final p1Deck = game.players[0].deckService;
       final p2Deck = game.players[1].deckService;
 

@@ -1,4 +1,5 @@
 import 'dart:collection';
+import 'dart:math';
 
 import 'package:simple_card_game/models/card_effect.dart';
 import 'package:simple_card_game/models/card_model.dart';
@@ -6,16 +7,19 @@ import 'package:simple_card_game/models/player_state.dart';
 import 'package:simple_card_game/services/deck_service.dart';
 
 class GameService {
-  GameService({this.numPlayers = 2, this.initialStartingHandSize = 5}) {
+  GameService({this.numPlayers = 2, this.initialStartingHandSize = 5, Random? random})
+    : _random = random ?? Random() {
     initializeGame();
   }
 
   final int numPlayers;
   final int initialStartingHandSize;
+  final Random _random;
 
   final List<PlayerState> players = [];
   int currentPlayerIndex = 0;
 
+  final List<CardModel> _marketDeck = <CardModel>[];
   final List<CardModel> _marketRow = <CardModel>[];
 
   UnmodifiableListView<CardModel> get marketRow =>
@@ -29,12 +33,20 @@ class GameService {
       players.add(PlayerState(
         id: 'p${i + 1}',
         name: 'Player ${i + 1}',
-        deckService: DeckService(),
+        deckService: DeckService(random: _random),
       ));
     }
 
+    _marketDeck.clear();
     _marketRow.clear();
-    _marketRow.addAll(_buildMarketRow());
+    _marketDeck.addAll(_buildMarketDeck());
+    _marketDeck.shuffle(_random);
+    
+    for (int i = 0; i < 5; i++) {
+      if (_marketDeck.isNotEmpty) {
+        _marketRow.add(_marketDeck.removeLast());
+      }
+    }
 
     currentPlayerIndex = 0;
   }
@@ -82,41 +94,50 @@ class GameService {
 
     final CardModel purchasedCard = _marketRow.removeAt(marketIndex);
     currentPlayer.deckService.receivePurchasedCard(purchasedCard);
+    
+    if (_marketDeck.isNotEmpty) {
+      _marketRow.add(_marketDeck.removeLast());
+    }
+    
     return true;
   }
 
-  List<CardModel> _buildMarketRow() {
-    return const <CardModel>[
-      CardModel(
-        id: 'm1',
-        name: 'Treasure +5',
-        cost: 5,
-        playEffects: <CardEffect>[GainMoneyEffect(5)],
-      ),
-      CardModel(
-        id: 'm2',
-        name: 'Treasure +4',
-        cost: 4,
-        playEffects: <CardEffect>[GainMoneyEffect(4)],
-      ),
-      CardModel(
-        id: 'm3',
-        name: 'Treasure +3',
-        cost: 3,
-        playEffects: <CardEffect>[GainMoneyEffect(3)],
-      ),
-      CardModel(
-        id: 'm4',
-        name: 'Treasure +2',
-        cost: 2,
-        playEffects: <CardEffect>[GainMoneyEffect(2)],
-      ),
-      CardModel(
-        id: 'm5',
-        name: 'Scout',
-        cost: 3,
-        playEffects: <CardEffect>[DrawCardsEffect(2)],
-      ),
-    ];
+  List<CardModel> _buildMarketDeck() {
+    final List<CardModel> deck = <CardModel>[];
+    for (int i = 0; i < 3; i++) {
+      deck.addAll(<CardModel>[
+        CardModel(
+          id: 'm1_$i',
+          name: 'Treasure +5',
+          cost: 5,
+          playEffects: const <CardEffect>[GainMoneyEffect(5)],
+        ),
+        CardModel(
+          id: 'm2_$i',
+          name: 'Treasure +4',
+          cost: 4,
+          playEffects: const <CardEffect>[GainMoneyEffect(4)],
+        ),
+        CardModel(
+          id: 'm3_$i',
+          name: 'Treasure +3',
+          cost: 3,
+          playEffects: const <CardEffect>[GainMoneyEffect(3)],
+        ),
+        CardModel(
+          id: 'm4_$i',
+          name: 'Treasure +2',
+          cost: 2,
+          playEffects: const <CardEffect>[GainMoneyEffect(2)],
+        ),
+        CardModel(
+          id: 'm5_$i',
+          name: 'Scout',
+          cost: 3,
+          playEffects: const <CardEffect>[DrawCardsEffect(2)],
+        ),
+      ]);
+    }
+    return deck;
   }
 }
