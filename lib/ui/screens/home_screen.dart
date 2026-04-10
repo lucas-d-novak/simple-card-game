@@ -1,28 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:simple_card_game/models/card_model.dart';
-import 'package:simple_card_game/services/deck_service.dart';
+import 'package:simple_card_game/services/game_service.dart';
 import 'package:simple_card_game/ui/widgets/playing_card_widget.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, required this.deckService});
+  const HomeScreen({super.key, required this.gameService});
 
-  final DeckService deckService;
+  final GameService gameService;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  late final DeckService _deckService;
+  late final GameService _gameService;
 
   @override
   void initState() {
     super.initState();
-    _deckService = widget.deckService;
+    _gameService = widget.gameService;
   }
 
   void _drawCard() {
-    final List<CardModel> drawnCards = _deckService.drawCards(2);
+    final List<CardModel> drawnCards = _gameService.currentPlayer.deckService.drawCards(2);
 
     setState(() {});
 
@@ -35,49 +35,58 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _resetDeck() {
     setState(() {
-      _deckService.resetGame();
+      _gameService.resetGame();
     });
   }
 
   void _shuffleDiscardIntoDeck() {
     setState(() {
-      _deckService.shuffleDiscardIntoDeck();
+      _gameService.currentPlayer.deckService.shuffleDiscardIntoDeck();
     });
   }
 
   void _buyCard(String cardId) {
     setState(() {
-      _deckService.buyCardFromMarket(cardId);
+      _gameService.buyCardFromMarket(cardId);
     });
   }
 
   void _playCard(String cardId) {
     setState(() {
-      _deckService.playCardFromHand(cardId);
+      _gameService.currentPlayer.deckService.playCardFromHand(cardId);
+    });
+  }
+  
+  void _endTurn() {
+    setState(() {
+      _gameService.endTurn(2); // Draw 2 cards on turn end
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final currentPlayerState = _gameService.currentPlayer;
+    final currentDeckService = currentPlayerState.deckService;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Deck Draw Demo'),
+        title: Text('Deck Draw Demo - ${currentPlayerState.name}'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              'Your hand',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Text(
+              '${currentPlayerState.name}\'s hand',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            _deckService.hand.isEmpty
+            currentDeckService.hand.isEmpty
                 ? const Text('No cards in hand.',
                     style: TextStyle(fontSize: 16))
                 : Column(
-                    children: _deckService.hand
+                    children: currentDeckService.hand
                         .map(
                           (card) => Padding(
                             padding: const EdgeInsets.only(bottom: 12),
@@ -98,10 +107,10 @@ class _HomeScreenState extends State<HomeScreen> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            _deckService.playedCards.isEmpty
+            currentDeckService.playedCards.isEmpty
                 ? const Text('No cards played.', style: TextStyle(fontSize: 16))
                 : Column(
-                    children: _deckService.playedCards
+                    children: currentDeckService.playedCards
                         .map(
                           (card) => Padding(
                             padding: const EdgeInsets.only(bottom: 12),
@@ -115,13 +124,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
             const SizedBox(height: 24),
             Text(
-              'Cards left in deck: ${_deckService.deckCount}',
+              'Cards left in deck: ${currentDeckService.deckCount}',
               key: const ValueKey('deck-count-text'),
               style: const TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 8),
             Text(
-              'Discard pile: ${_deckService.discardCount}',
+              'Discard pile: ${currentDeckService.discardCount}',
               key: const ValueKey('discard-count-text'),
               style: const TextStyle(fontSize: 16),
             ),
@@ -131,7 +140,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: Text(
-                  'Money remaining: ${_deckService.availableMoney}',
+                  'Money remaining: ${currentDeckService.availableMoney}',
                   key: const ValueKey('available-money-text'),
                   style: const TextStyle(
                     fontSize: 16,
@@ -149,16 +158,22 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 12),
             OutlinedButton(
               key: const ValueKey('shuffle-discard-button'),
-              onPressed: _deckService.discardCount > 0
+              onPressed: currentDeckService.discardPile.isNotEmpty
                   ? _shuffleDiscardIntoDeck
                   : null,
               child: const Text('Shuffle New Cards Into Deck'),
             ),
             const SizedBox(height: 12),
             OutlinedButton(
+              key: const ValueKey('end-turn-button'),
+              onPressed: _endTurn,
+              child: const Text('End Turn'),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton(
               key: const ValueKey('reset-deck-button'),
               onPressed: _resetDeck,
-              child: const Text('Reset & Shuffle Deck'),
+              child: const Text('Reset & Shuffle Game'),
             ),
             const SizedBox(height: 24),
             const Text(
@@ -166,11 +181,11 @@ class _HomeScreenState extends State<HomeScreen> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            if (_deckService.marketRow.isEmpty)
+            if (_gameService.marketRow.isEmpty)
               const Text('No cards available to buy.')
             else
               Column(
-                children: _deckService.marketRow
+                children: _gameService.marketRow
                     .map(
                       (card) => Padding(
                         padding: const EdgeInsets.only(bottom: 12),
@@ -179,7 +194,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           card: card,
                           actionLabel: 'Buy',
                           actionKey: ValueKey('buy-card-${card.id}'),
-                          onActionPressed: _deckService.canAffordCard(card)
+                          onActionPressed: _gameService.canAffordCard(card)
                               ? () => _buyCard(card.id)
                               : null,
                         ),

@@ -5,16 +5,16 @@ import 'package:simple_card_game/models/card_effect.dart';
 import 'package:simple_card_game/models/card_model.dart';
 
 class DeckService {
-  DeckService({Random? random}) : _random = random ?? Random() {
-    initializeGame();
+  DeckService({Random? random, this.maxHandSize}) : _random = random ?? Random() {
+    initializeLocalDeck();
   }
 
   final Random _random;
+  final int? maxHandSize;
   final List<CardModel> _deck = <CardModel>[];
   final List<CardModel> _discardPile = <CardModel>[];
   final List<CardModel> _hand = <CardModel>[];
   final List<CardModel> _playedCards = <CardModel>[];
-  final List<CardModel> _marketRow = <CardModel>[];
   int _spentMoney = 0;
   CardModel? _lastDrawn;
 
@@ -27,9 +27,6 @@ class DeckService {
 
   UnmodifiableListView<CardModel> get playedCards =>
       UnmodifiableListView(_playedCards);
-
-  UnmodifiableListView<CardModel> get marketRow =>
-      UnmodifiableListView(_marketRow);
 
   CardModel? get lastDrawn => _lastDrawn;
 
@@ -46,9 +43,7 @@ class DeckService {
 
   int get discardCount => _discardPile.length;
 
-  int get marketCount => _marketRow.length;
-
-  void initializeGame() {
+  void initializeLocalDeck() {
     _deck
       ..clear()
       ..addAll(_buildStartingDeck())
@@ -56,15 +51,12 @@ class DeckService {
     _discardPile.clear();
     _hand.clear();
     _playedCards.clear();
-    _marketRow
-      ..clear()
-      ..addAll(_buildMarketRow());
     _spentMoney = 0;
     _lastDrawn = null;
   }
-
-  void resetGame() {
-    initializeGame();
+  
+  void resetLocalDeck() {
+    initializeLocalDeck();
   }
 
   bool shuffleDiscardIntoDeck() {
@@ -77,6 +69,10 @@ class DeckService {
   }
 
   CardModel? drawCard() {
+    if (maxHandSize != null && _hand.length >= maxHandSize!) {
+      return null;
+    }
+
     if (_deck.isEmpty && _discardPile.isNotEmpty) {
       _moveDiscardPileIntoDeck();
     }
@@ -119,26 +115,20 @@ class DeckService {
     _applyCardEffects(playedCard);
     return true;
   }
-
-  bool canAffordCard(CardModel card) {
-    return availableMoney >= card.cost;
+  
+  void receivePurchasedCard(CardModel card) {
+    _discardPile.add(card);
+    _spentMoney += card.cost;
+  }
+  
+  void discardPlayedCards() {
+    _discardPile.addAll(_playedCards);
+    _playedCards.clear();
+    _spentMoney = 0;
   }
 
-  bool buyCardFromMarket(String cardId) {
-    final int marketIndex = _marketRow.indexWhere((card) => card.id == cardId);
-    if (marketIndex == -1) {
-      return false;
-    }
-
-    final CardModel marketCard = _marketRow[marketIndex];
-    if (!canAffordCard(marketCard)) {
-      return false;
-    }
-
-    final CardModel purchasedCard = _marketRow.removeAt(marketIndex);
-    _discardPile.add(purchasedCard);
-    _spentMoney += purchasedCard.cost;
-    return true;
+  bool canAfford(int cost) {
+    return availableMoney >= cost;
   }
 
   List<CardModel> _buildStartingDeck() {
@@ -178,41 +168,6 @@ class DeckService {
         name: 'Coin +4',
         cost: 4,
         playEffects: <CardEffect>[GainMoneyEffect(4)],
-      ),
-    ];
-  }
-
-  List<CardModel> _buildMarketRow() {
-    return const <CardModel>[
-      CardModel(
-        id: 'm1',
-        name: 'Treasure +5',
-        cost: 5,
-        playEffects: <CardEffect>[GainMoneyEffect(5)],
-      ),
-      CardModel(
-        id: 'm2',
-        name: 'Treasure +4',
-        cost: 4,
-        playEffects: <CardEffect>[GainMoneyEffect(4)],
-      ),
-      CardModel(
-        id: 'm3',
-        name: 'Treasure +3',
-        cost: 3,
-        playEffects: <CardEffect>[GainMoneyEffect(3)],
-      ),
-      CardModel(
-        id: 'm4',
-        name: 'Treasure +2',
-        cost: 2,
-        playEffects: <CardEffect>[GainMoneyEffect(2)],
-      ),
-      CardModel(
-        id: 'm5',
-        name: 'Scout',
-        cost: 3,
-        playEffects: <CardEffect>[DrawCardsEffect(2)],
       ),
     ];
   }
