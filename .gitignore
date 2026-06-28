@@ -40,3 +40,8 @@ lib/generated_plugin_registrant.dart
 **/ios/Runner/GeneratedPluginRegistrant.*
 **/macos/Flutter/ephemeral/
 **/macos/Flutter/GeneratedPluginRegistrant.swift
+
+# Visual QA reports (generated, not tracked)
+screenshots/
+node_modules/
+.server_pid

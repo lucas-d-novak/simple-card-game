@@ -1,0 +1,1878 @@
+import 'dart:math';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:simple_card_game/models/card_effect.dart';
+import 'package:simple_card_game/models/card_model.dart';
+import 'package:simple_card_game/models/card_type.dart';
+import 'package:simple_card_game/models/faction.dart';
+import 'package:simple_card_game/services/game_service.dart';
+
+class ZeroRandom implements Random {
+  @override
+  bool nextBool() => false;
+  @override
+  double nextDouble() => 0;
+  @override
+  int nextInt(int max) => 0;
+}
+
+void main() {
+  group('GameService initialization (Step 5a)', () {
+    test('2-player game initializes with correct state', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+
+      expect(game.players, hasLength(2));
+      expect(game.currentPlayerIndex, 0);
+      expect(game.turnNumber, 1);
+      expect(game.removedFromGame, isEmpty);
+      expect(game.isGameOver, false);
+
+      for (final player in game.players) {
+        expect(player.health, 50);
+        expect(player.mastery, 0);
+        expect(player.gemPool, 0);
+        expect(player.powerPool, 0);
+      }
+    });
+
+    test('3-player game initializes with 3 players', () {
+      final game = GameService(playerCount: 3, random: Random(7));
+      expect(game.players, hasLength(3));
+    });
+
+    test('each player starts with 10 total cards across hand and draw pile',
+        () {
+      final game = GameService(playerCount: 2, random: Random(7));
+
+      // All players start with 5 cards in hand, 5 in draw pile
+      expect(game.players[0].hand, hasLength(5));
+      expect(game.players[0].drawPile, hasLength(5));
+
+      expect(game.players[1].hand, hasLength(5));
+      expect(game.players[1].drawPile, hasLength(5));
+    });
+
+    test('all players draw 5 cards at start', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+
+      expect(game.players[0].hand, hasLength(5));
+      expect(game.players[1].hand, hasLength(5));
+    });
+  });
+
+  group('Center row / market (Step 6)', () {
+    test('center row starts with 6 cards', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      expect(game.centerRow, hasLength(6));
+    });
+
+    test('infinity deck is populated', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      // Full catalog with variable copy counts (151 total), minus 6 dealt to center row
+      expect(game.infinityDeck, hasLength(151 - 6));
+    });
+
+    test('buying a card refills center row to 6', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+
+      // Give player enough gems to buy something
+      game.currentPlayer.gemPool = 20;
+      final cardToBuy = game.centerRow.first;
+      final result = game.buyCard(cardToBuy.id);
+
+      expect(result, true);
+      expect(game.centerRow, hasLength(6));
+    });
+
+    test('buying when infinity deck is empty does not refill', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+
+      // Empty the infinity deck
+      game.infinityDeck.clear();
+      game.currentPlayer.gemPool = 100;
+
+      final cardToBuy = game.centerRow.first;
+      game.buyCard(cardToBuy.id);
+
+      expect(game.centerRow, hasLength(5)); // 6 - 1, no refill
+    });
+
+    test('no always-available basic card exists', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+
+      // Buy everything
+      game.currentPlayer.gemPool = 10000;
+      game.infinityDeck.clear();
+
+      while (game.centerRow.isNotEmpty) {
+        game.buyCard(game.centerRow.first.id);
+      }
+
+      expect(game.centerRow, isEmpty);
+      // No card magically appears
+      expect(game.centerRow, isEmpty);
+    });
+  });
+
+  group('Play card effects (Step 5b)', () {
+    test('playing a Crystal adds 1 gem to pool', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final crystal =
+          game.currentPlayer.hand.firstWhere((c) => c.name == 'Crystal',
+              orElse: () => throw StateError(
+                  'No Crystal in hand. Hand: ${game.currentPlayer.hand.map((c) => c.name)}'));
+
+      game.playCard(crystal.id);
+
+      expect(game.currentPlayer.gemPool, 1);
+      expect(
+        game.currentPlayer.playedThisTurn.map((c) => c.id),
+        contains(crystal.id),
+      );
+    });
+
+    test('playing a Blaster adds 1 power to pool', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+
+      // Add a Blaster to hand directly to avoid RNG dependency
+      const blaster = CardModel(
+        id: 'test_blaster',
+        name: 'Blaster',
+        cost: 0,
+        playEffects: [GainPowerEffect(1)],
+      );
+      player.hand.add(blaster);
+
+      game.playCard('test_blaster');
+
+      expect(player.powerPool, 1);
+    });
+
+    test('playCard moves card from hand to playedThisTurn', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final card = game.currentPlayer.hand.first;
+      final handSizeBefore = game.currentPlayer.hand.length;
+
+      game.playCard(card.id);
+
+      expect(game.currentPlayer.hand, hasLength(handSizeBefore - 1));
+      expect(game.currentPlayer.playedThisTurn, hasLength(1));
+    });
+
+    test('playCard returns false for unknown card id', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      expect(game.playCard('nonexistent'), false);
+    });
+
+    test('playCard with DrawCardsEffect draws from draw pile', () {
+      final game = GameService(playerCount: 2, random: ZeroRandom());
+      final player = game.currentPlayer;
+
+      // Manually add a card with draw effect to hand
+      const drawCard = CardModel(
+        id: 'test_draw',
+        name: 'Test Draw',
+        cost: 0,
+        playEffects: [DrawCardsEffect(2)],
+      );
+      player.hand.add(drawCard);
+      final handSizeBefore = player.hand.length;
+      final drawPileSizeBefore = player.drawPile.length;
+
+      game.playCard('test_draw');
+
+      // Hand should grow by 2 (drew 2) minus 1 (played the draw card)
+      expect(player.hand, hasLength(handSizeBefore + 1));
+      expect(player.drawPile, hasLength(drawPileSizeBefore - 2));
+    });
+
+    test('draw pile auto-reshuffles from discard when empty', () {
+      final game = GameService(playerCount: 2, random: ZeroRandom());
+      final player = game.currentPlayer;
+
+      // Move all draw pile to discard
+      player.discardPile.addAll(player.drawPile);
+      player.drawPile.clear();
+      final discardCount = player.discardPile.length;
+
+      // Add a draw card
+      const drawCard = CardModel(
+        id: 'test_draw2',
+        name: 'Test Draw',
+        cost: 0,
+        playEffects: [DrawCardsEffect(1)],
+      );
+      player.hand.add(drawCard);
+
+      game.playCard('test_draw2');
+
+      expect(player.discardPile, isEmpty);
+      expect(player.drawPile, hasLength(discardCount - 1));
+    });
+
+    test('ChooseOneEffect with choiceIndex 0 applies first option', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+
+      // Add Shard Reactor to hand (choose 2 gems OR 2 power)
+      const reactor = CardModel(
+        id: 'test_reactor',
+        name: 'Shard Reactor',
+        cost: 0,
+        playEffects: [
+          ChooseOneEffect([
+            [GainGemsEffect(2)],
+            [GainPowerEffect(2)],
+          ]),
+        ],
+      );
+      player.hand.add(reactor);
+
+      game.playCard('test_reactor', choiceIndex: 0);
+
+      expect(player.gemPool, 2);
+      expect(player.powerPool, 0);
+    });
+
+    test('ChooseOneEffect with choiceIndex 1 applies second option', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+
+      const reactor = CardModel(
+        id: 'test_reactor2',
+        name: 'Shard Reactor',
+        cost: 0,
+        playEffects: [
+          ChooseOneEffect([
+            [GainGemsEffect(2)],
+            [GainPowerEffect(2)],
+          ]),
+        ],
+      );
+      player.hand.add(reactor);
+
+      game.playCard('test_reactor2', choiceIndex: 1);
+
+      expect(player.gemPool, 0);
+      expect(player.powerPool, 2);
+    });
+
+    test('GainMasteryEffect increases player mastery', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+
+      const masteryCard = CardModel(
+        id: 'test_mastery',
+        name: 'Test Mastery',
+        cost: 0,
+        playEffects: [GainMasteryEffect(3)],
+      );
+      player.hand.add(masteryCard);
+
+      game.playCard('test_mastery');
+      expect(player.mastery, 3);
+    });
+
+    test('GainHealthEffect heals the player', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.takeDamage(10);
+
+      const healCard = CardModel(
+        id: 'test_heal',
+        name: 'Test Heal',
+        cost: 0,
+        playEffects: [GainHealthEffect(5)],
+      );
+      player.hand.add(healCard);
+
+      game.playCard('test_heal');
+      expect(player.health, 45); // 50 - 10 + 5
+    });
+
+    test('OpponentLosesHealthEffect damages opponent in 2-player game', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+
+      const damageCard = CardModel(
+        id: 'test_opp_damage',
+        name: 'Test Damage',
+        cost: 0,
+        playEffects: [OpponentLosesHealthEffect(7)],
+      );
+      player.hand.add(damageCard);
+
+      game.playCard('test_opp_damage');
+
+      final opponent = game.players.firstWhere((p) => p.id != player.id);
+      expect(opponent.health, 43); // 50 - 7
+    });
+  });
+
+  group('Buy card (Step 5c)', () {
+    test('buyCard subtracts gems and card goes to discard', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      game.currentPlayer.gemPool = 20;
+
+      final card = game.centerRow.first;
+      final cardId = card.id;
+      final cardCost = card.cost;
+
+      expect(game.buyCard(cardId), true);
+      expect(game.currentPlayer.gemPool, 20 - cardCost);
+      expect(
+        game.currentPlayer.discardPile.map((c) => c.id),
+        contains(cardId),
+      );
+    });
+
+    test('buyCard fails if insufficient gems', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      game.currentPlayer.gemPool = 0;
+
+      final expensiveCard =
+          game.centerRow.firstWhere((c) => c.cost > 0);
+      expect(game.buyCard(expensiveCard.id), false);
+    });
+
+    test('buyCard fails if card not in center row', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      game.currentPlayer.gemPool = 100;
+      expect(game.buyCard('nonexistent_card'), false);
+    });
+  });
+
+  group('End turn & cycling (Step 5d)', () {
+    test('endTurn moves played regular cards to discard', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+
+      // Play all hand cards
+      while (player.hand.isNotEmpty) {
+        game.playCard(player.hand.first.id);
+      }
+      final playedCount = player.playedThisTurn.length;
+
+      game.endTurn();
+
+      // Cards should be in discard now (the previous player)
+      expect(game.players[0].playedThisTurn, isEmpty);
+      expect(game.players[0].discardPile, hasLength(playedCount));
+    });
+
+    test('endTurn resets gem and power pools', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      game.currentPlayer.gemPool = 5;
+      game.currentPlayer.powerPool = 3;
+
+      game.endTurn();
+
+      expect(game.players[0].gemPool, 0);
+      expect(game.players[0].powerPool, 0);
+    });
+
+    test('endTurn draws 5 cards for the player who just ended', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+
+      // Play all cards from hand
+      while (player.hand.isNotEmpty) {
+        game.playCard(player.hand.first.id);
+      }
+      expect(player.hand, isEmpty);
+
+      game.endTurn();
+
+      // Player 0 should now have 5 new cards
+      expect(game.players[0].hand, hasLength(5));
+    });
+
+    test('turn cycling advances player index', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      expect(game.currentPlayerIndex, 0);
+
+      game.endTurn();
+      expect(game.currentPlayerIndex, 1);
+
+      game.endTurn();
+      expect(game.currentPlayerIndex, 0);
+    });
+
+    test('turnNumber increments when cycling back to player 0', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      expect(game.turnNumber, 1);
+
+      game.endTurn(); // p0 -> p1
+      expect(game.turnNumber, 1);
+
+      game.endTurn(); // p1 -> p0, new round
+      expect(game.turnNumber, 2);
+    });
+
+    test('3-player turn cycling works correctly', () {
+      final game = GameService(playerCount: 3, random: Random(7));
+      expect(game.currentPlayerIndex, 0);
+
+      game.endTurn();
+      expect(game.currentPlayerIndex, 1);
+
+      game.endTurn();
+      expect(game.currentPlayerIndex, 2);
+
+      game.endTurn();
+      expect(game.currentPlayerIndex, 0);
+      expect(game.turnNumber, 2);
+    });
+  });
+
+  group('Mercenary cleanup (Step 7)', () {
+    test('mercenaries are removed from game during endTurn, not discarded', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+
+      // Add a mercenary to hand and play it
+      const merc = CardModel(
+        id: 'test_merc',
+        name: 'Test Mercenary',
+        cost: 0,
+        playEffects: [GainPowerEffect(5)],
+        cardType: CardType.mercenary,
+      );
+      player.hand.add(merc);
+      game.playCard('test_merc');
+
+      expect(player.playedThisTurn.map((c) => c.id), contains('test_merc'));
+
+      game.endTurn();
+
+      expect(
+        game.removedFromGame.map((c) => c.id),
+        contains('test_merc'),
+      );
+      // Mercenary should NOT be in discard
+      expect(
+        game.players[0].discardPile.map((c) => c.id),
+        isNot(contains('test_merc')),
+      );
+    });
+  });
+
+  group('Elimination', () {
+    test('eliminated player is skipped in turn cycling', () {
+      final game = GameService(playerCount: 3, random: Random(7));
+
+      // Eliminate player 1
+      game.players[1].takeDamage(60);
+      expect(game.players[1].isEliminated, true);
+
+      game.endTurn(); // p0 -> should skip p1, go to p2
+      expect(game.currentPlayerIndex, 2);
+
+      game.endTurn(); // p2 -> p0
+      expect(game.currentPlayerIndex, 0);
+    });
+
+    test('game is over when only one player remains', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+
+      game.players[1].takeDamage(60);
+      game.endTurn();
+
+      expect(game.isGameOver, true);
+    });
+
+    test('eliminated player cards are moved to removedFromGame on attackPlayer', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final target = game.players[1];
+
+      // Give the target cards in every zone to verify they're all cleared
+      const extraCard = CardModel(
+        id: 'target_hand_card',
+        name: 'Target Hand Card',
+        cost: 0,
+        playEffects: [],
+      );
+      const champCard = CardModel(
+        id: 'target_champ',
+        name: 'Target Champion',
+        cost: 0,
+        playEffects: [],
+        cardType: CardType.champion,
+        shield: 2,
+      );
+      target.hand.add(extraCard);
+      target.championsInPlay.add(champCard);
+
+      // Verify non-empty zones before attack
+      expect(target.hand.isNotEmpty, true);
+      expect(target.drawPile.isNotEmpty, true);
+      expect(target.championsInPlay.isNotEmpty, true);
+
+      final removedBefore = game.removedFromGame.length;
+
+      // Deal lethal damage
+      game.currentPlayer.powerPool = 100;
+      game.attackPlayer('p1', 50);
+
+      expect(target.isEliminated, true);
+      expect(target.hand, isEmpty);
+      expect(target.drawPile, isEmpty);
+      expect(target.discardPile, isEmpty);
+      expect(target.playedThisTurn, isEmpty);
+      expect(target.championsInPlay, isEmpty);
+      // Cards were added to removedFromGame
+      expect(game.removedFromGame.length, greaterThan(removedBefore));
+    });
+
+    test('OpponentLosesHealthEffect eliminated player cards cleared in 3-player', () {
+      final game = GameService(playerCount: 3, random: Random(7));
+      final attacker = game.currentPlayer;
+      final target = game.players[1];
+
+      // Ensure target has cards in zones
+      expect(target.drawPile.isNotEmpty, true);
+
+      // Play a card that deals enough direct damage to eliminate target
+      final damageCard = CardModel(
+        id: 'lethal_opp_damage',
+        name: 'Lethal Opp Damage',
+        cost: 0,
+        playEffects: [OpponentLosesHealthEffect(50)],
+      );
+      attacker.hand.add(damageCard);
+
+      game.playCard('lethal_opp_damage');
+
+      expect(target.isEliminated, true);
+      expect(target.hand, isEmpty);
+      expect(target.drawPile, isEmpty);
+      expect(target.discardPile, isEmpty);
+      expect(target.championsInPlay, isEmpty);
+    });
+  });
+
+  group('OpponentLosesHealthEffect multiplayer', () {
+    test('OpponentLosesHealthEffect damages all opponents in 3-player game', () {
+      final game = GameService(playerCount: 3, random: Random(7));
+      final attacker = game.currentPlayer; // p0
+
+      const damageCard = CardModel(
+        id: 'test_opp_damage_3p',
+        name: 'Multi Damage',
+        cost: 0,
+        playEffects: [OpponentLosesHealthEffect(5)],
+      );
+      attacker.hand.add(damageCard);
+
+      game.playCard('test_opp_damage_3p');
+
+      // Both opponents should take 5 damage
+      expect(game.players[1].health, 45); // 50 - 5
+      expect(game.players[2].health, 45); // 50 - 5
+      // Attacker is unaffected
+      expect(game.players[0].health, 50);
+    });
+
+    test('OpponentLosesHealthEffect skips already-eliminated opponents', () {
+      final game = GameService(playerCount: 3, random: Random(7));
+      final attacker = game.currentPlayer; // p0
+
+      // Pre-eliminate p2
+      game.players[2].takeDamage(60);
+      expect(game.players[2].isEliminated, true);
+
+      const damageCard = CardModel(
+        id: 'test_opp_skip_elim',
+        name: 'Skip Eliminated',
+        cost: 0,
+        playEffects: [OpponentLosesHealthEffect(5)],
+      );
+      attacker.hand.add(damageCard);
+
+      game.playCard('test_opp_skip_elim');
+
+      expect(game.players[1].health, 45); // took damage
+      expect(game.players[2].health, lessThanOrEqualTo(0)); // still dead, no double-damage
+    });
+  });
+
+  // =========================================================================
+  // NEW MECHANICS TESTS
+  // =========================================================================
+
+  group('Champion deployment (Step 13a)', () {
+    test('playing a champion card adds it to championsInPlay, not playedThisTurn', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+
+      const champion = CardModel(
+        id: 'test_champion',
+        name: 'Test Champion',
+        cost: 0,
+        playEffects: [GainPowerEffect(2)],
+        cardType: CardType.champion,
+        shield: 3,
+      );
+      player.hand.add(champion);
+
+      game.playCard('test_champion');
+
+      expect(player.championsInPlay.map((c) => c.id), contains('test_champion'));
+      expect(player.playedThisTurn.map((c) => c.id), isNot(contains('test_champion')));
+      expect(player.powerPool, 2); // effects still resolve
+    });
+
+    test('champion effects resolve when first played', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+
+      const champion = CardModel(
+        id: 'test_champ_effect',
+        name: 'Power Champion',
+        cost: 0,
+        playEffects: [GainPowerEffect(3), GainMasteryEffect(1)],
+        cardType: CardType.champion,
+        shield: 2,
+      );
+      player.hand.add(champion);
+
+      game.playCard('test_champ_effect');
+
+      expect(player.powerPool, 3);
+      expect(player.mastery, 1);
+    });
+
+    test('champions persist across turns', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+
+      const champion = CardModel(
+        id: 'test_persist_champ',
+        name: 'Persistent Champion',
+        cost: 0,
+        playEffects: [GainPowerEffect(1)],
+        cardType: CardType.champion,
+        shield: 2,
+      );
+      player.hand.add(champion);
+      game.playCard('test_persist_champ');
+
+      expect(player.championsInPlay, hasLength(1));
+
+      // End turn and come back (2 turns: p0 -> p1 -> p0)
+      game.endTurn();
+      game.endTurn();
+
+      // Champion should still be in play
+      expect(game.players[0].championsInPlay, hasLength(1));
+      expect(game.players[0].championsInPlay.first.id, 'test_persist_champ');
+    });
+
+    test('champions are not moved to discard during cleanup', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+
+      const champion = CardModel(
+        id: 'test_no_discard_champ',
+        name: 'No Discard Champion',
+        cost: 0,
+        playEffects: [GainPowerEffect(1)],
+        cardType: CardType.champion,
+        shield: 2,
+      );
+      player.hand.add(champion);
+      game.playCard('test_no_discard_champ');
+
+      game.endTurn();
+
+      expect(
+        game.players[0].discardPile.map((c) => c.id),
+        isNot(contains('test_no_discard_champ')),
+      );
+      expect(
+        game.players[0].championsInPlay.map((c) => c.id),
+        contains('test_no_discard_champ'),
+      );
+    });
+
+    test('champion effects activate when player manually activates', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+
+      const champion = CardModel(
+        id: 'test_retrigger_champ',
+        name: 'Retrigger Champion',
+        cost: 0,
+        playEffects: [GainPowerEffect(2)],
+        cardType: CardType.champion,
+        shield: 2,
+      );
+      player.hand.add(champion);
+      game.playCard('test_retrigger_champ');
+
+      expect(player.powerPool, 2); // from initial play
+
+      // End turn, cycle back to p0
+      game.endTurn(); // p0 -> p1, resets p0 power to 0
+      game.endTurn(); // p1 -> p0
+
+      // Champions do NOT auto-trigger — power should be 0
+      expect(game.players[0].powerPool, 0);
+
+      // Manually activate the champion
+      expect(game.activateChampion('test_retrigger_champ'), true);
+      expect(game.players[0].powerPool, 2);
+    });
+
+    test('champion cannot be activated twice in same turn', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+
+      const champion = CardModel(
+        id: 'test_double_activate',
+        name: 'Double Activate Champion',
+        cost: 0,
+        playEffects: [GainPowerEffect(3)],
+        cardType: CardType.champion,
+        shield: 2,
+      );
+      player.hand.add(champion);
+      game.playCard('test_double_activate');
+
+      // Cycle back to p0
+      game.endTurn();
+      game.endTurn();
+
+      // First activation works
+      expect(game.activateChampion('test_double_activate'), true);
+      expect(game.players[0].powerPool, 3);
+
+      // Second activation is rejected
+      expect(game.activateChampion('test_double_activate'), false);
+      expect(game.players[0].powerPool, 3); // unchanged
+    });
+
+    test('multiple champions can each be activated manually', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+
+      const champ1 = CardModel(
+        id: 'test_multi_champ_1',
+        name: 'Champion A',
+        cost: 0,
+        playEffects: [GainPowerEffect(1)],
+        cardType: CardType.champion,
+        shield: 2,
+      );
+      const champ2 = CardModel(
+        id: 'test_multi_champ_2',
+        name: 'Champion B',
+        cost: 0,
+        playEffects: [GainGemsEffect(3)],
+        cardType: CardType.champion,
+        shield: 2,
+      );
+      player.hand.addAll([champ1, champ2]);
+      game.playCard('test_multi_champ_1');
+      game.playCard('test_multi_champ_2');
+
+      // Cycle back to p0
+      game.endTurn();
+      game.endTurn();
+
+      // Not yet activated — resources should be 0
+      expect(game.players[0].powerPool, 0);
+      expect(game.players[0].gemPool, 0);
+
+      // Activate each champion
+      game.activateChampion('test_multi_champ_1');
+      game.activateChampion('test_multi_champ_2');
+
+      expect(game.players[0].powerPool, 1);
+      expect(game.players[0].gemPool, 3);
+    });
+  });
+
+  group('Guard & champion targeting (Step 13b)', () {
+    test('attackChampion destroys champion and deducts power', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final attacker = game.currentPlayer;
+      final target = game.players[1];
+
+      const champion = CardModel(
+        id: 'target_champ',
+        name: 'Target Champion',
+        cost: 0,
+        playEffects: [GainPowerEffect(1)],
+        cardType: CardType.champion,
+        shield: 3,
+      );
+      target.championsInPlay.add(champion);
+      attacker.powerPool = 5;
+
+      final result = game.attackChampion('target_champ', 'p1');
+
+      expect(result, true);
+      expect(attacker.powerPool, 2); // 5 - 3
+      expect(target.championsInPlay, isEmpty);
+      expect(target.discardPile.map((c) => c.id), contains('target_champ'));
+    });
+
+    test('attackChampion fails with insufficient power', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final attacker = game.currentPlayer;
+      final target = game.players[1];
+
+      const champion = CardModel(
+        id: 'tough_champ',
+        name: 'Tough Champion',
+        cost: 0,
+        playEffects: [],
+        cardType: CardType.champion,
+        shield: 5,
+      );
+      target.championsInPlay.add(champion);
+      attacker.powerPool = 3;
+
+      expect(game.attackChampion('tough_champ', 'p1'), false);
+      expect(attacker.powerPool, 3); // unchanged
+      expect(target.championsInPlay, hasLength(1)); // still there
+    });
+
+    test('attackChampion fails for nonexistent champion', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      game.currentPlayer.powerPool = 10;
+
+      expect(game.attackChampion('nonexistent', 'p1'), false);
+    });
+
+    test('attackChampion fails when targeting self', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+
+      const champion = CardModel(
+        id: 'own_champ',
+        name: 'Own Champion',
+        cost: 0,
+        playEffects: [],
+        cardType: CardType.champion,
+        shield: 2,
+      );
+      player.championsInPlay.add(champion);
+      player.powerPool = 10;
+
+      expect(game.attackChampion('own_champ', player.id), false);
+    });
+
+    test('attackPlayer deals damage and deducts power', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      game.currentPlayer.powerPool = 10;
+
+      final result = game.attackPlayer('p1', 5);
+
+      expect(result, true);
+      expect(game.currentPlayer.powerPool, 5);
+      expect(game.players[1].health, 45);
+    });
+
+    test('attackPlayer fails if target has guard champion', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      game.currentPlayer.powerPool = 10;
+
+      const guard = CardModel(
+        id: 'guard_champ',
+        name: 'Guard Champion',
+        cost: 0,
+        playEffects: [],
+        cardType: CardType.champion,
+        shield: 3,
+        hasGuard: true,
+      );
+      game.players[1].championsInPlay.add(guard);
+
+      expect(game.attackPlayer('p1', 5), false);
+      expect(game.players[1].health, 50); // unchanged
+    });
+
+    test('attackPlayer succeeds after guard champion is destroyed', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      game.currentPlayer.powerPool = 10;
+
+      const guard = CardModel(
+        id: 'guard_to_destroy',
+        name: 'Guard to Destroy',
+        cost: 0,
+        playEffects: [],
+        cardType: CardType.champion,
+        shield: 3,
+        hasGuard: true,
+      );
+      game.players[1].championsInPlay.add(guard);
+
+      // Destroy the guard first
+      game.attackChampion('guard_to_destroy', 'p1');
+      expect(game.currentPlayer.powerPool, 7); // 10 - 3
+
+      // Now attack player
+      final result = game.attackPlayer('p1', 5);
+      expect(result, true);
+      expect(game.players[1].health, 45);
+      expect(game.currentPlayer.powerPool, 2); // 7 - 5
+    });
+
+    test('attackPlayer fails with insufficient power', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      game.currentPlayer.powerPool = 3;
+
+      expect(game.attackPlayer('p1', 5), false);
+      expect(game.players[1].health, 50);
+    });
+
+    test('attackPlayer fails for zero or negative amount', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      game.currentPlayer.powerPool = 10;
+
+      expect(game.attackPlayer('p1', 0), false);
+      expect(game.attackPlayer('p1', -1), false);
+    });
+
+    test('attackPlayer fails when targeting self', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      game.currentPlayer.powerPool = 10;
+
+      expect(game.attackPlayer('p0', 5), false);
+    });
+
+    test('attackPlayer can eliminate opponent', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      game.currentPlayer.powerPool = 60;
+
+      game.attackPlayer('p1', 50);
+
+      expect(game.players[1].health, 0);
+      expect(game.players[1].isEliminated, true);
+      expect(game.isGameOver, true);
+    });
+
+    test('multiple attacks per turn are allowed', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      game.currentPlayer.powerPool = 10;
+
+      game.attackPlayer('p1', 3);
+      expect(game.players[1].health, 47);
+      expect(game.currentPlayer.powerPool, 7);
+
+      game.attackPlayer('p1', 4);
+      expect(game.players[1].health, 43);
+      expect(game.currentPlayer.powerPool, 3);
+    });
+
+    test('non-guard champion does not block player attacks', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      game.currentPlayer.powerPool = 10;
+
+      const nonGuard = CardModel(
+        id: 'non_guard_champ',
+        name: 'Non-Guard Champion',
+        cost: 0,
+        playEffects: [],
+        cardType: CardType.champion,
+        shield: 3,
+        hasGuard: false,
+      );
+      game.players[1].championsInPlay.add(nonGuard);
+
+      // Can still attack player directly
+      expect(game.attackPlayer('p1', 5), true);
+      expect(game.players[1].health, 45);
+    });
+
+    test('attackPlayer fails if target is already eliminated', () {
+      final game = GameService(playerCount: 3, random: Random(7));
+      game.players[1].takeDamage(60);
+      game.currentPlayer.powerPool = 10;
+
+      expect(game.attackPlayer('p1', 5), false);
+    });
+  });
+
+  group('Ally abilities (Step 9)', () {
+    test('ally ability triggers when same-faction card is already in play', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+
+      // Clear hand and add two same-faction cards
+      player.hand.clear();
+      const card1 = CardModel(
+        id: 'wraethe_1',
+        name: 'Wraethe Card 1',
+        cost: 0,
+        playEffects: [GainPowerEffect(1)],
+        faction: Faction.wraethe,
+      );
+      const card2 = CardModel(
+        id: 'wraethe_2',
+        name: 'Wraethe Card 2',
+        cost: 0,
+        playEffects: [GainPowerEffect(1)],
+        faction: Faction.wraethe,
+        allyAbility: [GainPowerEffect(3)],
+      );
+      player.hand.addAll([card1, card2]);
+
+      // Play first card (no ally yet)
+      game.playCard('wraethe_1');
+      expect(player.powerPool, 1);
+
+      // Play second card (ally triggers: +1 play + 3 ally = 4 more)
+      game.playCard('wraethe_2');
+      expect(player.powerPool, 5); // 1 + 1 + 3
+    });
+
+    test('ally ability does not trigger without matching faction in play', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+
+      player.hand.clear();
+      const card = CardModel(
+        id: 'solo_wraethe',
+        name: 'Solo Wraethe',
+        cost: 0,
+        playEffects: [GainPowerEffect(1)],
+        faction: Faction.wraethe,
+        allyAbility: [GainPowerEffect(5)],
+      );
+      player.hand.add(card);
+
+      game.playCard('solo_wraethe');
+
+      // Only play effect, no ally ability
+      expect(player.powerPool, 1);
+    });
+
+    test('ally ability triggers with champion of same faction in play', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+
+      // Put a champion in play first
+      const champion = CardModel(
+        id: 'order_champ',
+        name: 'Order Champion',
+        cost: 0,
+        playEffects: [GainPowerEffect(1)],
+        faction: Faction.order,
+        cardType: CardType.champion,
+        shield: 2,
+      );
+      player.championsInPlay.add(champion);
+
+      // Play a same-faction card
+      player.hand.clear();
+      const card = CardModel(
+        id: 'order_card',
+        name: 'Order Card',
+        cost: 0,
+        playEffects: [GainGemsEffect(1)],
+        faction: Faction.order,
+        allyAbility: [GainHealthEffect(3)],
+      );
+      player.hand.add(card);
+
+      game.playCard('order_card');
+
+      expect(player.gemPool, 1); // play effect
+      expect(player.health, 53); // ally ability: +3 health
+    });
+
+    test('countsAsAllFactions triggers ally ability for any faction', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+
+      // Put a universal soldier in play (counts as all factions)
+      const universal = CardModel(
+        id: 'universal_test',
+        name: 'Universal Test',
+        cost: 0,
+        playEffects: [GainPowerEffect(1)],
+        cardType: CardType.champion,
+        shield: 2,
+        countsAsAllFactions: true,
+      );
+      player.championsInPlay.add(universal);
+
+      // Play any faction card with ally ability
+      player.hand.clear();
+      const homoCard = CardModel(
+        id: 'homo_card',
+        name: 'Homodeus Card',
+        cost: 0,
+        playEffects: [GainGemsEffect(1)],
+        faction: Faction.homodeus,
+        allyAbility: [GainMasteryEffect(2)],
+      );
+      player.hand.add(homoCard);
+
+      game.playCard('homo_card');
+
+      expect(player.gemPool, 1);
+      expect(player.mastery, 2); // ally triggered
+    });
+
+    test('factionless card without countsAsAllFactions does not trigger allies', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+
+      player.hand.clear();
+      // Play a factionless card first
+      const card1 = CardModel(
+        id: 'factionless_1',
+        name: 'Factionless 1',
+        cost: 0,
+        playEffects: [GainGemsEffect(1)],
+      );
+      const card2 = CardModel(
+        id: 'factionless_2',
+        name: 'Factionless 2',
+        cost: 0,
+        playEffects: [GainGemsEffect(1)],
+        allyAbility: [GainPowerEffect(5)],
+      );
+      player.hand.addAll([card1, card2]);
+
+      game.playCard('factionless_1');
+      game.playCard('factionless_2');
+
+      expect(player.powerPool, 0); // ally should NOT trigger
+      expect(player.gemPool, 2);
+    });
+
+    test('different factions do not trigger ally abilities', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+
+      player.hand.clear();
+      const card1 = CardModel(
+        id: 'wraethe_solo',
+        name: 'Wraethe Solo',
+        cost: 0,
+        playEffects: [GainPowerEffect(1)],
+        faction: Faction.wraethe,
+      );
+      const card2 = CardModel(
+        id: 'order_solo',
+        name: 'Order Solo',
+        cost: 0,
+        playEffects: [GainGemsEffect(1)],
+        faction: Faction.order,
+        allyAbility: [GainHealthEffect(10)],
+      );
+      player.hand.addAll([card1, card2]);
+
+      game.playCard('wraethe_solo');
+      game.playCard('order_solo');
+
+      expect(player.health, 50); // no ally trigger
+    });
+  });
+
+  group('Mastery threshold effects (Step 11)', () {
+    test('mastery bonus triggers when mastery meets threshold', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.mastery = 5;
+
+      player.hand.clear();
+      const card = CardModel(
+        id: 'test_mastery_card',
+        name: 'Mastery Card',
+        cost: 0,
+        playEffects: [GainGemsEffect(1)],
+        masteryThreshold: 5,
+        masteryBonus: [DrawCardsEffect(2)],
+      );
+      player.hand.add(card);
+      final drawPileBefore = player.drawPile.length;
+
+      game.playCard('test_mastery_card');
+
+      expect(player.gemPool, 1); // play effect
+      // Drew 2 cards from mastery bonus
+      expect(player.drawPile, hasLength(drawPileBefore - 2));
+    });
+
+    test('mastery bonus does not trigger below threshold', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.mastery = 4; // below threshold of 5
+
+      player.hand.clear();
+      const card = CardModel(
+        id: 'test_below_threshold',
+        name: 'Below Threshold',
+        cost: 0,
+        playEffects: [GainGemsEffect(1)],
+        masteryThreshold: 5,
+        masteryBonus: [GainPowerEffect(10)],
+      );
+      player.hand.add(card);
+
+      game.playCard('test_below_threshold');
+
+      expect(player.gemPool, 1);
+      expect(player.powerPool, 0); // mastery bonus NOT triggered
+    });
+
+    test('mastery bonus triggers when mastery exceeds threshold', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.mastery = 15; // well above threshold of 5
+
+      player.hand.clear();
+      const card = CardModel(
+        id: 'test_exceed_threshold',
+        name: 'Exceed Threshold',
+        cost: 0,
+        playEffects: [GainPowerEffect(1)],
+        masteryThreshold: 5,
+        masteryBonus: [GainPowerEffect(5)],
+      );
+      player.hand.add(card);
+
+      game.playCard('test_exceed_threshold');
+
+      expect(player.powerPool, 6); // 1 from play + 5 from mastery bonus
+    });
+
+    test('card with no mastery threshold ignores mastery check', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.mastery = 100;
+
+      player.hand.clear();
+      const card = CardModel(
+        id: 'test_no_threshold',
+        name: 'No Threshold',
+        cost: 0,
+        playEffects: [GainGemsEffect(2)],
+        // no masteryThreshold, no masteryBonus
+      );
+      player.hand.add(card);
+
+      game.playCard('test_no_threshold');
+      expect(player.gemPool, 2);
+    });
+
+    test('mastery gained from play effects can trigger mastery bonus on same card', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.mastery = 3;
+
+      player.hand.clear();
+      // Card gives 2 mastery, bringing total to 5, which meets threshold
+      const card = CardModel(
+        id: 'test_self_mastery',
+        name: 'Self Mastery',
+        cost: 0,
+        playEffects: [GainMasteryEffect(2)],
+        masteryThreshold: 5,
+        masteryBonus: [GainPowerEffect(3)],
+      );
+      player.hand.add(card);
+
+      game.playCard('test_self_mastery');
+
+      expect(player.mastery, 5);
+      expect(player.powerPool, 3); // mastery bonus triggered
+    });
+  });
+
+  group('Banish & Scrap (Step 8)', () {
+    test('banishCard from hand removes card permanently', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+
+      final cardToBanish = player.hand.first;
+      final handSizeBefore = player.hand.length;
+
+      final result = game.banishCard(cardToBanish.id, BanishSource.hand);
+
+      expect(result, true);
+      expect(player.hand, hasLength(handSizeBefore - 1));
+      expect(game.removedFromGame.map((c) => c.id), contains(cardToBanish.id));
+    });
+
+    test('banishCard from discard removes card permanently', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+
+      // Put a card in discard
+      const discardCard = CardModel(
+        id: 'banish_discard_test',
+        name: 'Banish Me',
+        cost: 0,
+        playEffects: [],
+      );
+      player.discardPile.add(discardCard);
+
+      final result = game.banishCard('banish_discard_test', BanishSource.discard);
+
+      expect(result, true);
+      expect(player.discardPile.map((c) => c.id), isNot(contains('banish_discard_test')));
+      expect(game.removedFromGame.map((c) => c.id), contains('banish_discard_test'));
+    });
+
+    test('banishCard handOrDiscard checks hand first then discard', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+
+      final handCard = player.hand.first;
+      final result = game.banishCard(handCard.id, BanishSource.handOrDiscard);
+
+      expect(result, true);
+      expect(game.removedFromGame.map((c) => c.id), contains(handCard.id));
+    });
+
+    test('banishCard handOrDiscard falls back to discard', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+
+      const discardCard = CardModel(
+        id: 'banish_fallback',
+        name: 'Banish Fallback',
+        cost: 0,
+        playEffects: [],
+      );
+      player.discardPile.add(discardCard);
+
+      final result = game.banishCard('banish_fallback', BanishSource.handOrDiscard);
+
+      expect(result, true);
+      expect(game.removedFromGame.map((c) => c.id), contains('banish_fallback'));
+    });
+
+    test('banishCard fails for nonexistent card', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+
+      expect(game.banishCard('nonexistent', BanishSource.hand), false);
+      expect(game.banishCard('nonexistent', BanishSource.discard), false);
+      expect(game.banishCard('nonexistent', BanishSource.handOrDiscard), false);
+    });
+
+    test('scrapFromCenterRow removes card and refills', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+
+      final cardToScrap = game.centerRow.first;
+      final result = game.scrapFromCenterRow(cardToScrap.id);
+
+      expect(result, true);
+      expect(game.centerRow, hasLength(6)); // refilled
+      expect(game.removedFromGame.map((c) => c.id), contains(cardToScrap.id));
+      expect(game.centerRow.map((c) => c.id), isNot(contains(cardToScrap.id)));
+    });
+
+    test('scrapFromCenterRow fails for nonexistent card', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+
+      expect(game.scrapFromCenterRow('nonexistent'), false);
+    });
+
+    test('scrapFromCenterRow does not refill when infinity deck is empty', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      game.infinityDeck.clear();
+
+      final cardToScrap = game.centerRow.first;
+      game.scrapFromCenterRow(cardToScrap.id);
+
+      expect(game.centerRow, hasLength(5));
+    });
+  });
+
+  group('Infinity Shard scaling (Step 12)', () {
+    test('Infinity Shard gives 1 mastery and 0 power at mastery 0', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.mastery = 0;
+
+      player.hand.clear();
+      const shard = CardModel(
+        id: 'test_shard_0',
+        name: 'Infinity Shard',
+        cost: 0,
+        playEffects: [InfinityShardEffect()],
+      );
+      player.hand.add(shard);
+
+      game.playCard('test_shard_0');
+      expect(player.mastery, 1);
+      expect(player.powerPool, 0);
+      expect(player.gemPool, 0);
+    });
+
+    test('Infinity Shard at mastery 4 bumps to 5 and gives 3 power (enters tier 5-9)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.mastery = 4;
+
+      player.hand.clear();
+      const shard = CardModel(
+        id: 'test_shard_4',
+        name: 'Infinity Shard',
+        cost: 0,
+        playEffects: [InfinityShardEffect()],
+      );
+      player.hand.add(shard);
+
+      game.playCard('test_shard_4');
+      expect(player.mastery, 5);
+      expect(player.powerPool, 3); // mastery evaluated after +1: 5 → tier 5-9
+      expect(player.gemPool, 0);
+    });
+
+    test('Infinity Shard gives 1 mastery and 3 power at mastery 5', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.mastery = 5;
+
+      player.hand.clear();
+      const shard = CardModel(
+        id: 'test_shard_5',
+        name: 'Infinity Shard',
+        cost: 0,
+        playEffects: [InfinityShardEffect()],
+      );
+      player.hand.add(shard);
+
+      game.playCard('test_shard_5');
+      expect(player.mastery, 6);
+      expect(player.powerPool, 3);
+      expect(player.gemPool, 0);
+    });
+
+    test('Infinity Shard gives 1 mastery and 6 power at mastery 10', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.mastery = 10;
+
+      player.hand.clear();
+      const shard = CardModel(
+        id: 'test_shard_10',
+        name: 'Infinity Shard',
+        cost: 0,
+        playEffects: [InfinityShardEffect()],
+      );
+      player.hand.add(shard);
+
+      game.playCard('test_shard_10');
+      expect(player.mastery, 11);
+      expect(player.powerPool, 6);
+      expect(player.gemPool, 0);
+    });
+
+    test('Infinity Shard gives 1 mastery and 10 power at mastery 15', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.mastery = 15;
+
+      player.hand.clear();
+      const shard = CardModel(
+        id: 'test_shard_15',
+        name: 'Infinity Shard',
+        cost: 0,
+        playEffects: [InfinityShardEffect()],
+      );
+      player.hand.add(shard);
+
+      game.playCard('test_shard_15');
+      expect(player.mastery, 16);
+      expect(player.powerPool, 10);
+      expect(player.gemPool, 0);
+    });
+
+    test('Infinity Shard gives 1 mastery and 15 power at mastery 20', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.mastery = 20;
+
+      player.hand.clear();
+      const shard = CardModel(
+        id: 'test_shard_20',
+        name: 'Infinity Shard',
+        cost: 0,
+        playEffects: [InfinityShardEffect()],
+      );
+      player.hand.add(shard);
+
+      game.playCard('test_shard_20');
+      expect(player.mastery, 21);
+      expect(player.powerPool, 15);
+      expect(player.gemPool, 0);
+    });
+
+    test('Infinity Shard gives 1 mastery and 20 power at mastery 25', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.mastery = 25;
+
+      player.hand.clear();
+      const shard = CardModel(
+        id: 'test_shard_25',
+        name: 'Infinity Shard',
+        cost: 0,
+        playEffects: [InfinityShardEffect()],
+      );
+      player.hand.add(shard);
+
+      game.playCard('test_shard_25');
+      expect(player.mastery, 26);
+      expect(player.powerPool, 20);
+      expect(player.gemPool, 0);
+    });
+
+    test('Infinity Shard at mastery 29 bumps to 30 and triggers instant win', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.mastery = 29;
+
+      player.hand.clear();
+      const shard = CardModel(
+        id: 'test_shard_29',
+        name: 'Infinity Shard',
+        cost: 0,
+        playEffects: [InfinityShardEffect()],
+      );
+      player.hand.add(shard);
+
+      game.playCard('test_shard_29');
+      expect(player.mastery, 30);
+      expect(game.isGameOver, true); // mastery 29 +1 = 30 → instant win
+      expect(game.winnerId, player.id);
+    });
+
+    test('Infinity Shard at mastery 30 causes instant win', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.mastery = 30;
+
+      player.hand.clear();
+      const shard = CardModel(
+        id: 'test_shard_30',
+        name: 'Infinity Shard',
+        cost: 0,
+        playEffects: [InfinityShardEffect()],
+      );
+      player.hand.add(shard);
+
+      game.playCard('test_shard_30');
+
+      expect(game.isGameOver, true);
+      expect(game.winnerId, player.id);
+    });
+
+    test('Infinity Shard at mastery 50 causes instant win', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.mastery = 50;
+
+      player.hand.clear();
+      const shard = CardModel(
+        id: 'test_shard_50',
+        name: 'Infinity Shard',
+        cost: 0,
+        playEffects: [InfinityShardEffect()],
+      );
+      player.hand.add(shard);
+
+      game.playCard('test_shard_50');
+
+      expect(game.isGameOver, true);
+      expect(game.winnerId, player.id);
+    });
+
+    test('Infinity Shard at mastery 9 bumps to 10 and gives 6 power (enters tier 10-14)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.mastery = 9;
+
+      player.hand.clear();
+      const shard = CardModel(
+        id: 'test_shard_9',
+        name: 'Infinity Shard',
+        cost: 0,
+        playEffects: [InfinityShardEffect()],
+      );
+      player.hand.add(shard);
+
+      game.playCard('test_shard_9');
+      expect(player.mastery, 10);
+      expect(player.powerPool, 6); // mastery evaluated after +1: 10 → tier 10-14
+      expect(player.gemPool, 0);
+    });
+  });
+
+  group('Win conditions (Step 15)', () {
+    test('elimination win sets winnerId', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+
+      game.players[1].takeDamage(60);
+      game.endTurn();
+
+      expect(game.isGameOver, true);
+      expect(game.winnerId, 'p0');
+    });
+
+    test('Infinity Shard instant win sets winnerId', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.mastery = 30;
+
+      player.hand.clear();
+      const shard = CardModel(
+        id: 'win_shard',
+        name: 'Infinity Shard',
+        cost: 0,
+        playEffects: [InfinityShardEffect()],
+      );
+      player.hand.add(shard);
+
+      game.playCard('win_shard');
+
+      expect(game.isGameOver, true);
+      expect(game.winnerId, 'p0');
+    });
+
+    test('3-player game: elimination of 2 players ends game', () {
+      final game = GameService(playerCount: 3, random: Random(7));
+
+      game.players[1].takeDamage(60);
+      game.players[2].takeDamage(60);
+
+      game.endTurn();
+
+      expect(game.isGameOver, true);
+      expect(game.winnerId, 'p0');
+    });
+
+    test('winnerId is null while game is in progress', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      expect(game.winnerId, isNull);
+    });
+  });
+
+  group('ConditionalPowerEffect (Step 10)', () {
+    test('perChampionControlled grants power per champion', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+
+      // Add 3 champions in play
+      for (int i = 0; i < 3; i++) {
+        player.championsInPlay.add(CardModel(
+          id: 'cond_champ_$i',
+          name: 'Conditional Champion $i',
+          cost: 0,
+          playEffects: [],
+          cardType: CardType.champion,
+          shield: 1,
+        ));
+      }
+
+      player.hand.clear();
+      const condCard = CardModel(
+        id: 'test_conditional',
+        name: 'Conditional Power',
+        cost: 0,
+        playEffects: [ConditionalPowerEffect(PowerCondition.perChampionControlled)],
+      );
+      player.hand.add(condCard);
+
+      game.playCard('test_conditional');
+
+      expect(player.powerPool, 3); // 1 per champion
+    });
+
+    test('perChampionControlled grants 0 power with no champions', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+
+      player.hand.clear();
+      const condCard = CardModel(
+        id: 'test_cond_zero',
+        name: 'Conditional Zero',
+        cost: 0,
+        playEffects: [ConditionalPowerEffect(PowerCondition.perChampionControlled)],
+      );
+      player.hand.add(condCard);
+
+      game.playCard('test_cond_zero');
+
+      expect(player.powerPool, 0);
+    });
+  });
+
+  group('Combined mechanics integration tests', () {
+    test('champion with mastery bonus re-triggers bonus when manually activated', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.mastery = 5;
+
+      // Play a champion with mastery bonus
+      player.hand.clear();
+      const champion = CardModel(
+        id: 'mastery_champ',
+        name: 'Mastery Champion',
+        cost: 0,
+        playEffects: [GainPowerEffect(2)],
+        cardType: CardType.champion,
+        shield: 3,
+        masteryThreshold: 5,
+        masteryBonus: [GainPowerEffect(3)],
+      );
+      player.hand.add(champion);
+      game.playCard('mastery_champ');
+
+      // First play: 2 power + 3 mastery bonus = 5
+      expect(player.powerPool, 5);
+
+      // Cycle back to p0
+      game.endTurn(); // p0 -> p1, resets power
+      game.endTurn(); // p1 -> p0
+
+      // Champions don't auto-trigger — power should be 0
+      expect(game.players[0].powerPool, 0);
+
+      // Manually activate champion
+      game.activateChampion('mastery_champ');
+
+      // Champion re-triggers: 2 power + 3 mastery bonus = 5
+      expect(game.players[0].powerPool, 5);
+    });
+
+    test('champion with ally ability and another same-faction card in play', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+
+      // Place two same-faction champions
+      player.hand.clear();
+      const champ1 = CardModel(
+        id: 'ally_champ_1',
+        name: 'Homodeus Champion 1',
+        cost: 0,
+        playEffects: [GainGemsEffect(1)],
+        faction: Faction.homodeus,
+        cardType: CardType.champion,
+        shield: 2,
+        allyAbility: [GainMasteryEffect(1)],
+      );
+      const champ2 = CardModel(
+        id: 'ally_champ_2',
+        name: 'Homodeus Champion 2',
+        cost: 0,
+        playEffects: [GainPowerEffect(1)],
+        faction: Faction.homodeus,
+        cardType: CardType.champion,
+        shield: 2,
+        allyAbility: [GainMasteryEffect(1)],
+      );
+      player.hand.addAll([champ1, champ2]);
+
+      // Play first champion - no ally yet
+      game.playCard('ally_champ_1');
+      expect(player.mastery, 0); // no ally
+
+      // Play second champion - ally triggers
+      game.playCard('ally_champ_2');
+      expect(player.mastery, 1); // ally ability of champ2 triggered
+    });
+
+    test('full turn flow: play cards, attack champion, attack player', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final attacker = game.currentPlayer;
+      final target = game.players[1];
+
+      // Set up: give attacker power cards, give target a guard champion
+      attacker.hand.clear();
+      const powerCard = CardModel(
+        id: 'power_for_combat',
+        name: 'Power Card',
+        cost: 0,
+        playEffects: [GainPowerEffect(10)],
+      );
+      attacker.hand.add(powerCard);
+
+      const guard = CardModel(
+        id: 'combat_guard',
+        name: 'Combat Guard',
+        cost: 0,
+        playEffects: [],
+        cardType: CardType.champion,
+        shield: 3,
+        hasGuard: true,
+      );
+      target.championsInPlay.add(guard);
+
+      // Play the power card
+      game.playCard('power_for_combat');
+      expect(attacker.powerPool, 10);
+
+      // Can't attack player directly due to guard
+      expect(game.attackPlayer('p1', 5), false);
+
+      // Destroy the guard
+      expect(game.attackChampion('combat_guard', 'p1'), true);
+      expect(attacker.powerPool, 7); // 10 - 3
+
+      // Now attack the player
+      expect(game.attackPlayer('p1', 5), true);
+      expect(target.health, 45);
+      expect(attacker.powerPool, 2);
+    });
+
+    test('champion ally ability re-triggers when manually activated', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+
+      // Play two same-faction champions
+      player.hand.clear();
+      const champ1 = CardModel(
+        id: 'retrigger_ally_1',
+        name: 'Wraethe Champion 1',
+        cost: 0,
+        playEffects: [GainPowerEffect(1)],
+        faction: Faction.wraethe,
+        cardType: CardType.champion,
+        shield: 2,
+        allyAbility: [GainPowerEffect(2)],
+      );
+      const champ2 = CardModel(
+        id: 'retrigger_ally_2',
+        name: 'Wraethe Champion 2',
+        cost: 0,
+        playEffects: [GainPowerEffect(1)],
+        faction: Faction.wraethe,
+        cardType: CardType.champion,
+        shield: 2,
+        allyAbility: [GainPowerEffect(2)],
+      );
+      player.hand.addAll([champ1, champ2]);
+
+      game.playCard('retrigger_ally_1');
+      game.playCard('retrigger_ally_2');
+
+      // Cycle back
+      game.endTurn();
+      game.endTurn();
+
+      // No auto-trigger — power is 0
+      expect(game.players[0].powerPool, 0);
+
+      // Manually activate both champions
+      game.activateChampion('retrigger_ally_1');
+      game.activateChampion('retrigger_ally_2');
+
+      // champ1: play effects (1 power) + ally ability (2 power, because champ2 is in play)
+      // champ2: play effects (1 power) + ally ability (2 power, because champ1 is in play)
+      // Total: 1 + 2 + 1 + 2 = 6
+      expect(game.players[0].powerPool, 6);
+    });
+  });
+}

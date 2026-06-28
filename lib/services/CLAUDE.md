@@ -1,0 +1,67 @@
+# lib/services
+
+Core game logic. Three service layers — GameService is the active engine, AiService drives AI opponents, DeckService is the legacy demo.
+
+## Files
+
+### game_service.dart (primary — all Shards of Infinity mechanics)
+
+`GameService` — orchestrates the full game: multiplayer turns, effect resolution, market, combat, win conditions.
+
+**Constructor:** `GameService({required int playerCount, Random? random})`
+
+**State:**
+- `players` — list of PlayerState instances
+- `centerRow` — 6 visible market cards
+- `infinityDeck` — remaining market cards
+- `removedFromGame` — banished/scrapped/mercenary cards
+- `currentPlayerIndex`, `turnNumber`, `isGameOver`, `winnerId`
+
+**Key methods:**
+
+| Method | What it does |
+|--------|-------------|
+| `playCard(cardId, {choiceIndex})` | Play from hand. Champions → championsInPlay, others → playedThisTurn. Resolves effects, checks mastery bonus, checks ally ability. |
+| `playAllCards()` | Plays all hand cards left-to-right. Returns count played. |
+| `buyCard(cardId)` | Buy from center row using gems. Card → discard, center row refills. |
+| `endTurn()` | Discards remaining hand, cleans up played cards, resets resources, draws 5, advances turn. |
+| `attackPlayer(targetId, amount)` | Spend power to deal damage. Blocked by guard champions. |
+| `attackChampion(championId, targetPlayerId)` | Spend power >= shield to destroy. Champion → owner's discard. |
+| `banishCard(cardId, source)` | Remove card from hand/discard permanently. |
+| `scrapFromCenterRow(cardId)` | Remove from center row permanently, refill. |
+| `startTurn()` | Empty — champions require manual activation via `activateChampion()`. |
+| `activateChampion(championId)` | Activate a champion once per turn — resolves its effects, mastery bonus, ally ability. |
+
+**Effect resolution:** `_resolveEffects()` handles all 12 CardEffect subtypes via exhaustive switch.
+
+**Win conditions:**
+- Elimination: all opponents health <= 0
+- Infinity Shard: play at mastery >= 30 → instant win (mastery added BEFORE win check)
+
+**Infinity Shard scaling:** +1 mastery always, then power by tier: 0-4: 0, 5-9: 3, 10-14: 6, 15-19: 10, 20-24: 15, 25-29: 20, 30+: instant win.
+
+**Infinity deck composition:** Variable copies per card cost (1-2: 4x, 3-4: 3x, 5-6: 2x, 7-8: 1x, neutral: 3x).
+
+### ai_service.dart (AI opponent)
+
+`AiService` — plays a full turn automatically using heuristics.
+
+**Constructor:** `AiService({required GameService game, required String aiPlayerId})`
+
+**Strategy:**
+1. Play all hand cards (ChooseOneEffect: prefer gems if < 3, else power)
+2. Activate all champions
+3. Buy most expensive affordable card, repeat
+4. Attack guard champions first, then weakest opponent
+5. End turn
+
+**UI integration:** `GameScreen` accepts optional `AiService?`. After human ends turn, if next player is AI, calls `takeTurn()` with 300ms phase delays.
+
+### deck_service.dart (legacy — original demo)
+
+`DeckService` — single-player deck demo with 6 coin cards and 5-card market. Kept intact for backward compatibility with existing widget tests. All new CardEffect subtypes are handled as no-ops in its `_applyCardEffects` switch.
+
+## Patterns
+- Constructor injection of `Random` for deterministic testing
+- Unmodifiable list views via public getters
+- No Flutter imports — pure Dart business logic
