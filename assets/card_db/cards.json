@@ -390,13 +390,18 @@
     {
       "id": "fungal_hermit",
       "name": "Fungal Hermit",
+      "set": "base",
       "faction": "undergrowth",
+      "cardType": "mercenary",
+      "cost": 3,
       "copies": 2,
-      "playEffects": [],
-      "art": null,
+      "masteryThreshold": 10,
+      "playEffects": [{ "type": "gainGems", "amount": 1 }],
+      "masteryBonus": [{ "type": "gainGems", "amount": 5 }],
+      "art": "fungal_hermit.jpg",
       "rawText": null,
-      "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 36: name='Fungal Hermit', faction='Undergrowth', amount=2."
+      "verified": true,
+      "notes": "Verified from card image. Mercenary, Undergrowth Ally. Play: gain 1 gem. Mastery 10+: gain 5 gems (the '10' badge on the bonus line read as a mastery threshold). cost/cardType/effects from image; copies=2 retained from BGG amount. set=base assumed (Undergrowth Core card); confirm. art filename references a photo to be added."
     },
     {
       "id": "ojas_genesis_druid",
