@@ -34,13 +34,14 @@ cards.json ──(CardDatabase.load)──► CardRecord ──.model──► C
 ### card_database.dart
 
 - `CardSet` — enum of expansions: `base`, `rotf`, `sos`, `ioh`, `ingeminex`,
-  `promo`, `starter`, `unknown`.
+  `promo`, `saga`, `starter`, `unknown`.
 - `CardRecord` — one entry from `cards.json`. Holds the playable
   [`CardModel`](../models/CLAUDE.md) projection (`record.model`) plus
   database-only metadata: `set`, `copies`, `art`, `rawText`, `verified`, `notes`,
-  and the optional `group` (a non-playable, faction-like category such as `Aion`
-  / `Destiny` for cards whose `model.faction` is `Faction.none`). Built from JSON
-  via `CardRecord.fromJson`.
+  the optional `group` (a non-playable, faction-like category such as `Aion`
+  / `Destiny` for cards whose `model.faction` is `Faction.none`), `chapter`
+  (Saga chapter 1-5, or null), and `ksOnly` (Kickstarter-exclusive flag; print
+  metadata, no gameplay effect). Built from JSON via `CardRecord.fromJson`.
 - `CardDatabase` — holds the parsed `List<CardRecord>`.
   - `CardDatabase.assetPath` → `'assets/card_db/cards.json'`.
   - `CardDatabase.load({path})` — async, loads the bundled asset via
@@ -82,6 +83,12 @@ Shards of Infinity database.
   status, plus a per-set completeness summary against the known physical
   composition. Exits 1 on a hard error (bad JSON, duplicate id, undecodable
   effect); soft gaps (unverified / missing optional fields) exit 0.
+
+- [`tool/fetch_card_art.py`](../../tool/fetch_card_art.py) — fetches and crops
+  card art from Tabletop Simulator spritesheet URLs, cropping each card by its
+  grid position and saving to `assets/cards/<id>.jpg`. Requires Python + Pillow.
+  Used to populate the `art` field; see card-list provenance in
+  [`ai-docs/card_list_source_bgg.md`](../../ai-docs/card_list_source_bgg.md).
 
 ## Legacy catalog
 
