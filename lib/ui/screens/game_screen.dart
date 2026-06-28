@@ -5,6 +5,7 @@ import 'package:simple_card_game/models/card_type.dart';
 import 'package:simple_card_game/models/faction.dart';
 import 'package:simple_card_game/services/ai_service.dart';
 import 'package:simple_card_game/services/game_service.dart';
+import 'package:simple_card_game/ui/theme/animation_timing.dart';
 import 'package:simple_card_game/ui/theme/faction_colors.dart';
 import 'package:simple_card_game/ui/theme/game_theme.dart';
 import 'package:simple_card_game/ui/theme/responsive.dart';
@@ -62,8 +63,10 @@ class _GameScreenState extends State<GameScreen>
         }
       });
       if (success) {
-        // Clear the played highlight after a brief delay
-        Future.delayed(const Duration(milliseconds: 400), () {
+        // Clear the played highlight after a brief delay (scaled by speed;
+        // zero under instant / reduced motion).
+        final highlightDelay = AnimationTiming.of(context).phaseDelay;
+        Future.delayed(highlightDelay, () {
           if (mounted) {
             setState(() => _lastPlayedCardId = null);
           }
@@ -710,7 +713,7 @@ class _GameScreenState extends State<GameScreen>
 
             // Action message with fade animation
             AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
+              duration: AnimationTiming.of(context).cardMove,
               child: _actionMessage != null
                   ? Padding(
                       key: ValueKey(_actionMessage),
@@ -1167,7 +1170,7 @@ class _PlayArea extends StatelessWidget {
                     padding: const EdgeInsets.only(right: 4),
                     child: AnimatedScale(
                       scale: isJustPlayed ? 1.15 : 1.0,
-                      duration: const Duration(milliseconds: 300),
+                      duration: AnimationTiming.of(context).cardMove,
                       curve: Curves.easeOutBack,
                       child: GameCardWidget(
                         card: card,

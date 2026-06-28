@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:simple_card_game/services/ai_service.dart';
 import 'package:simple_card_game/services/game_service.dart';
 import 'package:simple_card_game/ui/screens/game_screen.dart';
+import 'package:simple_card_game/ui/theme/animation_timing.dart';
 import 'package:simple_card_game/ui/theme/game_theme.dart';
 import 'package:simple_card_game/ui/theme/responsive.dart';
 
@@ -21,10 +22,13 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
     final gameService = GameService(playerCount: _playerCount);
     AiService? aiService;
     if (_vsAi && _playerCount == 2) {
+      // Pace the AI using the global animation speed (instant under reduced
+      // motion / tests, so the AI plays through with no artificial delay).
+      final phaseDelay = AnimationTiming.of(context).phaseDelay;
       aiService = AiService(
         game: gameService,
         aiPlayerId: 'p1',
-      )..phaseDelay = const Duration(milliseconds: 300);
+      )..phaseDelay = phaseDelay;
     }
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -100,7 +104,7 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
                   child: GestureDetector(
                     onTap: () => setState(() => _playerCount = count),
                     child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
+                      duration: AnimationTiming.of(context).hoverScale,
                       width: 56,
                       height: 56,
                       decoration: BoxDecoration(
@@ -172,6 +176,21 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
 
             const SizedBox(height: 32),
 
+            // Animation speed selector
+            const Text(
+              'ANIMATION SPEED',
+              style: TextStyle(
+                color: GameTheme.textSecondary,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 2,
+              ),
+            ),
+            const SizedBox(height: 12),
+            const _SpeedSelector(),
+
+            const SizedBox(height: 32),
+
             // Start button
             ElevatedButton(
               onPressed: _startGame,
@@ -201,6 +220,66 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
           },
         ),
       ),
+    );
+  }
+}
+
+/// 3-way toggle for the global [AnimationSpeed], backed by [AnimationSettings].
+class _SpeedSelector extends StatelessWidget {
+  const _SpeedSelector();
+
+  static const _labels = {
+    AnimationSpeed.slow: 'SLOW',
+    AnimationSpeed.fast: 'FAST',
+    AnimationSpeed.instant: 'INSTANT',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = AnimationSettings.maybeOf(context);
+    // If there is no AnimationSettings in the tree (shouldn't happen in the
+    // real app), hide the control rather than crash.
+    if (controller == null) return const SizedBox.shrink();
+    final current = controller.speed;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      children: AnimationSpeed.values.map((speed) {
+        final isSelected = speed == current;
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: GestureDetector(
+            onTap: () => controller.setSpeed(speed),
+            child: AnimatedContainer(
+              duration: AnimationTiming.of(context).hoverScale,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color:
+                    isSelected ? GameTheme.accent : GameTheme.surfaceDark,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: isSelected
+                      ? GameTheme.gold
+                      : Colors.white.withValues(alpha: 0.2),
+                  width: isSelected ? 2 : 1,
+                ),
+              ),
+              child: Text(
+                _labels[speed]!,
+                style: TextStyle(
+                  color:
+                      isSelected ? Colors.white : GameTheme.textSecondary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1,
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 }
