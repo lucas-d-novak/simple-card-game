@@ -34,7 +34,13 @@ class GameCardWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final factionColor = FactionColors.getPrimary(card.faction);
     final cardWidth = width ?? (compact ? 90.0 : 120.0);
-    final cardHeight = compact ? 130.0 : 170.0;
+    // Keep a consistent card aspect ratio regardless of the (responsive) width
+    // so cards never look squashed or stretched on different screen sizes.
+    // Compact cards are a touch taller relative to width to fit their badges.
+    final cardHeight = compact ? cardWidth * (130 / 90) : cardWidth * (170 / 120);
+    // On smaller cards there is only room for a single effect line; larger
+    // cards can show two. Compact cards always show one.
+    final maxEffectLines = compact || cardWidth < 100 ? 1 : 2;
 
     return GestureDetector(
       onTap: onTap,
@@ -111,19 +117,29 @@ class GameCardWidget extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Effects summary (limit to 1 in compact)
-                      for (final effect
-                          in card.playEffects.take(compact ? 1 : 2))
-                        Text(
-                          effect.description,
-                          style: TextStyle(
-                            color: GameTheme.textPrimary,
-                            fontSize: compact ? 7 : 8,
+                      // Effects summary fills the available space and clips so
+                      // it never overflows the info area on small cards.
+                      Expanded(
+                        child: ClipRect(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              for (final effect
+                                  in card.playEffects.take(maxEffectLines))
+                                Text(
+                                  effect.description,
+                                  style: TextStyle(
+                                    color: GameTheme.textPrimary,
+                                    fontSize: compact ? 7 : 8,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                            ],
                           ),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
                         ),
-                      const Spacer(),
+                      ),
                       // Bottom badges row - wrap to prevent overflow
                       Wrap(
                         spacing: 2,

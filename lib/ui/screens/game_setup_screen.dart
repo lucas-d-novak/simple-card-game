@@ -3,6 +3,7 @@ import 'package:simple_card_game/services/ai_service.dart';
 import 'package:simple_card_game/services/game_service.dart';
 import 'package:simple_card_game/ui/screens/game_screen.dart';
 import 'package:simple_card_game/ui/theme/game_theme.dart';
+import 'package:simple_card_game/ui/theme/responsive.dart';
 
 /// Game setup screen where the player picks number of players and starts the game.
 class GameSetupScreen extends StatefulWidget {
@@ -39,8 +40,16 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: GameTheme.boardBackground,
-      body: Center(
-        child: Column(
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isMobile = Responsive.isMobile(constraints.maxWidth);
+            final titleSize = isMobile ? 34.0 : 42.0;
+            return Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 24, vertical: 32),
+                child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // Title
@@ -48,11 +57,11 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
               shaderCallback: (bounds) => const LinearGradient(
                 colors: [GameTheme.gold, GameTheme.accent],
               ).createShader(bounds),
-              child: const Text(
+              child: Text(
                 'SHARDS OF\nINFINITY',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 42,
+                  fontSize: titleSize,
                   fontWeight: FontWeight.w900,
                   color: Colors.white,
                   height: 1.1,
@@ -186,6 +195,10 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
               ),
             ),
           ],
+                ),
+              ),
+            );
+          },
         ),
       ),
     );

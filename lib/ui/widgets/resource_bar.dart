@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:simple_card_game/ui/theme/game_theme.dart';
+import 'package:simple_card_game/ui/theme/responsive.dart';
 
 /// Displays a player's resources (health, mastery, gems, power) in a horizontal bar.
 class ResourceBar extends StatelessWidget {
@@ -37,48 +38,79 @@ class ResourceBar extends StatelessWidget {
             ? Border.all(color: GameTheme.gold, width: 1.5)
             : null,
       ),
-      child: Row(
-        children: [
-          // Player name
-          Text(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isNarrow = Responsive.isMobile(constraints.maxWidth);
+
+          final name = Text(
             playerName,
             style: TextStyle(
               color: isCurrentPlayer ? GameTheme.gold : GameTheme.textPrimary,
               fontWeight: FontWeight.bold,
               fontSize: 13,
             ),
-          ),
-          const SizedBox(width: 12),
-          // Health
-          _ResourceChip(
-            icon: Icons.favorite,
-            value: health,
-            color: health > 25 ? GameTheme.healthGreen : GameTheme.healthRed,
-          ),
-          const SizedBox(width: 8),
-          // Mastery with progress bar toward 30
-          _MasteryIndicator(mastery: mastery),
-          const SizedBox(width: 8),
-          // Gems
-          _ResourceChip(
-            icon: Icons.diamond,
-            value: gems,
-            color: GameTheme.gemCyan,
-          ),
-          const SizedBox(width: 8),
-          // Power
-          _ResourceChip(
-            icon: Icons.bolt,
-            value: power,
-            color: GameTheme.powerOrange,
-          ),
-          const Spacer(),
-          // Deck / Discard counts
-          _PileIndicator(icon: Icons.layers, count: deckCount, label: 'Deck'),
-          const SizedBox(width: 8),
-          _PileIndicator(
-              icon: Icons.delete_outline, count: discardCount, label: 'Disc'),
-        ],
+            overflow: TextOverflow.ellipsis,
+          );
+
+          final stats = <Widget>[
+            _ResourceChip(
+              icon: Icons.favorite,
+              value: health,
+              color: health > 25 ? GameTheme.healthGreen : GameTheme.healthRed,
+            ),
+            _MasteryIndicator(mastery: mastery),
+            _ResourceChip(
+              icon: Icons.diamond,
+              value: gems,
+              color: GameTheme.gemCyan,
+            ),
+            _ResourceChip(
+              icon: Icons.bolt,
+              value: power,
+              color: GameTheme.powerOrange,
+            ),
+            _PileIndicator(icon: Icons.layers, count: deckCount, label: 'Deck'),
+            _PileIndicator(
+                icon: Icons.delete_outline,
+                count: discardCount,
+                label: 'Disc'),
+          ];
+
+          if (isNarrow) {
+            // On narrow screens stack the name above wrapping resource chips so
+            // nothing overflows horizontally.
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                name,
+                const SizedBox(height: 4),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: stats,
+                ),
+              ],
+            );
+          }
+
+          // Wide layout: single row, name left, piles pushed right.
+          return Row(
+            children: [
+              name,
+              const SizedBox(width: 12),
+              for (int i = 0; i < 4; i++) ...[
+                stats[i],
+                const SizedBox(width: 8),
+              ],
+              const Spacer(),
+              stats[4],
+              const SizedBox(width: 8),
+              stats[5],
+            ],
+          );
+        },
       ),
     );
   }
