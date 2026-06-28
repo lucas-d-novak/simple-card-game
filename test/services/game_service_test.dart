@@ -534,7 +534,7 @@ void main() {
       expect(target.drawPile.isNotEmpty, true);
 
       // Play a card that deals enough direct damage to eliminate target
-      final damageCard = CardModel(
+      const damageCard = CardModel(
         id: 'lethal_opp_damage',
         name: 'Lethal Opp Damage',
         cost: 0,

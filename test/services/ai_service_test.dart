@@ -131,11 +131,11 @@ void main() {
       final humanPlayer = game.players[0];
 
       // Place a guard champion on the human player
-      final guardChampion = CardModel(
+      const guardChampion = CardModel(
         id: 'test_guard',
         name: 'Test Guard',
         cost: 3,
-        playEffects: const [],
+        playEffects: [],
         cardType: CardType.champion,
         shield: 2,
         hasGuard: true,
