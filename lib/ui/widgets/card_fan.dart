@@ -52,7 +52,7 @@ class _CardFanState extends State<CardFan> {
         builder: (context, constraints) {
           final availableWidth = constraints.maxWidth;
           // Calculate card overlap based on available width
-          final cardWidth = 110.0;
+          const cardWidth = 110.0;
           final totalCardWidth = cardCount * cardWidth;
           final overlap = cardCount > 1
               ? math.max(

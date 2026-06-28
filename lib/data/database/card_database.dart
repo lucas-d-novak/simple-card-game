@@ -1,0 +1,160 @@
+import 'dart:convert';
+
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:simple_card_game/data/database/effect_codec.dart';
+import 'package:simple_card_game/models/card_model.dart';
+import 'package:simple_card_game/models/card_type.dart';
+import 'package:simple_card_game/models/faction.dart';
+
+/// Which expansion / set a card belongs to.
+enum CardSet { base, rotf, sos, ioh, ingeminex, promo, starter, unknown }
+
+CardSet _parseSet(String? raw) {
+  switch (raw) {
+    case 'base':
+      return CardSet.base;
+    case 'rotf':
+      return CardSet.rotf;
+    case 'sos':
+      return CardSet.sos;
+    case 'ioh':
+      return CardSet.ioh;
+    case 'ingeminex':
+      return CardSet.ingeminex;
+    case 'promo':
+      return CardSet.promo;
+    case 'starter':
+      return CardSet.starter;
+    default:
+      return CardSet.unknown;
+  }
+}
+
+Faction _parseFaction(String? raw) {
+  switch (raw) {
+    case 'homodeus':
+      return Faction.homodeus;
+    case 'wraethe':
+      return Faction.wraethe;
+    case 'order':
+      return Faction.order;
+    case 'undergrowth':
+      return Faction.undergrowth;
+    default:
+      return Faction.none;
+  }
+}
+
+CardType _parseCardType(String? raw) {
+  switch (raw) {
+    case 'champion':
+      return CardType.champion;
+    case 'mercenary':
+      return CardType.mercenary;
+    default:
+      return CardType.regular;
+  }
+}
+
+/// One record from the authoritative card database (assets/card_db/cards.json).
+///
+/// Carries both the playable [CardModel] projection and the database-only
+/// metadata (set, copy count, art path, verification status) used for the
+/// catalog tooling and incremental data entry.
+class CardRecord {
+  CardRecord({
+    required this.id,
+    required this.name,
+    required this.set,
+    required this.copies,
+    required this.art,
+    required this.rawText,
+    required this.verified,
+    required this.notes,
+    required this.model,
+  });
+
+  final String id;
+  final String name;
+  final CardSet set;
+  final int copies;
+  final String? art;
+  final String? rawText;
+  final bool verified;
+  final String? notes;
+
+  /// The playable card definition projected from this record.
+  final CardModel model;
+
+  factory CardRecord.fromJson(Map<String, dynamic> json) {
+    final id = json['id'] as String;
+    final name = (json['name'] as String?) ?? id;
+
+    return CardRecord(
+      id: id,
+      name: name,
+      set: _parseSet(json['set'] as String?),
+      copies: (json['copies'] as int?) ?? 1,
+      art: json['art'] as String?,
+      rawText: json['rawText'] as String?,
+      verified: (json['verified'] as bool?) ?? false,
+      notes: json['notes'] as String?,
+      model: CardModel(
+        id: id,
+        name: name,
+        cost: (json['cost'] as int?) ?? 0,
+        playEffects: decodeEffectList(json['playEffects']),
+        faction: _parseFaction(json['faction'] as String?),
+        cardType: _parseCardType(json['cardType'] as String?),
+        shield: (json['shield'] as int?) ?? 0,
+        hasGuard: (json['hasGuard'] as bool?) ?? false,
+        allyAbility: decodeEffectList(json['allyAbility']),
+        masteryThreshold: json['masteryThreshold'] as int?,
+        masteryBonus: decodeEffectList(json['masteryBonus']),
+        countsAsAllFactions: (json['countsAsAllFactions'] as bool?) ?? false,
+      ),
+    );
+  }
+}
+
+/// Loads and holds the authoritative card database.
+///
+/// The database is the single source of truth for card identity. The game's
+/// playable catalog is derived from it via [verifiedCards] / [allModels].
+class CardDatabase {
+  CardDatabase(this.records);
+
+  final List<CardRecord> records;
+
+  /// Default location of the card database asset.
+  static const String assetPath = 'assets/card_db/cards.json';
+
+  /// Parse a database from a raw JSON string (the file contents).
+  factory CardDatabase.fromJsonString(String source) {
+    final data = jsonDecode(source) as Map<String, dynamic>;
+    final cards = (data['cards'] as List<dynamic>? ?? const [])
+        .map((e) => CardRecord.fromJson(e as Map<String, dynamic>))
+        .toList();
+    return CardDatabase(cards);
+  }
+
+  /// Load the database from the bundled asset (use inside the Flutter app).
+  static Future<CardDatabase> load({String path = assetPath}) async {
+    final source = await rootBundle.loadString(path);
+    return CardDatabase.fromJsonString(source);
+  }
+
+  /// All card models, regardless of verification status.
+  List<CardModel> get allModels => [for (final r in records) r.model];
+
+  /// Only cards a human has confirmed against the physical card.
+  List<CardRecord> get verifiedCards =>
+      records.where((r) => r.verified).toList();
+
+  CardRecord? byId(String id) {
+    for (final r in records) {
+      if (r.id == id) return r;
+    }
+    return null;
+  }
+}

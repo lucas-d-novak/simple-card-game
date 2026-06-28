@@ -1,0 +1,141 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://simple-card-game/card_db/schema.json",
+  "title": "Card Database Entry",
+  "description": "Authoritative per-card record. Designed for incremental, human-entered data (phone photos + OCR). Only `id` is strictly required; every other field may be absent until verified. The validator reports completeness rather than rejecting partial cards.",
+  "type": "object",
+  "required": ["id"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+$",
+      "description": "Stable unique slug, e.g. 'reactor_monk'. Lowercase, digits, underscores."
+    },
+    "name": {
+      "type": "string",
+      "description": "Display name as printed on the card (parody name if applicable)."
+    },
+    "set": {
+      "type": "string",
+      "enum": ["base", "rotf", "sos", "ioh", "ingeminex", "promo", "starter", "unknown"],
+      "description": "Which set the card belongs to. base=Shards of Infinity, rotf=Relics of the Future, sos=Shadow of Salvation, ioh=Into the Horizon."
+    },
+    "faction": {
+      "type": "string",
+      "enum": ["homodeus", "wraethe", "order", "undergrowth", "none"],
+      "description": "Faction for ally-ability matching. 'none' = factionless/neutral."
+    },
+    "cardType": {
+      "type": "string",
+      "enum": ["regular", "champion", "mercenary"],
+      "description": "regular=discarded at end of turn, champion=persists, mercenary=removed from game after use."
+    },
+    "cost": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Gem cost to acquire from the center row. Starter cards are 0."
+    },
+    "copies": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "How many copies exist in the physical center deck for this card."
+    },
+    "shield": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Champions only. Power needed to destroy. 0 for non-champions."
+    },
+    "hasGuard": {
+      "type": "boolean",
+      "description": "Champions only. If true, must be destroyed before the owner can be attacked directly."
+    },
+    "countsAsAllFactions": {
+      "type": "boolean",
+      "description": "If true, satisfies the ally condition for any faction (e.g. Universal Soldier)."
+    },
+    "masteryThreshold": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Mastery level required to unlock masteryBonus. null = no threshold."
+    },
+    "playEffects": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/effect" },
+      "description": "Effects resolved when the card is played."
+    },
+    "allyAbility": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/effect" },
+      "description": "Effects triggered when another same-faction card is in play this turn."
+    },
+    "masteryBonus": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/effect" },
+      "description": "Effects unlocked when player mastery >= masteryThreshold."
+    },
+    "art": {
+      "type": ["string", "null"],
+      "description": "Path to the card art asset, relative to assets/cards/ (e.g. 'reactor_monk.jpg'). null = no art yet."
+    },
+    "rawText": {
+      "type": ["string", "null"],
+      "description": "OCR'd / transcribed card text for reference while encoding effects. Working notes, not shipped to UI."
+    },
+    "verified": {
+      "type": "boolean",
+      "default": false,
+      "description": "Set true once a human has confirmed all mechanical fields against the physical card."
+    },
+    "notes": {
+      "type": ["string", "null"],
+      "description": "Free-form notes, open questions, OCR uncertainties."
+    }
+  },
+  "definitions": {
+    "effect": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": true,
+      "description": "One CardEffect, mirroring lib/models/card_effect.dart. `type` is the kind; other keys are its params.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "gainGems",
+            "gainPower",
+            "gainMastery",
+            "gainHealth",
+            "drawCards",
+            "opponentLosesHealth",
+            "banishCard",
+            "scrapFromCenterRow",
+            "chooseOne",
+            "conditionalPower",
+            "infinityShard"
+          ]
+        },
+        "amount": { "type": "integer", "description": "For gain*/opponentLosesHealth." },
+        "count": { "type": "integer", "description": "For drawCards." },
+        "source": {
+          "type": "string",
+          "enum": ["hand", "discard", "handOrDiscard"],
+          "description": "For banishCard."
+        },
+        "condition": {
+          "type": "string",
+          "enum": ["perChampionControlled"],
+          "description": "For conditionalPower."
+        },
+        "choices": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/effect" }
+          },
+          "description": "For chooseOne: each entry is a group of effects applied together if chosen."
+        }
+      }
+    }
+  }
+}
