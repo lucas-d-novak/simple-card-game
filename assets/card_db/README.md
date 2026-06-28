@@ -46,6 +46,16 @@ cards.json  ──(CardDatabase.load)──►  CardRecord  ──.model──�
    unverified, missing fields). **Hard errors** (bad JSON, duplicate id,
    undecodable effect) fail with exit 1; **gaps** are informational.
 
+## The `group` field (non-playable factions)
+
+The engine's `faction` enum only knows the four playable factions
+(`homodeus`, `wraethe`, `order`, `undergrowth`) plus `none`. The source card
+list also includes cards belonging to **non-playable, faction-like categories**
+(e.g. `Aion`, `Destiny`, `Ingeminex`, and various boss/co-op groups). For those
+cards, set `faction: "none"` and record the real category in the optional
+top-level `group` string. `group` is reference/catalog metadata only — it does
+not affect ally matching. Leave it absent for ordinary cards.
+
 ## Minimum entry
 
 Only `id` is required. Everything else can be filled in incrementally:
