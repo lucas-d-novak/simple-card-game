@@ -980,6 +980,7 @@ class _CenterRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final cardWidth = Responsive.handCardWidth(screenWidth);
     final rowHeight = cardWidth * (170 / 120) + 6;
+    final refillDuration = AnimationTiming.of(context).cardMove;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8),
       padding: const EdgeInsets.all(6),
@@ -1021,22 +1022,39 @@ class _CenterRow extends StatelessWidget {
             height: rowHeight,
             child: ListView(
               scrollDirection: Axis.horizontal,
-              children: cards.map((card) {
-                final affordable = canAfford(card);
-                return Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: GameCardWidget(
-                    card: card,
-                    onTap: affordable ? () => onBuy(card) : null,
-                    onLongPress: onLongPress != null
-                        ? () => onLongPress!(card)
-                        : null,
-                    isHighlighted: affordable,
-                    compact: false,
-                    width: cardWidth,
+              children: [
+                for (int i = 0; i < cards.length; i++)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    // Keyed per slot: when a card is bought and a new one
+                    // refills the slot, the AnimatedSwitcher cross-fades it in
+                    // (instant duration = snap, no transition).
+                    child: AnimatedSwitcher(
+                      duration: refillDuration,
+                      transitionBuilder: (child, animation) => FadeTransition(
+                        opacity: animation,
+                        child: ScaleTransition(scale: animation, child: child),
+                      ),
+                      child: Builder(
+                        key: ValueKey(cards[i].id),
+                        builder: (context) {
+                          final card = cards[i];
+                          final affordable = canAfford(card);
+                          return GameCardWidget(
+                            card: card,
+                            onTap: affordable ? () => onBuy(card) : null,
+                            onLongPress: onLongPress != null
+                                ? () => onLongPress!(card)
+                                : null,
+                            isHighlighted: affordable,
+                            compact: false,
+                            width: cardWidth,
+                          );
+                        },
+                      ),
+                    ),
                   ),
-                );
-              }).toList(),
+              ],
             ),
           ),
         ],
