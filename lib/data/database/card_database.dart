@@ -7,7 +7,7 @@ import 'package:simple_card_game/models/card_type.dart';
 import 'package:simple_card_game/models/faction.dart';
 
 /// Which expansion / set a card belongs to.
-enum CardSet { base, rotf, sos, ioh, ingeminex, promo, starter, unknown }
+enum CardSet { base, rotf, sos, ioh, ingeminex, promo, saga, starter, unknown }
 
 CardSet _parseSet(String? raw) {
   switch (raw) {
@@ -23,6 +23,8 @@ CardSet _parseSet(String? raw) {
       return CardSet.ingeminex;
     case 'promo':
       return CardSet.promo;
+    case 'saga':
+      return CardSet.saga;
     case 'starter':
       return CardSet.starter;
     default:
@@ -72,6 +74,8 @@ class CardRecord {
     required this.verified,
     required this.notes,
     required this.group,
+    required this.chapter,
+    required this.ksOnly,
     required this.model,
   });
 
@@ -83,6 +87,12 @@ class CardRecord {
   final String? rawText;
   final bool verified;
   final String? notes;
+
+  /// Saga chapter (1-5) from the BGG card-list ordering, or null if unknown.
+  final int? chapter;
+
+  /// True if the card is Kickstarter-edition exclusive. Print metadata only.
+  final bool ksOnly;
 
   /// Optional source-list faction-like category for cards whose [model.faction]
   /// is [Faction.none] because they belong to a non-playable group (e.g. 'Aion',
@@ -106,6 +116,8 @@ class CardRecord {
       verified: (json['verified'] as bool?) ?? false,
       notes: json['notes'] as String?,
       group: json['group'] as String?,
+      chapter: json['chapter'] as int?,
+      ksOnly: (json['ksOnly'] as bool?) ?? false,
       model: CardModel(
         id: id,
         name: name,

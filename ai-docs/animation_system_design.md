@@ -1,7 +1,7 @@
 # Animation System Design — 5 Iterations
 
 > Branch target: next feature branch off `rld-mvp-sprint` (e.g. `rld/animations`)
-> Status: **ideation only** — no code written yet
+> Status: **Iterations 1–2 implemented** (`lib/ui/theme/animation_timing.dart`, wired in `main.dart`); Iterations 3–5 remain ideation.
 > Generated: 2026-06-28
 
 ## Goal

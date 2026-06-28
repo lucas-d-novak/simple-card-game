@@ -1,7 +1,7 @@
 # Responsive UI Design — 5 Iterations (Browser + Mobile)
 
 > Companion to the in-progress `rld/responsive-ui` implementation branch.
-> Status: **ideation** — 5 layout approaches for desktop browser vs. mobile.
+> Status: **Iteration 2 implemented** (`lib/ui/theme/responsive.dart`, breakpoints wired into game screen/fan/resource bar); Iterations 1, 3–5 remain ideation.
 > Generated: 2026-06-28
 
 ## Problem

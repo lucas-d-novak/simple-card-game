@@ -56,6 +56,14 @@ cards, set `faction: "none"` and record the real category in the optional
 top-level `group` string. `group` is reference/catalog metadata only — it does
 not affect ally matching. Leave it absent for ordinary cards.
 
+## `chapter` and `ksOnly` (provenance metadata)
+
+- `chapter` (int 1–5) — the Saga chapter the card belongs to, from the BGG
+  card-list ordering. Backfilled for all base-list cards.
+- `ksOnly` (bool) — true for Kickstarter-edition-exclusive cards (not in the
+  retail box). Print-availability only; **does not affect gameplay**. 16 cards
+  are flagged per the BGG thread's confirmed list.
+
 ## Minimum entry
 
 Only `id` is required. Everything else can be filled in incrementally:
