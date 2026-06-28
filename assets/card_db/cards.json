@@ -1061,9 +1061,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Typo fix: name was 'Crimson operative' in BGG source. Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 54: name='Crimson operative', faction='Aion', amount=1. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed.",
+      "notes": "Typo fix: name was 'Crimson operative' in BGG source. Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 54: name='Crimson operative', faction='Aion', amount=1. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Aion",
-      "set": "saga",
+      "set": "unknown",
       "chapter": 2
     },
     {
@@ -1075,9 +1075,9 @@
       "art": "swyft.jpg",
       "rawText": "Aion Champion. Exhaust: Gain 2 (gems) and 2 (power). If you are Rez, you may recruit any card you fast-play.",
       "verified": false,
-      "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 55: name='Swyft', faction='Aion', amount=2. | art added from TTS spritesheet crop (effects pending verification). | Aion Champion shield 3. UNMODELED: Exhaust activated ability ('Gain 2 gems and 2 power') and character-identity conditional 'If you are Rez...'. verified:false.",
+      "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 55: name='Swyft', faction='Aion', amount=2. | art added from TTS spritesheet crop (effects pending verification). | Aion Champion shield 3. UNMODELED: Exhaust activated ability ('Gain 2 gems and 2 power') and character-identity conditional 'If you are Rez...'. verified:false. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Aion",
-      "set": "sos",
+      "set": "unknown",
       "cardType": "champion",
       "cost": 5,
       "shield": 3,
@@ -1144,9 +1144,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Prism. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 60: name='Shard Cultist', faction='Prism', amount=2. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed.",
+      "notes": "Faction group (non-player): Prism. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 60: name='Shard Cultist', faction='Prism', amount=2. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Prism",
-      "set": "saga",
+      "set": "unknown",
       "chapter": 2
     },
     {
@@ -1158,9 +1158,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Prism. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 61: name='Stricture', faction='Prism', amount=1. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed.",
+      "notes": "Faction group (non-player): Prism. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 61: name='Stricture', faction='Prism', amount=1. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Prism",
-      "set": "saga",
+      "set": "unknown",
       "chapter": 2
     },
     {
@@ -1247,9 +1247,9 @@
       "art": "slipstream_shard.jpg",
       "rawText": "Aion Relic - Ally. Gain 1 (gem) and draw a card. Mastery 20: Rez takes an additional turn. This effect may only happen once per game.",
       "verified": false,
-      "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 66: name='Slipstream Shard', faction='Aion', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Aion Relic (Ally). Base gain 1 gem + draw 1 encoded; masteryThreshold 20 set. UNMODELED: mastery-20 'Rez takes an additional turn' (extra turn, character-identity, once-per-game). verified:false.",
+      "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 66: name='Slipstream Shard', faction='Aion', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Aion Relic (Ally). Base gain 1 gem + draw 1 encoded; masteryThreshold 20 set. UNMODELED: mastery-20 'Rez takes an additional turn' (extra turn, character-identity, once-per-game). verified:false. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Aion",
-      "set": "sos",
+      "set": "unknown",
       "cardType": "regular",
       "cost": 10,
       "masteryThreshold": 20,
@@ -1273,9 +1273,9 @@
       "art": "warpquartz.jpg",
       "rawText": "Aion Relic - Ally. Gain 3 (gems) and 3 (power). Mastery 20: Banish up to three Allies in your hand and/or discard pile and gain their effects.",
       "verified": false,
-      "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 67: name='Warpquartz', faction='Aion', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Aion Relic (Ally). Base gain 3 gems + 3 power encoded; masteryThreshold 20 set. UNMODELED: mastery-20 'Banish up to three Allies... and gain their effects'. verified:false.",
+      "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 67: name='Warpquartz', faction='Aion', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Aion Relic (Ally). Base gain 3 gems + 3 power encoded; masteryThreshold 20 set. UNMODELED: mastery-20 'Banish up to three Allies... and gain their effects'. verified:false. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Aion",
-      "set": "sos",
+      "set": "unknown",
       "cardType": "regular",
       "cost": 10,
       "masteryThreshold": 20,
@@ -1370,9 +1370,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Prism. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 72: name='Shard Extractor', faction='Prism', amount=1. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed.",
+      "notes": "Faction group (non-player): Prism. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 72: name='Shard Extractor', faction='Prism', amount=1. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Prism",
-      "set": "saga",
+      "set": "unknown",
       "chapter": 2
     },
     {
@@ -1384,9 +1384,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Prism. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 73: name='Skry-77', faction='Prism', amount=1. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed.",
+      "notes": "Faction group (non-player): Prism. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 73: name='Skry-77', faction='Prism', amount=1. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Prism",
-      "set": "saga",
+      "set": "unknown",
       "chapter": 2
     },
     {
@@ -1498,9 +1498,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 78: name='Aion Egressor', faction='Aion', amount=1.",
+      "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 78: name='Aion Egressor', faction='Aion', amount=1. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Aion",
-      "set": "saga",
+      "set": "unknown",
       "chapter": 3,
       "ksOnly": true
     },
@@ -1513,9 +1513,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 79: name='Aion Guide', faction='Aion', amount=2.",
+      "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 79: name='Aion Guide', faction='Aion', amount=2. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Aion",
-      "set": "saga",
+      "set": "unknown",
       "chapter": 3,
       "ksOnly": true
     },
@@ -1528,9 +1528,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 80: name='Blitz, Shard Runner', faction='Aion', amount=1.",
+      "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 80: name='Blitz, Shard Runner', faction='Aion', amount=1. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Aion",
-      "set": "saga",
+      "set": "unknown",
       "chapter": 3,
       "ksOnly": true
     },
@@ -1543,9 +1543,9 @@
       "art": "breaker.jpg",
       "rawText": "Aion Ally. When you Recruit this, put it into your hand. Warp infinity - Fast-play any Ally in the Center Row for free.",
       "verified": false,
-      "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 81: name='Breaker', faction='Aion', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Aion Ally (regular). UNMODELED: 'When you Recruit this, put it into your hand' (recruit trigger) and 'Warp - Fast-play any Ally in the Center Row for free'. A grey '4' badge appears on the art though type line reads 'Aion Ally'; badge meaning uncertain. No mappable base effect. verified:false.",
+      "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 81: name='Breaker', faction='Aion', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Aion Ally (regular). UNMODELED: 'When you Recruit this, put it into your hand' (recruit trigger) and 'Warp - Fast-play any Ally in the Center Row for free'. A grey '4' badge appears on the art though type line reads 'Aion Ally'; badge meaning uncertain. No mappable base effect. verified:false. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Aion",
-      "set": "sos",
+      "set": "unknown",
       "cardType": "regular",
       "cost": 6,
       "chapter": 3
@@ -1564,9 +1564,9 @@
       "art": "brute.jpg",
       "rawText": "Aion Ally. Gain 4 (gems). Warp 2 - Fast-play any Ally in the Center Row with cost 2 or less for free.",
       "verified": false,
-      "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 82: name='Brute', faction='Aion', amount=2. | art added from TTS spritesheet crop (effects pending verification). | Aion Ally (regular). Base gain 4 gems encoded. UNMODELED: 'Warp 2 - Fast-play any Ally in the Center Row with cost 2 or less for free'. A grey '2' badge appears on art though type line reads 'Aion Ally'; badge meaning uncertain. verified:false.",
+      "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 82: name='Brute', faction='Aion', amount=2. | art added from TTS spritesheet crop (effects pending verification). | Aion Ally (regular). Base gain 4 gems encoded. UNMODELED: 'Warp 2 - Fast-play any Ally in the Center Row with cost 2 or less for free'. A grey '2' badge appears on art though type line reads 'Aion Ally'; badge meaning uncertain. verified:false. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Aion",
-      "set": "sos",
+      "set": "unknown",
       "cardType": "regular",
       "cost": 3,
       "chapter": 3
@@ -1580,9 +1580,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 83: name='Carmine Eclipse', faction='Aion', amount=1.",
+      "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 83: name='Carmine Eclipse', faction='Aion', amount=1. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Aion",
-      "set": "saga",
+      "set": "unknown",
       "chapter": 3,
       "ksOnly": true
     },
@@ -1600,9 +1600,9 @@
       "art": "dash.jpg",
       "rawText": "Aion Ally. You may fetch an Aion card from your discard pile and put it on top of your deck. Draw a card.",
       "verified": false,
-      "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 84: name='Dash', faction='Aion', amount=2. | art added from TTS spritesheet crop (effects pending verification). | Aion Ally (regular). Base draw 1 encoded. UNMODELED: 'fetch an Aion card from discard and put on top of deck'. Grey '2' badge on art; type line 'Aion Ally', badge uncertain. verified:false.",
+      "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 84: name='Dash', faction='Aion', amount=2. | art added from TTS spritesheet crop (effects pending verification). | Aion Ally (regular). Base draw 1 encoded. UNMODELED: 'fetch an Aion card from discard and put on top of deck'. Grey '2' badge on art; type line 'Aion Ally', badge uncertain. verified:false. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Aion",
-      "set": "sos",
+      "set": "unknown",
       "cardType": "regular",
       "cost": 2,
       "chapter": 3
@@ -1621,9 +1621,9 @@
       "art": "lucky.jpg",
       "rawText": "Aion Ally. Gain 2 (gems). Warp 3 - Fast-play any Ally in the Center Row with cost 3 or less for free.",
       "verified": false,
-      "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 85: name='Lucky', faction='Aion', amount=2. | art added from TTS spritesheet crop (effects pending verification). | Aion Ally (regular). Base gain 2 gems encoded. UNMODELED: 'Warp 3 - Fast-play any Ally...'. Grey '2' badge on art; type line 'Aion Ally', badge uncertain. verified:false.",
+      "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 85: name='Lucky', faction='Aion', amount=2. | art added from TTS spritesheet crop (effects pending verification). | Aion Ally (regular). Base gain 2 gems encoded. UNMODELED: 'Warp 3 - Fast-play any Ally...'. Grey '2' badge on art; type line 'Aion Ally', badge uncertain. verified:false. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Aion",
-      "set": "sos",
+      "set": "unknown",
       "cardType": "regular",
       "cost": 4,
       "chapter": 3
@@ -1637,9 +1637,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 86: name='Red Fortune', faction='Aion', amount=1.",
+      "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 86: name='Red Fortune', faction='Aion', amount=1. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Aion",
-      "set": "saga",
+      "set": "unknown",
       "chapter": 3,
       "ksOnly": true
     },
@@ -1652,9 +1652,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 87: name='Scarlet Slayer', faction='Aion', amount=1.",
+      "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 87: name='Scarlet Slayer', faction='Aion', amount=1. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Aion",
-      "set": "saga",
+      "set": "unknown",
       "chapter": 3,
       "ksOnly": true
     },
@@ -1807,9 +1807,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 98: name='Brute (Saved)', faction='Aion', amount=1.",
+      "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 98: name='Brute (Saved)', faction='Aion', amount=1. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Aion",
-      "set": "sos",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -1821,9 +1821,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 99: name='Dash (Saved)', faction='Aion', amount=1.",
+      "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 99: name='Dash (Saved)', faction='Aion', amount=1. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Aion",
-      "set": "sos",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -1835,8 +1835,8 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 100: name='Kiln Drone (Saved)', faction='Homodeus', amount=1.",
-      "set": "sos",
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 100: name='Kiln Drone (Saved)', faction='Homodeus', amount=1. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -1848,8 +1848,8 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 101: name='Korvus Legionnaire (Saved)', faction='Homodeus', amount=1.",
-      "set": "sos",
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 101: name='Korvus Legionnaire (Saved)', faction='Homodeus', amount=1. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -1861,8 +1861,8 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 102: name='Limiter Drones (Saved)', faction='Homodeus', amount=1.",
-      "set": "sos",
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 102: name='Limiter Drones (Saved)', faction='Homodeus', amount=1. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -1874,8 +1874,8 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 103: name='Optio Crusher (Saved)', faction='Homodeus', amount=1.",
-      "set": "sos",
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 103: name='Optio Crusher (Saved)', faction='Homodeus', amount=1. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -1887,8 +1887,8 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 104: name='Cache Warden (Saved)', faction='Order', amount=1.",
-      "set": "sos",
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 104: name='Cache Warden (Saved)', faction='Order', amount=1. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -1900,8 +1900,8 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 105: name='Cryptofist Monk (Saved)', faction='Order', amount=1.",
-      "set": "sos",
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 105: name='Cryptofist Monk (Saved)', faction='Order', amount=1. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -1913,8 +1913,8 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 106: name='Order Initiate (Saved)', faction='Order', amount=1.",
-      "set": "sos",
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 106: name='Order Initiate (Saved)', faction='Order', amount=1. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -1926,8 +1926,8 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 107: name='Shard Abstractor (Saved)', faction='Order', amount=1.",
-      "set": "sos",
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 107: name='Shard Abstractor (Saved)', faction='Order', amount=1. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -1939,8 +1939,8 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 108: name='Arach Devotees (Saved)', faction='Undergrowth', amount=1.",
-      "set": "sos",
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 108: name='Arach Devotees (Saved)', faction='Undergrowth', amount=1. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -1952,8 +1952,8 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 109: name='Fungal Hermit (Saved)', faction='Undergrowth', amount=1.",
-      "set": "sos",
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 109: name='Fungal Hermit (Saved)', faction='Undergrowth', amount=1. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -1965,8 +1965,8 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Typo fix: name was 'Le-shai Knight (Saved)' in BGG source (hyphen -> apostrophe to match base 'Le'shai Knight'). set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 110: name='Le-shai Knight (Saved)', faction='Undergrowth', amount=1.",
-      "set": "sos",
+      "notes": "Typo fix: name was 'Le-shai Knight (Saved)' in BGG source (hyphen -> apostrophe to match base 'Le'shai Knight'). set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 110: name='Le-shai Knight (Saved)', faction='Undergrowth', amount=1. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -1978,8 +1978,8 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 111: name='Spore Cleric (Saved)', faction='Undergrowth', amount=1.",
-      "set": "sos",
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 111: name='Spore Cleric (Saved)', faction='Undergrowth', amount=1. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -1991,8 +1991,8 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 112: name='Pall Shades (Saved)', faction='Wraethe', amount=1.",
-      "set": "sos",
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 112: name='Pall Shades (Saved)', faction='Wraethe', amount=1. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2004,8 +2004,8 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 113: name='Scion of Nothingness (Saved)', faction='Wraethe', amount=1.",
-      "set": "sos",
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 113: name='Scion of Nothingness (Saved)', faction='Wraethe', amount=1. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2017,8 +2017,8 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 114: name='Shadebound Sentry (Saved)', faction='Wraethe', amount=1.",
-      "set": "sos",
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 114: name='Shadebound Sentry (Saved)', faction='Wraethe', amount=1. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2030,8 +2030,8 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 115: name='Umbral Scourge (Saved)', faction='Wraethe', amount=1.",
-      "set": "sos",
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 115: name='Umbral Scourge (Saved)', faction='Wraethe', amount=1. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2043,9 +2043,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Crimson Thorn. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 116: name='Poison Seed', faction='Crimson Thorn', amount=8.",
+      "notes": "Faction group (non-player): Crimson Thorn. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 116: name='Poison Seed', faction='Crimson Thorn', amount=8. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Crimson Thorn",
-      "set": "sos",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2057,9 +2057,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Crimson Thorn. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 117: name='Noxious Vapors', faction='Crimson Thorn', amount=1.",
+      "notes": "Faction group (non-player): Crimson Thorn. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 117: name='Noxious Vapors', faction='Crimson Thorn', amount=1. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Crimson Thorn",
-      "set": "sos",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2071,9 +2071,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Crimson Thorn. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 118: name='Stranglevines', faction='Crimson Thorn', amount=2.",
+      "notes": "Faction group (non-player): Crimson Thorn. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 118: name='Stranglevines', faction='Crimson Thorn', amount=2. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Crimson Thorn",
-      "set": "sos",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2085,9 +2085,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Crimson Thorn. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 119: name='Toxify', faction='Crimson Thorn', amount=3.",
+      "notes": "Faction group (non-player): Crimson Thorn. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 119: name='Toxify', faction='Crimson Thorn', amount=3. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Crimson Thorn",
-      "set": "sos",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2099,9 +2099,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Dominatus. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 120: name='Armageddon', faction='Dominatus', amount=1.",
+      "notes": "Faction group (non-player): Dominatus. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 120: name='Armageddon', faction='Dominatus', amount=1. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Dominatus",
-      "set": "sos",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2113,9 +2113,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Dominatus. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 121: name='Death Grasp', faction='Dominatus', amount=2.",
+      "notes": "Faction group (non-player): Dominatus. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 121: name='Death Grasp', faction='Dominatus', amount=2. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Dominatus",
-      "set": "sos",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2127,9 +2127,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Dominatus. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 122: name='Havoc Blast', faction='Dominatus', amount=3.",
+      "notes": "Faction group (non-player): Dominatus. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 122: name='Havoc Blast', faction='Dominatus', amount=3. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Dominatus",
-      "set": "sos",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2141,9 +2141,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Glitchmother. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 123: name='Assassinate', faction='Glitchmother', amount=4.",
+      "notes": "Faction group (non-player): Glitchmother. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 123: name='Assassinate', faction='Glitchmother', amount=4. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Glitchmother",
-      "set": "sos",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2155,9 +2155,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Glitchmother. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 124: name='Data Wipe', faction='Glitchmother', amount=1.",
+      "notes": "Faction group (non-player): Glitchmother. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 124: name='Data Wipe', faction='Glitchmother', amount=1. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Glitchmother",
-      "set": "sos",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2169,9 +2169,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Glitchmother. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 125: name='Masterstroke', faction='Glitchmother', amount=1.",
+      "notes": "Faction group (non-player): Glitchmother. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 125: name='Masterstroke', faction='Glitchmother', amount=1. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Glitchmother",
-      "set": "sos",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2183,9 +2183,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Mind Hacker. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 126: name='Brainhack', faction='Mind Hacker', amount=3.",
+      "notes": "Faction group (non-player): Mind Hacker. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 126: name='Brainhack', faction='Mind Hacker', amount=3. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Mind Hacker",
-      "set": "sos",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2197,9 +2197,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Mind Hacker. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 127: name='Shutdown', faction='Mind Hacker', amount=1.",
+      "notes": "Faction group (non-player): Mind Hacker. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 127: name='Shutdown', faction='Mind Hacker', amount=1. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Mind Hacker",
-      "set": "sos",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2211,9 +2211,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Mind Hacker. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 128: name='System Shock', faction='Mind Hacker', amount=2.",
+      "notes": "Faction group (non-player): Mind Hacker. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 128: name='System Shock', faction='Mind Hacker', amount=2. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Mind Hacker",
-      "set": "sos",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2225,9 +2225,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Moc Sai. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 129: name='Greater Unstable Rift', faction='Moc Sai', amount=2.",
+      "notes": "Faction group (non-player): Moc Sai. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 129: name='Greater Unstable Rift', faction='Moc Sai', amount=2. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Moc Sai",
-      "set": "sos",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2239,9 +2239,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Moc Sai. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 130: name='Lesser Unstable Rift', faction='Moc Sai', amount=4.",
+      "notes": "Faction group (non-player): Moc Sai. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 130: name='Lesser Unstable Rift', faction='Moc Sai', amount=4. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Moc Sai",
-      "set": "sos",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2253,9 +2253,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Vox. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 131: name='Homodeus Trap', faction='Vox', amount=1.",
+      "notes": "Faction group (non-player): Vox. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 131: name='Homodeus Trap', faction='Vox', amount=1. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Vox",
-      "set": "sos",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2267,9 +2267,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Vox. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 132: name='Order Trap', faction='Vox', amount=1.",
+      "notes": "Faction group (non-player): Vox. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 132: name='Order Trap', faction='Vox', amount=1. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Vox",
-      "set": "sos",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2281,9 +2281,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Vox. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 133: name='Twin Trap', faction='Vox', amount=2.",
+      "notes": "Faction group (non-player): Vox. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 133: name='Twin Trap', faction='Vox', amount=2. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Vox",
-      "set": "sos",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2295,9 +2295,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Vox. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 134: name='Undergrowth Trap', faction='Vox', amount=1.",
+      "notes": "Faction group (non-player): Vox. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 134: name='Undergrowth Trap', faction='Vox', amount=1. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Vox",
-      "set": "sos",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2309,9 +2309,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Vox. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 135: name='Wraethe Trap', faction='Vox', amount=1.",
+      "notes": "Faction group (non-player): Vox. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 135: name='Wraethe Trap', faction='Vox', amount=1. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Vox",
-      "set": "sos",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2323,9 +2323,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Aberrant. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 136: name='Custcutta Scourge', faction='Aberrant', amount=2.",
+      "notes": "Faction group (non-player): Aberrant. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 136: name='Custcutta Scourge', faction='Aberrant', amount=2. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Aberrant",
-      "set": "sos",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2337,9 +2337,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Aberrant. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 137: name='Shard Spiders', faction='Aberrant', amount=2.",
+      "notes": "Faction group (non-player): Aberrant. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 137: name='Shard Spiders', faction='Aberrant', amount=2. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Aberrant",
-      "set": "sos",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2351,9 +2351,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Aberrant. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 138: name='Wrathbloom', faction='Aberrant', amount=2.",
+      "notes": "Faction group (non-player): Aberrant. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 138: name='Wrathbloom', faction='Aberrant', amount=2. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Aberrant",
-      "set": "sos",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2365,9 +2365,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Glitch. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 139: name='Cobalt Chaplain', faction='Glitch', amount=1.",
+      "notes": "Faction group (non-player): Glitch. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 139: name='Cobalt Chaplain', faction='Glitch', amount=1. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Glitch",
-      "set": "sos",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2379,9 +2379,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Glitch. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 140: name='Simulacrons', faction='Glitch', amount=3.",
+      "notes": "Faction group (non-player): Glitch. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 140: name='Simulacrons', faction='Glitch', amount=3. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Glitch",
-      "set": "sos",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2393,9 +2393,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Glitch. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 141: name='Vector Field', faction='Glitch', amount=2.",
+      "notes": "Faction group (non-player): Glitch. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 141: name='Vector Field', faction='Glitch', amount=2. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Glitch",
-      "set": "sos",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2407,9 +2407,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Necrotic. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 142: name='Blood Shard', faction='Necrotic', amount=1.",
+      "notes": "Faction group (non-player): Necrotic. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 142: name='Blood Shard', faction='Necrotic', amount=1. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Necrotic",
-      "set": "sos",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2421,9 +2421,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Necrotic. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 143: name='Shard Horrors', faction='Necrotic', amount=3.",
+      "notes": "Faction group (non-player): Necrotic. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 143: name='Shard Horrors', faction='Necrotic', amount=3. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Necrotic",
-      "set": "sos",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2435,9 +2435,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Necrotic. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 144: name='Stitchborg', faction='Necrotic', amount=2.",
+      "notes": "Faction group (non-player): Necrotic. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 144: name='Stitchborg', faction='Necrotic', amount=2. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Necrotic",
-      "set": "sos",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2449,9 +2449,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Talos. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 145: name='Fragmenta', faction='Talos', amount=2.",
+      "notes": "Faction group (non-player): Talos. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 145: name='Fragmenta', faction='Talos', amount=2. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Talos",
-      "set": "sos",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2463,9 +2463,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Talos. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 146: name='Gene Scavs', faction='Talos', amount=2.",
+      "notes": "Faction group (non-player): Talos. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 146: name='Gene Scavs', faction='Talos', amount=2. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Talos",
-      "set": "sos",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2477,9 +2477,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Talos. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 147: name='Sagittari', faction='Talos', amount=2.",
+      "notes": "Faction group (non-player): Talos. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 147: name='Sagittari', faction='Talos', amount=2. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Talos",
-      "set": "sos",
+      "set": "unknown",
       "chapter": 3
     },
     {
@@ -2491,9 +2491,9 @@
       "art": "j_chord.jpg",
       "rawText": "Aion Champion. Exhaust: Warp 3 - Fast-play an Ally in the Center Row with cost 3 or less for free. Mastery 15: Warp 5 instead.",
       "verified": false,
-      "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 148: name='J-Chord', faction='Aion', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Aion Champion shield 3. UNMODELED: Exhaust activated ability ('Warp 3 - fast-play an Ally...') and mastery-15 'Warp 5 instead'. verified:false.",
+      "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 148: name='J-Chord', faction='Aion', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Aion Champion shield 3. UNMODELED: Exhaust activated ability ('Warp 3 - fast-play an Ally...') and mastery-15 'Warp 5 instead'. verified:false. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Aion",
-      "set": "ioh",
+      "set": "unknown",
       "cardType": "champion",
       "cost": 3,
       "shield": 3,
@@ -2763,9 +2763,9 @@
       "art": "brutality.jpg",
       "rawText": "Ingeminex. Attack: All players lose 5 (cannot be prevented by shield). Reward: Gain 20.",
       "verified": false,
-      "notes": "Faction group (non-player): Ingeminex. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 161: name='Brutality', faction='Ingeminex', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Ingeminex co-op boss card. Attack/Reward co-op structure NOT modeled by engine; playEffects empty. Confirm.",
+      "notes": "Faction group (non-player): Ingeminex. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 161: name='Brutality', faction='Ingeminex', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Ingeminex co-op boss card. Attack/Reward co-op structure NOT modeled by engine; playEffects empty. Confirm. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Ingeminex",
-      "set": "ioh",
+      "set": "unknown",
       "cardType": "regular",
       "cost": 10,
       "chapter": 4
@@ -2779,9 +2779,9 @@
       "art": "corruption.jpg",
       "rawText": "Ingeminex. Attack: All players lose 3 and 1. This cannot be prevented by (Guard). Reward: Recruit an additional Relic and put it directly into your hand.",
       "verified": false,
-      "notes": "Faction group (non-player): Ingeminex. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 162: name='Corruption', faction='Ingeminex', amount=1. | art added from TTS spritesheet crop (effects pending verification). | co-op card - out of multiplayer scope; not encoded. Ingeminex boss card with Attack/Reward structure (no versus play effects).",
+      "notes": "Faction group (non-player): Ingeminex. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 162: name='Corruption', faction='Ingeminex', amount=1. | art added from TTS spritesheet crop (effects pending verification). | co-op card - out of multiplayer scope; not encoded. Ingeminex boss card with Attack/Reward structure (no versus play effects). | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Ingeminex",
-      "set": "ioh",
+      "set": "unknown",
       "chapter": 4
     },
     {
@@ -2793,9 +2793,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Ingeminex. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 163: name='Desolation', faction='Ingeminex', amount=1.",
+      "notes": "Faction group (non-player): Ingeminex. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 163: name='Desolation', faction='Ingeminex', amount=1. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Ingeminex",
-      "set": "saga",
+      "set": "unknown",
       "chapter": 4
     },
     {
@@ -2807,9 +2807,9 @@
       "art": "torment.jpg",
       "rawText": "Ingeminex. Attack: All players lose 2. Reward: Gain 4.",
       "verified": false,
-      "notes": "Faction group (non-player): Ingeminex. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 164: name='Torment', faction='Ingeminex', amount=1. | art added from TTS spritesheet crop (effects pending verification). | co-op card - out of multiplayer scope; not encoded. Ingeminex boss card with Attack/Reward structure (no versus play effects).",
+      "notes": "Faction group (non-player): Ingeminex. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 164: name='Torment', faction='Ingeminex', amount=1. | art added from TTS spritesheet crop (effects pending verification). | co-op card - out of multiplayer scope; not encoded. Ingeminex boss card with Attack/Reward structure (no versus play effects). | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Ingeminex",
-      "set": "ioh",
+      "set": "unknown",
       "chapter": 4
     },
     {
@@ -2909,9 +2909,9 @@
       "art": "agony.jpg",
       "rawText": "Ingeminex. Attack: Each player discards 2 cards from their hand. Reward: Draw 2 cards and acquire an additional Destiny.",
       "verified": false,
-      "notes": "Faction group (non-player): Ingeminex. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 170: name='Agony', faction='Ingeminex', amount=1. | art added from TTS spritesheet crop (effects pending verification). | co-op card - out of multiplayer scope; not encoded. Ingeminex boss card with Attack/Reward structure (no versus play effects).",
+      "notes": "Faction group (non-player): Ingeminex. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 170: name='Agony', faction='Ingeminex', amount=1. | art added from TTS spritesheet crop (effects pending verification). | co-op card - out of multiplayer scope; not encoded. Ingeminex boss card with Attack/Reward structure (no versus play effects). | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Ingeminex",
-      "set": "ioh",
+      "set": "unknown",
       "chapter": 5
     },
     {
@@ -2923,9 +2923,9 @@
       "art": "malice.jpg",
       "rawText": "Ingeminex. Attack: Each player destroys their highest (gem) cost Champion. Reward: You may return a Champion from your discard pile to your hand and acquire an additional Destiny.",
       "verified": false,
-      "notes": "Faction group (non-player): Ingeminex. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 171: name='Malice', faction='Ingeminex', amount=1. | art added from TTS spritesheet crop (effects pending verification). | co-op card - out of multiplayer scope; not encoded. Ingeminex boss card with Attack/Reward structure (no versus play effects).",
+      "notes": "Faction group (non-player): Ingeminex. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 171: name='Malice', faction='Ingeminex', amount=1. | art added from TTS spritesheet crop (effects pending verification). | co-op card - out of multiplayer scope; not encoded. Ingeminex boss card with Attack/Reward structure (no versus play effects). | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Ingeminex",
-      "set": "ioh",
+      "set": "unknown",
       "chapter": 5
     },
     {
@@ -2937,9 +2937,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. Note: 'datic' kept verbatim from BGG source (possible lowercase/typo, left as-is). set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 172: name='Datic Secrets', faction='Destiny', amount=1.",
+      "notes": "Faction group (non-player): Destiny. Note: 'datic' kept verbatim from BGG source (possible lowercase/typo, left as-is). set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 172: name='Datic Secrets', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Destiny",
-      "set": "ioh",
+      "set": "unknown",
       "chapter": 5
     },
     {
@@ -2951,9 +2951,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 173: name='The Price of Power', faction='Destiny', amount=1.",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 173: name='The Price of Power', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Destiny",
-      "set": "ioh",
+      "set": "unknown",
       "chapter": 5
     },
     {
@@ -2965,9 +2965,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 174: name='One Mind, One Army', faction='Destiny', amount=1.",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 174: name='One Mind, One Army', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Destiny",
-      "set": "ioh",
+      "set": "unknown",
       "chapter": 5
     },
     {
@@ -2979,9 +2979,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 175: name='Project Yggdrasil', faction='Destiny', amount=1.",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 175: name='Project Yggdrasil', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Destiny",
-      "set": "ioh",
+      "set": "unknown",
       "chapter": 5
     },
     {
@@ -2993,9 +2993,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 176: name='Phasic Technology', faction='Destiny', amount=1.",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 176: name='Phasic Technology', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Destiny",
-      "set": "ioh",
+      "set": "unknown",
       "chapter": 5
     },
     {
@@ -3007,9 +3007,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 177: name='Blood for Blood', faction='Destiny', amount=1.",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 177: name='Blood for Blood', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Destiny",
-      "set": "ioh",
+      "set": "unknown",
       "chapter": 5
     },
     {
@@ -3021,9 +3021,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 178: name='Bound for Life', faction='Destiny', amount=1.",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 178: name='Bound for Life', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Destiny",
-      "set": "ioh",
+      "set": "unknown",
       "chapter": 5
     },
     {
@@ -3035,9 +3035,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 179: name='Nature Dominance', faction='Destiny', amount=1.",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 179: name='Nature Dominance', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Destiny",
-      "set": "ioh",
+      "set": "unknown",
       "chapter": 5
     },
     {
@@ -3049,9 +3049,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 180: name='The Crystal Gate', faction='Destiny', amount=1.",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 180: name='The Crystal Gate', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Destiny",
-      "set": "ioh",
+      "set": "unknown",
       "chapter": 5
     },
     {
@@ -3063,9 +3063,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 181: name='Forged in Flame', faction='Destiny', amount=1.",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 181: name='Forged in Flame', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Destiny",
-      "set": "ioh",
+      "set": "unknown",
       "chapter": 5
     },
     {
@@ -3077,9 +3077,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 182: name='Paradigm Shift', faction='Destiny', amount=1.",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 182: name='Paradigm Shift', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Destiny",
-      "set": "ioh",
+      "set": "unknown",
       "chapter": 5
     },
     {
@@ -3091,9 +3091,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 183: name='Deadly Recruits', faction='Destiny', amount=1.",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 183: name='Deadly Recruits', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Destiny",
-      "set": "ioh",
+      "set": "unknown",
       "chapter": 5
     },
     {
@@ -3105,9 +3105,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 184: name='Biotech Enhancements', faction='Destiny', amount=1.",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 184: name='Biotech Enhancements', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Destiny",
-      "set": "ioh",
+      "set": "unknown",
       "chapter": 5
     },
     {
@@ -3119,9 +3119,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 185: name='Absorption Grid', faction='Destiny', amount=1.",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 185: name='Absorption Grid', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Destiny",
-      "set": "ioh",
+      "set": "unknown",
       "chapter": 5
     },
     {
@@ -3133,9 +3133,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 186: name='Maglev Tunnels', faction='Destiny', amount=1.",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 186: name='Maglev Tunnels', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Destiny",
-      "set": "ioh",
+      "set": "unknown",
       "chapter": 5
     },
     {
@@ -3147,9 +3147,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 187: name='Soul Syphon', faction='Destiny', amount=1.",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 187: name='Soul Syphon', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Destiny",
-      "set": "ioh",
+      "set": "unknown",
       "chapter": 5
     },
     {
@@ -3161,9 +3161,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 188: name='The Agony of Choice', faction='Destiny', amount=1.",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 188: name='The Agony of Choice', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Destiny",
-      "set": "ioh",
+      "set": "unknown",
       "chapter": 5
     },
     {
@@ -3175,9 +3175,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 189: name='The Shard Defiant', faction='Destiny', amount=1.",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 189: name='The Shard Defiant', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Destiny",
-      "set": "ioh",
+      "set": "unknown",
       "chapter": 5
     },
     {
@@ -3189,9 +3189,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 190: name='Whatever it Takes', faction='Destiny', amount=1.",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 190: name='Whatever it Takes', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Destiny",
-      "set": "ioh",
+      "set": "unknown",
       "chapter": 5
     },
     {
@@ -3203,9 +3203,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 191: name='The Last City', faction='Destiny', amount=1.",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 191: name='The Last City', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Destiny",
-      "set": "ioh",
+      "set": "unknown",
       "chapter": 5
     },
     {
@@ -3217,9 +3217,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 192: name='Power Struggle', faction='Destiny', amount=1.",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 192: name='Power Struggle', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Destiny",
-      "set": "ioh",
+      "set": "unknown",
       "chapter": 5
     },
     {
@@ -3231,9 +3231,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 193: name='Unconditional Conscription', faction='Destiny', amount=1.",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 193: name='Unconditional Conscription', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Destiny",
-      "set": "ioh",
+      "set": "unknown",
       "chapter": 5
     },
     {
@@ -3245,9 +3245,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 194: name='Stolen Future', faction='Destiny', amount=1.",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 194: name='Stolen Future', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Destiny",
-      "set": "ioh",
+      "set": "unknown",
       "chapter": 5
     },
     {
@@ -3259,9 +3259,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 195: name='Strategic Mastermind', faction='Destiny', amount=1.",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 195: name='Strategic Mastermind', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Destiny",
-      "set": "ioh",
+      "set": "unknown",
       "chapter": 5
     },
     {
@@ -3273,9 +3273,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 196: name='Advanced Weapons', faction='Destiny', amount=1.",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 196: name='Advanced Weapons', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Destiny",
-      "set": "ioh",
+      "set": "unknown",
       "chapter": 5
     },
     {
@@ -3287,9 +3287,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 197: name='Advanced Medicine', faction='Destiny', amount=1.",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 197: name='Advanced Medicine', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Destiny",
-      "set": "ioh",
+      "set": "unknown",
       "chapter": 5
     },
     {
@@ -3301,9 +3301,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 198: name='Healing Hands', faction='Destiny', amount=1.",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 198: name='Healing Hands', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Destiny",
-      "set": "ioh",
+      "set": "unknown",
       "chapter": 5
     },
     {
@@ -3315,9 +3315,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 199: name='War Bound', faction='Destiny', amount=1.",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 199: name='War Bound', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Destiny",
-      "set": "ioh",
+      "set": "unknown",
       "chapter": 5
     },
     {
@@ -3329,9 +3329,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 200: name='True Leader', faction='Destiny', amount=1.",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 200: name='True Leader', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Destiny",
-      "set": "ioh",
+      "set": "unknown",
       "chapter": 5
     },
     {
@@ -3343,9 +3343,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): DestinyDeck. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 201: name='Synthesis', faction='DestinyDeck', amount=1.",
+      "notes": "Faction group (non-player): DestinyDeck. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 201: name='Synthesis', faction='DestinyDeck', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "DestinyDeck",
-      "set": "ioh",
+      "set": "unknown",
       "chapter": 5
     }
   ]
