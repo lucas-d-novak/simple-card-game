@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Authoritative card database. Each entry follows schema.json. Scaffolded from the BGG community card list (single-author transcription) using ONLY the Names, Amounts (copies), and Factions columns â€” these three agreed at 201 rows; the Sets/Chapters/Back columns were lossily transcribed upstream and are intentionally omitted. Therefore `set`, `cost`, chapter/back, and card EFFECTS are PENDING hand-entry (set/cost omitted, playEffects empty). `verified` is false for every entry. Run `dart run tool/validate_card_db.dart` for completeness.",
+  "description": "Authoritative card database. Each entry follows schema.json. Scaffolded from the BGG community card list (single-author transcription) using ONLY the Names, Amounts (copies), and Factions columns â€” these three agreed at 201 rows; the Sets/Chapters/Back columns were lossily transcribed upstream and are intentionally omitted. Therefore `set`, `cost`, chapter/back, and card EFFECTS are PENDING hand-entry (set/cost omitted, playEffects empty). `verified` is false for every entry. Run `dart run tool/validate_card_db.dart` for completeness. | set/chapter/ksOnly backfilled from BGG table.",
   "cards": [
     {
       "id": "axia",
@@ -15,7 +15,8 @@
       "set": "rotf",
       "cardType": "champion",
       "cost": 7,
-      "shield": 7
+      "shield": 7,
+      "chapter": 1
     },
     {
       "id": "drakonarius",
@@ -27,10 +28,11 @@
       "rawText": "Homodeus Champion. If you have General Decurion in play, this can't be attacked. Exhaust: Gain 6 (power).",
       "verified": false,
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 2: name='Drakonarius', faction='Homodeus', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Champion shield 2. UNMODELED: conditional 'can't be attacked' and the Exhaust activated ability ('Exhaust: Gain 6 power'). No on-play effect. verified:false.",
-      "set": "rotf",
+      "set": "base",
       "cardType": "champion",
       "cost": 6,
-      "shield": 2
+      "shield": 2,
+      "chapter": 1
     },
     {
       "id": "evokatus",
@@ -47,10 +49,11 @@
       "rawText": "Homodeus Champion. When you play this, draw a card. Exhaust: Gain 1 (power) for each Homodeus Champion you have in play.",
       "verified": false,
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 3: name='Evokatus', faction='Homodeus', amount=2. | art added from TTS spritesheet crop (effects pending verification). | Champion shield 2. On-play draw 1 encoded. UNMODELED: Exhaust activated ability 'Gain 1 power for each Homodeus Champion you have in play' (no exhaust field; conditionalPower only supports perChampionControlled and is not an exhaust ability). verified:false.",
-      "set": "rotf",
+      "set": "base",
       "cardType": "champion",
       "cost": 4,
-      "shield": 2
+      "shield": 2,
+      "chapter": 1
     },
     {
       "id": "general_decurion",
@@ -62,11 +65,12 @@
       "rawText": "Homodeus Champion. Exhaust: Gain 3 (power). Mastery 20: Copy the effect of each Homodeus Ally you play or have played this turn.",
       "verified": false,
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 4: name='General Decurion', faction='Homodeus', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Champion shield 7. UNMODELED: Exhaust activated ability ('Gain 3 power') and mastery-20 'copy the effect of each Homodeus Ally'. verified:false.",
-      "set": "rotf",
+      "set": "base",
       "cardType": "champion",
       "cost": 7,
       "shield": 7,
-      "masteryThreshold": 20
+      "masteryThreshold": 20,
+      "chapter": 1
     },
     {
       "id": "kiln_drone",
@@ -85,7 +89,8 @@
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 5: name='Kiln Drone', faction='Homodeus', amount=3. | art added from TTS spritesheet crop (effects pending verification). | Base gain 2 gems encoded. UNMODELED: 'Inspire' conditional replacement ('Gain 4 instead if you have a Champion in play') - engine has no conditional/Inspire and cannot model 'gain X instead'. verified:false.",
       "set": "base",
       "cardType": "regular",
-      "cost": 1
+      "cost": 1,
+      "chapter": 1
     },
     {
       "id": "korvus_legionnaire",
@@ -104,7 +109,8 @@
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 6: name='Korvus Legionnaire', faction='Homodeus', amount=3. | art added from TTS spritesheet crop (effects pending verification). | Gain 2 power encoded. UNMODELED: 'Return a Champion from your discard pile to your hand'. Note: a grey '2' badge appears bottom-left of art though the type line reads 'Homodeus Ally' (not Champion); treated as regular, badge meaning uncertain. verified:false.",
       "set": "base",
       "cardType": "regular",
-      "cost": 3
+      "cost": 3,
+      "chapter": 1
     },
     {
       "id": "limiter_drones",
@@ -123,7 +129,8 @@
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 7: name='Limiter Drones', faction='Homodeus', amount=3. | art added from TTS spritesheet crop (effects pending verification). | Base draw 1 encoded. UNMODELED: 'Inspire' conditional banish ('If you control a Champion, you may banish a card...') - the banish is gated on a condition the engine cannot express. verified:false.",
       "set": "rotf",
       "cardType": "regular",
-      "cost": 2
+      "cost": 2,
+      "chapter": 1
     },
     {
       "id": "mining_drones",
@@ -146,7 +153,8 @@
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 8: name='Mining Drones', faction='Homodeus', amount=3. | art added from TTS spritesheet crop (effects pending verification). | VERIFIED from image. Homodeus Ally (regular). Play: gain 1 gem, draw 1 card. Both map to engine effects.",
       "set": "base",
       "cardType": "regular",
-      "cost": 2
+      "cost": 2,
+      "chapter": 1
     },
     {
       "id": "numeri_drones",
@@ -158,10 +166,11 @@
       "rawText": "Homodeus Champion. Exhaust: Gain 1 (gem). Put the next Homodeus Champion you recruit this turn directly into play.",
       "verified": false,
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 9: name='Numeri Drones', faction='Homodeus', amount=2. | art added from TTS spritesheet crop (effects pending verification). | Champion shield 5. UNMODELED: Exhaust activated ability ('Gain 1 gem') and 'put the next Homodeus Champion you recruit this turn directly into play'. verified:false.",
-      "set": "rotf",
+      "set": "base",
       "cardType": "champion",
       "cost": 3,
-      "shield": 5
+      "shield": 5,
+      "chapter": 1
     },
     {
       "id": "optio_crusher",
@@ -177,7 +186,8 @@
       "cardType": "champion",
       "cost": 5,
       "shield": 4,
-      "masteryThreshold": 10
+      "masteryThreshold": 10,
+      "chapter": 1
     },
     {
       "id": "primus_pilus",
@@ -192,7 +202,8 @@
       "set": "base",
       "cardType": "champion",
       "cost": 2,
-      "shield": 6
+      "shield": 6,
+      "chapter": 1
     },
     {
       "id": "reactor_drone",
@@ -211,7 +222,8 @@
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 12: name='Reactor Drone', faction='Homodeus', amount=3. | art added from TTS spritesheet crop (effects pending verification). | VERIFIED from image. Homodeus Ally (regular). Play: gain 3 power.",
       "set": "base",
       "cardType": "regular",
-      "cost": 3
+      "cost": 3,
+      "chapter": 1
     },
     {
       "id": "venator_of_the_wastes",
@@ -228,9 +240,10 @@
       "rawText": "Homodeus Mercenary - Ally. Gain 4 (power). Inspire - An enemy player loses 2 if you have a Champion in play.",
       "verified": false,
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 13: name='Venator of the Wastes', faction='Homodeus', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Mercenary. Base gain 4 power encoded. UNMODELED: 'Inspire' conditional opponentLosesHealth ('An enemy player loses 2 if you have a Champion in play') - gated on a condition the engine cannot express. verified:false.",
-      "set": "rotf",
+      "set": "base",
       "cardType": "mercenary",
-      "cost": 4
+      "cost": 4,
+      "chapter": 1
     },
     {
       "id": "cache_warden",
@@ -256,7 +269,8 @@
           "type": "drawCards",
           "count": 1
         }
-      ]
+      ],
+      "chapter": 1
     },
     {
       "id": "cloud_oracles",
@@ -273,9 +287,10 @@
       "rawText": "Order Ally. Draw a card. If you have more (mastery) than all other players, gain 2 (gems).",
       "verified": false,
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 15: name='Cloud Oracles', faction='Order', amount=3. | art added from TTS spritesheet crop (effects pending verification). | Base draw 1 encoded. UNMODELED: conditional gain ('If you have more mastery than all other players, gain 2 gems'). verified:false.",
-      "set": "rotf",
+      "set": "sos",
       "cardType": "regular",
-      "cost": 2
+      "cost": 2,
+      "chapter": 1
     },
     {
       "id": "command_seer",
@@ -295,7 +310,8 @@
       "set": "base",
       "cardType": "champion",
       "cost": 4,
-      "shield": 5
+      "shield": 5,
+      "chapter": 1
     },
     {
       "id": "cryptofist_monk",
@@ -315,7 +331,8 @@
       "set": "base",
       "cardType": "champion",
       "cost": 5,
-      "shield": 8
+      "shield": 8,
+      "chapter": 1
     },
     {
       "id": "data_heretic",
@@ -334,7 +351,8 @@
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 18: name='Data Heretic', faction='Order', amount=3. | art added from TTS spritesheet crop (effects pending verification). | VERIFIED from image. Order Mercenary, Ally. Play: draw 2 cards.",
       "set": "base",
       "cardType": "mercenary",
-      "cost": 3
+      "cost": 3,
+      "chapter": 1
     },
     {
       "id": "giga_source_adept",
@@ -351,10 +369,11 @@
       "rawText": "Order Champion. When you play this, draw a card. Dominion - Exhaust: Gain 3 (gems). Use this only if you have played and/or revealed from your hand a Homodeus, Undergrowth, AND Wraethe card this turn.",
       "verified": false,
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 19: name='Giga, Source Adept', faction='Order', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Champion shield 4. On-play draw 1 encoded. UNMODELED: 'Dominion' Exhaust activated ability gated on having played Homodeus+Undergrowth+Wraethe this turn. verified:false.",
-      "set": "rotf",
+      "set": "base",
       "cardType": "champion",
       "cost": 2,
-      "shield": 4
+      "shield": 4,
+      "chapter": 1
     },
     {
       "id": "omnius_the_all_knowing",
@@ -371,9 +390,10 @@
       "rawText": "Order Mercenary - Ally. Draw two cards. Dominion - Gain 5 (gems) if you have played and/or reveal from your hand a Homodeus, Undergrowth, AND Wraethe card this turn.",
       "verified": false,
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 20: name='Omnius, The All-Knowing', faction='Order', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Mercenary. Base draw 2 encoded. UNMODELED: 'Dominion' conditional gain (gated on Homodeus+Undergrowth+Wraethe this turn). verified:false.",
-      "set": "rotf",
+      "set": "base",
       "cardType": "mercenary",
-      "cost": 6
+      "cost": 6,
+      "chapter": 1
     },
     {
       "id": "order_initiate",
@@ -390,9 +410,10 @@
       "rawText": "Order Ally. Gain 2 (gems). Dominion - Gain 2 (gems) if you have played and/or reveal from your hand a Homodeus, Undergrowth, AND Wraethe card this turn.",
       "verified": false,
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 21: name='Order Initiate', faction='Order', amount=3. | art added from TTS spritesheet crop (effects pending verification). | Base gain 2 gems encoded. UNMODELED: 'Dominion' conditional gain (gated on Homodeus+Undergrowth+Wraethe this turn). verified:false.",
-      "set": "rotf",
+      "set": "base",
       "cardType": "regular",
-      "cost": 1
+      "cost": 1,
+      "chapter": 1
     },
     {
       "id": "portal_monk",
@@ -407,7 +428,8 @@
       "set": "base",
       "cardType": "regular",
       "cost": 3,
-      "masteryThreshold": 15
+      "masteryThreshold": 15,
+      "chapter": 1
     },
     {
       "id": "raidian_cloud_master",
@@ -422,7 +444,8 @@
       "set": "rotf",
       "cardType": "champion",
       "cost": 5,
-      "shield": 3
+      "shield": 3,
+      "chapter": 1
     },
     {
       "id": "shard_abstractor",
@@ -441,7 +464,8 @@
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 24: name='Shard Abstractor', faction='Order', amount=3. | art added from TTS spritesheet crop (effects pending verification). | VERIFIED from image. Order Mercenary, Ally. Play: gain 2 gems.",
       "set": "base",
       "cardType": "mercenary",
-      "cost": 3
+      "cost": 3,
+      "chapter": 1
     },
     {
       "id": "systema_a_i",
@@ -453,11 +477,12 @@
       "rawText": "Order Champion. Exhaust: Gain 1 (gem). Mastery 20: Draw two cards.",
       "verified": false,
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 25: name='Systema A.I.', faction='Order', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Champion shield 4. UNMODELED: Exhaust activated ability ('Gain 1 gem'; mastery 20 'Draw two cards'). verified:false.",
-      "set": "rotf",
+      "set": "base",
       "cardType": "champion",
       "cost": 3,
       "shield": 4,
-      "masteryThreshold": 20
+      "masteryThreshold": 20,
+      "chapter": 1
     },
     {
       "id": "the_grand_architect",
@@ -474,9 +499,10 @@
       "rawText": "Order Mercenary - Ally. Gain 5 (gems).",
       "verified": true,
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 26: name='The Grand Architect', faction='Order', amount=1. | art added from TTS spritesheet crop (effects pending verification). | VERIFIED from image. Order Mercenary, Ally. Play: gain 5 gems.",
-      "set": "rotf",
+      "set": "base",
       "cardType": "mercenary",
-      "cost": 7
+      "cost": 7,
+      "chapter": 1
     },
     {
       "id": "zetta_the_encryptor",
@@ -491,7 +517,8 @@
       "set": "base",
       "cardType": "champion",
       "cost": 5,
-      "shield": 5
+      "shield": 5,
+      "chapter": 1
     },
     {
       "id": "leshai_knight",
@@ -510,7 +537,8 @@
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 28: name='Le'shai Knight', faction='Undergrowth', amount=3. | art added from TTS spritesheet crop (effects pending verification). | Mercenary. Base gain 3 power encoded. UNMODELED: 'Unify' conditional replacement ('Gain 6 instead if you have played another Undergrowth Ally...'). verified:false.",
       "set": "base",
       "cardType": "mercenary",
-      "cost": 3
+      "cost": 3,
+      "chapter": 1
     },
     {
       "id": "ghostwillow_avenger",
@@ -530,7 +558,8 @@
       "set": "base",
       "cardType": "mercenary",
       "cost": 4,
-      "masteryThreshold": 15
+      "masteryThreshold": 15,
+      "chapter": 1
     },
     {
       "id": "thorn_zealot",
@@ -550,7 +579,8 @@
       "set": "base",
       "cardType": "champion",
       "cost": 3,
-      "shield": 3
+      "shield": 3,
+      "chapter": 1
     },
     {
       "id": "root_of_the_forest",
@@ -569,7 +599,8 @@
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 31: name='Root of the Forest', faction='Undergrowth', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Mercenary. Base gain 10 gems encoded. UNMODELED: 'Unify' conditional 'Gain 10' (additional, gated). verified:false.",
       "set": "base",
       "cardType": "mercenary",
-      "cost": 7
+      "cost": 7,
+      "chapter": 1
     },
     {
       "id": "shardwood_guardian",
@@ -592,7 +623,8 @@
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 32: name='Shardwood Guardian', faction='Undergrowth', amount=3. | art added from TTS spritesheet crop (effects pending verification). | Base gain 2 power + draw 1 encoded. UNMODELED: 'Unify' conditional 'Gain 6'. verified:false.",
       "set": "base",
       "cardType": "regular",
-      "cost": 4
+      "cost": 4,
+      "chapter": 1
     },
     {
       "id": "furrowing_elemental",
@@ -622,7 +654,8 @@
           "type": "gainPower",
           "amount": 6
         }
-      ]
+      ],
+      "chapter": 1
     },
     {
       "id": "spore_cleric",
@@ -641,7 +674,8 @@
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 34: name='Spore Cleric', faction='Undergrowth', amount=3. | art added from TTS spritesheet crop (effects pending verification). | VERIFIED from image. Undergrowth Mercenary, Ally. Play: gain 4 gems.",
       "set": "base",
       "cardType": "mercenary",
-      "cost": 2
+      "cost": 2,
+      "chapter": 1
     },
     {
       "id": "undergrowth_aspirant",
@@ -660,7 +694,8 @@
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 35: name='Undergrowth Aspirant', faction='Undergrowth', amount=3. | art added from TTS spritesheet crop (effects pending verification). | Base gain 3 power encoded. UNMODELED: 'Unify' conditional 'Gain 5'. verified:false.",
       "set": "base",
       "cardType": "regular",
-      "cost": 1
+      "cost": 1,
+      "chapter": 1
     },
     {
       "id": "fungal_hermit",
@@ -686,7 +721,8 @@
       "art": "fungal_hermit.jpg",
       "rawText": null,
       "verified": true,
-      "notes": "Verified from card image. Mercenary, Undergrowth Ally. Play: gain 1 gem. Mastery 10+: gain 5 gems (the '10' badge on the bonus line read as a mastery threshold). cost/cardType/effects from image; copies=2 retained from BGG amount. set=base assumed (Undergrowth Core card); confirm. art filename references a photo to be added. | art added from TTS spritesheet crop (effects pending verification)."
+      "notes": "Verified from card image. Mercenary, Undergrowth Ally. Play: gain 1 gem. Mastery 10+: gain 5 gems (the '10' badge on the bonus line read as a mastery threshold). cost/cardType/effects from image; copies=2 retained from BGG amount. set=base assumed (Undergrowth Core card); confirm. art filename references a photo to be added. | art added from TTS spritesheet crop (effects pending verification).",
+      "chapter": 1
     },
     {
       "id": "ojas_genesis_druid",
@@ -698,10 +734,11 @@
       "rawText": "Undergrowth Ally. Copy the effect of a non-Champion card you have played this turn. Mastery 20: Copy the effect an additional time.",
       "verified": false,
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 37: name='Ojas, Genesis Druid', faction='Undergrowth', amount=1. | art added from TTS spritesheet crop (effects pending verification). | UNMODELED: 'Copy the effect of a non-Champion card you have played this turn' and mastery-20 'Copy the effect an additional time'. No mappable base effect. verified:false.",
-      "set": "rotf",
+      "set": "base",
       "cardType": "regular",
       "cost": 4,
-      "masteryThreshold": 20
+      "masteryThreshold": 20,
+      "chapter": 1
     },
     {
       "id": "additri_gaiamancer",
@@ -713,10 +750,11 @@
       "rawText": "Undergrowth Champion. Exhaust: Gain 2 (gems) and an additional 2 (gems) for each Undergrowth Ally you have played this turn.",
       "verified": false,
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 38: name='Additri, Gaiamancer', faction='Undergrowth', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Champion shield 5. UNMODELED: Exhaust activated ability with scaling ('Gain 2 gems and an additional 2 for each Undergrowth Ally played this turn'). verified:false.",
-      "set": "rotf",
+      "set": "base",
       "cardType": "champion",
       "cost": 5,
-      "shield": 5
+      "shield": 5,
+      "chapter": 1
     },
     {
       "id": "arach_devotees",
@@ -735,7 +773,8 @@
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 39: name='Arach Devotees', faction='Undergrowth', amount=3. | art added from TTS spritesheet crop (effects pending verification). | Base draw 1 encoded. UNMODELED: 'Unify' conditional 'Gain 3 gems'. verified:false.",
       "set": "rotf",
       "cardType": "regular",
-      "cost": 2
+      "cost": 2,
+      "chapter": 1
     },
     {
       "id": "taur_archpriest",
@@ -750,7 +789,8 @@
       "set": "rotf",
       "cardType": "champion",
       "cost": 5,
-      "shield": 4
+      "shield": 4,
+      "chapter": 1
     },
     {
       "id": "aetherbreaker",
@@ -770,7 +810,8 @@
       "set": "base",
       "cardType": "mercenary",
       "cost": 4,
-      "masteryThreshold": 10
+      "masteryThreshold": 10,
+      "chapter": 1
     },
     {
       "id": "fa_cu_tul_the_formless",
@@ -786,7 +827,8 @@
       "cardType": "champion",
       "cost": 4,
       "shield": 4,
-      "masteryThreshold": 20
+      "masteryThreshold": 20,
+      "chapter": 1
     },
     {
       "id": "li_hin_the_shattered",
@@ -801,7 +843,8 @@
       "set": "base",
       "cardType": "champion",
       "cost": 3,
-      "shield": 1
+      "shield": 1,
+      "chapter": 1
     },
     {
       "id": "nil_assassin",
@@ -820,7 +863,8 @@
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 44: name='Nil Assassin', faction='Wraethe', amount=3. | art added from TTS spritesheet crop (effects pending verification). | VERIFIED from image. Wraethe Mercenary, Ally. Play: gain 5 power.",
       "set": "base",
       "cardType": "mercenary",
-      "cost": 2
+      "cost": 2,
+      "chapter": 1
     },
     {
       "id": "pall_shades",
@@ -839,7 +883,8 @@
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 45: name='Pall Shades', faction='Wraethe', amount=3. | art added from TTS spritesheet crop (effects pending verification). | Base draw 1 encoded. UNMODELED: 'Echo' conditional 'If there is a Wraethe card in your discard pile, gain 3 power'. verified:false.",
       "set": "rotf",
       "cardType": "regular",
-      "cost": 2
+      "cost": 2,
+      "chapter": 1
     },
     {
       "id": "rue_bo_vai_the_transcendent",
@@ -851,11 +896,12 @@
       "rawText": "Wraethe Champion. (Card art name: 'Ru Bo Vai, The Transcendant'.) Exhaust: Gain 4 (power). Mastery 10: You ignore (Guard) this turn.",
       "verified": false,
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 46: name='Rue Bo Vai, The Transcendent', faction='Wraethe', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Champion shield 4. UNMODELED: Exhaust activated ability ('Gain 4 power') and mastery-10 'You ignore Guard this turn'. verified:false.",
-      "set": "base",
+      "set": "rotf",
       "cardType": "champion",
       "cost": 5,
       "shield": 4,
-      "masteryThreshold": 10
+      "masteryThreshold": 10,
+      "chapter": 1
     },
     {
       "id": "scion_of_nothingness",
@@ -872,9 +918,10 @@
       "rawText": "Wraethe Mercenary - Ally. Gain 3 (power). Echo - Gain an additional 2 (gems) for each Wraethe card in your discard pile.",
       "verified": false,
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 47: name='Scion of Nothingness', faction='Wraethe', amount=2. | art added from TTS spritesheet crop (effects pending verification). | Mercenary. Base gain 3 power encoded. UNMODELED: 'Echo' scaling 'Gain an additional 2 gems for each Wraethe card in your discard pile'. verified:false.",
-      "set": "rotf",
+      "set": "base",
       "cardType": "mercenary",
-      "cost": 5
+      "cost": 5,
+      "chapter": 1
     },
     {
       "id": "shadebound_sentry",
@@ -891,9 +938,10 @@
       "rawText": "Wraethe Ally. Gain 3 (power). Return a Mercenary from your discard pile to your hand.",
       "verified": false,
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 48: name='Shadebound Sentry', faction='Wraethe', amount=2. | art added from TTS spritesheet crop (effects pending verification). | Base gain 3 power encoded. UNMODELED: 'Return a Mercenary from your discard pile to your hand'. verified:false.",
-      "set": "rotf",
+      "set": "base",
       "cardType": "regular",
-      "cost": 3
+      "cost": 3,
+      "chapter": 1
     },
     {
       "id": "shadow_apostle",
@@ -916,7 +964,8 @@
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 49: name='Shadow Apostle', faction='Wraethe', amount=3. | art added from TTS spritesheet crop (effects pending verification). | VERIFIED from image. Wraethe Mercenary, Ally. Play: gain 2 power, banish a card from hand or discard. All maps to engine effects.",
       "set": "base",
       "cardType": "mercenary",
-      "cost": 2
+      "cost": 2,
+      "chapter": 1
     },
     {
       "id": "umbral_scourge",
@@ -939,7 +988,8 @@
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 50: name='Umbral Scourge', faction='Wraethe', amount=3. | art added from TTS spritesheet crop (effects pending verification). | VERIFIED from image. Wraethe Mercenary, Ally. Play: gain 1 gem, banish a card from hand or discard. All maps to engine effects.",
       "set": "base",
       "cardType": "mercenary",
-      "cost": 3
+      "cost": 3,
+      "chapter": 1
     },
     {
       "id": "wraethe_skirmisher",
@@ -958,7 +1008,8 @@
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 51: name='Wraethe Skirmisher', faction='Wraethe', amount=3. | art added from TTS spritesheet crop (effects pending verification). | Base gain 2 power encoded. UNMODELED: 'Echo' conditional replacement ('Gain 6 instead if there is a Wraethe card in your discard pile'). verified:false.",
       "set": "base",
       "cardType": "regular",
-      "cost": 1
+      "cost": 1,
+      "chapter": 1
     },
     {
       "id": "zara_ra_soulflayer",
@@ -982,7 +1033,8 @@
       "set": "base",
       "cardType": "mercenary",
       "cost": 5,
-      "masteryThreshold": 10
+      "masteryThreshold": 10,
+      "chapter": 1
     },
     {
       "id": "zen_chi_set_godkiller",
@@ -997,7 +1049,8 @@
       "set": "base",
       "cardType": "champion",
       "cost": 7,
-      "shield": 5
+      "shield": 5,
+      "chapter": 1
     },
     {
       "id": "crimson_operative",
@@ -1008,8 +1061,10 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Typo fix: name was 'Crimson operative' in BGG source. Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 54: name='Crimson operative', faction='Aion', amount=1.",
-      "group": "Aion"
+      "notes": "Typo fix: name was 'Crimson operative' in BGG source. Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 54: name='Crimson operative', faction='Aion', amount=1. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed.",
+      "group": "Aion",
+      "set": "saga",
+      "chapter": 2
     },
     {
       "id": "swyft",
@@ -1022,10 +1077,11 @@
       "verified": false,
       "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 55: name='Swyft', faction='Aion', amount=2. | art added from TTS spritesheet crop (effects pending verification). | Aion Champion shield 3. UNMODELED: Exhaust activated ability ('Gain 2 gems and 2 power') and character-identity conditional 'If you are Rez...'. verified:false.",
       "group": "Aion",
-      "set": "ioh",
+      "set": "sos",
       "cardType": "champion",
       "cost": 5,
-      "shield": 3
+      "shield": 3,
+      "chapter": 2
     },
     {
       "id": "concussio_and_mirus",
@@ -1036,7 +1092,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 56: name='Concussio and Mirus', faction='Homodeus', amount=1."
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 56: name='Concussio and Mirus', faction='Homodeus', amount=1. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed.",
+      "set": "saga",
+      "chapter": 2
     },
     {
       "id": "ferrata_guard",
@@ -1047,7 +1105,9 @@
       "art": "ferrata_guard.jpg",
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 57: name='Ferrata Guard', faction='Homodeus', amount=2. | art added from TTS spritesheet crop (effects pending verification)."
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 57: name='Ferrata Guard', faction='Homodeus', amount=2. | art added from TTS spritesheet crop (effects pending verification).",
+      "set": "rotf",
+      "chapter": 2
     },
     {
       "id": "mainframe_abbot",
@@ -1058,7 +1118,9 @@
       "art": "mainframe_abbot.jpg",
       "rawText": null,
       "verified": false,
-      "notes": "Typo fix: name was 'Mainfrane Abbot' in BGG source. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 58: name='Mainfrane Abbot', faction='Order', amount=2. | art added from TTS spritesheet crop (effects pending verification)."
+      "notes": "Typo fix: name was 'Mainfrane Abbot' in BGG source. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 58: name='Mainfrane Abbot', faction='Order', amount=2. | art added from TTS spritesheet crop (effects pending verification).",
+      "set": "rotf",
+      "chapter": 2
     },
     {
       "id": "nexus_datic_hunter",
@@ -1069,7 +1131,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Note: 'datic' kept verbatim from BGG source (possible lowercase/typo, left as-is). set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 59: name='Nexus, Datic Hunter', faction='Order', amount=1."
+      "notes": "Note: 'datic' kept verbatim from BGG source (possible lowercase/typo, left as-is). set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 59: name='Nexus, Datic Hunter', faction='Order', amount=1. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed.",
+      "set": "saga",
+      "chapter": 2
     },
     {
       "id": "shard_cultist",
@@ -1080,8 +1144,10 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Prism. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 60: name='Shard Cultist', faction='Prism', amount=2.",
-      "group": "Prism"
+      "notes": "Faction group (non-player): Prism. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 60: name='Shard Cultist', faction='Prism', amount=2. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed.",
+      "group": "Prism",
+      "set": "saga",
+      "chapter": 2
     },
     {
       "id": "stricture",
@@ -1092,8 +1158,10 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Prism. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 61: name='Stricture', faction='Prism', amount=1.",
-      "group": "Prism"
+      "notes": "Faction group (non-player): Prism. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 61: name='Stricture', faction='Prism', amount=1. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed.",
+      "group": "Prism",
+      "set": "saga",
+      "chapter": 2
     },
     {
       "id": "chlorophyte_guardian",
@@ -1104,7 +1172,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 62: name='Chlorophyte Guardian', faction='Undergrowth', amount=1."
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 62: name='Chlorophyte Guardian', faction='Undergrowth', amount=1. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed.",
+      "set": "saga",
+      "chapter": 2
     },
     {
       "id": "hounds_of_volos",
@@ -1121,9 +1191,10 @@
       "rawText": "Undergrowth Mercenary - Ally. Gain 5 (gems). If you are Volos, gain 5 (power).",
       "verified": false,
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 63: name='Hounds of Volos', faction='Undergrowth', amount=2. | art added from TTS spritesheet crop (effects pending verification). | Mercenary. Base gain 5 gems encoded. UNMODELED: character-identity conditional 'If you are Volos, gain 5 power' (co-op/character mechanic). verified:false.",
-      "set": "ioh",
+      "set": "rotf",
       "cardType": "mercenary",
-      "cost": 3
+      "cost": 3,
+      "chapter": 2
     },
     {
       "id": "spirit_leech",
@@ -1134,7 +1205,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Typo fix: name was 'Spirit Leach' in BGG source. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 64: name='Spirit Leach', faction='Wraethe', amount=1."
+      "notes": "Typo fix: name was 'Spirit Leach' in BGG source. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 64: name='Spirit Leach', faction='Wraethe', amount=1.",
+      "set": "rotf",
+      "chapter": 2
     },
     {
       "id": "the_lost",
@@ -1151,9 +1224,10 @@
       "rawText": "Wraethe Mercenary - Ally. Gain 6 (gems). If you are Ko Syn Wu, you may banish a card from your hand or discard pile.",
       "verified": false,
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 65: name='The Lost', faction='Wraethe', amount=2. | art added from TTS spritesheet crop (effects pending verification). | Mercenary. Base gain 6 gems encoded. UNMODELED: character-identity conditional 'If you are Ko Syn Wu, you may banish...' (co-op/character mechanic). verified:false.",
-      "set": "ioh",
+      "set": "rotf",
       "cardType": "mercenary",
-      "cost": 4
+      "cost": 4,
+      "chapter": 2
     },
     {
       "id": "slipstream_shard",
@@ -1175,10 +1249,11 @@
       "verified": false,
       "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 66: name='Slipstream Shard', faction='Aion', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Aion Relic (Ally). Base gain 1 gem + draw 1 encoded; masteryThreshold 20 set. UNMODELED: mastery-20 'Rez takes an additional turn' (extra turn, character-identity, once-per-game). verified:false.",
       "group": "Aion",
-      "set": "ioh",
+      "set": "sos",
       "cardType": "regular",
       "cost": 10,
-      "masteryThreshold": 20
+      "masteryThreshold": 20,
+      "chapter": 2
     },
     {
       "id": "warpquartz",
@@ -1200,10 +1275,11 @@
       "verified": false,
       "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 67: name='Warpquartz', faction='Aion', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Aion Relic (Ally). Base gain 3 gems + 3 power encoded; masteryThreshold 20 set. UNMODELED: mastery-20 'Banish up to three Allies... and gain their effects'. verified:false.",
       "group": "Aion",
-      "set": "ioh",
+      "set": "sos",
       "cardType": "regular",
       "cost": 10,
-      "masteryThreshold": 20
+      "masteryThreshold": 20,
+      "chapter": 2
     },
     {
       "id": "praetorian_01",
@@ -1223,7 +1299,8 @@
       "set": "rotf",
       "cardType": "regular",
       "cost": 10,
-      "masteryThreshold": 20
+      "masteryThreshold": 20,
+      "chapter": 2
     },
     {
       "id": "praetorian_02",
@@ -1239,7 +1316,8 @@
       "cardType": "champion",
       "cost": 10,
       "shield": 9,
-      "masteryThreshold": 20
+      "masteryThreshold": 20,
+      "chapter": 2
     },
     {
       "id": "datic_robes",
@@ -1259,7 +1337,8 @@
       "set": "rotf",
       "cardType": "regular",
       "cost": 10,
-      "masteryThreshold": 20
+      "masteryThreshold": 20,
+      "chapter": 2
     },
     {
       "id": "terminal_crescents",
@@ -1279,7 +1358,8 @@
       "set": "rotf",
       "cardType": "regular",
       "cost": 10,
-      "masteryThreshold": 20
+      "masteryThreshold": 20,
+      "chapter": 2
     },
     {
       "id": "shard_extractor",
@@ -1290,8 +1370,10 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Prism. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 72: name='Shard Extractor', faction='Prism', amount=1.",
-      "group": "Prism"
+      "notes": "Faction group (non-player): Prism. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 72: name='Shard Extractor', faction='Prism', amount=1. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed.",
+      "group": "Prism",
+      "set": "saga",
+      "chapter": 2
     },
     {
       "id": "skry_77",
@@ -1302,8 +1384,10 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Prism. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 73: name='Skry-77', faction='Prism', amount=1.",
-      "group": "Prism"
+      "notes": "Faction group (non-player): Prism. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 73: name='Skry-77', faction='Prism', amount=1. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed.",
+      "group": "Prism",
+      "set": "saga",
+      "chapter": 2
     },
     {
       "id": "entropic_talons",
@@ -1329,7 +1413,8 @@
           "type": "gainGems",
           "amount": 10
         }
-      ]
+      ],
+      "chapter": 2
     },
     {
       "id": "panconscious_crown",
@@ -1353,7 +1438,8 @@
       "set": "rotf",
       "cardType": "regular",
       "cost": 10,
-      "masteryThreshold": 20
+      "masteryThreshold": 20,
+      "chapter": 2
     },
     {
       "id": "the_heart_of_nothing",
@@ -1379,7 +1465,8 @@
           "type": "gainPower",
           "amount": 5
         }
-      ]
+      ],
+      "chapter": 2
     },
     {
       "id": "the_world_piercer",
@@ -1399,7 +1486,8 @@
       "set": "rotf",
       "cardType": "regular",
       "cost": 10,
-      "masteryThreshold": 20
+      "masteryThreshold": 20,
+      "chapter": 2
     },
     {
       "id": "aion_egressor",
@@ -1411,7 +1499,10 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 78: name='Aion Egressor', faction='Aion', amount=1.",
-      "group": "Aion"
+      "group": "Aion",
+      "set": "saga",
+      "chapter": 3,
+      "ksOnly": true
     },
     {
       "id": "aion_guide",
@@ -1423,7 +1514,10 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 79: name='Aion Guide', faction='Aion', amount=2.",
-      "group": "Aion"
+      "group": "Aion",
+      "set": "saga",
+      "chapter": 3,
+      "ksOnly": true
     },
     {
       "id": "blitz_shard_runner",
@@ -1435,7 +1529,10 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 80: name='Blitz, Shard Runner', faction='Aion', amount=1.",
-      "group": "Aion"
+      "group": "Aion",
+      "set": "saga",
+      "chapter": 3,
+      "ksOnly": true
     },
     {
       "id": "breaker",
@@ -1448,9 +1545,10 @@
       "verified": false,
       "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 81: name='Breaker', faction='Aion', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Aion Ally (regular). UNMODELED: 'When you Recruit this, put it into your hand' (recruit trigger) and 'Warp - Fast-play any Ally in the Center Row for free'. A grey '4' badge appears on the art though type line reads 'Aion Ally'; badge meaning uncertain. No mappable base effect. verified:false.",
       "group": "Aion",
-      "set": "ioh",
+      "set": "sos",
       "cardType": "regular",
-      "cost": 6
+      "cost": 6,
+      "chapter": 3
     },
     {
       "id": "brute",
@@ -1468,9 +1566,10 @@
       "verified": false,
       "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 82: name='Brute', faction='Aion', amount=2. | art added from TTS spritesheet crop (effects pending verification). | Aion Ally (regular). Base gain 4 gems encoded. UNMODELED: 'Warp 2 - Fast-play any Ally in the Center Row with cost 2 or less for free'. A grey '2' badge appears on art though type line reads 'Aion Ally'; badge meaning uncertain. verified:false.",
       "group": "Aion",
-      "set": "ioh",
+      "set": "sos",
       "cardType": "regular",
-      "cost": 3
+      "cost": 3,
+      "chapter": 3
     },
     {
       "id": "carmine_eclipse",
@@ -1482,7 +1581,10 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 83: name='Carmine Eclipse', faction='Aion', amount=1.",
-      "group": "Aion"
+      "group": "Aion",
+      "set": "saga",
+      "chapter": 3,
+      "ksOnly": true
     },
     {
       "id": "dash",
@@ -1500,9 +1602,10 @@
       "verified": false,
       "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 84: name='Dash', faction='Aion', amount=2. | art added from TTS spritesheet crop (effects pending verification). | Aion Ally (regular). Base draw 1 encoded. UNMODELED: 'fetch an Aion card from discard and put on top of deck'. Grey '2' badge on art; type line 'Aion Ally', badge uncertain. verified:false.",
       "group": "Aion",
-      "set": "ioh",
+      "set": "sos",
       "cardType": "regular",
-      "cost": 2
+      "cost": 2,
+      "chapter": 3
     },
     {
       "id": "lucky",
@@ -1520,9 +1623,10 @@
       "verified": false,
       "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 85: name='Lucky', faction='Aion', amount=2. | art added from TTS spritesheet crop (effects pending verification). | Aion Ally (regular). Base gain 2 gems encoded. UNMODELED: 'Warp 3 - Fast-play any Ally...'. Grey '2' badge on art; type line 'Aion Ally', badge uncertain. verified:false.",
       "group": "Aion",
-      "set": "ioh",
+      "set": "sos",
       "cardType": "regular",
-      "cost": 4
+      "cost": 4,
+      "chapter": 3
     },
     {
       "id": "red_fortune",
@@ -1534,7 +1638,10 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 86: name='Red Fortune', faction='Aion', amount=1.",
-      "group": "Aion"
+      "group": "Aion",
+      "set": "saga",
+      "chapter": 3,
+      "ksOnly": true
     },
     {
       "id": "scarlet_slayer",
@@ -1546,7 +1653,10 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 87: name='Scarlet Slayer', faction='Aion', amount=1.",
-      "group": "Aion"
+      "group": "Aion",
+      "set": "saga",
+      "chapter": 3,
+      "ksOnly": true
     },
     {
       "id": "aedifex_deus_engineer",
@@ -1557,7 +1667,10 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 88: name='Aedifex, Deus Engineer', faction='Homodeus', amount=1."
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 88: name='Aedifex, Deus Engineer', faction='Homodeus', amount=1.",
+      "set": "saga",
+      "chapter": 3,
+      "ksOnly": true
     },
     {
       "id": "synthetica_artifex",
@@ -1568,7 +1681,10 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 89: name='Synthetica Artifex', faction='Homodeus', amount=1."
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 89: name='Synthetica Artifex', faction='Homodeus', amount=1.",
+      "set": "saga",
+      "chapter": 3,
+      "ksOnly": true
     },
     {
       "id": "keeper_of_datic_vessels",
@@ -1579,7 +1695,10 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Note: 'datic' kept verbatim from BGG source (possible lowercase/typo, left as-is). set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 90: name='Keeper of datic Vessels', faction='Order', amount=1."
+      "notes": "Note: 'datic' kept verbatim from BGG source (possible lowercase/typo, left as-is). set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 90: name='Keeper of datic Vessels', faction='Order', amount=1.",
+      "set": "saga",
+      "chapter": 3,
+      "ksOnly": true
     },
     {
       "id": "paradigm_the_archivist",
@@ -1590,7 +1709,10 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 91: name='Paradigm, The Archivist', faction='Order', amount=1."
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 91: name='Paradigm, The Archivist', faction='Order', amount=1.",
+      "set": "saga",
+      "chapter": 3,
+      "ksOnly": true
     },
     {
       "id": "huntmaster_arach",
@@ -1601,7 +1723,10 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 92: name='Huntmaster Arach', faction='Undergrowth', amount=1."
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 92: name='Huntmaster Arach', faction='Undergrowth', amount=1.",
+      "set": "saga",
+      "chapter": 3,
+      "ksOnly": true
     },
     {
       "id": "vinereaper",
@@ -1612,7 +1737,10 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 93: name='Vinereaper', faction='Undergrowth', amount=1."
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 93: name='Vinereaper', faction='Undergrowth', amount=1.",
+      "set": "saga",
+      "chapter": 3,
+      "ksOnly": true
     },
     {
       "id": "isa_tel_tor_the_axe",
@@ -1623,7 +1751,10 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 94: name='Isa Tel Tor, the Axe', faction='Wraethe', amount=1."
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 94: name='Isa Tel Tor, the Axe', faction='Wraethe', amount=1.",
+      "set": "saga",
+      "chapter": 3,
+      "ksOnly": true
     },
     {
       "id": "se_soc_tar_the_inquisitor",
@@ -1634,7 +1765,10 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 95: name='Se Soc Tar, The Inquisitor', faction='Wraethe', amount=1."
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 95: name='Se Soc Tar, The Inquisitor', faction='Wraethe', amount=1.",
+      "set": "saga",
+      "chapter": 3,
+      "ksOnly": true
     },
     {
       "id": "the_voiceless",
@@ -1645,7 +1779,10 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 96: name='The Voiceless', faction='Wraethe', amount=1."
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 96: name='The Voiceless', faction='Wraethe', amount=1.",
+      "set": "saga",
+      "chapter": 3,
+      "ksOnly": true
     },
     {
       "id": "wandering_ghost",
@@ -1656,7 +1793,10 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 97: name='Wandering Ghost', faction='Wraethe', amount=1."
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 97: name='Wandering Ghost', faction='Wraethe', amount=1.",
+      "set": "saga",
+      "chapter": 3,
+      "ksOnly": true
     },
     {
       "id": "brute_saved",
@@ -1668,7 +1808,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 98: name='Brute (Saved)', faction='Aion', amount=1.",
-      "group": "Aion"
+      "group": "Aion",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "dash_saved",
@@ -1680,7 +1822,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Aion. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 99: name='Dash (Saved)', faction='Aion', amount=1.",
-      "group": "Aion"
+      "group": "Aion",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "kiln_drone_saved",
@@ -1691,7 +1835,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 100: name='Kiln Drone (Saved)', faction='Homodeus', amount=1."
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 100: name='Kiln Drone (Saved)', faction='Homodeus', amount=1.",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "korvus_legionnaire_saved",
@@ -1702,7 +1848,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 101: name='Korvus Legionnaire (Saved)', faction='Homodeus', amount=1."
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 101: name='Korvus Legionnaire (Saved)', faction='Homodeus', amount=1.",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "limiter_drones_saved",
@@ -1713,7 +1861,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 102: name='Limiter Drones (Saved)', faction='Homodeus', amount=1."
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 102: name='Limiter Drones (Saved)', faction='Homodeus', amount=1.",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "optio_crusher_saved",
@@ -1724,7 +1874,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 103: name='Optio Crusher (Saved)', faction='Homodeus', amount=1."
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 103: name='Optio Crusher (Saved)', faction='Homodeus', amount=1.",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "cache_warden_saved",
@@ -1735,7 +1887,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 104: name='Cache Warden (Saved)', faction='Order', amount=1."
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 104: name='Cache Warden (Saved)', faction='Order', amount=1.",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "cryptofist_monk_saved",
@@ -1746,7 +1900,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 105: name='Cryptofist Monk (Saved)', faction='Order', amount=1."
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 105: name='Cryptofist Monk (Saved)', faction='Order', amount=1.",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "order_initiate_saved",
@@ -1757,7 +1913,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 106: name='Order Initiate (Saved)', faction='Order', amount=1."
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 106: name='Order Initiate (Saved)', faction='Order', amount=1.",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "shard_abstractor_saved",
@@ -1768,7 +1926,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 107: name='Shard Abstractor (Saved)', faction='Order', amount=1."
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 107: name='Shard Abstractor (Saved)', faction='Order', amount=1.",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "arach_devotees_saved",
@@ -1779,7 +1939,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 108: name='Arach Devotees (Saved)', faction='Undergrowth', amount=1."
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 108: name='Arach Devotees (Saved)', faction='Undergrowth', amount=1.",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "fungal_hermit_saved",
@@ -1790,7 +1952,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 109: name='Fungal Hermit (Saved)', faction='Undergrowth', amount=1."
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 109: name='Fungal Hermit (Saved)', faction='Undergrowth', amount=1.",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "leshai_knight_saved",
@@ -1801,7 +1965,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "Typo fix: name was 'Le-shai Knight (Saved)' in BGG source (hyphen -> apostrophe to match base 'Le'shai Knight'). set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 110: name='Le-shai Knight (Saved)', faction='Undergrowth', amount=1."
+      "notes": "Typo fix: name was 'Le-shai Knight (Saved)' in BGG source (hyphen -> apostrophe to match base 'Le'shai Knight'). set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 110: name='Le-shai Knight (Saved)', faction='Undergrowth', amount=1.",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "spore_cleric_saved",
@@ -1812,7 +1978,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 111: name='Spore Cleric (Saved)', faction='Undergrowth', amount=1."
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 111: name='Spore Cleric (Saved)', faction='Undergrowth', amount=1.",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "pall_shades_saved",
@@ -1823,7 +1991,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 112: name='Pall Shades (Saved)', faction='Wraethe', amount=1."
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 112: name='Pall Shades (Saved)', faction='Wraethe', amount=1.",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "scion_of_nothingness_saved",
@@ -1834,7 +2004,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 113: name='Scion of Nothingness (Saved)', faction='Wraethe', amount=1."
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 113: name='Scion of Nothingness (Saved)', faction='Wraethe', amount=1.",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "shadebound_sentry_saved",
@@ -1845,7 +2017,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 114: name='Shadebound Sentry (Saved)', faction='Wraethe', amount=1."
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 114: name='Shadebound Sentry (Saved)', faction='Wraethe', amount=1.",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "umbral_scourge_saved",
@@ -1856,7 +2030,9 @@
       "art": null,
       "rawText": null,
       "verified": false,
-      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 115: name='Umbral Scourge (Saved)', faction='Wraethe', amount=1."
+      "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 115: name='Umbral Scourge (Saved)', faction='Wraethe', amount=1.",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "poison_seed",
@@ -1868,7 +2044,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Crimson Thorn. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 116: name='Poison Seed', faction='Crimson Thorn', amount=8.",
-      "group": "Crimson Thorn"
+      "group": "Crimson Thorn",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "noxious_vapors",
@@ -1880,7 +2058,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Crimson Thorn. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 117: name='Noxious Vapors', faction='Crimson Thorn', amount=1.",
-      "group": "Crimson Thorn"
+      "group": "Crimson Thorn",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "stranglevines",
@@ -1892,7 +2072,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Crimson Thorn. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 118: name='Stranglevines', faction='Crimson Thorn', amount=2.",
-      "group": "Crimson Thorn"
+      "group": "Crimson Thorn",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "toxify",
@@ -1904,7 +2086,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Crimson Thorn. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 119: name='Toxify', faction='Crimson Thorn', amount=3.",
-      "group": "Crimson Thorn"
+      "group": "Crimson Thorn",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "armageddon",
@@ -1916,7 +2100,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Dominatus. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 120: name='Armageddon', faction='Dominatus', amount=1.",
-      "group": "Dominatus"
+      "group": "Dominatus",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "death_grasp",
@@ -1928,7 +2114,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Dominatus. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 121: name='Death Grasp', faction='Dominatus', amount=2.",
-      "group": "Dominatus"
+      "group": "Dominatus",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "havoc_blast",
@@ -1940,7 +2128,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Dominatus. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 122: name='Havoc Blast', faction='Dominatus', amount=3.",
-      "group": "Dominatus"
+      "group": "Dominatus",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "assassinate",
@@ -1952,7 +2142,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Glitchmother. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 123: name='Assassinate', faction='Glitchmother', amount=4.",
-      "group": "Glitchmother"
+      "group": "Glitchmother",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "data_wipe",
@@ -1964,7 +2156,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Glitchmother. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 124: name='Data Wipe', faction='Glitchmother', amount=1.",
-      "group": "Glitchmother"
+      "group": "Glitchmother",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "masterstroke",
@@ -1976,7 +2170,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Glitchmother. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 125: name='Masterstroke', faction='Glitchmother', amount=1.",
-      "group": "Glitchmother"
+      "group": "Glitchmother",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "brainhack",
@@ -1988,7 +2184,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Mind Hacker. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 126: name='Brainhack', faction='Mind Hacker', amount=3.",
-      "group": "Mind Hacker"
+      "group": "Mind Hacker",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "shutdown",
@@ -2000,7 +2198,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Mind Hacker. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 127: name='Shutdown', faction='Mind Hacker', amount=1.",
-      "group": "Mind Hacker"
+      "group": "Mind Hacker",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "system_shock",
@@ -2012,7 +2212,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Mind Hacker. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 128: name='System Shock', faction='Mind Hacker', amount=2.",
-      "group": "Mind Hacker"
+      "group": "Mind Hacker",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "greater_unstable_rift",
@@ -2024,7 +2226,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Moc Sai. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 129: name='Greater Unstable Rift', faction='Moc Sai', amount=2.",
-      "group": "Moc Sai"
+      "group": "Moc Sai",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "lesser_unstable_rift",
@@ -2036,7 +2240,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Moc Sai. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 130: name='Lesser Unstable Rift', faction='Moc Sai', amount=4.",
-      "group": "Moc Sai"
+      "group": "Moc Sai",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "homodeus_trap",
@@ -2048,7 +2254,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Vox. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 131: name='Homodeus Trap', faction='Vox', amount=1.",
-      "group": "Vox"
+      "group": "Vox",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "order_trap",
@@ -2060,7 +2268,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Vox. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 132: name='Order Trap', faction='Vox', amount=1.",
-      "group": "Vox"
+      "group": "Vox",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "twin_trap",
@@ -2072,7 +2282,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Vox. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 133: name='Twin Trap', faction='Vox', amount=2.",
-      "group": "Vox"
+      "group": "Vox",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "undergrowth_trap",
@@ -2084,7 +2296,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Vox. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 134: name='Undergrowth Trap', faction='Vox', amount=1.",
-      "group": "Vox"
+      "group": "Vox",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "wraethe_trap",
@@ -2096,7 +2310,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Vox. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 135: name='Wraethe Trap', faction='Vox', amount=1.",
-      "group": "Vox"
+      "group": "Vox",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "custcutta_scourge",
@@ -2108,7 +2324,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Aberrant. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 136: name='Custcutta Scourge', faction='Aberrant', amount=2.",
-      "group": "Aberrant"
+      "group": "Aberrant",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "shard_spiders",
@@ -2120,7 +2338,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Aberrant. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 137: name='Shard Spiders', faction='Aberrant', amount=2.",
-      "group": "Aberrant"
+      "group": "Aberrant",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "wrathbloom",
@@ -2132,7 +2352,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Aberrant. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 138: name='Wrathbloom', faction='Aberrant', amount=2.",
-      "group": "Aberrant"
+      "group": "Aberrant",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "cobalt_chaplain",
@@ -2144,7 +2366,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Glitch. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 139: name='Cobalt Chaplain', faction='Glitch', amount=1.",
-      "group": "Glitch"
+      "group": "Glitch",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "simulacrons",
@@ -2156,7 +2380,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Glitch. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 140: name='Simulacrons', faction='Glitch', amount=3.",
-      "group": "Glitch"
+      "group": "Glitch",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "vector_field",
@@ -2168,7 +2394,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Glitch. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 141: name='Vector Field', faction='Glitch', amount=2.",
-      "group": "Glitch"
+      "group": "Glitch",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "blood_shard",
@@ -2180,7 +2408,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Necrotic. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 142: name='Blood Shard', faction='Necrotic', amount=1.",
-      "group": "Necrotic"
+      "group": "Necrotic",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "shard_horrors",
@@ -2192,7 +2422,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Necrotic. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 143: name='Shard Horrors', faction='Necrotic', amount=3.",
-      "group": "Necrotic"
+      "group": "Necrotic",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "stitchborg",
@@ -2204,7 +2436,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Necrotic. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 144: name='Stitchborg', faction='Necrotic', amount=2.",
-      "group": "Necrotic"
+      "group": "Necrotic",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "fragmenta",
@@ -2216,7 +2450,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Talos. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 145: name='Fragmenta', faction='Talos', amount=2.",
-      "group": "Talos"
+      "group": "Talos",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "gene_scavs",
@@ -2228,7 +2464,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Talos. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 146: name='Gene Scavs', faction='Talos', amount=2.",
-      "group": "Talos"
+      "group": "Talos",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "sagittari",
@@ -2240,7 +2478,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Talos. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 147: name='Sagittari', faction='Talos', amount=2.",
-      "group": "Talos"
+      "group": "Talos",
+      "set": "sos",
+      "chapter": 3
     },
     {
       "id": "j_chord",
@@ -2257,7 +2497,8 @@
       "cardType": "champion",
       "cost": 3,
       "shield": 3,
-      "masteryThreshold": 15
+      "masteryThreshold": 15,
+      "chapter": 3
     },
     {
       "id": "g_48",
@@ -2272,7 +2513,8 @@
       "set": "ioh",
       "cardType": "champion",
       "cost": 4,
-      "shield": 5
+      "shield": 5,
+      "chapter": 3
     },
     {
       "id": "legion_carrier",
@@ -2291,7 +2533,8 @@
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 150: name='Legion Carrier', faction='Homodeus', amount=2. | art added from TTS spritesheet crop (effects pending verification). | Base gain 2 gems encoded. UNMODELED: 'reveal top 3, put up to one revealed Champion into hand, rest into discard'. verified:false.",
       "set": "ioh",
       "cardType": "regular",
-      "cost": 2
+      "cost": 2,
+      "chapter": 3
     },
     {
       "id": "torian_commandos",
@@ -2315,7 +2558,8 @@
       "set": "ioh",
       "cardType": "champion",
       "cost": 3,
-      "shield": 4
+      "shield": 4,
+      "chapter": 3
     },
     {
       "id": "anomaly_cleric",
@@ -2339,7 +2583,8 @@
       "set": "ioh",
       "cardType": "regular",
       "cost": 5,
-      "masteryThreshold": 10
+      "masteryThreshold": 10,
+      "chapter": 4
     },
     {
       "id": "duplication_fabricator",
@@ -2358,7 +2603,8 @@
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 153: name='Duplication Fabricator', faction='Order', amount=2. | art added from TTS spritesheet crop (effects pending verification). | Base gain 1 gem encoded. UNMODELED: 'each player reveals top card; copy the effect of an Ally revealed this way'. verified:false.",
       "set": "ioh",
       "cardType": "regular",
-      "cost": 1
+      "cost": 1,
+      "chapter": 4
     },
     {
       "id": "shard_seer",
@@ -2377,7 +2623,8 @@
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 154: name='Shard Seer', faction='Order', amount=3. | art added from TTS spritesheet crop (effects pending verification). | Base draw 1 encoded. UNMODELED: conditional 'reveal an Infinity Shard from hand; if you do, gain 2 gems'. verified:false.",
       "set": "ioh",
       "cardType": "regular",
-      "cost": 2
+      "cost": 2,
+      "chapter": 4
     },
     {
       "id": "carnivorous_vine",
@@ -2400,7 +2647,8 @@
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 155: name='Carnivorous Vine', faction='Undergrowth', amount=2. | art added from TTS spritesheet crop (effects pending verification). | Mercenary. Base gain 3 gems + 3 power encoded. UNMODELED: scaling 'an additional 2 gems and 2 power for each other Undergrowth Ally played this turn'. verified:false.",
       "set": "ioh",
       "cardType": "mercenary",
-      "cost": 4
+      "cost": 4,
+      "chapter": 4
     },
     {
       "id": "orm_madu",
@@ -2415,7 +2663,8 @@
       "set": "ioh",
       "cardType": "champion",
       "cost": 7,
-      "shield": 7
+      "shield": 7,
+      "chapter": 4
     },
     {
       "id": "the_rotten",
@@ -2438,7 +2687,8 @@
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 157: name='The Rotten', faction='Undergrowth', amount=3. | art added from TTS spritesheet crop (effects pending verification). | VERIFIED from image. Undergrowth Mercenary, Ally. Play: gain 5 power and 1 gem. All maps to engine effects.",
       "set": "ioh",
       "cardType": "mercenary",
-      "cost": 3
+      "cost": 3,
+      "chapter": 4
     },
     {
       "id": "cinder_scars",
@@ -2464,7 +2714,8 @@
           "type": "banishCard",
           "source": "handOrDiscard"
         }
-      ]
+      ],
+      "chapter": 4
     },
     {
       "id": "oblivion_gatekeeper",
@@ -2480,7 +2731,8 @@
       "cardType": "champion",
       "cost": 4,
       "shield": 5,
-      "masteryThreshold": 20
+      "masteryThreshold": 20,
+      "chapter": 4
     },
     {
       "id": "the_dispossessed",
@@ -2499,7 +2751,8 @@
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 160: name='The Dispossessed', faction='Wraethe', amount=2. | art added from TTS spritesheet crop (effects pending verification). | Base gain 3 power encoded. UNMODELED: conditional 'if you have played a Wraethe card this turn, return this from discard to hand'. verified:false.",
       "set": "ioh",
       "cardType": "regular",
-      "cost": 1
+      "cost": 1,
+      "chapter": 4
     },
     {
       "id": "brutality",
@@ -2514,7 +2767,8 @@
       "group": "Ingeminex",
       "set": "ioh",
       "cardType": "regular",
-      "cost": 10
+      "cost": 10,
+      "chapter": 4
     },
     {
       "id": "corruption",
@@ -2527,7 +2781,8 @@
       "verified": false,
       "notes": "Faction group (non-player): Ingeminex. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 162: name='Corruption', faction='Ingeminex', amount=1. | art added from TTS spritesheet crop (effects pending verification). | co-op card - out of multiplayer scope; not encoded. Ingeminex boss card with Attack/Reward structure (no versus play effects).",
       "group": "Ingeminex",
-      "set": "ioh"
+      "set": "ioh",
+      "chapter": 4
     },
     {
       "id": "desolation",
@@ -2539,7 +2794,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Ingeminex. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 163: name='Desolation', faction='Ingeminex', amount=1.",
-      "group": "Ingeminex"
+      "group": "Ingeminex",
+      "set": "saga",
+      "chapter": 4
     },
     {
       "id": "torment",
@@ -2552,7 +2809,8 @@
       "verified": false,
       "notes": "Faction group (non-player): Ingeminex. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 164: name='Torment', faction='Ingeminex', amount=1. | art added from TTS spritesheet crop (effects pending verification). | co-op card - out of multiplayer scope; not encoded. Ingeminex boss card with Attack/Reward structure (no versus play effects).",
       "group": "Ingeminex",
-      "set": "ioh"
+      "set": "ioh",
+      "chapter": 4
     },
     {
       "id": "lasav_tower_commander",
@@ -2564,11 +2822,12 @@
       "rawText": "Homodeus Champion. (Card art name: 'Lesav, Tower Commander'.) Exhaust: Gain 5 (power). Mastery 15: Gain an additional 5 (power) for each Homodeus Champion you have in play.",
       "verified": false,
       "notes": "Faction REVIEW NEEDED: BGG source marked faction as 'Homodeus (typo!)'. Do not guess; confirm against physical card. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 165: name='Lasav, Tower Commander', faction='Homodeus (typo!)', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Faction RESOLVED from image: Homodeus (BGG had 'Homodeus (typo!)'; the printed card is Homodeus). Champion shield 5. UNMODELED: Exhaust activated ability ('Gain 5 power'; mastery 15 scaling per Homodeus Champion). verified:false.",
-      "set": "ioh",
+      "set": "sos",
       "cardType": "champion",
       "cost": 6,
       "shield": 5,
-      "masteryThreshold": 15
+      "masteryThreshold": 15,
+      "chapter": 4
     },
     {
       "id": "datic_inquisitors",
@@ -2580,10 +2839,11 @@
       "rawText": "Order Ally. Choose one: Draw 2 cards / Recruit a card with cost 6 or less for free. Mastery 15: Do both instead.",
       "verified": false,
       "notes": "Note: 'datic' kept verbatim from BGG source (possible lowercase/typo, left as-is). set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 166: name='Datic Inquisitors', faction='Order', amount=1. | art added from TTS spritesheet crop (effects pending verification). | UNMODELED: chooseOne where one branch ('Recruit a card with cost 6 or less for free') has no engine effect, so the chooseOne cannot be faithfully encoded; mastery-15 'Do both instead'. masteryThreshold 15 set. verified:false.",
-      "set": "ioh",
+      "set": "sos",
       "cardType": "regular",
       "cost": 4,
-      "masteryThreshold": 15
+      "masteryThreshold": 15,
+      "chapter": 4
     },
     {
       "id": "subversion_elders",
@@ -2595,10 +2855,11 @@
       "rawText": "Order Champion (Ally). Gain 1 (gem) for each Faction you have played this turn. (The Factions are Homodeus, Order, Undergrowth, Wraethe, and Aion.)",
       "verified": false,
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 167: name='Subversion Elders', faction='Order', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Champion shield 4. UNMODELED: scaling 'Gain 1 gem for each Faction you have played this turn'. No fixed base. verified:false.",
-      "set": "ioh",
+      "set": "rotf",
       "cardType": "champion",
       "cost": 5,
-      "shield": 4
+      "shield": 4,
+      "chapter": 4
     },
     {
       "id": "querry_monk",
@@ -2619,7 +2880,8 @@
       "cardType": "champion",
       "cost": 4,
       "shield": 3,
-      "masteryThreshold": 10
+      "masteryThreshold": 10,
+      "chapter": 4
     },
     {
       "id": "gian_shard_wyrm",
@@ -2631,11 +2893,12 @@
       "rawText": "Undergrowth Champion. Exhaust: Gain 2 (power) and 2 (gems). Mastery 15: Gain 5 (power) and 5 (gems) instead.",
       "verified": false,
       "notes": "set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 169: name='Gian, Shard Wyrm', faction='Undergrowth', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Champion shield 5. UNMODELED: Exhaust activated ability ('Gain 2 power and 2 gems'; mastery 15 'Gain 5 and 5 instead'). verified:false.",
-      "set": "ioh",
+      "set": "rotf",
       "cardType": "champion",
       "cost": 6,
       "shield": 5,
-      "masteryThreshold": 15
+      "masteryThreshold": 15,
+      "chapter": 5
     },
     {
       "id": "agony",
@@ -2648,7 +2911,8 @@
       "verified": false,
       "notes": "Faction group (non-player): Ingeminex. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 170: name='Agony', faction='Ingeminex', amount=1. | art added from TTS spritesheet crop (effects pending verification). | co-op card - out of multiplayer scope; not encoded. Ingeminex boss card with Attack/Reward structure (no versus play effects).",
       "group": "Ingeminex",
-      "set": "ioh"
+      "set": "ioh",
+      "chapter": 5
     },
     {
       "id": "malice",
@@ -2661,7 +2925,8 @@
       "verified": false,
       "notes": "Faction group (non-player): Ingeminex. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 171: name='Malice', faction='Ingeminex', amount=1. | art added from TTS spritesheet crop (effects pending verification). | co-op card - out of multiplayer scope; not encoded. Ingeminex boss card with Attack/Reward structure (no versus play effects).",
       "group": "Ingeminex",
-      "set": "ioh"
+      "set": "ioh",
+      "chapter": 5
     },
     {
       "id": "datic_secrets",
@@ -2673,7 +2938,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Destiny. Note: 'datic' kept verbatim from BGG source (possible lowercase/typo, left as-is). set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 172: name='Datic Secrets', faction='Destiny', amount=1.",
-      "group": "Destiny"
+      "group": "Destiny",
+      "set": "ioh",
+      "chapter": 5
     },
     {
       "id": "the_price_of_power",
@@ -2685,7 +2952,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 173: name='The Price of Power', faction='Destiny', amount=1.",
-      "group": "Destiny"
+      "group": "Destiny",
+      "set": "ioh",
+      "chapter": 5
     },
     {
       "id": "one_mind_one_army",
@@ -2697,7 +2966,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 174: name='One Mind, One Army', faction='Destiny', amount=1.",
-      "group": "Destiny"
+      "group": "Destiny",
+      "set": "ioh",
+      "chapter": 5
     },
     {
       "id": "project_yggdrasil",
@@ -2709,7 +2980,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 175: name='Project Yggdrasil', faction='Destiny', amount=1.",
-      "group": "Destiny"
+      "group": "Destiny",
+      "set": "ioh",
+      "chapter": 5
     },
     {
       "id": "phasic_technology",
@@ -2721,7 +2994,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 176: name='Phasic Technology', faction='Destiny', amount=1.",
-      "group": "Destiny"
+      "group": "Destiny",
+      "set": "ioh",
+      "chapter": 5
     },
     {
       "id": "blood_for_blood",
@@ -2733,7 +3008,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 177: name='Blood for Blood', faction='Destiny', amount=1.",
-      "group": "Destiny"
+      "group": "Destiny",
+      "set": "ioh",
+      "chapter": 5
     },
     {
       "id": "bound_for_life",
@@ -2745,7 +3022,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 178: name='Bound for Life', faction='Destiny', amount=1.",
-      "group": "Destiny"
+      "group": "Destiny",
+      "set": "ioh",
+      "chapter": 5
     },
     {
       "id": "nature_dominance",
@@ -2757,7 +3036,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 179: name='Nature Dominance', faction='Destiny', amount=1.",
-      "group": "Destiny"
+      "group": "Destiny",
+      "set": "ioh",
+      "chapter": 5
     },
     {
       "id": "the_crystal_gate",
@@ -2769,7 +3050,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 180: name='The Crystal Gate', faction='Destiny', amount=1.",
-      "group": "Destiny"
+      "group": "Destiny",
+      "set": "ioh",
+      "chapter": 5
     },
     {
       "id": "forged_in_flame",
@@ -2781,7 +3064,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 181: name='Forged in Flame', faction='Destiny', amount=1.",
-      "group": "Destiny"
+      "group": "Destiny",
+      "set": "ioh",
+      "chapter": 5
     },
     {
       "id": "paradigm_shift",
@@ -2793,7 +3078,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 182: name='Paradigm Shift', faction='Destiny', amount=1.",
-      "group": "Destiny"
+      "group": "Destiny",
+      "set": "ioh",
+      "chapter": 5
     },
     {
       "id": "deadly_recruits",
@@ -2805,7 +3092,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 183: name='Deadly Recruits', faction='Destiny', amount=1.",
-      "group": "Destiny"
+      "group": "Destiny",
+      "set": "ioh",
+      "chapter": 5
     },
     {
       "id": "biotech_enhancements",
@@ -2817,7 +3106,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 184: name='Biotech Enhancements', faction='Destiny', amount=1.",
-      "group": "Destiny"
+      "group": "Destiny",
+      "set": "ioh",
+      "chapter": 5
     },
     {
       "id": "absorption_grid",
@@ -2829,7 +3120,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 185: name='Absorption Grid', faction='Destiny', amount=1.",
-      "group": "Destiny"
+      "group": "Destiny",
+      "set": "ioh",
+      "chapter": 5
     },
     {
       "id": "maglev_tunnels",
@@ -2841,7 +3134,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 186: name='Maglev Tunnels', faction='Destiny', amount=1.",
-      "group": "Destiny"
+      "group": "Destiny",
+      "set": "ioh",
+      "chapter": 5
     },
     {
       "id": "soul_syphon",
@@ -2853,7 +3148,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 187: name='Soul Syphon', faction='Destiny', amount=1.",
-      "group": "Destiny"
+      "group": "Destiny",
+      "set": "ioh",
+      "chapter": 5
     },
     {
       "id": "the_agony_of_choice",
@@ -2865,7 +3162,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 188: name='The Agony of Choice', faction='Destiny', amount=1.",
-      "group": "Destiny"
+      "group": "Destiny",
+      "set": "ioh",
+      "chapter": 5
     },
     {
       "id": "the_shard_defiant",
@@ -2877,7 +3176,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 189: name='The Shard Defiant', faction='Destiny', amount=1.",
-      "group": "Destiny"
+      "group": "Destiny",
+      "set": "ioh",
+      "chapter": 5
     },
     {
       "id": "whatever_it_takes",
@@ -2889,7 +3190,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 190: name='Whatever it Takes', faction='Destiny', amount=1.",
-      "group": "Destiny"
+      "group": "Destiny",
+      "set": "ioh",
+      "chapter": 5
     },
     {
       "id": "the_last_city",
@@ -2901,7 +3204,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 191: name='The Last City', faction='Destiny', amount=1.",
-      "group": "Destiny"
+      "group": "Destiny",
+      "set": "ioh",
+      "chapter": 5
     },
     {
       "id": "power_struggle",
@@ -2913,7 +3218,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 192: name='Power Struggle', faction='Destiny', amount=1.",
-      "group": "Destiny"
+      "group": "Destiny",
+      "set": "ioh",
+      "chapter": 5
     },
     {
       "id": "unconditional_conscription",
@@ -2925,7 +3232,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 193: name='Unconditional Conscription', faction='Destiny', amount=1.",
-      "group": "Destiny"
+      "group": "Destiny",
+      "set": "ioh",
+      "chapter": 5
     },
     {
       "id": "stolen_future",
@@ -2937,7 +3246,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 194: name='Stolen Future', faction='Destiny', amount=1.",
-      "group": "Destiny"
+      "group": "Destiny",
+      "set": "ioh",
+      "chapter": 5
     },
     {
       "id": "strategic_mastermind",
@@ -2949,7 +3260,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 195: name='Strategic Mastermind', faction='Destiny', amount=1.",
-      "group": "Destiny"
+      "group": "Destiny",
+      "set": "ioh",
+      "chapter": 5
     },
     {
       "id": "advanced_weapons",
@@ -2961,7 +3274,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 196: name='Advanced Weapons', faction='Destiny', amount=1.",
-      "group": "Destiny"
+      "group": "Destiny",
+      "set": "ioh",
+      "chapter": 5
     },
     {
       "id": "advanced_medicine",
@@ -2973,7 +3288,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 197: name='Advanced Medicine', faction='Destiny', amount=1.",
-      "group": "Destiny"
+      "group": "Destiny",
+      "set": "ioh",
+      "chapter": 5
     },
     {
       "id": "healing_hands",
@@ -2985,7 +3302,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 198: name='Healing Hands', faction='Destiny', amount=1.",
-      "group": "Destiny"
+      "group": "Destiny",
+      "set": "ioh",
+      "chapter": 5
     },
     {
       "id": "war_bound",
@@ -2997,7 +3316,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 199: name='War Bound', faction='Destiny', amount=1.",
-      "group": "Destiny"
+      "group": "Destiny",
+      "set": "ioh",
+      "chapter": 5
     },
     {
       "id": "true_leader",
@@ -3009,7 +3330,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): Destiny. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 200: name='True Leader', faction='Destiny', amount=1.",
-      "group": "Destiny"
+      "group": "Destiny",
+      "set": "ioh",
+      "chapter": 5
     },
     {
       "id": "synthesis",
@@ -3021,7 +3344,9 @@
       "rawText": null,
       "verified": false,
       "notes": "Faction group (non-player): DestinyDeck. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 201: name='Synthesis', faction='DestinyDeck', amount=1.",
-      "group": "DestinyDeck"
+      "group": "DestinyDeck",
+      "set": "ioh",
+      "chapter": 5
     }
   ]
 }

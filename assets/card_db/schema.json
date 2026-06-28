@@ -18,8 +18,18 @@
     },
     "set": {
       "type": "string",
-      "enum": ["base", "rotf", "sos", "ioh", "ingeminex", "promo", "starter", "unknown"],
-      "description": "Which set the card belongs to. base=Shards of Infinity, rotf=Relics of the Future, sos=Shadow of Salvation, ioh=Into the Horizon."
+      "enum": ["base", "rotf", "sos", "ioh", "ingeminex", "promo", "saga", "starter", "unknown"],
+      "description": "Which set the card belongs to. base=Shards of Infinity (Core), rotf=Relics of the Future, sos=Shadow of Salvation, ioh=Into the Horizon, saga=Saga Collection."
+    },
+    "chapter": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Saga chapter (1-5) the card belongs to, from the BGG card-list ordering. null = unknown."
+    },
+    "ksOnly": {
+      "type": "boolean",
+      "description": "True if the card is Kickstarter-edition exclusive (not in the retail box). Print-availability metadata; does not affect gameplay."
     },
     "faction": {
       "type": "string",
