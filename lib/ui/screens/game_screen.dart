@@ -864,12 +864,12 @@ class _OpponentArea extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (_hasGuardChampions && canAttack)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4, left: 4),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 4, left: 4),
                     child: Row(
                       children: [
                         Icon(Icons.shield, size: 12, color: GameTheme.gold),
-                        const SizedBox(width: 4),
+                        SizedBox(width: 4),
                         Text(
                           'Guard champions must be destroyed first!',
                           style: TextStyle(
@@ -975,7 +975,7 @@ class _CenterRow extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              Icon(Icons.layers, size: 12, color: GameTheme.textSecondary),
+              const Icon(Icons.layers, size: 12, color: GameTheme.textSecondary),
               const SizedBox(width: 2),
               Text(
                 '$infinityDeckCount',

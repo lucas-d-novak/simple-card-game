@@ -38,4 +38,7 @@ jobs:
         run: flutter analyze
 
       - name: Run test suite
-        run: flutter test
+        # Golden screenshot tests are excluded: they are platform-sensitive
+        # (font/anti-aliasing differs between dev machines and the Linux runner).
+        # Run them locally with `flutter test`.
+        run: flutter test --exclude-tags golden

@@ -1,0 +1,6 @@
+tags:
+  golden:
+    # Golden screenshot tests are platform-sensitive (font/anti-aliasing differs
+    # between Windows dev machines and the Linux CI runner). Run them locally with
+    #   flutter test
+    # CI excludes them via `flutter test --exclude-tags golden`.

@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "description": "Authoritative card database. Each entry follows schema.json. Most fields are optional until verified; run `dart run tool/validate_card_db.dart` to see completeness. Entries below are FORMAT EXAMPLES using placeholder data — replace with real card data (verified:false until confirmed against the physical card).",
+  "cards": [
+    {
+      "id": "reactor_monk",
+      "name": "Reactor Monk",
+      "set": "base",
+      "faction": "homodeus",
+      "cardType": "regular",
+      "cost": 1,
+      "copies": 4,
+      "playEffects": [{ "type": "gainGems", "amount": 1 }],
+      "allyAbility": [{ "type": "gainMastery", "amount": 1 }],
+      "art": null,
+      "rawText": null,
+      "verified": false,
+      "notes": "EXAMPLE ENTRY — values are placeholders, confirm against card."
+    },
+    {
+      "id": "kor_arbiter",
+      "name": "Kor Arbiter",
+      "set": "base",
+      "faction": "homodeus",
+      "cardType": "champion",
+      "cost": 2,
+      "copies": 3,
+      "shield": 3,
+      "hasGuard": false,
+      "masteryThreshold": 5,
+      "playEffects": [{ "type": "gainMastery", "amount": 1 }],
+      "masteryBonus": [{ "type": "gainPower", "amount": 2 }],
+      "art": null,
+      "rawText": null,
+      "verified": false,
+      "notes": "EXAMPLE ENTRY — champion with mastery threshold."
+    },
+    {
+      "id": "shard_reactor",
+      "name": "Shard Reactor",
+      "set": "starter",
+      "faction": "none",
+      "cardType": "regular",
+      "cost": 0,
+      "playEffects": [
+        {
+          "type": "chooseOne",
+          "choices": [
+            [{ "type": "gainGems", "amount": 2 }],
+            [{ "type": "gainPower", "amount": 2 }]
+          ]
+        }
+      ],
+      "art": null,
+      "rawText": null,
+      "verified": false,
+      "notes": "EXAMPLE ENTRY — chooseOne effect."
+    }
+  ]
+}
