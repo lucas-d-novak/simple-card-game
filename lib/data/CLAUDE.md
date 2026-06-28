@@ -1,0 +1,90 @@
+# lib/data
+
+Card content and the catalog/database layer. This is where card *identity* comes
+from — the legacy hardcoded catalog plus the new JSON-backed authoritative
+database.
+
+## Files
+
+```
+data/
+├── card_definitions.dart   # Legacy hardcoded catalog (55 unique cards)
+├── card_art_map.dart       # Card name → asset image path mapping
+├── starter_deck.dart       # 10-card starter deck builder
+└── database/
+    ├── card_database.dart   # CardDatabase + CardRecord, loads cards.json
+    └── effect_codec.dart    # JSON ⇄ CardEffect codec
+```
+
+## Card database (authoritative source)
+
+The JSON database in [`assets/card_db/`](../../assets/card_db/README.md) is the
+single source of truth for card identity going forward. See its
+[`README.md`](../../assets/card_db/README.md) for the data-entry workflow and
+[`schema.json`](../../assets/card_db/schema.json) for the per-field contract.
+
+### How a card flows into the game
+
+```
+cards.json ──(CardDatabase.load)──► CardRecord ──.model──► CardModel ──► GameService
+                                       │
+                                       └── set / copies / art / verified / group  (catalog metadata)
+```
+
+### card_database.dart
+
+- `CardSet` — enum of expansions: `base`, `rotf`, `sos`, `ioh`, `ingeminex`,
+  `promo`, `starter`, `unknown`.
+- `CardRecord` — one entry from `cards.json`. Holds the playable
+  [`CardModel`](../models/CLAUDE.md) projection (`record.model`) plus
+  database-only metadata: `set`, `copies`, `art`, `rawText`, `verified`, `notes`,
+  and the optional `group` (a non-playable, faction-like category such as `Aion`
+  / `Destiny` for cards whose `model.faction` is `Faction.none`). Built from JSON
+  via `CardRecord.fromJson`.
+- `CardDatabase` — holds the parsed `List<CardRecord>`.
+  - `CardDatabase.assetPath` → `'assets/card_db/cards.json'`.
+  - `CardDatabase.load({path})` — async, loads the bundled asset via
+    `rootBundle` (use inside the running app).
+  - `CardDatabase.fromJsonString(source)` — parse from a raw string (use in
+    tooling / tests).
+  - Accessors: `allModels` (every `CardModel`), `verifiedCards` (records where
+    `verified == true`), `byId(id)`.
+
+### effect_codec.dart
+
+Translates the `playEffects` / `allyAbility` / `masteryBonus` JSON arrays into
+[`CardEffect`](../models/CLAUDE.md) instances and back. It mirrors the effect
+types in [`lib/models/card_effect.dart`](../models/card_effect.dart) and the
+`type` enum documented in `schema.json`.
+
+- `decodeEffectList(raw)` / `decodeEffect(json)` — JSON → `CardEffect`. Unknown
+  or malformed effects throw `FormatException` so the validator surfaces bad data
+  rather than silently dropping it.
+- `encodeEffect(effect)` — `CardEffect` → JSON (round-tripping / tooling).
+
+Supported `type` values: `gainGems`, `gainPower`, `gainMastery`, `gainHealth`,
+`drawCards`, `opponentLosesHealth`, `banishCard` (`source`:
+`hand`/`discard`/`handOrDiscard`), `scrapFromCenterRow`, `conditionalPower`
+(`condition`: `perChampionControlled`), `infinityShard`, `chooseOne`
+(`choices`: array of effect groups). `gainMoney` is legacy and not part of the
+Shards of Infinity database.
+
+## Tooling
+
+- [`tool/validate_card_db.dart`](../../tool/validate_card_db.dart) — completeness
+  + correctness checker. Run from the project root:
+
+  ```bash
+  dart run tool/validate_card_db.dart
+  ```
+
+  Reports per-card missing fields, effect-decoding errors, and verification
+  status, plus a per-set completeness summary against the known physical
+  composition. Exits 1 on a hard error (bad JSON, duplicate id, undecodable
+  effect); soft gaps (unverified / missing optional fields) exit 0.
+
+## Legacy catalog
+
+`card_definitions.dart` and `starter_deck.dart` still drive the current game and
+tests. The JSON database is being populated incrementally; until cards are
+verified there, treat the hardcoded catalog as the live content.
