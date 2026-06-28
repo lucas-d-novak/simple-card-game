@@ -167,5 +167,45 @@ void main() {
         matchesGoldenFile('goldens/06_three_player.png'),
       );
     });
+
+    // ----- Mobile (narrow / portrait) responsive coverage -----
+
+    testWidgets('07 - Mobile setup screen', (tester) async {
+      tester.view.physicalSize = const Size(390, 844); // iPhone-ish portrait
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: GameSetupScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await expectLater(
+        find.byType(MaterialApp),
+        matchesGoldenFile('goldens/07_mobile_setup.png'),
+      );
+    });
+
+    testWidgets('08 - Mobile game start', (tester) async {
+      tester.view.physicalSize = const Size(390, 844); // iPhone-ish portrait
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final game = GameService(playerCount: 2, random: Random(42));
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: GameScreen(gameService: game),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await expectLater(
+        find.byType(MaterialApp),
+        matchesGoldenFile('goldens/08_mobile_game_start.png'),
+      );
+    });
   });
 }

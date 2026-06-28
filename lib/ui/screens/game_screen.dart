@@ -7,6 +7,7 @@ import 'package:simple_card_game/services/ai_service.dart';
 import 'package:simple_card_game/services/game_service.dart';
 import 'package:simple_card_game/ui/theme/faction_colors.dart';
 import 'package:simple_card_game/ui/theme/game_theme.dart';
+import 'package:simple_card_game/ui/theme/responsive.dart';
 import 'package:simple_card_game/ui/widgets/card_fan.dart';
 import 'package:simple_card_game/ui/widgets/game_card_widget.dart';
 import 'package:simple_card_game/ui/widgets/resource_bar.dart';
@@ -627,7 +628,15 @@ class _GameScreenState extends State<GameScreen>
           children: [
             AbsorbPointer(
               absorbing: _aiThinking,
-              child: Column(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final screenWidth = constraints.maxWidth;
+                  return Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        maxWidth: Responsive.maxContentWidth,
+                      ),
+                      child: Column(
           children: [
             // Turn indicator
             Container(
@@ -672,6 +681,7 @@ class _GameScreenState extends State<GameScreen>
                 canAttack: currentPlayer.powerPool > 0,
                 onAttackChampion: (champ) =>
                     _attackChampion(champ, opponent.id),
+                screenWidth: screenWidth,
               ),
 
             const SizedBox(height: 4),
@@ -683,6 +693,7 @@ class _GameScreenState extends State<GameScreen>
               onBuy: _buyCard,
               infinityDeckCount: _game.infinityDeck.length,
               onLongPress: _showCardDetail,
+              screenWidth: screenWidth,
             ),
 
             const SizedBox(height: 4),
@@ -694,6 +705,7 @@ class _GameScreenState extends State<GameScreen>
               activatedChampionIds: currentPlayer.activatedChampions,
               onActivateChampion: _activateChampion,
               lastPlayedCardId: _lastPlayedCardId,
+              screenWidth: screenWidth,
             ),
 
             // Action message with fade animation
@@ -742,6 +754,7 @@ class _GameScreenState extends State<GameScreen>
                       label: 'PLAY ALL',
                       icon: Icons.play_arrow,
                       color: GameTheme.gemCyan,
+                      compact: Responsive.isMobile(screenWidth),
                       onPressed:
                           currentPlayer.hand.isNotEmpty ? _playAllCards : null,
                     ),
@@ -759,6 +772,7 @@ class _GameScreenState extends State<GameScreen>
                       color: hasGuards
                           ? GameTheme.textSecondary
                           : GameTheme.powerOrange,
+                      compact: Responsive.isMobile(screenWidth),
                       onPressed: canDirectAttack ? _attackOpponent : null,
                     ),
                   ),
@@ -771,6 +785,7 @@ class _GameScreenState extends State<GameScreen>
                           : 'END TURN',
                       icon: Icons.skip_next,
                       color: GameTheme.endTurnGreen,
+                      compact: Responsive.isMobile(screenWidth),
                       onPressed: _endTurn,
                     ),
                   ),
@@ -791,6 +806,10 @@ class _GameScreenState extends State<GameScreen>
             ),
           ],
         ),
+                    ),
+                  );
+                },
+              ),
             ),
             // AI thinking overlay
             if (_aiThinking)
@@ -828,6 +847,7 @@ class _GameScreenState extends State<GameScreen>
 class _OpponentArea extends StatelessWidget {
   const _OpponentArea({
     required this.opponent,
+    required this.screenWidth,
     this.canAttack = false,
     this.onAttackChampion,
   });
@@ -835,6 +855,7 @@ class _OpponentArea extends StatelessWidget {
   final dynamic opponent; // PlayerState
   final bool canAttack;
   final void Function(CardModel)? onAttackChampion;
+  final double screenWidth;
 
   bool get _hasGuardChampions {
     for (final champ in opponent.championsInPlay) {
@@ -846,6 +867,8 @@ class _OpponentArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final champions = opponent.championsInPlay as List;
+    final champWidth = Responsive.compactCardWidth(screenWidth);
+    final champHeight = champWidth * (130 / 90) + 10;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: Column(
@@ -883,7 +906,7 @@ class _OpponentArea extends StatelessWidget {
                     ),
                   ),
                 SizedBox(
-                  height: 85,
+                  height: champHeight,
                   child: ListView(
                     scrollDirection: Axis.horizontal,
                     children: [
@@ -895,7 +918,7 @@ class _OpponentArea extends StatelessWidget {
                               GameCardWidget(
                                 card: champ,
                                 compact: true,
-                                width: 70,
+                                width: champWidth,
                                 isHighlighted: canAttack,
                                 onTap: canAttack && onAttackChampion != null
                                     ? () => onAttackChampion!(champ)
@@ -939,6 +962,7 @@ class _CenterRow extends StatelessWidget {
     required this.canAfford,
     required this.onBuy,
     required this.infinityDeckCount,
+    required this.screenWidth,
     this.onLongPress,
   });
 
@@ -947,9 +971,12 @@ class _CenterRow extends StatelessWidget {
   final void Function(CardModel) onBuy;
   final int infinityDeckCount;
   final void Function(CardModel)? onLongPress;
+  final double screenWidth;
 
   @override
   Widget build(BuildContext context) {
+    final cardWidth = Responsive.handCardWidth(screenWidth);
+    final rowHeight = cardWidth * (170 / 120) + 6;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8),
       padding: const EdgeInsets.all(6),
@@ -988,7 +1015,7 @@ class _CenterRow extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           SizedBox(
-            height: 140,
+            height: rowHeight,
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: cards.map((card) {
@@ -1003,7 +1030,7 @@ class _CenterRow extends StatelessWidget {
                         : null,
                     isHighlighted: affordable,
                     compact: false,
-                    width: 110,
+                    width: cardWidth,
                   ),
                 );
               }).toList(),
@@ -1019,6 +1046,7 @@ class _PlayArea extends StatelessWidget {
   const _PlayArea({
     required this.playedCards,
     required this.champions,
+    required this.screenWidth,
     this.activatedChampionIds = const {},
     this.onActivateChampion,
     this.lastPlayedCardId,
@@ -1029,6 +1057,7 @@ class _PlayArea extends StatelessWidget {
   final Set<String> activatedChampionIds;
   final void Function(CardModel)? onActivateChampion;
   final String? lastPlayedCardId;
+  final double screenWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -1044,8 +1073,12 @@ class _PlayArea extends StatelessWidget {
       );
     }
 
+    final cardWidth = Responsive.compactCardWidth(screenWidth);
+    // Room for the compact card plus the small "CHAMPIONS" header / padding.
+    final areaHeight = cardWidth * (130 / 90) + 22;
+
     return SizedBox(
-      height: 100,
+      height: areaHeight,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8),
         child: Row(
@@ -1087,7 +1120,7 @@ class _PlayArea extends StatelessWidget {
                                   card: card,
                                   compact: true,
                                   showCost: false,
-                                  width: 70,
+                                  width: cardWidth,
                                   isHighlighted: !isActivated,
                                   onTap: !isActivated &&
                                           onActivateChampion != null
@@ -1140,7 +1173,7 @@ class _PlayArea extends StatelessWidget {
                         card: card,
                         compact: true,
                         showCost: false,
-                        width: 70,
+                        width: cardWidth,
                         isHighlighted: isJustPlayed,
                       ),
                     ),
@@ -1161,6 +1194,7 @@ class _ActionButton extends StatelessWidget {
     required this.icon,
     required this.color,
     this.onPressed,
+    this.compact = false,
   });
 
   final String label;
@@ -1168,26 +1202,37 @@ class _ActionButton extends StatelessWidget {
   final Color color;
   final VoidCallback? onPressed;
 
+  /// When true (mobile), the button uses a larger touch target and text.
+  final bool compact;
+
   @override
   Widget build(BuildContext context) {
     final isEnabled = onPressed != null;
+    // Mobile gets a taller, easier-to-tap button (>= 48px) with bigger text.
+    final verticalPadding = compact ? 14.0 : 10.0;
+    final fontSize = compact ? 12.0 : 10.0;
+    final iconSize = compact ? 18.0 : 16.0;
     return ElevatedButton.icon(
       onPressed: onPressed,
-      icon: Icon(icon, size: 16),
+      icon: Icon(icon, size: iconSize),
       label: Text(
         label,
-        style: const TextStyle(
-          fontSize: 10,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: fontSize,
           fontWeight: FontWeight.bold,
           letterSpacing: 0.5,
         ),
+        overflow: TextOverflow.ellipsis,
       ),
       style: ElevatedButton.styleFrom(
         backgroundColor: isEnabled ? color : color.withValues(alpha: 0.3),
         foregroundColor: Colors.white,
         disabledBackgroundColor: color.withValues(alpha: 0.2),
         disabledForegroundColor: Colors.white38,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        padding:
+            EdgeInsets.symmetric(horizontal: 8, vertical: verticalPadding),
+        minimumSize: Size(0, compact ? Responsive.minTouchTarget : 0),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
         ),
