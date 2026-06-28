@@ -41,10 +41,35 @@ Widget/integration tests that pump the full `DeckDrawApp` and interact via tap. 
 ## Running tests
 
 ```bash
-flutter test                              # all tests
+flutter test                              # all tests (incl. goldens) — run locally
 flutter test test/services/               # just service tests
 flutter test test/widget_test.dart         # just widget tests
+flutter test --exclude-tags golden        # what CI runs (skips goldens)
 ```
+
+## Golden screenshot tests (the `golden` tag)
+
+Golden / screenshot tests are platform-sensitive — fonts and anti-aliasing
+differ between Windows dev machines and the Linux CI runner, so the same render
+produces slightly different pixels. They are therefore **tagged `golden`** (tag
+declared in [`dart_test.yaml`](../dart_test.yaml)) and **excluded in CI** via
+`flutter test --exclude-tags golden`.
+
+- **Locally:** plain `flutter test` runs them along with everything else.
+- **Regenerate goldens** after an intentional visual change:
+
+  ```bash
+  flutter test test/screenshot_test.dart --update-goldens
+  ```
+
+  Generated images live in `test/goldens/*.png`. Regenerate on the same platform
+  you intend to compare against; don't commit goldens produced on a different OS
+  than your reviewers'.
+
+Animation determinism: tests don't wrap the tree in `AnimationSettings`, so
+`AnimationTiming.of` falls back to `AnimationSpeed.instant` (see
+[`lib/ui/CLAUDE.md`](../lib/ui/CLAUDE.md)) — no pending timers, no settle
+flakiness.
 
 ## Conventions
 - Deterministic randomness via `Random` injection — never rely on real randomness in tests.

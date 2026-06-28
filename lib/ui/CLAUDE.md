@@ -18,7 +18,9 @@ ui/
 │   └── playing_card_widget.dart    # Legacy card widget
 └── theme/
     ├── game_theme.dart             # Dark board theme, colors
-    └── faction_colors.dart         # Faction color palettes (primary/light/dark)
+    ├── faction_colors.dart         # Faction color palettes (primary/light/dark)
+    ├── animation_timing.dart       # 3-speed animation system (see below)
+    └── responsive.dart             # Screen-class breakpoints & sizing helpers
 ```
 
 ## Game screen layout (top to bottom)
@@ -75,6 +77,54 @@ Dark board (navy/dark blue) with:
 - Faction colors: Homodeus=Gold, Wraethe=Purple, Order=Blue, Undergrowth=Green
 - Resource colors: Health=Red/Green, Gems=Cyan, Power=Orange, Mastery=Purple
 - Gold accents for current player, selected cards, affordable items
+
+## Animation system (`theme/animation_timing.dart`)
+
+A small, centralised timing system so widgets never hardcode millisecond values.
+Design notes: [`ai-docs/animation_system_design.md`](../../ai-docs/animation_system_design.md).
+
+- **`AnimationSpeed`** — `slow` (deliberate/accessible), `fast` (snappy default),
+  `instant` (everything snaps to `Duration.zero`). Speed scales *durations and
+  delays only*, never game logic.
+- **`AnimationRole`** — logical roles widgets look up a duration by: `cardMove`,
+  `counterTick`, `hoverScale`, `phaseDelay`.
+- **`AnimationTiming`** — resolves a role → `Duration` for the active speed (the
+  single source of truth for timing). Get one from the tree with
+  `AnimationTiming.of(context)` (honours OS/browser reduced-motion via
+  `MediaQuery.disableAnimations`, forcing `instant`), or `AnimationTiming.forSpeed(speed)`.
+  Convenience getters: `.cardMove`, `.counterTick`, `.hoverScale`, `.phaseDelay`,
+  `.isInstant`.
+- **`AnimationSettings`** — `InheritedWidget` holding the global speed. Wrapped
+  around `MaterialApp` in [`lib/main.dart`](../main.dart) with
+  `initialSpeed: AnimationSpeed.fast`. `AnimationSettings.of(context)` returns an
+  `AnimationSettingsController` whose `setSpeed()` changes the speed at runtime.
+
+**Instant-in-tests:** when no `AnimationSettings` is above the widget,
+`AnimationTiming.of` falls back to `AnimationSettings.fallbackSpeed`, which is
+`AnimationSpeed.instant`. Widget/golden tests therefore stay deterministic (no
+pending timers, no `pumpAndSettle` flakiness) without any setup.
+
+Call sites in `game_screen.dart` use `AnimationTiming.of(context).cardMove` /
+`.phaseDelay` for card moves and phase pacing.
+
+## Responsive helper (`theme/responsive.dart`)
+
+`Responsive` classifies the layout by *available width* (so it works in a
+resizable desktop browser, not just by device). Design notes:
+[`ai-docs/responsive_ui_design.md`](../../ai-docs/responsive_ui_design.md).
+
+- **`ScreenClass`** — `mobile` / `tablet` / `desktop`.
+- **Breakpoints:** `mobileMaxWidth = 600`, `tabletMaxWidth = 1000`,
+  `maxContentWidth = 1400` (board cap on ultra-wide), `minTouchTarget = 48`.
+- **Lookup:** `Responsive.classify(width)`, `Responsive.of(context)` (uses
+  ambient `MediaQuery`), `Responsive.isMobile(width)`, `Responsive.isDesktop(width)`.
+- **Pick-by-class:** `Responsive.value(width, mobile:, tablet:, desktop:)`
+  (tablet falls back to mobile, desktop to tablet).
+- **Card sizing:** `handCardWidth(width)` and `compactCardWidth(width)` scale hand
+  / center-row and champion / played cards per class.
+
+`game_screen.dart` uses these to size cards, cap content width, and toggle
+`compact` card layouts on mobile.
 
 ## Legacy widgets
 

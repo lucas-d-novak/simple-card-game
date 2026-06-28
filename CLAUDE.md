@@ -35,9 +35,12 @@ Two-layer architecture:
 lib/
 ├── main.dart                           # App entry, routes to GameSetupScreen
 ├── data/
-│   ├── card_definitions.dart           # Full card catalog (55 unique cards, all factions)
+│   ├── card_definitions.dart           # Legacy hardcoded catalog (55 unique cards)
 │   ├── card_art_map.dart               # Card name → asset image path mapping
-│   └── starter_deck.dart               # 10-card starter deck builder
+│   ├── starter_deck.dart               # 10-card starter deck builder
+│   └── database/                       # JSON-backed authoritative card DB
+│       ├── card_database.dart          # CardDatabase + CardRecord (loads cards.json)
+│       └── effect_codec.dart           # JSON ⇄ CardEffect codec
 ├── models/
 │   ├── card_model.dart                 # CardModel with faction, type, shield, guard, etc.
 │   ├── card_effect.dart                # Sealed class hierarchy (12 effect types)
@@ -61,8 +64,29 @@ lib/
     │   └── playing_card_widget.dart     # Legacy card widget
     └── theme/
         ├── game_theme.dart              # Dark board theme
-        └── faction_colors.dart          # Faction color palettes
+        ├── faction_colors.dart          # Faction color palettes
+        ├── animation_timing.dart        # 3-speed animation system (slow/fast/instant)
+        └── responsive.dart              # Screen-class breakpoints & sizing helpers
 ```
+
+## Subsystems
+
+- **Card database** — [`assets/card_db/`](assets/card_db/README.md) holds the
+  authoritative `cards.json` (201 entries), its `schema.json` contract, and a
+  data-entry workflow. Loaded by
+  [`lib/data/database/`](lib/data/CLAUDE.md) (`CardDatabase`, `CardRecord`,
+  `effect_codec`) and validated by
+  [`tool/validate_card_db.dart`](tool/validate_card_db.dart)
+  (`dart run tool/validate_card_db.dart`).
+- **Animation system** — [`lib/ui/theme/animation_timing.dart`](lib/ui/theme/animation_timing.dart):
+  three speeds (slow / fast / instant), role-based durations, `AnimationSettings`
+  inherited widget wired in `main.dart`; falls back to `instant` in tests. See
+  [`lib/ui/CLAUDE.md`](lib/ui/CLAUDE.md) and design notes in
+  [`ai-docs/animation_system_design.md`](ai-docs/animation_system_design.md).
+- **Responsive UI** — [`lib/ui/theme/responsive.dart`](lib/ui/theme/responsive.dart):
+  `ScreenClass` (mobile / tablet / desktop) + width breakpoints for browser and
+  mobile. See [`lib/ui/CLAUDE.md`](lib/ui/CLAUDE.md) and
+  [`ai-docs/responsive_ui_design.md`](ai-docs/responsive_ui_design.md).
 
 ## Game loop (Shards of Infinity)
 
@@ -136,6 +160,13 @@ bash scripts/generate_report.sh           # generate visual QA report (HTML)
 
 GitHub Actions (`.github/workflows/flutter-ci.yml`) runs `pub get`, `analyze`, `test` on every PR and push to `main`.
 
+**Golden tests are excluded in CI.** Screenshot/golden tests are platform-sensitive
+(font / anti-aliasing differs between Windows dev and the Linux runner), so they
+are tagged `golden` in [`dart_test.yaml`](dart_test.yaml) and CI runs
+`flutter test --exclude-tags golden`. Goldens still run locally with plain
+`flutter test`; regenerate them with `flutter test test/screenshot_test.dart --update-goldens`.
+See [`test/CLAUDE.md`](test/CLAUDE.md).
+
 ## Key files to read first
 
 1. `lib/services/game_service.dart` — all game mechanics (the brain)
@@ -154,6 +185,8 @@ Cross-referenced. The mechanics doc is source of truth for game rules.
 - [`ai-docs/visual_iteration_system.md`](ai-docs/visual_iteration_system.md) — Playwright + Claude Code screenshot-driven visual QA workflow.
 - [`ai-docs/implementation_plan.md`](ai-docs/implementation_plan.md) — v6 implementation plan (17 steps). Steps 1-13b, 15 complete.
 - [`ai-docs/implementation_plan_review.md`](ai-docs/implementation_plan_review.md) — Peer review of v5 plan, all issues addressed in v6.
+- [`ai-docs/animation_system_design.md`](ai-docs/animation_system_design.md) — Design (5 iterations) behind the 3-speed animation system (`lib/ui/theme/animation_timing.dart`).
+- [`ai-docs/responsive_ui_design.md`](ai-docs/responsive_ui_design.md) — Design (5 iterations) behind the responsive breakpoints (`lib/ui/theme/responsive.dart`).
 
 ## Open pull requests (temporary)
 
@@ -170,9 +203,11 @@ Cross-referenced. The mechanics doc is source of truth for game rules.
 ## Subdirectory guides
 
 - [`lib/models/CLAUDE.md`](lib/models/CLAUDE.md) — card data model and effect type hierarchy
+- [`lib/data/CLAUDE.md`](lib/data/CLAUDE.md) — card catalog + JSON database layer (CardDatabase, CardRecord, effect_codec)
 - [`lib/services/CLAUDE.md`](lib/services/CLAUDE.md) — DeckService API, invariants, and card data
-- [`lib/ui/CLAUDE.md`](lib/ui/CLAUDE.md) — UI layout, widget keys, and patterns
-- [`test/CLAUDE.md`](test/CLAUDE.md) — test structure, helpers, and running conventions
+- [`lib/ui/CLAUDE.md`](lib/ui/CLAUDE.md) — UI layout, animation system, responsive helper, widget keys
+- [`test/CLAUDE.md`](test/CLAUDE.md) — test structure, helpers, golden-tag convention, running conventions
+- [`assets/card_db/README.md`](assets/card_db/README.md) — card database files, schema, and data-entry workflow
 
 ## Visual QA / Screenshot reports
 

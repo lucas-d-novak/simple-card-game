@@ -70,6 +70,23 @@ To see which targets are available on your machine:
 flutter devices
 ```
 
+### Testing and CI golden policy
+
+`flutter test` runs everything locally, including golden screenshot tests.
+Golden tests are platform-sensitive (fonts and anti-aliasing differ between
+Windows dev machines and the Linux CI runner), so they are tagged `golden` in
+[`dart_test.yaml`](dart_test.yaml) and **excluded in CI** via:
+
+```bash
+flutter test --exclude-tags golden
+```
+
+Regenerate goldens locally after an intentional visual change:
+
+```bash
+flutter test test/screenshot_test.dart --update-goldens
+```
+
 ## What Is Implemented
 
 - A starting deck of six money cards with values 1, 1, 2, 2, 3, and 4
@@ -101,8 +118,55 @@ flutter devices
 ### Supporting docs
 
 - [`ai-docs/flutter_deck_draw_plan.md`](ai-docs/flutter_deck_draw_plan.md): historical design notes from an earlier stage of the prototype
+- [`ai-docs/animation_system_design.md`](ai-docs/animation_system_design.md): design notes for the 3-speed animation system
+- [`ai-docs/responsive_ui_design.md`](ai-docs/responsive_ui_design.md): design notes for the responsive breakpoints
 
 The `android/`, `ios/`, and `web/` folders are the main product targets. The desktop folders are standard Flutter scaffolding and are not the stated focus of the project right now.
+
+## Card database
+
+The authoritative source of card data is the JSON database in
+[`assets/card_db/`](assets/card_db/README.md):
+
+- [`cards.json`](assets/card_db/cards.json) — the 201-card database, one entry per unique card.
+- [`schema.json`](assets/card_db/schema.json) — the per-field contract (`set`, `faction`, `group`, `cardType`, `cost`, `playEffects`, `art`, `verified`, and more).
+- [`README.md`](assets/card_db/README.md) — the data-entry workflow (phone photos + OCR → structured fields).
+
+It is loaded at runtime by [`lib/data/database/card_database.dart`](lib/data/database/card_database.dart)
+(`CardDatabase` + `CardRecord`), with effects decoded by
+[`lib/data/database/effect_codec.dart`](lib/data/database/effect_codec.dart)
+(JSON ⇄ `CardEffect`). See [`lib/data/CLAUDE.md`](lib/data/CLAUDE.md) for the layer overview.
+
+Validate the database with:
+
+```bash
+dart run tool/validate_card_db.dart
+```
+
+[`tool/validate_card_db.dart`](tool/validate_card_db.dart) reports missing fields,
+effect-decoding errors, verification status, and a per-set completeness summary.
+It exits 1 on hard errors (bad JSON, duplicate id, undecodable effect).
+
+## UI systems
+
+### Animation system
+
+The UI uses a centralized 3-speed timing system in
+[`lib/ui/theme/animation_timing.dart`](lib/ui/theme/animation_timing.dart):
+`AnimationSpeed` is `slow`, `fast`, or `instant`; widgets look up durations by
+`AnimationRole` rather than hardcoding milliseconds. The global speed lives in an
+`AnimationSettings` inherited widget; `AnimationTiming.of(context)` resolves the
+active timing and forces `instant` under reduced-motion or when no settings are
+present (so tests stay deterministic). Design notes:
+[`ai-docs/animation_system_design.md`](ai-docs/animation_system_design.md).
+
+### Responsive UI
+
+[`lib/ui/theme/responsive.dart`](lib/ui/theme/responsive.dart) classifies the
+layout by available width into `ScreenClass.mobile` / `tablet` / `desktop`
+(breakpoints 600 / 1000 px, content capped at 1400 px) so the board adapts to both
+desktop browsers and phones. Design notes:
+[`ai-docs/responsive_ui_design.md`](ai-docs/responsive_ui_design.md).
 
 ## How The App Works
 
