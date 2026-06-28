@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:simple_card_game/models/card_model.dart';
+import 'package:simple_card_game/ui/theme/animation_timing.dart';
 import 'package:simple_card_game/ui/theme/responsive.dart';
 import 'package:simple_card_game/ui/widgets/game_card_widget.dart';
 
@@ -51,6 +52,8 @@ class _CardFanState extends State<CardFan> {
     final angleStep = cardCount > 1 ? totalAngle / (cardCount - 1) : 0.0;
     final startAngle = -totalAngle / 2;
 
+    final cardMove = AnimationTiming.of(context).cardMove;
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final availableWidth = constraints.maxWidth;
@@ -92,11 +95,17 @@ class _CardFanState extends State<CardFan> {
                   : 0.0;
               final yOffset = normalizedPos * normalizedPos * 15;
 
-              return Positioned(
+              return AnimatedPositioned(
+                key: ValueKey(card.id),
+                duration: cardMove,
+                curve: Curves.easeOutCubic,
                 left: xPos,
                 top: yOffset + (isSelected ? -selectedLift : 10),
-                child: Transform.rotate(
-                  angle: angle,
+                child: AnimatedRotation(
+                  duration: cardMove,
+                  curve: Curves.easeOutCubic,
+                  // AnimatedRotation expresses rotation in turns (1 = 2*pi).
+                  turns: angle / (2 * math.pi),
                   alignment: Alignment.bottomCenter,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,

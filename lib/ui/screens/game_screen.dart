@@ -5,6 +5,7 @@ import 'package:simple_card_game/models/card_type.dart';
 import 'package:simple_card_game/models/faction.dart';
 import 'package:simple_card_game/services/ai_service.dart';
 import 'package:simple_card_game/services/game_service.dart';
+import 'package:simple_card_game/ui/theme/animation_timing.dart';
 import 'package:simple_card_game/ui/theme/faction_colors.dart';
 import 'package:simple_card_game/ui/theme/game_theme.dart';
 import 'package:simple_card_game/ui/theme/responsive.dart';
@@ -62,8 +63,10 @@ class _GameScreenState extends State<GameScreen>
         }
       });
       if (success) {
-        // Clear the played highlight after a brief delay
-        Future.delayed(const Duration(milliseconds: 400), () {
+        // Clear the played highlight after a brief delay (scaled by speed;
+        // zero under instant / reduced motion).
+        final highlightDelay = AnimationTiming.of(context).phaseDelay;
+        Future.delayed(highlightDelay, () {
           if (mounted) {
             setState(() => _lastPlayedCardId = null);
           }
@@ -710,7 +713,7 @@ class _GameScreenState extends State<GameScreen>
 
             // Action message with fade animation
             AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
+              duration: AnimationTiming.of(context).cardMove,
               child: _actionMessage != null
                   ? Padding(
                       key: ValueKey(_actionMessage),
@@ -977,6 +980,7 @@ class _CenterRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final cardWidth = Responsive.handCardWidth(screenWidth);
     final rowHeight = cardWidth * (170 / 120) + 6;
+    final refillDuration = AnimationTiming.of(context).cardMove;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8),
       padding: const EdgeInsets.all(6),
@@ -1018,22 +1022,39 @@ class _CenterRow extends StatelessWidget {
             height: rowHeight,
             child: ListView(
               scrollDirection: Axis.horizontal,
-              children: cards.map((card) {
-                final affordable = canAfford(card);
-                return Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: GameCardWidget(
-                    card: card,
-                    onTap: affordable ? () => onBuy(card) : null,
-                    onLongPress: onLongPress != null
-                        ? () => onLongPress!(card)
-                        : null,
-                    isHighlighted: affordable,
-                    compact: false,
-                    width: cardWidth,
+              children: [
+                for (int i = 0; i < cards.length; i++)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    // Keyed per slot: when a card is bought and a new one
+                    // refills the slot, the AnimatedSwitcher cross-fades it in
+                    // (instant duration = snap, no transition).
+                    child: AnimatedSwitcher(
+                      duration: refillDuration,
+                      transitionBuilder: (child, animation) => FadeTransition(
+                        opacity: animation,
+                        child: ScaleTransition(scale: animation, child: child),
+                      ),
+                      child: Builder(
+                        key: ValueKey(cards[i].id),
+                        builder: (context) {
+                          final card = cards[i];
+                          final affordable = canAfford(card);
+                          return GameCardWidget(
+                            card: card,
+                            onTap: affordable ? () => onBuy(card) : null,
+                            onLongPress: onLongPress != null
+                                ? () => onLongPress!(card)
+                                : null,
+                            isHighlighted: affordable,
+                            compact: false,
+                            width: cardWidth,
+                          );
+                        },
+                      ),
+                    ),
                   ),
-                );
-              }).toList(),
+              ],
             ),
           ),
         ],
@@ -1167,7 +1188,7 @@ class _PlayArea extends StatelessWidget {
                     padding: const EdgeInsets.only(right: 4),
                     child: AnimatedScale(
                       scale: isJustPlayed ? 1.15 : 1.0,
-                      duration: const Duration(milliseconds: 300),
+                      duration: AnimationTiming.of(context).cardMove,
                       curve: Curves.easeOutBack,
                       child: GameCardWidget(
                         card: card,

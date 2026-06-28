@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:simple_card_game/ui/theme/animation_timing.dart';
 import 'package:simple_card_game/ui/theme/game_theme.dart';
 import 'package:simple_card_game/ui/theme/responsive.dart';
 
@@ -134,8 +135,8 @@ class _ResourceChip extends StatelessWidget {
       children: [
         Icon(icon, size: 14, color: color),
         const SizedBox(width: 2),
-        Text(
-          '$value',
+        _AnimatedCounter(
+          value: value,
           style: TextStyle(
             color: color,
             fontSize: 13,
@@ -143,6 +144,26 @@ class _ResourceChip extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Renders an integer that "ticks" toward new values using
+/// [TweenAnimationBuilder]. Under instant / reduced motion the duration is
+/// [Duration.zero] so it snaps with no special-casing.
+class _AnimatedCounter extends StatelessWidget {
+  const _AnimatedCounter({required this.value, required this.style});
+
+  final int value;
+  final TextStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<int>(
+      tween: IntTween(begin: value, end: value),
+      duration: AnimationTiming.of(context).counterTick,
+      builder: (context, animatedValue, _) =>
+          Text('$animatedValue', style: style),
     );
   }
 }
@@ -155,6 +176,8 @@ class _MasteryIndicator extends StatelessWidget {
   Widget build(BuildContext context) {
     final progress = (mastery / 30).clamp(0.0, 1.0);
     final isMaxed = mastery >= 30;
+    final color = isMaxed ? GameTheme.gold : GameTheme.masteryPurple;
+    final tickDuration = AnimationTiming.of(context).counterTick;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -162,7 +185,7 @@ class _MasteryIndicator extends StatelessWidget {
         Icon(
           Icons.auto_awesome,
           size: 14,
-          color: isMaxed ? GameTheme.gold : GameTheme.masteryPurple,
+          color: color,
         ),
         const SizedBox(width: 2),
         SizedBox(
@@ -178,14 +201,19 @@ class _MasteryIndicator extends StatelessWidget {
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
-              // Fill bar
-              FractionallySizedBox(
-                widthFactor: progress,
-                child: Container(
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: isMaxed ? GameTheme.gold : GameTheme.masteryPurple,
-                    borderRadius: BorderRadius.circular(4),
+              // Fill bar — animates toward the new progress (snaps when instant).
+              TweenAnimationBuilder<double>(
+                tween: Tween<double>(begin: progress, end: progress),
+                duration: tickDuration,
+                curve: Curves.easeOut,
+                builder: (context, animatedProgress, _) => FractionallySizedBox(
+                  widthFactor: animatedProgress,
+                  child: Container(
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
                   ),
                 ),
               ),
@@ -193,10 +221,10 @@ class _MasteryIndicator extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 3),
-        Text(
-          '$mastery',
+        _AnimatedCounter(
+          value: mastery,
           style: TextStyle(
-            color: isMaxed ? GameTheme.gold : GameTheme.masteryPurple,
+            color: color,
             fontSize: 13,
             fontWeight: FontWeight.bold,
           ),

@@ -3,6 +3,7 @@ import 'package:simple_card_game/data/card_art_map.dart';
 import 'package:simple_card_game/models/card_model.dart';
 import 'package:simple_card_game/models/card_type.dart';
 import 'package:simple_card_game/models/faction.dart';
+import 'package:simple_card_game/ui/theme/animation_timing.dart';
 import 'package:simple_card_game/ui/theme/faction_colors.dart';
 import 'package:simple_card_game/ui/theme/game_theme.dart';
 import 'package:simple_card_game/ui/widgets/card_art.dart';
@@ -46,7 +47,7 @@ class GameCardWidget extends StatelessWidget {
       onTap: onTap,
       onLongPress: onLongPress,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: AnimationTiming.of(context).hoverScale,
         width: cardWidth,
         height: cardHeight,
         decoration: BoxDecoration(
