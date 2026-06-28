@@ -71,6 +71,7 @@ class CardRecord {
     required this.rawText,
     required this.verified,
     required this.notes,
+    required this.group,
     required this.model,
   });
 
@@ -82,6 +83,11 @@ class CardRecord {
   final String? rawText;
   final bool verified;
   final String? notes;
+
+  /// Optional source-list faction-like category for cards whose [model.faction]
+  /// is [Faction.none] because they belong to a non-playable group (e.g. 'Aion',
+  /// 'Destiny', 'Ingeminex'). null for ordinary cards. Catalog/reference only.
+  final String? group;
 
   /// The playable card definition projected from this record.
   final CardModel model;
@@ -99,6 +105,7 @@ class CardRecord {
       rawText: json['rawText'] as String?,
       verified: (json['verified'] as bool?) ?? false,
       notes: json['notes'] as String?,
+      group: json['group'] as String?,
       model: CardModel(
         id: id,
         name: name,

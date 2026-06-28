@@ -26,6 +26,10 @@
       "enum": ["homodeus", "wraethe", "order", "undergrowth", "none"],
       "description": "Faction for ally-ability matching. 'none' = factionless/neutral."
     },
+    "group": {
+      "type": "string",
+      "description": "Optional. The real faction-like category from the source list when it is NOT one of the four playable factions (e.g. 'Aion', 'Destiny', 'Ingeminex', boss/co-op groups). When set, 'faction' is 'none' because the engine has no enum for these groups; 'group' preserves the original grouping for catalog/reference."
+    },
     "cardType": {
       "type": "string",
       "enum": ["regular", "champion", "mercenary"],
