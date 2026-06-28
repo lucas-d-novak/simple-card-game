@@ -224,6 +224,17 @@ class DeckService {
           break;
         case DrawCardsEffect():
           drawCards(effect.count);
+        case GainGemsEffect():
+        case GainPowerEffect():
+        case GainMasteryEffect():
+        case GainHealthEffect():
+        case OpponentLosesHealthEffect():
+        case BanishCardEffect():
+        case ScrapFromCenterRowEffect():
+        case ChooseOneEffect():
+        case ConditionalPowerEffect():
+        case InfinityShardEffect():
+          break; // Handled by GameService, not DeckService
       }
     }
   }
