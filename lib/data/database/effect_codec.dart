@@ -1,4 +1,5 @@
 import 'package:simple_card_game/models/card_effect.dart';
+import 'package:simple_card_game/models/faction.dart';
 
 /// Decodes the `playEffects` / `allyAbility` / `masteryBonus` JSON arrays from
 /// the card database into [CardEffect] instances. Mirrors the effect types in
@@ -33,6 +34,16 @@ CardEffect decodeEffect(Map<String, dynamic> json) {
       return BanishCardEffect(_banishSource(json['source'] as String?));
     case 'scrapFromCenterRow':
       return const ScrapFromCenterRowEffect();
+    case 'destroyChampion':
+      return DestroyChampionEffect(all: (json['all'] as bool?) ?? false);
+    case 'returnFromDiscard':
+      final filter = _returnFilter(json['filter'] as String?);
+      return ReturnFromDiscardEffect(
+        filter: filter,
+        faction: filter == ReturnFilter.faction
+            ? _faction(json['faction'] as String?)
+            : null,
+      );
     case 'conditionalPower':
       return ConditionalPowerEffect(_powerCondition(json['condition'] as String?));
     case 'infinityShard':
@@ -69,6 +80,14 @@ Map<String, dynamic> encodeEffect(CardEffect effect) {
       return {'type': 'banishCard', 'source': effect.source.name};
     case ScrapFromCenterRowEffect():
       return {'type': 'scrapFromCenterRow'};
+    case DestroyChampionEffect():
+      return {'type': 'destroyChampion', 'all': effect.all};
+    case ReturnFromDiscardEffect():
+      return {
+        'type': 'returnFromDiscard',
+        'filter': effect.filter.name,
+        if (effect.faction != null) 'faction': effect.faction!.name,
+      };
     case ConditionalPowerEffect():
       return {'type': 'conditionalPower', 'condition': effect.condition.name};
     case InfinityShardEffect():
@@ -112,7 +131,46 @@ PowerCondition _powerCondition(String? raw) {
     case 'perChampionControlled':
     case null:
       return PowerCondition.perChampionControlled;
+    case 'perAllyPlayedThisTurn':
+      return PowerCondition.perAllyPlayedThisTurn;
+    case 'perFactionPlayedThisTurn':
+      return PowerCondition.perFactionPlayedThisTurn;
+    case 'perCardInDiscard':
+      return PowerCondition.perCardInDiscard;
     default:
       throw FormatException('unknown power condition: $raw');
+  }
+}
+
+ReturnFilter _returnFilter(String? raw) {
+  switch (raw) {
+    case 'any':
+    case null:
+      return ReturnFilter.any;
+    case 'champion':
+      return ReturnFilter.champion;
+    case 'mercenary':
+      return ReturnFilter.mercenary;
+    case 'faction':
+      return ReturnFilter.faction;
+    default:
+      throw FormatException('unknown return filter: $raw');
+  }
+}
+
+Faction _faction(String? raw) {
+  switch (raw) {
+    case 'homodeus':
+      return Faction.homodeus;
+    case 'wraethe':
+      return Faction.wraethe;
+    case 'order':
+      return Faction.order;
+    case 'undergrowth':
+      return Faction.undergrowth;
+    case 'none':
+      return Faction.none;
+    default:
+      throw FormatException('unknown faction: $raw');
   }
 }

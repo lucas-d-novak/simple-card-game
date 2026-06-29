@@ -124,6 +124,8 @@
             "opponentLosesHealth",
             "banishCard",
             "scrapFromCenterRow",
+            "destroyChampion",
+            "returnFromDiscard",
             "chooseOne",
             "conditionalPower",
             "infinityShard"
@@ -136,9 +138,28 @@
           "enum": ["hand", "discard", "handOrDiscard"],
           "description": "For banishCard."
         },
+        "all": {
+          "type": "boolean",
+          "description": "For destroyChampion: if true, destroy ALL enemy champions instead of a single target."
+        },
+        "filter": {
+          "type": "string",
+          "enum": ["any", "champion", "mercenary", "faction"],
+          "description": "For returnFromDiscard: which discard-pile cards are eligible to return."
+        },
+        "faction": {
+          "type": "string",
+          "enum": ["homodeus", "wraethe", "order", "undergrowth", "none"],
+          "description": "For returnFromDiscard when filter is 'faction': the required faction."
+        },
         "condition": {
           "type": "string",
-          "enum": ["perChampionControlled"],
+          "enum": [
+            "perChampionControlled",
+            "perAllyPlayedThisTurn",
+            "perFactionPlayedThisTurn",
+            "perCardInDiscard"
+          ],
           "description": "For conditionalPower."
         },
         "choices": {

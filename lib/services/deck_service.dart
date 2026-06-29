@@ -231,6 +231,8 @@ class DeckService {
         case OpponentLosesHealthEffect():
         case BanishCardEffect():
         case ScrapFromCenterRowEffect():
+        case DestroyChampionEffect():
+        case ReturnFromDiscardEffect():
         case ChooseOneEffect():
         case ConditionalPowerEffect():
         case InfinityShardEffect():

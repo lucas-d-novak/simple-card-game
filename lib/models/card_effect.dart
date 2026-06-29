@@ -1,3 +1,5 @@
+import 'package:simple_card_game/models/faction.dart';
+
 sealed class CardEffect {
   const CardEffect();
 
@@ -130,6 +132,81 @@ final class ScrapFromCenterRowEffect extends CardEffect {
 }
 
 // ---------------------------------------------------------------------------
+// Champion removal effects (Phase 1)
+// ---------------------------------------------------------------------------
+
+/// Destroy an enemy champion without spending power (card-effect removal).
+///
+/// When [all] is false the player picks a single target enemy champion (target
+/// selection mirrors [OpponentLosesHealthEffect] / banish — see GameService).
+/// When [all] is true every enemy champion is destroyed with no target choice.
+/// Destroyed champions go to their owner's discard pile, exactly like the
+/// destruction half of [GameService.attackChampion].
+final class DestroyChampionEffect extends CardEffect {
+  const DestroyChampionEffect({this.all = false});
+
+  /// If true, destroy ALL enemy champions instead of a single chosen target.
+  final bool all;
+
+  @override
+  String get description => all
+      ? 'Destroy all enemy champions'
+      : 'Destroy a target enemy champion';
+}
+
+// ---------------------------------------------------------------------------
+// Discard recursion effects (Phase 1)
+// ---------------------------------------------------------------------------
+
+/// Which cards in the discard pile a [ReturnFromDiscardEffect] may return.
+enum ReturnFilter {
+  /// Any card may be returned.
+  any,
+
+  /// Only champion-type cards.
+  champion,
+
+  /// Only mercenary-type cards.
+  mercenary,
+
+  /// Only cards matching [ReturnFromDiscardEffect.faction].
+  faction,
+}
+
+/// Return a card from your own discard pile to your hand.
+///
+/// The [filter] restricts which cards are eligible. When [filter] is
+/// [ReturnFilter.faction], [faction] names the required faction. Target
+/// selection mirrors banish (the player calls
+/// [GameService.returnFromDiscard] with the chosen card id).
+final class ReturnFromDiscardEffect extends CardEffect {
+  const ReturnFromDiscardEffect({
+    this.filter = ReturnFilter.any,
+    this.faction,
+  });
+
+  final ReturnFilter filter;
+
+  /// Required faction when [filter] is [ReturnFilter.faction]; otherwise null.
+  final Faction? faction;
+
+  @override
+  String get description {
+    switch (filter) {
+      case ReturnFilter.any:
+        return 'Return a card from your discard pile to your hand';
+      case ReturnFilter.champion:
+        return 'Return a champion from your discard pile to your hand';
+      case ReturnFilter.mercenary:
+        return 'Return a mercenary from your discard pile to your hand';
+      case ReturnFilter.faction:
+        final f = faction?.name ?? 'faction';
+        return 'Return a $f card from your discard pile to your hand';
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Complex / composite effects
 // ---------------------------------------------------------------------------
 
@@ -154,6 +231,17 @@ final class ChooseOneEffect extends CardEffect {
 enum PowerCondition {
   /// Gain power equal to the number of champions you control.
   perChampionControlled,
+
+  /// Gain power equal to the number of allies (cards matching this card's
+  /// faction) you have played so far this turn.
+  perAllyPlayedThisTurn,
+
+  /// Gain power equal to the number of distinct factions you have played so
+  /// far this turn.
+  perFactionPlayedThisTurn,
+
+  /// Gain power equal to the number of cards in your discard pile.
+  perCardInDiscard,
 }
 
 /// Power that scales based on game state rather than a fixed amount.
@@ -167,9 +255,22 @@ final class ConditionalPowerEffect extends CardEffect {
     switch (condition) {
       case PowerCondition.perChampionControlled:
         return 'Gain 1 power for each champion you control';
+      case PowerCondition.perAllyPlayedThisTurn:
+        return 'Gain 1 power for each ally played this turn';
+      case PowerCondition.perFactionPlayedThisTurn:
+        return 'Gain 1 power for each faction played this turn';
+      case PowerCondition.perCardInDiscard:
+        return 'Gain 1 power for each card in your discard pile';
     }
   }
 }
+
+// TODO(phase2): Exhaust / activated champion abilities are intentionally NOT
+// modelled here. They require a structural per-champion ability model (an
+// activation cost + once-per-turn "exhausted" state on the champion instance),
+// not a flat CardEffect subtype. Adding them as a CardEffect would not capture
+// the exhaust lifecycle correctly. Implement as a dedicated ability model in a
+// later phase rather than half-implementing it now.
 
 /// The Infinity Shard — scales with mastery.
 /// Always grants 1 mastery. Power scales: 0/3/6/10/15/20 at mastery 0/5/10/15/20/25.

@@ -18,12 +18,19 @@ Immutable data classes and enums for the Shards of Infinity card game.
 All fields have defaults for backward compatibility with legacy DeckService.
 
 ### card_effect.dart
-`CardEffect` — sealed class hierarchy with 12 effect types:
+`CardEffect` — sealed class hierarchy:
 - **Resource effects:** `GainGemsEffect`, `GainPowerEffect`, `GainMasteryEffect`, `GainHealthEffect`, `GainMoneyEffect` (legacy)
 - **Draw:** `DrawCardsEffect`
 - **Opponent interaction:** `OpponentLosesHealthEffect`
 - **Deck thinning:** `BanishCardEffect` (with `BanishSource` enum: hand/discard/handOrDiscard), `ScrapFromCenterRowEffect`
-- **Complex:** `ChooseOneEffect` (player picks from effect groups), `ConditionalPowerEffect` (scales with game state), `InfinityShardEffect` (scales with mastery, instant win at 30+)
+- **Champion removal:** `DestroyChampionEffect` (`all` flag: single chosen target vs. all enemy champions; no power cost)
+- **Discard recursion:** `ReturnFromDiscardEffect` (with `ReturnFilter` enum: any/champion/mercenary/faction, plus an optional `Faction`) — return a discard card to hand
+- **Complex:** `ChooseOneEffect` (player picks from effect groups), `ConditionalPowerEffect` (scales POWER with game state via `PowerCondition`: `perChampionControlled`, `perAllyPlayedThisTurn`, `perFactionPlayedThisTurn`, `perCardInDiscard`), `InfinityShardEffect` (scales with mastery, instant win at 30+)
+
+> **Deferred (later phase):** Exhaust / activated champion abilities are NOT
+> modelled yet — they need a structural per-champion ability model (cost,
+> once-per-turn exhaust state) rather than a single `CardEffect` subtype. Do not
+> shoehorn them into `CardEffect`.
 
 Each subclass has a `description` getter for UI display.
 

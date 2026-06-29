@@ -65,10 +65,13 @@ types in [`lib/models/card_effect.dart`](../models/card_effect.dart) and the
 
 Supported `type` values: `gainGems`, `gainPower`, `gainMastery`, `gainHealth`,
 `drawCards`, `opponentLosesHealth`, `banishCard` (`source`:
-`hand`/`discard`/`handOrDiscard`), `scrapFromCenterRow`, `conditionalPower`
-(`condition`: `perChampionControlled`), `infinityShard`, `chooseOne`
-(`choices`: array of effect groups). `gainMoney` is legacy and not part of the
-Shards of Infinity database.
+`hand`/`discard`/`handOrDiscard`), `scrapFromCenterRow`, `destroyChampion`
+(`all`: bool — single target vs. all enemy champions), `returnFromDiscard`
+(`filter`: `any`/`champion`/`mercenary`/`faction`, plus `faction` when
+filtering by faction), `conditionalPower` (`condition`:
+`perChampionControlled`/`perAllyPlayedThisTurn`/`perFactionPlayedThisTurn`/`perCardInDiscard`),
+`infinityShard`, `chooseOne` (`choices`: array of effect groups). `gainMoney`
+is legacy and not part of the Shards of Infinity database.
 
 ## Tooling
 
