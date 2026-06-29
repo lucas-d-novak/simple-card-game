@@ -85,6 +85,23 @@ void main(List<String> args) {
       hardErrors.add('$label: activatedAbility — $e');
     }
 
+    // Invariant: a `selfBanish` effect must be the LAST element of its effect
+    // list. It removes the source card mid-resolution; any sibling effect after
+    // it that counts cards-played-this-turn (e.g. a `sameFactionCountPlayed`
+    // condition that includes the source) would silently undercount. Enforcing
+    // last-position turns the documented convention into a hard guarantee.
+    for (final key in const ['playEffects', 'allyAbility', 'masteryBonus']) {
+      final list = raw[key];
+      if (list is List) {
+        for (var i = 0; i < list.length; i++) {
+          final e = list[i];
+          if (e is Map && e['type'] == 'selfBanish' && i != list.length - 1) {
+            hardErrors.add('$label: $key — selfBanish must be the last effect');
+          }
+        }
+      }
+    }
+
     // Soft completeness checks.
     for (final key in const ['name', 'set', 'faction', 'cardType', 'cost']) {
       if (raw[key] == null) softWarnings.add('$label: missing "$key"');
