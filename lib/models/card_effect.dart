@@ -570,6 +570,9 @@ final class ActivatedAbility {
   const ActivatedAbility({
     required this.effects,
     this.cost = ActivationCost.none,
+    this.masteryThreshold,
+    this.masteryBonusEffects = const <CardEffect>[],
+    this.replaces = false,
   });
 
   /// The effects resolved when this ability is used. Reuses the existing
@@ -580,10 +583,32 @@ final class ActivatedAbility {
   /// The resource cost (beyond Exhaust) to use the ability.
   final ActivationCost cost;
 
+  /// Mastery level at which [masteryBonusEffects] become relevant. Null means
+  /// the ability has no mastery scaling (the common case — [effects] always
+  /// resolve). Mirrors [CardModel.masteryThreshold] but scopes the gate to this
+  /// ability.
+  final int? masteryThreshold;
+
+  /// The mastery-tier effects for this ability. When [replaces] is true and the
+  /// owner's mastery is at/above [masteryThreshold], these resolve INSTEAD OF
+  /// [effects] (e.g. gian_shard_wyrm gives 2/2 normally but 5/5 at mastery 15).
+  /// When [replaces] is false, these resolve ADDITIVELY on top of [effects] once
+  /// the threshold is met (matching the card-level additive mastery default).
+  final List<CardEffect> masteryBonusEffects;
+
+  /// Whether [masteryBonusEffects] replace [effects] (true) or add to them
+  /// (false) at/above [masteryThreshold]. Defaults to false so existing
+  /// abilities (with no mastery fields) are entirely unaffected.
+  final bool replaces;
+
   /// Human-readable summary for UI display.
   String get description {
     final body = effects.map((e) => e.description).join(', ');
-    return 'Exhaust: $body';
+    final base = 'Exhaust: $body';
+    if (masteryThreshold == null || masteryBonusEffects.isEmpty) return base;
+    final bonus = masteryBonusEffects.map((e) => e.description).join(', ');
+    final connector = replaces ? 'instead' : 'also';
+    return '$base (at mastery $masteryThreshold: $connector $bonus)';
   }
 }
 

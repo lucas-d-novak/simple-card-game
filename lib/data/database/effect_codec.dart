@@ -30,6 +30,12 @@ List<CardEffect> decodeEffectList(dynamic raw) {
 /// `effects` is required and reuses the ordinary effect vocabulary. `cost` is
 /// optional; any of its `gems` / `mastery` / `health` keys default to 0
 /// (an absent `cost` means Exhaust-only).
+///
+/// Optional mastery scaling (all absent by default): `masteryThreshold` (int),
+/// `masteryBonusEffects` (effect array) and `masteryReplaces` (bool). When
+/// `masteryReplaces` is true and the threshold is met, the bonus effects
+/// resolve INSTEAD OF `effects`; otherwise additively. `masteryBonusEffects`,
+/// if present, must be a non-empty array.
 ActivatedAbility? decodeActivatedAbility(dynamic raw) {
   if (raw == null) return null;
   if (raw is! Map<String, dynamic>) {
@@ -40,9 +46,17 @@ ActivatedAbility? decodeActivatedAbility(dynamic raw) {
     throw const FormatException(
         'activatedAbility requires a non-empty "effects" array');
   }
+  final masteryBonusEffects = decodeEffectList(raw['masteryBonusEffects']);
+  if (raw.containsKey('masteryBonusEffects') && masteryBonusEffects.isEmpty) {
+    throw const FormatException(
+        'activatedAbility "masteryBonusEffects" must be a non-empty array');
+  }
   return ActivatedAbility(
     effects: effects,
     cost: _activationCost(raw['cost']),
+    masteryThreshold: _optNullInt(raw, 'masteryThreshold'),
+    masteryBonusEffects: masteryBonusEffects,
+    replaces: (raw['masteryReplaces'] as bool?) ?? false,
   );
 }
 
@@ -58,7 +72,8 @@ ActivationCost _activationCost(dynamic raw) {
   );
 }
 
-/// Encodes an [ActivatedAbility] back to its JSON map. Omits an all-zero cost.
+/// Encodes an [ActivatedAbility] back to its JSON map. Omits an all-zero cost
+/// and omits the mastery fields when the ability has no mastery threshold.
 Map<String, dynamic> encodeActivatedAbility(ActivatedAbility ability) {
   return {
     'effects': [for (final e in ability.effects) encodeEffect(e)],
@@ -68,6 +83,13 @@ Map<String, dynamic> encodeActivatedAbility(ActivatedAbility ability) {
         if (ability.cost.mastery != 0) 'mastery': ability.cost.mastery,
         if (ability.cost.health != 0) 'health': ability.cost.health,
       },
+    if (ability.masteryThreshold != null)
+      'masteryThreshold': ability.masteryThreshold,
+    if (ability.masteryBonusEffects.isNotEmpty)
+      'masteryBonusEffects': [
+        for (final e in ability.masteryBonusEffects) encodeEffect(e),
+      ],
+    if (ability.replaces) 'masteryReplaces': ability.replaces,
   };
 }
 
@@ -207,6 +229,16 @@ int _optInt(Map<String, dynamic> json, String key) {
   if (v == null) return 0;
   if (v is int) return v;
   throw FormatException('activation cost "$key" must be an integer');
+}
+
+/// Reads an optional integer key, returning null when absent. Throws if present
+/// but not an integer. Used for the optional `masteryThreshold` of an
+/// [ActivatedAbility].
+int? _optNullInt(Map<String, dynamic> json, String key) {
+  final v = json[key];
+  if (v == null) return null;
+  if (v is int) return v;
+  throw FormatException('"$key" must be an integer');
 }
 
 BanishSource _banishSource(String? raw) {

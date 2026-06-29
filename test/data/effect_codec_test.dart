@@ -443,4 +443,84 @@ void main() {
       expect(decoded.cost.health, 0);
     });
   });
+
+  group('effect_codec — ActivatedAbility mastery tier (Wave 1)', () {
+    test('decodes mastery replace fields', () {
+      final ability = decodeActivatedAbility({
+        'effects': [
+          {'type': 'gainPower', 'amount': 2},
+        ],
+        'masteryThreshold': 15,
+        'masteryBonusEffects': [
+          {'type': 'gainPower', 'amount': 5},
+        ],
+        'masteryReplaces': true,
+      })!;
+      expect(ability.masteryThreshold, 15);
+      expect(ability.masteryBonusEffects, hasLength(1));
+      expect(ability.masteryBonusEffects.first, isA<GainPowerEffect>());
+      expect(ability.replaces, true);
+    });
+
+    test('absent mastery fields default to null/empty/false', () {
+      final ability = decodeActivatedAbility({
+        'effects': [
+          {'type': 'gainPower', 'amount': 2},
+        ],
+      })!;
+      expect(ability.masteryThreshold, isNull);
+      expect(ability.masteryBonusEffects, isEmpty);
+      expect(ability.replaces, false);
+    });
+
+    test('present-but-empty masteryBonusEffects throws FormatException', () {
+      expect(
+        () => decodeActivatedAbility({
+          'effects': [
+            {'type': 'gainPower', 'amount': 2},
+          ],
+          'masteryBonusEffects': <dynamic>[],
+        }),
+        throwsFormatException,
+      );
+    });
+
+    test('non-integer masteryThreshold throws FormatException', () {
+      expect(
+        () => decodeActivatedAbility({
+          'effects': [
+            {'type': 'gainPower', 'amount': 2},
+          ],
+          'masteryThreshold': 'fifteen',
+        }),
+        throwsFormatException,
+      );
+    });
+
+    test('round-trips a mastery-replace ability', () {
+      const ability = ActivatedAbility(
+        effects: [GainPowerEffect(2), GainMasteryEffect(2)],
+        masteryThreshold: 15,
+        masteryBonusEffects: [GainPowerEffect(5), GainMasteryEffect(5)],
+        replaces: true,
+      );
+      final encoded = encodeActivatedAbility(ability);
+      expect(encoded['masteryThreshold'], 15);
+      expect(encoded['masteryReplaces'], true);
+      expect((encoded['masteryBonusEffects'] as List), hasLength(2));
+
+      final decoded = decodeActivatedAbility(encoded)!;
+      expect(decoded.masteryThreshold, 15);
+      expect(decoded.replaces, true);
+      expect(decoded.masteryBonusEffects, hasLength(2));
+    });
+
+    test('round-trips a plain ability (omits all mastery keys)', () {
+      const ability = ActivatedAbility(effects: [GainPowerEffect(2)]);
+      final encoded = encodeActivatedAbility(ability);
+      expect(encoded.containsKey('masteryThreshold'), false);
+      expect(encoded.containsKey('masteryBonusEffects'), false);
+      expect(encoded.containsKey('masteryReplaces'), false);
+    });
+  });
 }

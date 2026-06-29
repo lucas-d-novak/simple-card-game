@@ -2427,4 +2427,193 @@ void main() {
       expect(game.currentPlayer.powerPool, 2);
     });
   });
+
+  // -------------------------------------------------------------------------
+  // Wave 1 — mastery REPLACE (vs additive) behavior
+  // -------------------------------------------------------------------------
+  group('mastery replace vs additive', () {
+    // A card that normally gives 2 gems but, at mastery 15, gives 5 power.
+    CardModel replaceCard() => const CardModel(
+          id: 'test_replace',
+          name: 'Replace Card',
+          cost: 0,
+          playEffects: [GainGemsEffect(2)],
+          masteryThreshold: 15,
+          masteryBonus: [GainPowerEffect(5)],
+          masteryReplaces: true,
+        );
+
+    // Same effects, but additive (the legacy default).
+    CardModel additiveCard() => const CardModel(
+          id: 'test_additive',
+          name: 'Additive Card',
+          cost: 0,
+          playEffects: [GainGemsEffect(2)],
+          masteryThreshold: 15,
+          masteryBonus: [GainPowerEffect(5)],
+          // masteryReplaces defaults to false
+        );
+
+    test('REPLACE below threshold: playEffects resolve, bonus does NOT', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.mastery = 10; // below 15
+      player.hand.add(replaceCard());
+
+      game.playCard('test_replace');
+
+      expect(player.gemPool, 2, reason: 'playEffects resolved');
+      expect(player.powerPool, 0, reason: 'mastery bonus did NOT resolve');
+    });
+
+    test('REPLACE at/above threshold: bonus resolves INSTEAD of playEffects',
+        () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.mastery = 15; // at threshold
+      player.hand.add(replaceCard());
+
+      game.playCard('test_replace');
+
+      // The distinguishing assertion: playEffects were SKIPPED.
+      expect(player.gemPool, 0, reason: 'playEffects did NOT resolve');
+      expect(player.powerPool, 5, reason: 'mastery bonus resolved instead');
+    });
+
+    test('ADDITIVE default below threshold is unchanged (playEffects only)',
+        () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.mastery = 10;
+      player.hand.add(additiveCard());
+
+      game.playCard('test_additive');
+
+      expect(player.gemPool, 2);
+      expect(player.powerPool, 0);
+    });
+
+    test('ADDITIVE default at threshold is unchanged (BOTH resolve)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.mastery = 15;
+      player.hand.add(additiveCard());
+
+      game.playCard('test_additive');
+
+      // Proves the default behavior is untouched: playEffects AND bonus.
+      expect(player.gemPool, 2, reason: 'playEffects still resolve');
+      expect(player.powerPool, 5, reason: 'mastery bonus added on top');
+    });
+
+    test('REPLACE applies to champion free activation too', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.mastery = 15;
+      const champ = CardModel(
+        id: 'test_replace_champ',
+        name: 'Replace Champ',
+        cost: 0,
+        cardType: CardType.champion,
+        shield: 3,
+        playEffects: [GainGemsEffect(2)],
+        masteryThreshold: 15,
+        masteryBonus: [GainPowerEffect(5)],
+        masteryReplaces: true,
+      );
+      player.hand.add(champ);
+      game.playCard('test_replace_champ'); // deploy resolves replace once
+
+      expect(player.gemPool, 0);
+      expect(player.powerPool, 5);
+
+      // Free activation a fresh turn would also replace; simulate by reusing.
+      player.activatedChampions.clear();
+      player.gemPool = 0;
+      player.powerPool = 0;
+      expect(game.activateChampion('test_replace_champ'), true);
+      expect(player.gemPool, 0);
+      expect(player.powerPool, 5);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Wave 1 — ActivatedAbility mastery replace / additive
+  // -------------------------------------------------------------------------
+  group('activated ability mastery tier', () {
+    CardModel wyrm({required bool replaces}) => CardModel(
+          id: 'test_wyrm',
+          name: 'Shard Wyrm',
+          cost: 0,
+          cardType: CardType.champion,
+          shield: 4,
+          playEffects: const [GainGemsEffect(1)],
+          activatedAbility: ActivatedAbility(
+            effects: const [GainPowerEffect(2), GainMasteryEffect(2)],
+            masteryThreshold: 15,
+            masteryBonusEffects: const [
+              GainPowerEffect(5),
+              GainMasteryEffect(5),
+            ],
+            replaces: replaces,
+          ),
+        );
+
+    test('below threshold: base effects resolve, bonus does NOT', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.hand.add(wyrm(replaces: true));
+      game.playCard('test_wyrm');
+      player.mastery = 10; // below 15 (play gave none; set after deploy)
+
+      expect(game.useActivatedAbility('test_wyrm'), true);
+      expect(player.powerPool, 2, reason: 'base 2 power');
+      expect(player.mastery, 12, reason: '10 + base 2 mastery');
+    });
+
+    test('REPLACE at threshold: bonus resolves INSTEAD of base', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.hand.add(wyrm(replaces: true));
+      game.playCard('test_wyrm');
+      player.mastery = 15;
+
+      expect(game.useActivatedAbility('test_wyrm'), true);
+      // Distinguishing: base (2/2) skipped, bonus (5/5) instead.
+      expect(player.powerPool, 5);
+      expect(player.mastery, 20, reason: '15 + bonus 5 (NOT base 2)');
+    });
+
+    test('ADDITIVE at threshold: base AND bonus both resolve', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.hand.add(wyrm(replaces: false));
+      game.playCard('test_wyrm');
+      player.mastery = 15;
+
+      expect(game.useActivatedAbility('test_wyrm'), true);
+      expect(player.powerPool, 7, reason: 'base 2 + bonus 5');
+      expect(player.mastery, 22, reason: '15 + base 2 + bonus 5');
+    });
+
+    test('plain ability with no mastery fields is unaffected', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.mastery = 30;
+      const plain = CardModel(
+        id: 'test_plain_exh',
+        name: 'Plain Exhaust',
+        cost: 0,
+        cardType: CardType.champion,
+        shield: 2,
+        playEffects: [GainGemsEffect(1)],
+        activatedAbility: ActivatedAbility(effects: [GainPowerEffect(3)]),
+      );
+      player.hand.add(plain);
+      game.playCard('test_plain_exh');
+
+      expect(game.useActivatedAbility('test_plain_exh'), true);
+      expect(player.powerPool, 3);
+    });
+  });
 }

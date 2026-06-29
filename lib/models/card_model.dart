@@ -35,6 +35,15 @@ class CardModel {
   /// [masteryThreshold].
   final List<CardEffect> masteryBonus;
 
+  /// How the mastery threshold resolves. When false (the default and the
+  /// behavior of every legacy card), [masteryBonus] is resolved ADDITIVELY on
+  /// top of [playEffects] once mastery reaches [masteryThreshold]. When true,
+  /// [masteryBonus] REPLACES [playEffects] at/above the threshold (e.g. "gain
+  /// 5/5 INSTEAD OF 2/2 at mastery 15") — [playEffects] are skipped and only
+  /// [masteryBonus] resolves. Below the threshold, [playEffects] resolve
+  /// normally either way. Defaults to false for backward compatibility.
+  final bool masteryReplaces;
+
   /// When true, this card counts as every faction for ally ability purposes
   /// (e.g. Universal Soldier).
   final bool countsAsAllFactions;
@@ -59,6 +68,7 @@ class CardModel {
     this.allyAbility = const <CardEffect>[],
     this.masteryThreshold,
     this.masteryBonus = const <CardEffect>[],
+    this.masteryReplaces = false,
     this.countsAsAllFactions = false,
     this.activatedAbility,
   });

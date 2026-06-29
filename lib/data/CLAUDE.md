@@ -109,6 +109,16 @@ card (NOT an entry in the effect `type` enum). Shape:
 - `cost` (optional) — extra resources paid on top of Exhaust. Keys `gems` /
   `mastery` / `health` each default to 0; omit `cost` entirely for an
   Exhaust-only ability. Health cost may not be lethal to oneself.
+- `masteryThreshold` / `masteryBonusEffects` / `masteryReplaces` (all optional,
+  default null/empty/false) — optional mastery tier for the ability. When
+  `masteryReplaces` is true and the owner's mastery is at/above
+  `masteryThreshold`, `masteryBonusEffects` resolve INSTEAD OF `effects` (e.g.
+  gian_shard_wyrm gives 2/2 normally, 5/5 at mastery 15); otherwise additively
+  on top. `masteryBonusEffects`, if present, must be non-empty.
+
+The card-level `masteryReplaces` (bool, default false) on the record controls
+whether a card's `masteryBonus` replaces `playEffects` (true) or stacks on top
+(false, the legacy default) at/above `masteryThreshold`.
 
 Only champions should carry `activatedAbility`. The 24 DB cards whose `rawText`
 mentions "exhaust" are the encoding targets.

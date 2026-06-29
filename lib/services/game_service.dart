@@ -85,8 +85,7 @@ class GameService {
     if (player.activatedChampions.contains(championId)) return false;
 
     player.activatedChampions.add(championId);
-    _resolveEffects(champion.playEffects, player, sourceCard: champion);
-    _checkMasteryBonus(champion, player);
+    _resolvePlayOrMastery(champion, player);
     _checkAllyAbility(champion, player);
     return true;
   }
@@ -127,8 +126,35 @@ class GameService {
 
     _payActivationCost(player, ability.cost);
     player.exhaustedChampions.add(championId);
-    _resolveEffects(ability.effects, player, sourceCard: champion);
+    _resolveActivatedAbility(ability, player, sourceCard: champion);
     return true;
+  }
+
+  /// Resolves an [ActivatedAbility]'s effects, honouring its optional mastery
+  /// tier. When the ability has a [ActivatedAbility.masteryThreshold] the owner
+  /// has reached: if [ActivatedAbility.replaces] is true the mastery effects
+  /// resolve INSTEAD OF the base effects; otherwise they resolve ADDITIVELY on
+  /// top. With no mastery threshold (the default), only [effects] resolve.
+  void _resolveActivatedAbility(
+    ActivatedAbility ability,
+    PlayerState player, {
+    required CardModel sourceCard,
+  }) {
+    final tierMet = ability.masteryThreshold != null &&
+        ability.masteryBonusEffects.isNotEmpty &&
+        player.mastery >= ability.masteryThreshold!;
+
+    if (tierMet && ability.replaces) {
+      _resolveEffects(ability.masteryBonusEffects, player,
+          sourceCard: sourceCard);
+      return;
+    }
+
+    _resolveEffects(ability.effects, player, sourceCard: sourceCard);
+    if (tierMet) {
+      _resolveEffects(ability.masteryBonusEffects, player,
+          sourceCard: sourceCard);
+    }
   }
 
   /// Whether [player] can afford [cost] (gems, mastery, and health are all
@@ -172,16 +198,9 @@ class GameService {
     // champions and mercenaries, in play order.
     player.cardsPlayedThisTurn.add(card);
 
-    // Resolve play effects
-    _resolveEffects(
-      card.playEffects,
-      player,
-      choiceIndex: choiceIndex,
-      sourceCard: card,
-    );
-
-    // Step 11: check mastery threshold bonus
-    _checkMasteryBonus(card, player);
+    // Resolve play effects (or, for masteryReplaces cards at threshold, the
+    // mastery bonus INSTEAD; otherwise the additive mastery bonus on top).
+    _resolvePlayOrMastery(card, player, choiceIndex: choiceIndex);
 
     // Step 9: check ally ability
     _checkAllyAbility(card, player);
@@ -611,6 +630,40 @@ class GameService {
   // -------------------------------------------------------------------------
   // Mastery threshold (Step 11)
   // -------------------------------------------------------------------------
+
+  /// Resolves a card's [CardModel.playEffects] together with its mastery
+  /// threshold, used by both [playCard] and [activateChampion].
+  ///
+  /// - When [CardModel.masteryReplaces] is true AND the card has a
+  ///   [CardModel.masteryThreshold] the player has reached, the
+  ///   [CardModel.masteryBonus] resolves INSTEAD OF [CardModel.playEffects].
+  /// - Otherwise (the legacy default), [CardModel.playEffects] resolve and the
+  ///   mastery bonus is checked ADDITIVELY on top via [_checkMasteryBonus].
+  void _resolvePlayOrMastery(
+    CardModel card,
+    PlayerState player, {
+    int choiceIndex = 0,
+  }) {
+    final thresholdMet = card.masteryThreshold != null &&
+        card.masteryBonus.isNotEmpty &&
+        player.mastery >= card.masteryThreshold!;
+
+    if (card.masteryReplaces && thresholdMet) {
+      // REPLACE: resolve the mastery bonus instead of the normal play effects,
+      // and do NOT additively check mastery again.
+      _resolveEffects(card.masteryBonus, player, sourceCard: card);
+      return;
+    }
+
+    // Default / additive path — unchanged from prior behavior.
+    _resolveEffects(
+      card.playEffects,
+      player,
+      choiceIndex: choiceIndex,
+      sourceCard: card,
+    );
+    _checkMasteryBonus(card, player);
+  }
 
   void _checkMasteryBonus(CardModel card, PlayerState player) {
     if (card.masteryThreshold == null) return;

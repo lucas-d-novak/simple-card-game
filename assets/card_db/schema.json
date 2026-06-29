@@ -73,6 +73,11 @@
       "minimum": 0,
       "description": "Mastery level required to unlock masteryBonus. null = no threshold."
     },
+    "masteryReplaces": {
+      "type": "boolean",
+      "default": false,
+      "description": "How masteryBonus resolves at/above masteryThreshold. false (default) = ADDITIVE: masteryBonus resolves on top of playEffects. true = REPLACE: masteryBonus resolves INSTEAD OF playEffects (e.g. 'gain 5/5 instead of 2/2 at mastery 15')."
+    },
     "playEffects": {
       "type": "array",
       "items": { "$ref": "#/definitions/effect" },
@@ -129,6 +134,22 @@
             "mastery": { "type": "integer", "minimum": 0, "description": "Mastery permanently reduced." },
             "health": { "type": "integer", "minimum": 0, "description": "Health paid (cannot be lethal to oneself)." }
           }
+        },
+        "masteryThreshold": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "Optional. Mastery level at which masteryBonusEffects become relevant. null/absent = ability has no mastery scaling."
+        },
+        "masteryBonusEffects": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/effect" },
+          "description": "Optional. Mastery-tier effects. When masteryReplaces is true and mastery >= masteryThreshold, these resolve INSTEAD OF effects (e.g. gian_shard_wyrm: 5/5 instead of 2/2 at mastery 15); otherwise additively on top."
+        },
+        "masteryReplaces": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether masteryBonusEffects replace effects (true) or add to them (false) at/above masteryThreshold. Default false."
         }
       }
     },
