@@ -27,10 +27,18 @@ All fields have defaults for backward compatibility with legacy DeckService.
 - **Discard recursion:** `ReturnFromDiscardEffect` (with `ReturnFilter` enum: any/champion/mercenary/faction, plus an optional `Faction`) — return a discard card to hand
 - **Complex:** `ChooseOneEffect` (player picks from effect groups), `ConditionalPowerEffect` (scales POWER with game state via `PowerCondition`: `perChampionControlled`, `perAllyPlayedThisTurn`, `perFactionPlayedThisTurn`, `perCardInDiscard`), `InfinityShardEffect` (scales with mastery, instant win at 30+)
 
-> **Deferred (later phase):** Exhaust / activated champion abilities are NOT
-> modelled yet — they need a structural per-champion ability model (cost,
-> once-per-turn exhaust state) rather than a single `CardEffect` subtype. Do not
-> shoehorn them into `CardEffect`.
+**Activated abilities (Exhaust) — implemented as value types, not effects:**
+`ActivatedAbility` and `ActivationCost` (also in `card_effect.dart`) model
+Shards of Infinity's "Exhaust: <effect>" champion abilities **structurally**, NOT
+as a `CardEffect` subtype. An `ActivatedAbility` is a *container* of ordinary
+`CardEffect`s plus an optional `ActivationCost` (`gems` / `mastery` / `health`,
+all default 0; `ActivationCost.none` = Exhaust-only). It is attached to a card
+via the optional `CardModel.activatedAbility` field (null for cards without
+one). The per-champion **exhausted** lifecycle lives in `PlayerState`
+(`exhaustedChampions`) and `GameService.useActivatedAbility` — see those files.
+This is deliberately distinct from `playEffects`: a champion's normal effects
+(re-resolvable each turn via the free `activateChampion`) vs. its separate,
+Exhaust-gated activated ability.
 
 Each subclass has a `description` getter for UI display.
 
@@ -52,6 +60,8 @@ Used for ally ability matching and visual theming (colors, art patterns).
 `PlayerState` — mutable per-player state:
 - `health` (50), `mastery` (0), `gemPool`, `powerPool`
 - Card zones: `hand`, `drawPile`, `discardPile`, `playedThisTurn`, `championsInPlay`
+- `activatedChampions` — champion ids that used their free play-effect activation this turn
+- `exhaustedChampions` — champion ids tapped this turn by their Exhaust-gated `activatedAbility` (independent of `activatedChampions`); both clear in `resetTurnResources()`
 - `isEliminated` — true when health <= 0
 - `cleanupTurn()` — moves regular cards to discard, returns mercenaries for removal
 - `resetTurnResources()` — zeros gem and power pools

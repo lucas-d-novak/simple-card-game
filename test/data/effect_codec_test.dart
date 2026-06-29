@@ -125,4 +125,98 @@ void main() {
       });
     });
   });
+
+  group('effect_codec — activatedAbility (Exhaust)', () {
+    test('decodes null to null', () {
+      expect(decodeActivatedAbility(null), isNull);
+    });
+
+    test('decodes Exhaust-only ability (no cost) with free cost', () {
+      final ability = decodeActivatedAbility({
+        'effects': [
+          {'type': 'gainPower', 'amount': 3},
+        ],
+      })!;
+      expect(ability.effects, hasLength(1));
+      expect(ability.effects.first, isA<GainPowerEffect>());
+      expect(ability.cost.isFree, true);
+    });
+
+    test('decodes ability with a multi-field cost', () {
+      final ability = decodeActivatedAbility({
+        'effects': [
+          {'type': 'gainMastery', 'amount': 1},
+        ],
+        'cost': {'gems': 2, 'mastery': 1, 'health': 3},
+      })!;
+      expect(ability.cost.gems, 2);
+      expect(ability.cost.mastery, 1);
+      expect(ability.cost.health, 3);
+    });
+
+    test('missing cost keys default to 0', () {
+      final ability = decodeActivatedAbility({
+        'effects': [
+          {'type': 'gainGems', 'amount': 1},
+        ],
+        'cost': {'gems': 2},
+      })!;
+      expect(ability.cost.gems, 2);
+      expect(ability.cost.mastery, 0);
+      expect(ability.cost.health, 0);
+    });
+
+    test('empty effects array throws FormatException', () {
+      expect(
+        () => decodeActivatedAbility({'effects': <dynamic>[]}),
+        throwsFormatException,
+      );
+    });
+
+    test('non-object activatedAbility throws FormatException', () {
+      expect(
+        () => decodeActivatedAbility('nope'),
+        throwsFormatException,
+      );
+    });
+
+    test('non-integer cost value throws FormatException', () {
+      expect(
+        () => decodeActivatedAbility({
+          'effects': [
+            {'type': 'gainGems', 'amount': 1},
+          ],
+          'cost': {'gems': 'two'},
+        }),
+        throwsFormatException,
+      );
+    });
+
+    test('round-trips an Exhaust-only ability (omits cost)', () {
+      const ability =
+          ActivatedAbility(effects: [GainPowerEffect(2), DrawCardsEffect(1)]);
+      final encoded = encodeActivatedAbility(ability);
+      expect(encoded.containsKey('cost'), false);
+
+      final decoded = decodeActivatedAbility(encoded)!;
+      expect(decoded.effects, hasLength(2));
+      expect(decoded.effects[0], isA<GainPowerEffect>());
+      expect(decoded.effects[1], isA<DrawCardsEffect>());
+      expect(decoded.cost.isFree, true);
+    });
+
+    test('round-trips an ability with a cost (omits zero sub-fields)', () {
+      const ability = ActivatedAbility(
+        effects: [GainGemsEffect(2)],
+        cost: ActivationCost(mastery: 1),
+      );
+      final encoded = encodeActivatedAbility(ability);
+      expect(encoded['cost'], {'mastery': 1});
+
+      final decoded = decodeActivatedAbility(encoded)!;
+      expect(decoded.cost.mastery, 1);
+      expect(decoded.cost.gems, 0);
+      expect(decoded.cost.health, 0);
+    });
+  });
 }

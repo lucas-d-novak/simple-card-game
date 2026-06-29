@@ -88,6 +88,7 @@
       "items": { "$ref": "#/definitions/effect" },
       "description": "Effects unlocked when player mastery >= masteryThreshold."
     },
+    "activatedAbility": { "$ref": "#/definitions/activatedAbility" },
     "art": {
       "type": ["string", "null"],
       "description": "Path to the card art asset, relative to assets/cards/ (e.g. 'reactor_monk.jpg'). null = no art yet."
@@ -107,6 +108,30 @@
     }
   },
   "definitions": {
+    "activatedAbility": {
+      "type": "object",
+      "required": ["effects"],
+      "additionalProperties": false,
+      "description": "Champions only. An Exhaust-gated activated ability (Shards of Infinity's 'Exhaust: <effect>'). DISTINCT from playEffects: it is a separate action that taps (exhausts) the champion until the owner's next turn. Modelled structurally on the champion (lib/models/card_effect.dart ActivatedAbility), NOT as a new effect 'type'. The ability is a CONTAINER of ordinary effects.",
+      "properties": {
+        "effects": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/effect" },
+          "description": "Effects resolved when the ability is used. Reuses the ordinary effect vocabulary."
+        },
+        "cost": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Optional resource cost paid in ADDITION to Exhaust. Absent = Exhaust-only. Each key defaults to 0.",
+          "properties": {
+            "gems": { "type": "integer", "minimum": 0, "description": "Gems spent from the gem pool." },
+            "mastery": { "type": "integer", "minimum": 0, "description": "Mastery permanently reduced." },
+            "health": { "type": "integer", "minimum": 0, "description": "Health paid (cannot be lethal to oneself)." }
+          }
+        }
+      }
+    },
     "effect": {
       "type": "object",
       "required": ["type"],

@@ -32,7 +32,8 @@ Core game logic. Three service layers — GameService is the active engine, AiSe
 | `destroyChampion(championId, targetPlayerId)` | Destroy a single chosen enemy champion with no power cost (champion → owner's discard). Fulfils a single-target `DestroyChampionEffect` after target selection; the `all` variant destroys every enemy champion inline during effect resolution. |
 | `returnFromDiscard(cardId, {filter, faction})` | Return a card from the current player's discard pile to hand, validated against the `ReturnFromDiscardEffect` filter. Fulfils the effect after target selection (mirrors `banishCard`). |
 | `startTurn()` | Empty — champions require manual activation via `activateChampion()`. |
-| `activateChampion(championId)` | Activate a champion once per turn — resolves its effects, mastery bonus, ally ability. |
+| `activateChampion(championId)` | Use a champion's FREE once-per-turn play-effect activation — resolves its `playEffects`, mastery bonus, ally ability. Tracked by `PlayerState.activatedChampions`. |
+| `useActivatedAbility(championId)` | Use a champion's Exhaust-gated `activatedAbility` (a SEPARATE action from `activateChampion`). Validates the champion is in play, has an ability, is not already exhausted, and the cost is payable; then pays the cost, resolves the ability effects, and marks it exhausted (`PlayerState.exhaustedChampions`). Returns false (no state change) on any failure. Exhaust clears at the owner's next turn (cleared in `resetTurnResources`). |
 
 **Effect resolution:** `_resolveEffects()` handles all 14 CardEffect subtypes via exhaustive switch. `ConditionalPowerEffect`'s per-turn conditions (`perAllyPlayedThisTurn`, `perFactionPlayedThisTurn`) read `PlayerState.cardsPlayedThisTurn` — a per-turn list of cards played, appended in `playCard()` and cleared each turn.
 

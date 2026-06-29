@@ -62,6 +62,12 @@ types in [`lib/models/card_effect.dart`](../models/card_effect.dart) and the
   or malformed effects throw `FormatException` so the validator surfaces bad data
   rather than silently dropping it.
 - `encodeEffect(effect)` — `CardEffect` → JSON (round-tripping / tooling).
+- `decodeActivatedAbility(raw)` / `encodeActivatedAbility(ability)` — JSON ⇄
+  `ActivatedAbility` for a card's optional Exhaust-gated `activatedAbility`
+  object. Returns null for an absent ability. The codec reuses the ordinary
+  effect vocabulary (an activated ability is a *container* of effects, NOT a new
+  effect `type`). Both `card_database.dart` (projecting `CardModel`) and
+  `tool/validate_card_db.dart` call the decoder so bad data surfaces.
 
 Supported `type` values: `gainGems`, `gainPower`, `gainMastery`, `gainHealth`,
 `drawCards`, `opponentLosesHealth`, `banishCard` (`source`:
@@ -72,6 +78,27 @@ filtering by faction), `conditionalPower` (`condition`:
 `perChampionControlled`/`perAllyPlayedThisTurn`/`perFactionPlayedThisTurn`/`perCardInDiscard`),
 `infinityShard`, `chooseOne` (`choices`: array of effect groups). `gainMoney`
 is legacy and not part of the Shards of Infinity database.
+
+### Encoding Exhaust / activated abilities
+
+An Exhaust-gated champion ability is a top-level `activatedAbility` object on the
+card (NOT an entry in the effect `type` enum). Shape:
+
+```json
+"activatedAbility": {
+  "effects": [ { "type": "gainPower", "amount": 2 } ],
+  "cost": { "gems": 0, "mastery": 1, "health": 0 }
+}
+```
+
+- `effects` (required, non-empty) — the ordinary effect array resolved when the
+  ability is used.
+- `cost` (optional) — extra resources paid on top of Exhaust. Keys `gems` /
+  `mastery` / `health` each default to 0; omit `cost` entirely for an
+  Exhaust-only ability. Health cost may not be lethal to oneself.
+
+Only champions should carry `activatedAbility`. The 24 DB cards whose `rawText`
+mentions "exhaust" are the encoding targets.
 
 ## Tooling
 

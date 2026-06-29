@@ -78,6 +78,13 @@ void main(List<String> args) {
       }
     }
 
+    // Try decoding the optional Exhaust-gated activated ability.
+    try {
+      decodeActivatedAbility(raw['activatedAbility']);
+    } on FormatException catch (e) {
+      hardErrors.add('$label: activatedAbility — $e');
+    }
+
     // Soft completeness checks.
     for (final key in const ['name', 'set', 'faction', 'cardType', 'cost']) {
       if (raw[key] == null) softWarnings.add('$label: missing "$key"');

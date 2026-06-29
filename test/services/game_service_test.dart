@@ -2174,4 +2174,257 @@ void main() {
       expect(me.cardsPlayedThisTurn, isEmpty);
     });
   });
+
+  group('Exhaust / activated abilities', () {
+    // Deploys [champion] for player 0 and cycles the turn back to player 0 so
+    // the champion is a persistent fixture (not freshly played this turn).
+    GameService deployForP0(CardModel champion) {
+      final game = GameService(playerCount: 2, random: Random(7));
+      game.currentPlayer.hand.add(champion);
+      game.playCard(champion.id);
+      game.endTurn(); // p0 -> p1
+      game.endTurn(); // p1 -> p0 (resets p0 resources, clears exhaust)
+      return game;
+    }
+
+    CardModel abilityChampion({
+      required String id,
+      required ActivatedAbility ability,
+      List<CardEffect> playEffects = const [],
+    }) {
+      return CardModel(
+        id: id,
+        name: id,
+        cost: 0,
+        playEffects: playEffects,
+        cardType: CardType.champion,
+        shield: 3,
+        activatedAbility: ability,
+      );
+    }
+
+    test('useActivatedAbility resolves the ability effects', () {
+      final game = deployForP0(abilityChampion(
+        id: 'exh_power',
+        ability: const ActivatedAbility(effects: [GainPowerEffect(4)]),
+      ));
+
+      expect(game.players[0].powerPool, 0);
+      expect(game.useActivatedAbility('exh_power'), true);
+      expect(game.players[0].powerPool, 4);
+    });
+
+    test('using the ability exhausts the champion (blocks re-use same turn)',
+        () {
+      final game = deployForP0(abilityChampion(
+        id: 'exh_block',
+        ability: const ActivatedAbility(effects: [GainGemsEffect(2)]),
+      ));
+
+      expect(game.useActivatedAbility('exh_block'), true);
+      expect(game.players[0].gemPool, 2);
+      expect(game.players[0].exhaustedChampions, contains('exh_block'));
+
+      // Second use the same turn is rejected and changes nothing.
+      expect(game.useActivatedAbility('exh_block'), false);
+      expect(game.players[0].gemPool, 2);
+    });
+
+    test('exhaust clears at the start of the owner\'s next turn', () {
+      final game = deployForP0(abilityChampion(
+        id: 'exh_next',
+        ability: const ActivatedAbility(effects: [GainPowerEffect(1)]),
+      ));
+
+      expect(game.useActivatedAbility('exh_next'), true);
+      expect(game.players[0].powerPool, 1);
+
+      // Cycle a full round back to p0.
+      game.endTurn(); // p0 -> p1 (clears p0 exhaust on cleanup)
+      game.endTurn(); // p1 -> p0
+      expect(game.players[0].exhaustedChampions, isEmpty);
+
+      // Usable again next turn.
+      expect(game.useActivatedAbility('exh_next'), true);
+      expect(game.players[0].powerPool, 1);
+    });
+
+    test('champion with no activated ability returns false', () {
+      final game = deployForP0(const CardModel(
+        id: 'plain_champ',
+        name: 'plain',
+        cost: 0,
+        playEffects: [GainPowerEffect(2)],
+        cardType: CardType.champion,
+        shield: 3,
+      ));
+
+      expect(game.useActivatedAbility('plain_champ'), false);
+      expect(game.players[0].exhaustedChampions, isEmpty);
+    });
+
+    test('unknown champion id returns false', () {
+      final game = deployForP0(abilityChampion(
+        id: 'exh_known',
+        ability: const ActivatedAbility(effects: [GainPowerEffect(1)]),
+      ));
+      expect(game.useActivatedAbility('does_not_exist'), false);
+    });
+
+    test('gem cost is paid on success', () {
+      final game = deployForP0(abilityChampion(
+        id: 'exh_gemcost',
+        ability: const ActivatedAbility(
+          effects: [GainPowerEffect(5)],
+          cost: ActivationCost(gems: 2),
+        ),
+      ));
+      game.players[0].gemPool = 3;
+
+      expect(game.useActivatedAbility('exh_gemcost'), true);
+      expect(game.players[0].gemPool, 1); // 3 - 2
+      expect(game.players[0].powerPool, 5);
+    });
+
+    test('insufficient gems rejects the ability (no state change)', () {
+      final game = deployForP0(abilityChampion(
+        id: 'exh_poorgems',
+        ability: const ActivatedAbility(
+          effects: [GainPowerEffect(5)],
+          cost: ActivationCost(gems: 2),
+        ),
+      ));
+      game.players[0].gemPool = 1;
+
+      expect(game.useActivatedAbility('exh_poorgems'), false);
+      expect(game.players[0].gemPool, 1); // untouched
+      expect(game.players[0].powerPool, 0); // effect not applied
+      expect(game.players[0].exhaustedChampions, isEmpty); // not exhausted
+    });
+
+    test('mastery cost is paid and insufficient mastery is rejected', () {
+      final game = deployForP0(abilityChampion(
+        id: 'exh_mastery',
+        ability: const ActivatedAbility(
+          effects: [GainPowerEffect(3)],
+          cost: ActivationCost(mastery: 5),
+        ),
+      ));
+
+      // Mastery starts at 0 — too low.
+      expect(game.players[0].mastery, 0);
+      expect(game.useActivatedAbility('exh_mastery'), false);
+      expect(game.players[0].exhaustedChampions, isEmpty);
+
+      // Give enough mastery, now it works and the cost is deducted.
+      game.players[0].mastery = 7;
+      expect(game.useActivatedAbility('exh_mastery'), true);
+      expect(game.players[0].mastery, 2); // 7 - 5
+      expect(game.players[0].powerPool, 3);
+    });
+
+    test('health cost cannot be lethal to oneself', () {
+      final game = deployForP0(abilityChampion(
+        id: 'exh_health',
+        ability: const ActivatedAbility(
+          effects: [GainPowerEffect(10)],
+          cost: ActivationCost(health: 5),
+        ),
+      ));
+
+      // Reduce health to exactly the cost — paying would be lethal.
+      game.players[0].health = 5;
+      expect(game.useActivatedAbility('exh_health'), false);
+      expect(game.players[0].health, 5);
+
+      // One more health makes it payable.
+      game.players[0].health = 6;
+      expect(game.useActivatedAbility('exh_health'), true);
+      expect(game.players[0].health, 1);
+      expect(game.players[0].powerPool, 10);
+    });
+
+    test('activated ability is independent from the free activateChampion', () {
+      // The champion has BOTH a normal play effect (re-resolvable via
+      // activateChampion) AND an Exhaust ability. Using one must not consume the
+      // other.
+      final game = deployForP0(abilityChampion(
+        id: 'exh_both',
+        playEffects: const [GainGemsEffect(1)],
+        ability: const ActivatedAbility(effects: [GainPowerEffect(2)]),
+      ));
+
+      // Free activation (play effects) — gems.
+      expect(game.activateChampion('exh_both'), true);
+      expect(game.players[0].gemPool, 1);
+      // Exhaust ability still available — power.
+      expect(game.useActivatedAbility('exh_both'), true);
+      expect(game.players[0].powerPool, 2);
+
+      // Both are now spent for the turn; both are independently blocked.
+      expect(game.activateChampion('exh_both'), false);
+      expect(game.useActivatedAbility('exh_both'), false);
+      expect(game.players[0].gemPool, 1);
+      expect(game.players[0].powerPool, 2);
+    });
+
+    test('exhausting does not block the free activation and vice versa', () {
+      final game = deployForP0(abilityChampion(
+        id: 'exh_order',
+        playEffects: const [GainGemsEffect(3)],
+        ability: const ActivatedAbility(effects: [GainPowerEffect(1)]),
+      ));
+
+      // Use the Exhaust ability first.
+      expect(game.useActivatedAbility('exh_order'), true);
+      expect(game.players[0].exhaustedChampions, contains('exh_order'));
+      // The free activation is still available afterwards.
+      expect(game.activateChampion('exh_order'), true);
+      expect(game.players[0].gemPool, 3);
+    });
+
+    test('multiple champions exhaust independently', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final p0 = game.currentPlayer;
+      p0.hand.addAll([
+        abilityChampion(
+          id: 'exh_a',
+          ability: const ActivatedAbility(effects: [GainPowerEffect(1)]),
+        ),
+        abilityChampion(
+          id: 'exh_b',
+          ability: const ActivatedAbility(effects: [GainGemsEffect(2)]),
+        ),
+      ]);
+      game.playCard('exh_a');
+      game.playCard('exh_b');
+      game.endTurn();
+      game.endTurn();
+
+      // Exhaust only champion A.
+      expect(game.useActivatedAbility('exh_a'), true);
+      expect(game.players[0].exhaustedChampions, contains('exh_a'));
+      expect(game.players[0].exhaustedChampions, isNot(contains('exh_b')));
+
+      // Champion B is still usable.
+      expect(game.useActivatedAbility('exh_b'), true);
+      expect(game.players[0].gemPool, 2);
+      expect(game.players[0].powerPool, 1);
+    });
+
+    test('a freshly played champion can use its activated ability the same turn',
+        () {
+      // Exhaust gating is about the ABILITY, not summoning sickness — playing a
+      // champion this turn does not stop its activated ability being used.
+      final game = GameService(playerCount: 2, random: Random(7));
+      game.currentPlayer.hand.add(abilityChampion(
+        id: 'exh_fresh',
+        ability: const ActivatedAbility(effects: [GainPowerEffect(2)]),
+      ));
+      game.playCard('exh_fresh');
+
+      expect(game.useActivatedAbility('exh_fresh'), true);
+      expect(game.currentPlayer.powerPool, 2);
+    });
+  });
 }
