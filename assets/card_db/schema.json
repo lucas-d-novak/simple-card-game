@@ -173,6 +173,9 @@
             "scrapFromCenterRow",
             "selfBanish",
             "resetChampion",
+            "recruitFromCenter",
+            "fastPlayFromCenter",
+            "scry",
             "destroyChampion",
             "returnFromDiscard",
             "chooseOne",
@@ -183,7 +186,7 @@
           ]
         },
         "amount": { "type": "integer", "description": "For gain*/opponentLosesHealth/allPlayersLoseHealth." },
-        "count": { "type": "integer", "description": "For drawCards." },
+        "count": { "type": "integer", "description": "For drawCards (cards to draw) and scry (top cards to reveal)." },
         "source": {
           "type": "string",
           "enum": ["hand", "discard", "handOrDiscard"],
@@ -192,6 +195,31 @@
         "all": {
           "type": "boolean",
           "description": "For destroyChampion: if true, destroy ALL enemy champions instead of a single target."
+        },
+        "maxCost": {
+          "type": "integer",
+          "description": "For recruitFromCenter / fastPlayFromCenter: inclusive cost cap on the eligible center-row card (absent = no cap). (Also used inside gameCondition for filteredCardsPlayed.)"
+        },
+        "free": {
+          "type": "boolean",
+          "description": "For recruitFromCenter: if true, the recruited card is acquired without paying its gem cost."
+        },
+        "toHand": {
+          "type": "boolean",
+          "description": "For recruitFromCenter: if true, the recruited card goes to the player's hand (default is the discard pile). Takes precedence over toTopOfDeck."
+        },
+        "toTopOfDeck": {
+          "type": "boolean",
+          "description": "For recruitFromCenter: if true, the recruited card goes to the TOP of the draw pile (the player's next draw)."
+        },
+        "alliesOnly": {
+          "type": "boolean",
+          "description": "For fastPlayFromCenter: if true, only allies (non-champion cards) may be chosen."
+        },
+        "disposition": {
+          "type": "string",
+          "enum": ["drawOrDiscard", "drawOrBanish", "toHand"],
+          "description": "For scry: what keeping vs. letting go does. drawOrDiscard=keep draws to hand else discards; drawOrBanish=keep draws to hand else banishes; toHand=keep takes to hand else leaves on top."
         },
         "filter": {
           "type": "string",

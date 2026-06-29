@@ -118,6 +118,23 @@ CardEffect decodeEffect(Map<String, dynamic> json) {
       return const SelfBanishEffect();
     case 'resetChampion':
       return const ResetChampionEffect();
+    case 'recruitFromCenter':
+      return RecruitFromCenterEffect(
+        maxCost: json.containsKey('maxCost') ? _int(json, 'maxCost') : null,
+        free: (json['free'] as bool?) ?? false,
+        toHand: (json['toHand'] as bool?) ?? false,
+        toTopOfDeck: (json['toTopOfDeck'] as bool?) ?? false,
+      );
+    case 'fastPlayFromCenter':
+      return FastPlayFromCenterEffect(
+        maxCost: json.containsKey('maxCost') ? _int(json, 'maxCost') : null,
+        alliesOnly: (json['alliesOnly'] as bool?) ?? false,
+      );
+    case 'scry':
+      return ScryEffect(
+        count: json.containsKey('count') ? _int(json, 'count') : 1,
+        disposition: _scryDisposition(json['disposition'] as String?),
+      );
     case 'destroyChampion':
       return DestroyChampionEffect(all: (json['all'] as bool?) ?? false);
     case 'returnFromDiscard':
@@ -188,6 +205,27 @@ Map<String, dynamic> encodeEffect(CardEffect effect) {
       return {'type': 'selfBanish'};
     case ResetChampionEffect():
       return {'type': 'resetChampion'};
+    case RecruitFromCenterEffect():
+      return {
+        'type': 'recruitFromCenter',
+        if (effect.maxCost != null) 'maxCost': effect.maxCost,
+        if (effect.free) 'free': true,
+        if (effect.toHand) 'toHand': true,
+        if (effect.toTopOfDeck) 'toTopOfDeck': true,
+      };
+    case FastPlayFromCenterEffect():
+      return {
+        'type': 'fastPlayFromCenter',
+        if (effect.maxCost != null) 'maxCost': effect.maxCost,
+        if (effect.alliesOnly) 'alliesOnly': true,
+      };
+    case ScryEffect():
+      return {
+        'type': 'scry',
+        if (effect.count != 1) 'count': effect.count,
+        if (effect.disposition != ScryDisposition.drawOrDiscard)
+          'disposition': effect.disposition.name,
+      };
     case DestroyChampionEffect():
       return {'type': 'destroyChampion', 'all': effect.all};
     case ReturnFromDiscardEffect():
@@ -386,6 +424,20 @@ Character? _character(String? raw) {
     if (v.name == raw) return v;
   }
   throw FormatException('unknown character: $raw');
+}
+
+ScryDisposition _scryDisposition(String? raw) {
+  switch (raw) {
+    case 'drawOrDiscard':
+    case null:
+      return ScryDisposition.drawOrDiscard;
+    case 'drawOrBanish':
+      return ScryDisposition.drawOrBanish;
+    case 'toHand':
+      return ScryDisposition.toHand;
+    default:
+      throw FormatException('unknown scry disposition: $raw');
+  }
 }
 
 ReturnFilter _returnFilter(String? raw) {

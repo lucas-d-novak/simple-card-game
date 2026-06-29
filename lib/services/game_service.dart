@@ -438,6 +438,172 @@ class GameService {
     return true;
   }
 
+  // -------------------------------------------------------------------------
+  // Deferred-selection action effects (Engine Phase 2, wave 3)
+  // -------------------------------------------------------------------------
+
+  /// Recruit (acquire) a card from the center row, fulfilling a
+  /// [RecruitFromCenterEffect] after the player selects a target.
+  ///
+  /// Validates the card is in [centerRow] and within [maxCost] (when set). When
+  /// [free] is false the player must afford the card's gem cost (it is charged).
+  /// The acquired card is routed to: the discard pile (default), the player's
+  /// hand ([toHand]), or the TOP of the draw pile ([toTopOfDeck] — it becomes
+  /// the next draw). [toHand] takes precedence over [toTopOfDeck] if both set.
+  /// Refills the center row. Returns false (no state change) on any failure.
+  bool recruitFromCenter(
+    String cardId, {
+    required bool free,
+    int? maxCost,
+    bool toHand = false,
+    bool toTopOfDeck = false,
+  }) {
+    if (_gameOver) return false;
+    final player = currentPlayer;
+
+    final index = centerRow.indexWhere((c) => c.id == cardId);
+    if (index == -1) return false;
+
+    final card = centerRow[index];
+    if (maxCost != null && card.cost > maxCost) return false;
+
+    final price = free ? 0 : card.cost;
+    if (player.gemPool < price) return false;
+
+    player.gemPool -= price;
+    centerRow.removeAt(index);
+
+    if (toHand) {
+      player.hand.add(card);
+    } else if (toTopOfDeck) {
+      // _drawCards draws via removeLast(), so the TOP of the deck (next draw) is
+      // the END of the drawPile list. Append so this card is drawn next.
+      player.drawPile.add(card);
+    } else {
+      player.discardPile.add(card);
+    }
+
+    _refillCenterRow();
+    return true;
+  }
+
+  /// Fast-play ("warp") a card from the center row, fulfilling a
+  /// [FastPlayFromCenterEffect] after the player selects a target.
+  ///
+  /// Validates the card is in [centerRow], within [maxCost] (when set), and —
+  /// when [alliesOnly] — is not a champion ("ally" = any non-champion card; the
+  /// engine treats allies as cards that are not champions). The card is removed
+  /// from the center row, PLAYED immediately (its play effects resolve and it is
+  /// recorded in playedThisTurn + cardsPlayedThisTurn, and its ally ability is
+  /// checked), then BANISHED to [removedFromGame] per Shards warp rules. The
+  /// center row refills. Returns false (no state change) on any failure.
+  bool fastPlayFromCenter(
+    String cardId, {
+    int? maxCost,
+    bool alliesOnly = false,
+  }) {
+    if (_gameOver) return false;
+    final player = currentPlayer;
+
+    final index = centerRow.indexWhere((c) => c.id == cardId);
+    if (index == -1) return false;
+
+    final card = centerRow[index];
+    if (maxCost != null && card.cost > maxCost) return false;
+    // "Allies only" — exclude champions. (An ally is a non-champion card; the
+    // engine has no separate Ally type, so champions are the excluded case.)
+    if (alliesOnly && card.cardType == CardType.champion) return false;
+
+    centerRow.removeAt(index);
+
+    // Play it immediately (without going through hand). Record in the same
+    // zones playCard() uses for a non-champion regular/mercenary card so
+    // per-turn scaling and ally checks see it.
+    player.playedThisTurn.add(card);
+    player.cardsPlayedThisTurn.add(card);
+    _resolvePlayOrMastery(card, player);
+    _checkAllyAbility(card, player);
+
+    // Per warp rules: banish the card after it resolves rather than keeping it.
+    // Remove from the zones it was just added to so end-of-turn cleanup does
+    // not also handle it, then move it to removedFromGame.
+    player.playedThisTurn.removeWhere((c) => identical(c, card));
+    player.cardsPlayedThisTurn.removeWhere((c) => identical(c, card));
+    removedFromGame.add(card);
+
+    _refillCenterRow();
+    return true;
+  }
+
+  /// Peek at the top [count] card(s) of the current player's draw pile WITHOUT
+  /// removing them (for UI display before a [ScryEffect] resolution). Triggers a
+  /// reshuffle of the discard pile when the draw pile is empty, mirroring
+  /// [_drawCards]. The returned list is ordered top-of-deck first (the next card
+  /// that would be drawn is element 0).
+  List<CardModel> scryReveal({int count = 1}) {
+    final player = currentPlayer;
+    if (player.drawPile.isEmpty && player.discardPile.isNotEmpty) {
+      player.drawPile.addAll(player.discardPile);
+      player.discardPile.clear();
+      player.drawPile.shuffle(_random);
+    }
+    final revealed = <CardModel>[];
+    // Top of deck (next draw) is the END of drawPile; iterate from the end.
+    for (int i = player.drawPile.length - 1;
+        i >= 0 && revealed.length < count;
+        i--) {
+      revealed.add(player.drawPile[i]);
+    }
+    return revealed;
+  }
+
+  /// Resolve a single revealed scry card (keeper_of_datic_vessels-style),
+  /// fulfilling a [ScryEffect] after the player chooses. [cardId] must name a
+  /// card currently on top of the draw pile (within the revealed window — here,
+  /// simply present in the draw pile). The disposition decides what [keep] does:
+  ///
+  /// - [ScryDisposition.drawOrDiscard]: keep → draw to hand; else → discard.
+  /// - [ScryDisposition.drawOrBanish]:  keep → draw to hand; else → banish.
+  /// - [ScryDisposition.toHand]:        keep → take to hand; else → leave on top
+  ///   (no state change).
+  ///
+  /// Returns false (no state change) if the card is not in the draw pile.
+  bool scryResolve(
+    String cardId, {
+    required bool keep,
+    ScryDisposition disposition = ScryDisposition.drawOrDiscard,
+  }) {
+    if (_gameOver) return false;
+    final player = currentPlayer;
+
+    final index = player.drawPile.indexWhere((c) => c.id == cardId);
+    if (index == -1) return false;
+
+    switch (disposition) {
+      case ScryDisposition.drawOrDiscard:
+        final card = player.drawPile.removeAt(index);
+        if (keep) {
+          player.hand.add(card);
+        } else {
+          player.discardPile.add(card);
+        }
+        return true;
+      case ScryDisposition.drawOrBanish:
+        final card = player.drawPile.removeAt(index);
+        if (keep) {
+          player.hand.add(card);
+        } else {
+          removedFromGame.add(card);
+        }
+        return true;
+      case ScryDisposition.toHand:
+        if (!keep) return true; // leave on top, no change
+        final card = player.drawPile.removeAt(index);
+        player.hand.add(card);
+        return true;
+    }
+  }
+
   /// Destroy every enemy champion (the [DestroyChampionEffect.all] variant).
   /// Each destroyed champion goes to its owner's discard pile. No power cost.
   void _destroyAllEnemyChampions(PlayerState source) {
@@ -568,6 +734,18 @@ class GameService {
         case ResetChampionEffect():
           // Requires champion selection — the player should call
           // resetChampion() separately after this effect (deferred-selection).
+          break;
+        case RecruitFromCenterEffect():
+          // Requires center-row selection — the player should call
+          // recruitFromCenter() separately after this effect.
+          break;
+        case FastPlayFromCenterEffect():
+          // Requires center-row selection — the player should call
+          // fastPlayFromCenter() separately after this effect.
+          break;
+        case ScryEffect():
+          // Requires UI peek + per-card choice — the player should call
+          // scryReveal() then scryResolve() separately after this effect.
           break;
         case InfinityShardEffect():
           _resolveInfinityShard(player);

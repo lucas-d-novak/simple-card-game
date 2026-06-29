@@ -2898,4 +2898,301 @@ void main() {
       expect(p0.powerPool, 8);
     });
   });
+
+  // -------------------------------------------------------------------------
+  // Engine Phase 2 — Wave 3 (deferred-selection action effects)
+  // -------------------------------------------------------------------------
+
+  group('Wave 3: RecruitFromCenterEffect / recruitFromCenter()', () {
+    // Replace the center row with a known card so cost/destination is testable.
+    CardModel seedCenter(GameService game, {required int cost, String id = 'recruit_target'}) {
+      final card = CardModel(id: id, name: id, cost: cost, playEffects: const []);
+      game.centerRow.clear();
+      game.centerRow.add(card);
+      return card;
+    }
+
+    test('effect alone changes nothing (deferred selection)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      seedCenter(game, cost: 2);
+      final centerBefore = game.centerRow.length;
+      const card = CardModel(
+        id: 'portal_monk',
+        name: 'Portal Monk',
+        cost: 0,
+        playEffects: [RecruitFromCenterEffect(maxCost: 4, free: true)],
+      );
+      player.hand.add(card);
+
+      game.playCard('portal_monk');
+
+      // No recruit happened: center row unchanged, no card in discard/hand.
+      expect(game.centerRow.length, centerBefore);
+      expect(player.discardPile.any((c) => c.id == 'recruit_target'), false);
+    });
+
+    test('free recruit to discard (default destination), no gems charged', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      seedCenter(game, cost: 3);
+      player.gemPool = 5;
+
+      expect(
+        game.recruitFromCenter('recruit_target', free: true, maxCost: 4),
+        true,
+      );
+      expect(player.gemPool, 5); // free → no charge
+      expect(game.centerRow.any((c) => c.id == 'recruit_target'), false);
+      expect(player.discardPile.last.id, 'recruit_target');
+      expect(game.centerRow.length, 6); // refilled
+    });
+
+    test('paid recruit charges the card cost', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      seedCenter(game, cost: 3);
+      player.gemPool = 5;
+
+      expect(game.recruitFromCenter('recruit_target', free: false), true);
+      expect(player.gemPool, 2); // 5 - 3
+    });
+
+    test('paid recruit rejected when unaffordable (no state change)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      seedCenter(game, cost: 3);
+      player.gemPool = 2;
+
+      expect(game.recruitFromCenter('recruit_target', free: false), false);
+      expect(player.gemPool, 2);
+      expect(game.centerRow.any((c) => c.id == 'recruit_target'), true);
+    });
+
+    test('rejected when over maxCost (no state change)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      seedCenter(game, cost: 5);
+      player.gemPool = 9;
+
+      expect(
+        game.recruitFromCenter('recruit_target', free: true, maxCost: 4),
+        false,
+      );
+      expect(game.centerRow.any((c) => c.id == 'recruit_target'), true);
+      expect(player.gemPool, 9);
+    });
+
+    test('rejected when card not in center row', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      expect(game.recruitFromCenter('not_present', free: true), false);
+    });
+
+    test('recruit to hand', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      seedCenter(game, cost: 2);
+
+      expect(
+        game.recruitFromCenter('recruit_target', free: true, toHand: true),
+        true,
+      );
+      expect(player.hand.any((c) => c.id == 'recruit_target'), true);
+      expect(player.discardPile.any((c) => c.id == 'recruit_target'), false);
+    });
+
+    test('recruit to top of deck is the next card drawn', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      // Ensure a known draw pile.
+      player.drawPile
+        ..clear()
+        ..addAll([
+          const CardModel(id: 'bottom', name: 'bottom', cost: 0, playEffects: []),
+        ]);
+      player.hand.clear();
+      seedCenter(game, cost: 2);
+
+      expect(
+        game.recruitFromCenter('recruit_target',
+            free: true, toTopOfDeck: true),
+        true,
+      );
+      // Not in discard/hand yet.
+      expect(player.discardPile.any((c) => c.id == 'recruit_target'), false);
+      expect(player.hand.any((c) => c.id == 'recruit_target'), false);
+
+      // The card is now on TOP of the draw pile — it is what scryReveal (which
+      // peeks the next-to-draw card) returns, i.e. the very next draw.
+      expect(game.scryReveal().single.id, 'recruit_target');
+      // And it is the last element of drawPile (the removeLast() draw target).
+      expect(player.drawPile.last.id, 'recruit_target');
+    });
+  });
+
+  group('Wave 3: FastPlayFromCenterEffect / fastPlayFromCenter()', () {
+    CardModel seedCenter(
+      GameService game, {
+      required int cost,
+      List<CardEffect> playEffects = const [],
+      CardType cardType = CardType.regular,
+      String id = 'warp_target',
+    }) {
+      final card = CardModel(
+        id: id,
+        name: id,
+        cost: cost,
+        playEffects: playEffects,
+        cardType: cardType,
+      );
+      game.centerRow.clear();
+      game.centerRow.add(card);
+      return card;
+    }
+
+    test('effect alone changes nothing (deferred selection)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      seedCenter(game, cost: 2, playEffects: [const GainPowerEffect(3)]);
+      const card = CardModel(
+        id: 'aion_egressor',
+        name: 'Aion Egressor',
+        cost: 0,
+        playEffects: [FastPlayFromCenterEffect(maxCost: 4)],
+      );
+      player.hand.add(card);
+
+      game.playCard('aion_egressor');
+      expect(player.powerPool, 0); // warp target not played
+      expect(game.centerRow.any((c) => c.id == 'warp_target'), true);
+    });
+
+    test('card is played (effects resolve) then banished, center refilled', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      seedCenter(game, cost: 2, playEffects: [const GainPowerEffect(3)]);
+
+      expect(game.fastPlayFromCenter('warp_target', maxCost: 4), true);
+      expect(player.powerPool, 3); // play effects resolved
+      // Banished, not kept in any active zone.
+      expect(player.playedThisTurn.any((c) => c.id == 'warp_target'), false);
+      expect(player.cardsPlayedThisTurn.any((c) => c.id == 'warp_target'),
+          false);
+      expect(player.discardPile.any((c) => c.id == 'warp_target'), false);
+      expect(game.removedFromGame.any((c) => c.id == 'warp_target'), true);
+      expect(game.centerRow.length, 6); // refilled
+    });
+
+    test('rejected over maxCost (no state change)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      seedCenter(game, cost: 5, playEffects: [const GainPowerEffect(3)]);
+
+      expect(game.fastPlayFromCenter('warp_target', maxCost: 4), false);
+      expect(player.powerPool, 0);
+      expect(game.centerRow.any((c) => c.id == 'warp_target'), true);
+    });
+
+    test('alliesOnly rejects a champion', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      seedCenter(game,
+          cost: 2,
+          cardType: CardType.champion,
+          playEffects: [const GainPowerEffect(3)]);
+
+      expect(game.fastPlayFromCenter('warp_target', alliesOnly: true), false);
+      expect(game.centerRow.any((c) => c.id == 'warp_target'), true);
+    });
+
+    test('rejected when card not in center row', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      expect(game.fastPlayFromCenter('not_present'), false);
+    });
+  });
+
+  group('Wave 3: ScryEffect / scryReveal() + scryResolve()', () {
+    test('scryReveal does not remove the card', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.drawPile
+        ..clear()
+        ..addAll([
+          const CardModel(id: 'under', name: 'under', cost: 0, playEffects: []),
+          const CardModel(id: 'top', name: 'top', cost: 0, playEffects: []),
+        ]);
+      final sizeBefore = player.drawPile.length;
+
+      final revealed = game.scryReveal();
+      expect(revealed.single.id, 'top'); // top = end of drawPile
+      expect(player.drawPile.length, sizeBefore); // not removed
+    });
+
+    test('effect alone changes nothing (deferred selection)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.drawPile
+        ..clear()
+        ..addAll([const CardModel(id: 'top', name: 'top', cost: 0, playEffects: [])]);
+      player.hand.clear();
+      const card = CardModel(
+        id: 'keeper',
+        name: 'Keeper',
+        cost: 0,
+        playEffects: [ScryEffect()],
+      );
+      player.hand.add(card);
+
+      game.playCard('keeper');
+      // 'top' still on the deck; nothing drawn/discarded by the effect alone.
+      expect(player.drawPile.any((c) => c.id == 'top'), true);
+    });
+
+    test('scryResolve keep=true draws to hand (drawOrDiscard)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.drawPile
+        ..clear()
+        ..addAll([const CardModel(id: 'top', name: 'top', cost: 0, playEffects: [])]);
+      player.hand.clear();
+
+      expect(game.scryResolve('top', keep: true), true);
+      expect(player.hand.single.id, 'top');
+      expect(player.drawPile.any((c) => c.id == 'top'), false);
+      expect(player.discardPile.any((c) => c.id == 'top'), false);
+    });
+
+    test('scryResolve keep=false discards (drawOrDiscard)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.drawPile
+        ..clear()
+        ..addAll([const CardModel(id: 'top', name: 'top', cost: 0, playEffects: [])]);
+      player.discardPile.clear();
+
+      expect(game.scryResolve('top', keep: false), true);
+      expect(player.discardPile.single.id, 'top');
+      expect(player.drawPile.any((c) => c.id == 'top'), false);
+    });
+
+    test('scryResolve keep=false banishes (drawOrBanish)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.drawPile
+        ..clear()
+        ..addAll([const CardModel(id: 'top', name: 'top', cost: 0, playEffects: [])]);
+
+      expect(
+        game.scryResolve('top',
+            keep: false, disposition: ScryDisposition.drawOrBanish),
+        true,
+      );
+      expect(game.removedFromGame.any((c) => c.id == 'top'), true);
+      expect(player.drawPile.any((c) => c.id == 'top'), false);
+    });
+
+    test('scryResolve rejects a card not in the draw pile', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      expect(game.scryResolve('absent', keep: true), false);
+    });
+  });
 }

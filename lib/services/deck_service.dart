@@ -234,6 +234,9 @@ class DeckService {
         case ScrapFromCenterRowEffect():
         case SelfBanishEffect():
         case ResetChampionEffect():
+        case RecruitFromCenterEffect():
+        case FastPlayFromCenterEffect():
+        case ScryEffect():
         case DestroyChampionEffect():
         case ReturnFromDiscardEffect():
         case ChooseOneEffect():

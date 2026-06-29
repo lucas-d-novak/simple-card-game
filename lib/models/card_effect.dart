@@ -272,6 +272,117 @@ final class ReturnFromDiscardEffect extends CardEffect {
 }
 
 // ---------------------------------------------------------------------------
+// Deferred-selection action effects (Engine Phase 2, wave 3)
+//
+// Each is a no-op in `GameService._resolveEffects` (like BanishCardEffect): the
+// effect merely signals the UI/AI that a selection is needed, and a dedicated
+// public GameService method does the work once the target is chosen.
+// ---------------------------------------------------------------------------
+
+/// "Recruit / acquire a Center Row card (optionally for free, optionally to a
+/// special destination)." Covers portal_monk, datic_inquisitors,
+/// the_crystal_gate. Deferred-selection: a no-op in `_resolveEffects`; the
+/// player calls [GameService.recruitFromCenter] with the chosen card id.
+///
+/// - [maxCost] caps which Center Row cards are eligible (null = no cap).
+/// - [free] true → the card is acquired without paying its gem cost.
+/// - [toHand] true → the acquired card goes straight to the player's hand
+///   (instead of the default discard pile).
+/// - [toTopOfDeck] true → the acquired card goes to the TOP of the draw pile
+///   (it becomes the player's next draw). Mutually exclusive with [toHand];
+///   if both are set, [toHand] wins (validated in the GameService method).
+final class RecruitFromCenterEffect extends CardEffect {
+  const RecruitFromCenterEffect({
+    this.maxCost,
+    this.free = false,
+    this.toHand = false,
+    this.toTopOfDeck = false,
+  });
+
+  final int? maxCost;
+  final bool free;
+  final bool toHand;
+  final bool toTopOfDeck;
+
+  @override
+  String get description {
+    final cap = maxCost != null ? ' costing $maxCost or less' : '';
+    final cost = free ? ' for free' : '';
+    final String dest;
+    if (toHand) {
+      dest = ' to your hand';
+    } else if (toTopOfDeck) {
+      dest = ' to the top of your deck';
+    } else {
+      dest = '';
+    }
+    return 'Recruit a center row card$cap$cost$dest';
+  }
+}
+
+/// "Warp / fast-play a Center Row card (cost <= N) for free, immediately, then
+/// banish it." Covers aion_egressor, j_chord, deadly_recruits. Deferred-
+/// selection: a no-op in `_resolveEffects`; the player calls
+/// [GameService.fastPlayFromCenter] with the chosen card id.
+///
+/// - [maxCost] caps which Center Row cards are eligible (null = no cap).
+/// - [alliesOnly] true → only allies (non-champion cards) may be chosen.
+final class FastPlayFromCenterEffect extends CardEffect {
+  const FastPlayFromCenterEffect({this.maxCost, this.alliesOnly = false});
+
+  final int? maxCost;
+  final bool alliesOnly;
+
+  @override
+  String get description {
+    final cap = maxCost != null ? ' of cost $maxCost or less' : '';
+    final who = alliesOnly ? 'ally' : 'card';
+    return 'Fast-play a center row $who$cap for free, then banish it';
+  }
+}
+
+/// What a [ScryEffect] does with the revealed card the player keeps vs. lets go.
+enum ScryDisposition {
+  /// Keep → draw to hand; let go → discard.
+  drawOrDiscard,
+
+  /// Keep → draw to hand; let go → banish (remove from game).
+  drawOrBanish,
+
+  /// Keep → put into hand directly (no "draw"); let go → leave on top.
+  toHand,
+}
+
+/// "Look at the top [count] card(s) of your deck; you may act on them, then
+/// draw." keeper_of_datic_vessels-style. Deferred-selection: a no-op in
+/// `_resolveEffects`; the player calls [GameService.scryReveal] to peek (without
+/// removing), then [GameService.scryResolve] per revealed card.
+///
+/// Only the single-card self-deck case is implemented this wave; center-deck
+/// reveal variants are deferred to a later wave.
+final class ScryEffect extends CardEffect {
+  const ScryEffect({
+    this.count = 1,
+    this.disposition = ScryDisposition.drawOrDiscard,
+  });
+
+  final int count;
+  final ScryDisposition disposition;
+
+  @override
+  String get description {
+    switch (disposition) {
+      case ScryDisposition.drawOrDiscard:
+        return 'Look at the top $count of your deck; draw it or discard it';
+      case ScryDisposition.drawOrBanish:
+        return 'Look at the top $count of your deck; draw it or banish it';
+      case ScryDisposition.toHand:
+        return 'Look at the top $count of your deck; you may take it to hand';
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Complex / composite effects
 // ---------------------------------------------------------------------------
 

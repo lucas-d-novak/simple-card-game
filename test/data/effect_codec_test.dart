@@ -592,4 +592,113 @@ void main() {
       );
     });
   });
+
+  group('effect_codec — Wave 3 deferred-selection effects', () {
+    group('recruitFromCenter', () {
+      test('decodes defaults (no flags)', () {
+        final e = decodeEffect({'type': 'recruitFromCenter'})
+            as RecruitFromCenterEffect;
+        expect(e.maxCost, null);
+        expect(e.free, false);
+        expect(e.toHand, false);
+        expect(e.toTopOfDeck, false);
+      });
+
+      test('round-trips a fully-populated recruit', () {
+        const original = RecruitFromCenterEffect(
+          maxCost: 4,
+          free: true,
+          toTopOfDeck: true,
+        );
+        final encoded = encodeEffect(original);
+        expect(encoded, {
+          'type': 'recruitFromCenter',
+          'maxCost': 4,
+          'free': true,
+          'toTopOfDeck': true,
+        });
+        final decoded = decodeEffect(encoded) as RecruitFromCenterEffect;
+        expect(decoded.maxCost, 4);
+        expect(decoded.free, true);
+        expect(decoded.toTopOfDeck, true);
+        expect(decoded.toHand, false);
+      });
+
+      test('round-trips toHand', () {
+        final encoded =
+            encodeEffect(const RecruitFromCenterEffect(toHand: true));
+        final decoded = decodeEffect(encoded) as RecruitFromCenterEffect;
+        expect(decoded.toHand, true);
+      });
+
+      test('non-int maxCost throws FormatException', () {
+        expect(
+          () => decodeEffect(
+              {'type': 'recruitFromCenter', 'maxCost': 'lots'}),
+          throwsFormatException,
+        );
+      });
+    });
+
+    group('fastPlayFromCenter', () {
+      test('decodes defaults', () {
+        final e = decodeEffect({'type': 'fastPlayFromCenter'})
+            as FastPlayFromCenterEffect;
+        expect(e.maxCost, null);
+        expect(e.alliesOnly, false);
+      });
+
+      test('round-trips maxCost + alliesOnly', () {
+        const original =
+            FastPlayFromCenterEffect(maxCost: 3, alliesOnly: true);
+        final encoded = encodeEffect(original);
+        expect(encoded, {
+          'type': 'fastPlayFromCenter',
+          'maxCost': 3,
+          'alliesOnly': true,
+        });
+        final decoded = decodeEffect(encoded) as FastPlayFromCenterEffect;
+        expect(decoded.maxCost, 3);
+        expect(decoded.alliesOnly, true);
+      });
+
+      test('non-int maxCost throws FormatException', () {
+        expect(
+          () => decodeEffect(
+              {'type': 'fastPlayFromCenter', 'maxCost': 'x'}),
+          throwsFormatException,
+        );
+      });
+    });
+
+    group('scry', () {
+      test('decodes defaults (count 1, drawOrDiscard)', () {
+        final e = decodeEffect({'type': 'scry'}) as ScryEffect;
+        expect(e.count, 1);
+        expect(e.disposition, ScryDisposition.drawOrDiscard);
+      });
+
+      test('default round-trips to a bare object', () {
+        final encoded = encodeEffect(const ScryEffect());
+        expect(encoded, {'type': 'scry'});
+      });
+
+      test('round-trips every disposition + count', () {
+        for (final d in ScryDisposition.values) {
+          final original = ScryEffect(count: 2, disposition: d);
+          final decoded =
+              decodeEffect(encodeEffect(original)) as ScryEffect;
+          expect(decoded.count, 2);
+          expect(decoded.disposition, d);
+        }
+      });
+
+      test('unknown disposition throws FormatException', () {
+        expect(
+          () => decodeEffect({'type': 'scry', 'disposition': 'nope'}),
+          throwsFormatException,
+        );
+      });
+    });
+  });
 }
