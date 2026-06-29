@@ -229,7 +229,7 @@
       "art": "primus_pilus.jpg",
       "rawText": "Homodeus Champion. Cost 2, shield 6. Exhaust: If you have three or more Homodeus Champions in play, draw two cards.",
       "verified": false,
-      "notes": "Champion shield 6. UNMODELED: Exhaust 'If you have three or more Homodeus Champions in play, draw two cards' (conditional draw gated on champion-count threshold) has no engine type; playEffects empty.",
+      "notes": "Champion shield 6. UNMODELED: Exhaust 'If you have three or more Homodeus Champions in play, draw two cards' (conditional draw gated on champion-count threshold) has no engine type; playEffects empty. | [encode-gap] Exhaust: if 3+ Homodeus Champions in play, draw 2. The 'count of same-faction champions in play' gating condition isn't expressible.",
       "set": "base",
       "cardType": "champion",
       "cost": 2,
@@ -455,7 +455,7 @@
       "art": "portal_monk.jpg",
       "rawText": "Order Ally. Cost 3. Recruit a card with cost 6 or less for free. Mastery 15: Put that card into your hand.",
       "verified": false,
-      "notes": "Ally (regular). masteryThreshold 15. UNMODELED: 'Recruit a card with cost 6 or less for free' (free recruit) and Mastery 15 'Put that card into your hand' (recruit-to-hand) have no engine types; playEffects and masteryBonus empty.",
+      "notes": "Ally (regular). masteryThreshold 15. UNMODELED: 'Recruit a card with cost 6 or less for free' (free recruit) and Mastery 15 'Put that card into your hand' (recruit-to-hand) have no engine types; playEffects and masteryBonus empty. | [encode-gap] Order Ally. 'Recruit a card cost 6 or less for free' and Mastery 15 'put that card into your hand' (free-recruit / recruit-to-hand) not in the vocabulary.",
       "set": "base",
       "cardType": "regular",
       "cost": 3,
@@ -560,7 +560,7 @@
       "art": "zetta_the_encryptor.jpg",
       "rawText": "Order Champion. Cost 5, shield 5. You and your other Champions in play can't be attacked.",
       "verified": false,
-      "notes": "Champion shield 5. UNMODELED: 'You and your other Champions in play can't be attacked' (global unattackable / protection aura) has no engine type; playEffects empty (no resource effect on card).",
+      "notes": "Champion shield 5. UNMODELED: 'You and your other Champions in play can't be attacked' (global unattackable / protection aura) has no engine type; playEffects empty (no resource effect on card). | [encode-gap] Order Champion (cost 5, shield 5). 'You and your other Champions in play can't be attacked' — attack-prevention / protection not in vocabulary.",
       "set": "base",
       "cardType": "champion",
       "cost": 5,
@@ -780,7 +780,7 @@
       "art": "ojas_genesis_druid.jpg",
       "rawText": "Undergrowth Ally. Cost 4. Copy the effect of a non-Champion card you have played this turn. Mastery 20: Copy the effect an additional time.",
       "verified": false,
-      "notes": "Ally (regular). masteryThreshold 20. UNMODELED: 'Copy the effect of a non-Champion card you have played this turn' and Mastery 20 'Copy the effect an additional time' (copy mechanic) have no engine type; playEffects and masteryBonus empty.",
+      "notes": "Ally (regular). masteryThreshold 20. UNMODELED: 'Copy the effect of a non-Champion card you have played this turn' and Mastery 20 'Copy the effect an additional time' (copy mechanic) have no engine type; playEffects and masteryBonus empty. | [encode-gap] 'Copy the effect of a non-Champion card played this turn' (and Mastery 20: copy an additional time) is a copy-effect mechanic with no effect type. Nothing encodable beyond noting the Mastery 20 threshold.",
       "set": "base",
       "cardType": "regular",
       "cost": 4,
@@ -837,7 +837,7 @@
       "art": "taur_archpriest.jpg",
       "rawText": "Undergrowth Champion. Cost 5, shield 4. Exhaust: Copy the effect of an Undergrowth Ally played this turn.",
       "verified": false,
-      "notes": "Champion shield 4. UNMODELED: Exhaust 'Copy the effect of an Undergrowth Ally played this turn' (copy mechanic) has no engine type; playEffects empty.",
+      "notes": "Champion shield 4. UNMODELED: Exhaust 'Copy the effect of an Undergrowth Ally played this turn' (copy mechanic) has no engine type; playEffects empty. | [encode-gap] Undergrowth Champion (shield 4). Exhaust: 'Copy the effect of an Undergrowth Ally played this turn' (copy-effect) not in the vocabulary.",
       "set": "base",
       "cardType": "champion",
       "cost": 5,
@@ -1145,11 +1145,20 @@
       "name": "Crimson Operative",
       "faction": "none",
       "copies": 1,
-      "playEffects": [],
+      "playEffects": [
+        {
+          "type": "gainGems",
+          "amount": 2
+        },
+        {
+          "type": "drawCards",
+          "count": 1
+        }
+      ],
       "art": "crimson_operative.jpg",
       "rawText": "Crimson Operative\nMercenary\nAion Ally\nGain [gem][gem] and draw a card.\nIf you are Rez, draw an additional card.",
       "verified": false,
-      "notes": "Typo fix: name was 'Crimson operative' in BGG source. Faction group (non-player): Aion. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 54: name='Crimson operative', faction='Aion', amount=1. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/crimson_operative.jpg (shield badge value 3); conf=high",
+      "notes": "Typo fix: name was 'Crimson operative' in BGG source. Faction group (non-player): Aion. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 54: name='Crimson operative', faction='Aion', amount=1. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/crimson_operative.jpg (shield badge value 3); conf=high | [encode-gap] Base effect encoded. 'If you are Rez, draw an additional card' (character-conditional) not expressible.",
       "group": "Aion",
       "set": "unknown",
       "chapter": 2,
@@ -1165,24 +1174,41 @@
       "art": "swyft.jpg",
       "rawText": "Aion Champion. Exhaust: Gain 2 (gems) and 2 (power). If you are Rez, you may recruit any card you fast-play.",
       "verified": false,
-      "notes": "Faction group (non-player): Aion. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 55: name='Swyft', faction='Aion', amount=2. | art added from TTS spritesheet crop (effects pending verification). | Aion Champion shield 3. UNMODELED: Exhaust activated ability ('Gain 2 gems and 2 power') and character-identity conditional 'If you are Rez...'. verified:false. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false.",
+      "notes": "Faction group (non-player): Aion. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 55: name='Swyft', faction='Aion', amount=2. | art added from TTS spritesheet crop (effects pending verification). | Aion Champion shield 3. UNMODELED: Exhaust activated ability ('Gain 2 gems and 2 power') and character-identity conditional 'If you are Rez...'. verified:false. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false. | [encode-gap] If you are Rez, may recruit any card you fast-play — character-conditional recruit not in vocabulary.",
       "group": "Aion",
       "set": "unknown",
       "cardType": "champion",
       "cost": 5,
       "shield": 3,
-      "chapter": 2
+      "chapter": 2,
+      "activatedAbility": {
+        "effects": [
+          {
+            "type": "gainGems",
+            "amount": 2
+          },
+          {
+            "type": "gainPower",
+            "amount": 2
+          }
+        ]
+      }
     },
     {
       "id": "concussio_and_mirus",
       "name": "Concussio and Mirus",
       "faction": "homodeus",
       "copies": 1,
-      "playEffects": [],
+      "playEffects": [
+        {
+          "type": "gainPower",
+          "amount": 4
+        }
+      ],
       "art": "concussio_and_mirus.jpg",
       "rawText": "Concussio and Mirus\nMercenary\nHomodeus Ally\nGain [damage][damage][damage][damage].\nIf you are Decima, gain an additional [damage][damage] for each Champion you have in play.\nCourage Infinite, Family Eternal. In memory of family lost.",
       "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 56: name='Concussio and Mirus', faction='Homodeus', amount=1. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/concussio_and_mirus.jpg; conf=high",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 56: name='Concussio and Mirus', faction='Homodeus', amount=1. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/concussio_and_mirus.jpg; conf=high | [encode-gap] Base gain 4 power encoded. 'If you are Decima, +2 damage per Champion' is an 'If you are <character>' conditional — not encodable.",
       "set": "saga",
       "chapter": 2,
       "cost": 3,
@@ -1197,7 +1223,7 @@
       "art": "ferrata_guard.jpg",
       "rawText": "Homodeus Champion. If you are Decima, your Champions (including this one) have an additional 2 (power). Exhaust: Gain 1 (gem) for each Homodeus Champion you have in play.",
       "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 57: name='Ferrata Guard', faction='Homodeus', amount=2. | art added from TTS spritesheet crop (effects pending verification). | EFFECTS PASS B: image read. Cost 4, Homodeus Champion. No shield number printed on the card (shield omitted). UNMODELED: character-identity passive 'If you are Decima, your Champions have +2 power' and Exhaust activated ability 'Gain 1 gem for each Homodeus Champion in play'. No mappable on-play effect. verified:false.",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 57: name='Ferrata Guard', faction='Homodeus', amount=2. | art added from TTS spritesheet crop (effects pending verification). | EFFECTS PASS B: image read. Cost 4, Homodeus Champion. No shield number printed on the card (shield omitted). UNMODELED: character-identity passive 'If you are Decima, your Champions have +2 power' and Exhaust activated ability 'Gain 1 gem for each Homodeus Champion in play'. No mappable on-play effect. verified:false. | [encode-gap] Champion. 'If you are Decima, your Champions have +2 power' (character-conditional) not expressible. Exhaust gains 1 gem per Homodeus Champion in play — conditionalPower scales POWER not gems and has no per-champion-of-faction condition, so the activated ability can't be encoded faithfully.",
       "set": "rotf",
       "chapter": 2,
       "cardType": "champion",
@@ -1233,12 +1259,20 @@
       "art": "nexus_datic_hunter.jpg",
       "rawText": "Nexus, Datic Hunter\nOrder Champion\n[health][health][health][health]\nIf you are Tetra, put this into your hand when you Recruit it.\nExhaust: Gain [gem][gem].",
       "verified": false,
-      "notes": "Note: 'datic' kept verbatim from BGG source (possible lowercase/typo, left as-is). set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 59: name='Nexus, Datic Hunter', faction='Order', amount=1. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/nexus_datic_hunter.jpg (printed name 'Nexus, Datic Hunter'; shield shown as green health/cross icon value 4); conf=high",
+      "notes": "Note: 'datic' kept verbatim from BGG source (possible lowercase/typo, left as-is). set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 59: name='Nexus, Datic Hunter', faction='Order', amount=1. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/nexus_datic_hunter.jpg (printed name 'Nexus, Datic Hunter'; shield shown as green health/cross icon value 4); conf=high | [encode-gap] Champion (shield 4). Exhaust: gain 2 gems encoded. 'If you are Tetra, put into hand when Recruited' (character-conditional) not expressible.",
       "set": "saga",
       "chapter": 2,
       "cost": 5,
       "cardType": "champion",
-      "shield": 4
+      "shield": 4,
+      "activatedAbility": {
+        "effects": [
+          {
+            "type": "gainGems",
+            "amount": 2
+          }
+        ]
+      }
     },
     {
       "id": "shard_cultist",
@@ -1278,16 +1312,29 @@
       "name": "Chlorophyte Guardian",
       "faction": "undergrowth",
       "copies": 1,
-      "playEffects": [],
+      "playEffects": [
+        {
+          "type": "drawCards",
+          "count": 1
+        }
+      ],
       "art": "chlorophyte_guardian.jpg",
       "rawText": "Chlorophyte Guardian\nUndergrowth Champion\n[health][health][health][health]\nWhen you play this, draw a card. If you are Volos, draw an additional card.\nExhaust: Gain [gem][gem][gem].",
       "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 62: name='Chlorophyte Guardian', faction='Undergrowth', amount=1. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/chlorophyte_guardian.jpg (shield shown as green health/cross icon value 4); conf=high",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 62: name='Chlorophyte Guardian', faction='Undergrowth', amount=1. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/chlorophyte_guardian.jpg (shield shown as green health/cross icon value 4); conf=high | [encode-gap] 'If you are Volos, draw an additional card' is a character-conditional that can't be expressed; encoded only the base draw 1 and the Exhaust: gain 3 gems.",
       "set": "saga",
       "chapter": 2,
       "cost": 4,
       "cardType": "champion",
-      "shield": 4
+      "shield": 4,
+      "activatedAbility": {
+        "effects": [
+          {
+            "type": "gainGems",
+            "amount": 3
+          }
+        ]
+      }
     },
     {
       "id": "hounds_of_volos",
@@ -1314,11 +1361,16 @@
       "name": "Spirit Leech",
       "faction": "wraethe",
       "copies": 1,
-      "playEffects": [],
+      "playEffects": [
+        {
+          "type": "gainPower",
+          "amount": 3
+        }
+      ],
       "art": "spirit_leech.jpg",
       "rawText": "Spirit Leech\nMercenary\nWraethe Ally\nGain [damage][damage][damage]. You ignore [shield] this turn.\nIf you are Ko Syn Wu, gain an additional [damage][damage][damage].",
       "verified": false,
-      "notes": "Typo fix: name was 'Spirit Leach' in BGG source. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 64: name='Spirit Leach', faction='Wraethe', amount=1. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/spirit_leech.jpg; conf=high",
+      "notes": "Typo fix: name was 'Spirit Leach' in BGG source. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 64: name='Spirit Leach', faction='Wraethe', amount=1. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/spirit_leech.jpg; conf=high | [encode-gap] Wraethe Ally mercenary. 'You ignore shield this turn' and 'If you are Ko Syn Wu, gain additional 3 power' (character-conditional) not in vocabulary.",
       "set": "rotf",
       "chapter": 2,
       "cost": 3,
@@ -1422,17 +1474,28 @@
       "name": "Praetorian-02",
       "faction": "homodeus",
       "copies": 1,
-      "playEffects": [],
+      "playEffects": [
+        {
+          "type": "gainPower",
+          "amount": 3
+        }
+      ],
       "art": "praetorian_02.jpg",
       "rawText": "Homodeus Relic - Champion. You have 3 (power). Mastery 20: You have 6 instead.",
       "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 69: name='Praetorian-02', faction='Homodeus', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Relic Champion shield 9. UNMODELED: passive 'You have 3 power' (ongoing power grant, not an on-play gain) and mastery-20 replacement. verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false.",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 69: name='Praetorian-02', faction='Homodeus', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Relic Champion shield 9. UNMODELED: passive 'You have 3 power' (ongoing power grant, not an on-play gain) and mastery-20 replacement. verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false. | [encode-gap] 'You have 3 power' is a static power-grant; modeled as gainPower 3. Mastery 20 'you have 6 instead' is a replacement, not additive — encoded as a masteryBonus of gainPower 6 but the engine would add (9 total) rather than replace (6). Treat as approximation.",
       "set": "rotf",
       "cardType": "champion",
       "cost": 10,
       "shield": 9,
       "masteryThreshold": 20,
-      "chapter": 2
+      "chapter": 2,
+      "masteryBonus": [
+        {
+          "type": "gainPower",
+          "amount": 6
+        }
+      ]
     },
     {
       "id": "datic_robes",
@@ -1614,11 +1677,16 @@
       "name": "Aion Egressor",
       "faction": "none",
       "copies": 1,
-      "playEffects": [],
+      "playEffects": [
+        {
+          "type": "gainPower",
+          "amount": 5
+        }
+      ],
       "art": "aion_egressor.jpg",
       "rawText": "Aion Egressor\nMercenary\nAion Ally\nGain [damage][damage][damage][damage][damage].\nWarp 4 - You may fast play a card in the Center Row of cost [gem][gem][gem][gem] or less.",
       "verified": false,
-      "notes": "Faction group (non-player): Aion. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 78: name='Aion Egressor', faction='Aion', amount=1. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/aion_egressor.jpg; conf=high",
+      "notes": "Faction group (non-player): Aion. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 78: name='Aion Egressor', faction='Aion', amount=1. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/aion_egressor.jpg; conf=high | [encode-gap] Warp 4 (fast-play a Center Row card of cost 4 or less) cannot be expressed in the effect vocabulary; only the 5 power is encoded.",
       "group": "Aion",
       "set": "unknown",
       "chapter": 3,
@@ -1631,11 +1699,20 @@
       "name": "Aion Guide",
       "faction": "none",
       "copies": 2,
-      "playEffects": [],
+      "playEffects": [
+        {
+          "type": "gainGems",
+          "amount": 2
+        },
+        {
+          "type": "gainPower",
+          "amount": 3
+        }
+      ],
       "art": "aion_guide.jpg",
       "rawText": "Aion Guide\nAion Ally\nGain [gem][gem] and [damage][damage][damage]. Then, banish this.",
       "verified": false,
-      "notes": "Faction group (non-player): Aion. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 79: name='Aion Guide', faction='Aion', amount=2. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/aion_guide.jpg (Ally with no Champion/Mercenary type line -> regular; gain gem 2 and red damage 3); conf=high",
+      "notes": "Faction group (non-player): Aion. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 79: name='Aion Guide', faction='Aion', amount=2. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/aion_guide.jpg (Ally with no Champion/Mercenary type line -> regular; gain gem 2 and red damage 3); conf=high | [encode-gap] Gems+power encoded. 'Then, banish this' (self-banish) is not expressible — BanishCardEffect targets a chosen card from hand/discard, not self.",
       "group": "Aion",
       "set": "unknown",
       "chapter": 3,
@@ -1652,14 +1729,22 @@
       "art": "blitz_shard_runner.jpg",
       "rawText": "Blitz, Shard Runner\nAion Champion\n[health][health][health][health]\nExhaust: Draw two cards and each other player draws a card.\n(Mastery 20) Draw two cards and each enemy player discards a card instead.",
       "verified": false,
-      "notes": "Faction group (non-player): Aion. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 80: name='Blitz, Shard Runner', faction='Aion', amount=1. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/blitz_shard_runner.jpg (printed name 'Blitz, Shard Runner'; shield shown as green health/cross icon value 4); conf=high",
+      "notes": "Faction group (non-player): Aion. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 80: name='Blitz, Shard Runner', faction='Aion', amount=1. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/blitz_shard_runner.jpg (printed name 'Blitz, Shard Runner'; shield shown as green health/cross icon value 4); conf=high | [encode-gap] Exhaust also makes each other player draw a card (not encodable). Mastery 20 variant: each enemy discards a card instead of drawing (not encodable).",
       "group": "Aion",
       "set": "unknown",
       "chapter": 3,
       "ksOnly": true,
       "cost": 3,
       "cardType": "champion",
-      "shield": 4
+      "shield": 4,
+      "activatedAbility": {
+        "effects": [
+          {
+            "type": "drawCards",
+            "count": 2
+          }
+        ]
+      }
     },
     {
       "id": "breaker",
@@ -1670,7 +1755,7 @@
       "art": "breaker.jpg",
       "rawText": "Aion Ally. When you Recruit this, put it into your hand. Warp infinity - Fast-play any Ally in the Center Row for free.",
       "verified": false,
-      "notes": "Faction group (non-player): Aion. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 81: name='Breaker', faction='Aion', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Aion Ally (regular). UNMODELED: 'When you Recruit this, put it into your hand' (recruit trigger) and 'Warp - Fast-play any Ally in the Center Row for free'. A grey '4' badge appears on the art though type line reads 'Aion Ally'; badge meaning uncertain. No mappable base effect. verified:false. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false.",
+      "notes": "Faction group (non-player): Aion. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 81: name='Breaker', faction='Aion', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Aion Ally (regular). UNMODELED: 'When you Recruit this, put it into your hand' (recruit trigger) and 'Warp - Fast-play any Ally in the Center Row for free'. A grey '4' badge appears on the art though type line reads 'Aion Ally'; badge meaning uncertain. No mappable base effect. verified:false. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false. | [encode-gap] Aion Ally; Recruit-to-hand and Warp 'fast-play any Ally in Center Row for free' are not in the vocabulary.",
       "group": "Aion",
       "set": "unknown",
       "cardType": "regular",
@@ -1707,7 +1792,7 @@
       "art": "carmine_eclipse.jpg",
       "rawText": "Carmine Eclipse\nAion Champion\n[health][health][health][health][health][health]\nWhenever you fast-play a card, instead of banishing it, put it under this. You have [shield][shield] for each card under this.\nWhen this is destroyed, you may recruit any of the cards under this and banish the rest.",
       "verified": false,
-      "notes": "Faction group (non-player): Aion. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 83: name='Carmine Eclipse', faction='Aion', amount=1. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/carmine_eclipse.jpg (shield/health icon value 6; effect references gaining 2 shield per card under); conf=high",
+      "notes": "Faction group (non-player): Aion. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 83: name='Carmine Eclipse', faction='Aion', amount=1. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/carmine_eclipse.jpg (shield/health icon value 6; effect references gaining 2 shield per card under); conf=high | [encode-gap] Fast-play-under-this stacking, shield-per-card-under, and recruit-cards-under-on-destroy — none in vocabulary.",
       "group": "Aion",
       "set": "unknown",
       "chapter": 3,
@@ -1763,11 +1848,41 @@
       "name": "Red Fortune",
       "faction": "none",
       "copies": 1,
-      "playEffects": [],
+      "playEffects": [
+        {
+          "type": "chooseOne",
+          "choices": [
+            [
+              {
+                "type": "gainGems",
+                "amount": 2
+              }
+            ],
+            [
+              {
+                "type": "gainPower",
+                "amount": 2
+              }
+            ],
+            [
+              {
+                "type": "gainMastery",
+                "amount": 1
+              }
+            ],
+            [
+              {
+                "type": "drawCards",
+                "count": 1
+              }
+            ]
+          ]
+        }
+      ],
       "art": "red_fortune.jpg",
       "rawText": "Red Fortune\nAion Ally\nChoose one:\n- Gain [gem][gem].\n- Gain [damage][damage].\n- Gain [mastery].\n- Draw a card.\n(Mastery 15) Choose two instead. (You may not pick the same choice.)",
       "verified": false,
-      "notes": "Faction group (non-player): Aion. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 86: name='Red Fortune', faction='Aion', amount=1. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/red_fortune.jpg (Ally with no Champion/Mercenary type line -> regular; shield badge value 2; choices: gem 2, red damage 2, gold mastery 1, draw); conf=high",
+      "notes": "Faction group (non-player): Aion. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 86: name='Red Fortune', faction='Aion', amount=1. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/red_fortune.jpg (Ally with no Champion/Mercenary type line -> regular; shield badge value 2; choices: gem 2, red damage 2, gold mastery 1, draw); conf=high | [encode-gap] Aion Ally. Mastery 15: choose two distinct options instead of one — 'choose two' variant not representable; only base chooseOne encoded.",
       "group": "Aion",
       "set": "unknown",
       "chapter": 3,
@@ -1780,7 +1895,24 @@
       "name": "Scarlet Slayer",
       "faction": "none",
       "copies": 1,
-      "playEffects": [],
+      "playEffects": [
+        {
+          "type": "gainPower",
+          "amount": 4
+        },
+        {
+          "type": "gainGems",
+          "amount": 3
+        },
+        {
+          "type": "gainMastery",
+          "amount": 2
+        },
+        {
+          "type": "drawCards",
+          "count": 1
+        }
+      ],
       "art": "scarlet_slayer.jpg",
       "rawText": "Scarlet Slayer\nMercenary\nAion Ally\nGain [damage][damage][damage][damage], [gem][gem][gem], [mastery][mastery], and draw a card.",
       "verified": false,
@@ -1801,40 +1933,82 @@
       "art": "aedifex_deus_engineer.jpg",
       "rawText": "Aedifex, Deus Engineer\nHomodeus Champion\n[health][health]\nExhaust: Put a Champion from your discard pile into your hand.\n(Mastery 15) Champions in the Center Row cost you [gem][gem][gem] less to acquire to a minimum of [gem].",
       "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 88: name='Aedifex, Deus Engineer', faction='Homodeus', amount=1. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/aedifex_deus_engineer.jpg (shield shown as green health/cross icon value 2); conf=high",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 88: name='Aedifex, Deus Engineer', faction='Homodeus', amount=1. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/aedifex_deus_engineer.jpg (shield shown as green health/cross icon value 2); conf=high | [encode-gap] Mastery 15: Champions in Center Row cost 3 gems less to acquire (min 1) — acquisition-cost reduction not in vocabulary.",
       "set": "saga",
       "chapter": 3,
       "ksOnly": true,
       "cost": 2,
       "cardType": "champion",
-      "shield": 2
+      "shield": 2,
+      "activatedAbility": {
+        "effects": [
+          {
+            "type": "returnFromDiscard",
+            "filter": "champion"
+          }
+        ]
+      }
     },
     {
       "id": "synthetica_artifex",
       "name": "Synthetica Artifex",
       "faction": "homodeus",
       "copies": 1,
-      "playEffects": [],
+      "playEffects": [
+        {
+          "type": "chooseOne",
+          "choices": [
+            [
+              {
+                "type": "gainGems",
+                "amount": 3
+              }
+            ],
+            [
+              {
+                "type": "opponentLosesHealth",
+                "amount": 1
+              }
+            ]
+          ]
+        }
+      ],
       "art": "synthetica_artifex.jpg",
       "rawText": "Synthetica Artifex\nHomodeus Ally\nChoose one:\n- Gain [gem][gem][gem].\n- Each enemy player loses [health].\n(Mastery 15) Do both instead.",
       "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 89: name='Synthetica Artifex', faction='Homodeus', amount=1. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/synthetica_artifex.jpg (Ally with no Champion/Mercenary type line -> regular; shield badge value 2); conf=high",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 89: name='Synthetica Artifex', faction='Homodeus', amount=1. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/synthetica_artifex.jpg (Ally with no Champion/Mercenary type line -> regular; shield badge value 2); conf=high | [encode-gap] Choose-one encoded (gain 3 gems OR each enemy loses health). rawText '[health]' had no number; assumed 1 health loss. At Mastery 15 'do both instead' — masteryBonus lists both effects; engine must replace the chooseOne rather than stack. Also 'each enemy player' vs single-target opponentLosesHealth is an approximation.",
       "set": "saga",
       "chapter": 3,
       "ksOnly": true,
       "cost": 4,
-      "cardType": "regular"
+      "cardType": "regular",
+      "masteryBonus": [
+        {
+          "type": "gainGems",
+          "amount": 3
+        },
+        {
+          "type": "opponentLosesHealth",
+          "amount": 1
+        }
+      ],
+      "masteryThreshold": 15
     },
     {
       "id": "keeper_of_datic_vessels",
       "name": "Keeper of datic Vessels",
       "faction": "order",
       "copies": 1,
-      "playEffects": [],
+      "playEffects": [
+        {
+          "type": "drawCards",
+          "count": 1
+        }
+      ],
       "art": "keeper_of_datic_vessels.jpg",
       "rawText": "Keeper of Datic Vessels\nOrder Ally\nLook at the top card of your deck, you may put it into your discard pile. Then, draw a card.",
       "verified": false,
-      "notes": "Note: 'datic' kept verbatim from BGG source (possible lowercase/typo, left as-is). set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 90: name='Keeper of datic Vessels', faction='Order', amount=1. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/keeper_of_datic_vessels.jpg (Ally with no Champion/Mercenary type line -> regular; shield badge value 2); conf=high",
+      "notes": "Note: 'datic' kept verbatim from BGG source (possible lowercase/typo, left as-is). set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 90: name='Keeper of datic Vessels', faction='Order', amount=1. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/keeper_of_datic_vessels.jpg (Ally with no Champion/Mercenary type line -> regular; shield badge value 2); conf=high | [encode-gap] Order Ally. 'Look at top of deck, you may put it into discard' (scry/optional self-mill) not expressible; only the final 'draw a card' encoded.",
       "set": "saga",
       "chapter": 3,
       "ksOnly": true,
@@ -1850,7 +2024,7 @@
       "art": "paradigm_the_archivist.jpg",
       "rawText": "Paradigm, The Archivist\nOrder Champion\n[health][health][health][health][health]\nExhaust: Put an Ally from your hand under this. Then copy the effect of all cards under this.\nWhen this is destroyed, put all cards under it into your discard pile.",
       "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 91: name='Paradigm, The Archivist', faction='Order', amount=1. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/paradigm_the_archivist.jpg (shield shown as green health/cross icon value 5); conf=high",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 91: name='Paradigm, The Archivist', faction='Order', amount=1. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/paradigm_the_archivist.jpg (shield shown as green health/cross icon value 5); conf=high | [encode-gap] Exhaust: put an Ally from hand under this then copy effects of all cards under this; and on-destroy move under-cards to discard. Copy-effect and 'put cards under this' mechanics are not in the vocabulary. Nothing encodable.",
       "set": "saga",
       "chapter": 3,
       "ksOnly": true,
@@ -1873,23 +2047,67 @@
       "ksOnly": true,
       "cost": 4,
       "cardType": "champion",
-      "shield": 4
+      "shield": 4,
+      "activatedAbility": {
+        "effects": [
+          {
+            "type": "gainPower",
+            "amount": 3
+          }
+        ]
+      },
+      "masteryBonus": [
+        {
+          "type": "destroyChampion",
+          "all": false
+        }
+      ],
+      "masteryThreshold": 15
     },
     {
       "id": "vinereaper",
       "name": "Vinereaper",
       "faction": "undergrowth",
       "copies": 1,
-      "playEffects": [],
+      "playEffects": [
+        {
+          "type": "chooseOne",
+          "choices": [
+            [
+              {
+                "type": "gainPower",
+                "amount": 6
+              }
+            ],
+            [
+              {
+                "type": "gainGems",
+                "amount": 6
+              }
+            ]
+          ]
+        }
+      ],
       "art": "vinereaper.jpg",
       "rawText": "Vinereaper\nMercenary\nUndergrowth Ally\nChoose one:\n- Gain [damage][damage][damage][damage][damage][damage].\n- Gain [gem][gem][gem][gem][gem][gem].\n(Mastery 15) Do both instead.",
       "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 93: name='Vinereaper', faction='Undergrowth', amount=1. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/vinereaper.jpg (first Gain is red damage 6, second is green gem 6); conf=high",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 93: name='Vinereaper', faction='Undergrowth', amount=1. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/vinereaper.jpg (first Gain is red damage 6, second is green gem 6); conf=high | [encode-gap] Undergrowth Ally mercenary. Mastery 15: do both instead — 'do both' variant not representable; only base chooseOne encoded. | [verify-fix] added Mastery 15 \"do both\" masteryBonus",
       "set": "saga",
       "chapter": 3,
       "ksOnly": true,
       "cost": 4,
-      "cardType": "mercenary"
+      "cardType": "mercenary",
+      "masteryThreshold": 15,
+      "masteryBonus": [
+        {
+          "type": "gainPower",
+          "amount": 6
+        },
+        {
+          "type": "gainGems",
+          "amount": 6
+        }
+      ]
     },
     {
       "id": "isa_tel_tor_the_axe",
@@ -1900,13 +2118,21 @@
       "art": "isa_tel_tor_the_axe.jpg",
       "rawText": "Isa Tel Tor, The Axe\nWraethe Champion\n[health][health][health][health][health]\nExhaust: Gain [damage][damage] and an additional [damage] for each Wraethe card in your discard pile.\n(Mastery 20) You may treat an additional faction of your choice as Wraethe this turn.",
       "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 94: name='Isa Tel Tor, the Axe', faction='Wraethe', amount=1. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/isa_tel_tor_the_axe.jpg (shield shown as green health/cross icon value 5); conf=high",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 94: name='Isa Tel Tor, the Axe', faction='Wraethe', amount=1. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/isa_tel_tor_the_axe.jpg (shield shown as green health/cross icon value 5); conf=high | [encode-gap] Exhaust gains 2 power plus an additional power PER Wraethe card in discard — the scaling-per-Wraethe-in-discard part is unencodable (conditionalPower only offers perCardInDiscard for all cards, not faction-filtered), so only the flat 2 power base is encoded. Mastery 20 bonus 'treat an additional faction as Wraethe this turn' is a treat-faction-as mechanic that can't be expressed; masteryBonus left empty.",
       "set": "saga",
       "chapter": 3,
       "ksOnly": true,
       "cost": 3,
       "cardType": "champion",
-      "shield": 5
+      "shield": 5,
+      "activatedAbility": {
+        "effects": [
+          {
+            "type": "gainPower",
+            "amount": 2
+          }
+        ]
+      }
     },
     {
       "id": "se_soc_tar_the_inquisitor",
@@ -1917,40 +2143,76 @@
       "art": "se_soc_tar_the_inquisitor.jpg",
       "rawText": "Se Soc Tar, The Inquisitor\nWraethe Champion\n[health][health][health]\nExhaust: Gain [damage][damage].\nIf you played a Wraethe card this turn, you may return this from your discard pile to your hand.",
       "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 95: name='Se Soc Tar, The Inquisitor', faction='Wraethe', amount=1. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/se_soc_tar_the_inquisitor.jpg (shield shown as green health/cross icon value 3); conf=high",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 95: name='Se Soc Tar, The Inquisitor', faction='Wraethe', amount=1. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/se_soc_tar_the_inquisitor.jpg (shield shown as green health/cross icon value 3); conf=high | [encode-gap] Exhaust gain 2 power encoded. 'If you played a Wraethe card this turn, you may return this from discard to hand' is a conditional self-return — not expressible (returnFromDiscard is a play-effect that picks a card, not a self-recursion gate).",
       "set": "saga",
       "chapter": 3,
       "ksOnly": true,
       "cost": 4,
       "cardType": "champion",
-      "shield": 3
+      "shield": 3,
+      "activatedAbility": {
+        "effects": [
+          {
+            "type": "gainPower",
+            "amount": 2
+          }
+        ]
+      }
     },
     {
       "id": "the_voiceless",
       "name": "The Voiceless",
       "faction": "wraethe",
       "copies": 1,
-      "playEffects": [],
+      "playEffects": [
+        {
+          "type": "chooseOne",
+          "choices": [
+            [
+              {
+                "type": "gainPower",
+                "amount": 4
+              }
+            ],
+            [
+              {
+                "type": "returnFromDiscard",
+                "filter": "mercenary"
+              }
+            ]
+          ]
+        }
+      ],
       "art": "the_voiceless.jpg",
       "rawText": "The Voiceless\nMercenary\nWraethe Ally\nChoose one:\n- Gain [damage][damage][damage][damage].\n- Return a Mercenary from your discard pile to your hand.\n(Mastery 15) Do both instead.",
       "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 96: name='The Voiceless', faction='Wraethe', amount=1. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/the_voiceless.jpg; conf=high",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 96: name='The Voiceless', faction='Wraethe', amount=1. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/the_voiceless.jpg; conf=high | [encode-gap] Mastery 15 'Do both instead' replaces the chooseOne with both effects; encoded the 'both' as masteryBonus (additive), which approximates rather than replaces the choice.",
       "set": "saga",
       "chapter": 3,
       "ksOnly": true,
       "cost": 2,
-      "cardType": "mercenary"
+      "cardType": "mercenary",
+      "masteryBonus": [
+        {
+          "type": "gainPower",
+          "amount": 4
+        },
+        {
+          "type": "returnFromDiscard",
+          "filter": "mercenary"
+        }
+      ],
+      "masteryThreshold": 15
     },
     {
       "id": "wandering_ghost",
       "name": "Wandering Ghost",
       "faction": "wraethe",
       "copies": 1,
-      "playEffects": [],
       "art": "wandering_ghost.jpg",
       "rawText": "Wandering Ghost\nWraethe Ally\nChoose a player. That player loses [gem][gem][gem][gem][gem][gem] and gains [mastery][mastery][mastery]. Then, banish this.",
       "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 97: name='Wandering Ghost', faction='Wraethe', amount=1. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/wandering_ghost.jpg (Ally with no Champion/Mercenary type line -> regular; loses green gem 6, gains gold mastery 3); conf=high",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 97: name='Wandering Ghost', faction='Wraethe', amount=1. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/wandering_ghost.jpg (Ally with no Champion/Mercenary type line -> regular; loses green gem 6, gains gold mastery 3); conf=high | [encode-gap] 'Choose a player; that player loses 6 gems' has no effect type (opponentLosesHealth is health only, no gem-drain). The self-gain 3 mastery is encoded. 'Then banish this' (self-banish) also has no representation. Ally is a faction-trigger property. | [verify-fix] reverted bad self-gainMastery; printed effect is target-directed (player loses gems, target gains mastery) - unmodeled",
       "set": "saga",
       "chapter": 3,
       "ksOnly": true,
@@ -2438,7 +2700,7 @@
       "art": "j_chord.jpg",
       "rawText": "Aion Champion. Exhaust: Warp 3 - Fast-play an Ally in the Center Row with cost 3 or less for free. Mastery 15: Warp 5 instead.",
       "verified": false,
-      "notes": "Faction group (non-player): Aion. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 148: name='J-Chord', faction='Aion', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Aion Champion shield 3. UNMODELED: Exhaust activated ability ('Warp 3 - fast-play an Ally...') and mastery-15 'Warp 5 instead'. verified:false. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false.",
+      "notes": "Faction group (non-player): Aion. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 148: name='J-Chord', faction='Aion', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Aion Champion shield 3. UNMODELED: Exhaust activated ability ('Warp 3 - fast-play an Ally...') and mastery-15 'Warp 5 instead'. verified:false. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false. | [encode-gap] Exhaust: Warp 3 / Warp 5 — fast-play an Ally from Center Row for free. Warp/fast-play-from-center not in the vocabulary.",
       "group": "Aion",
       "set": "unknown",
       "cardType": "champion",
@@ -2456,7 +2718,7 @@
       "art": "g_48.jpg",
       "rawText": "Homodeus Champion. Exhaust: Reset another Champion you control. (It may be Exhausted a second time.)",
       "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 149: name='G-48', faction='Homodeus', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Champion shield 5. UNMODELED: Exhaust activated ability 'Reset another Champion you control'. verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false.",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 149: name='G-48', faction='Homodeus', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Champion shield 5. UNMODELED: Exhaust activated ability 'Reset another Champion you control'. verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false. | [encode-gap] Exhaust: 'Reset another Champion you control' (untap a champion) has no corresponding effect type. Nothing encodable.",
       "set": "ioh",
       "cardType": "champion",
       "cost": 4,
@@ -2606,12 +2868,20 @@
       "art": "orm_madu.jpg",
       "rawText": "Undergrowth Champion. Exhaust: Gain 7 (power). Then, if you have 50 (mastery), gain 1 (gem).",
       "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 156: name='Orm Madu', faction='Undergrowth', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Champion shield 7. UNMODELED: Exhaust activated ability ('Gain 7 power; if mastery 50, gain 1 gem'). verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false.",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 156: name='Orm Madu', faction='Undergrowth', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Champion shield 7. UNMODELED: Exhaust activated ability ('Gain 7 power; if mastery 50, gain 1 gem'). verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false. | [encode-gap] Champion. Exhaust: gain 7 power encoded. The follow-up 'if you have 50 mastery, gain 1 gem' (mastery-conditional gem on an activated ability) not expressible.",
       "set": "ioh",
       "cardType": "champion",
       "cost": 7,
       "shield": 7,
-      "chapter": 4
+      "chapter": 4,
+      "activatedAbility": {
+        "effects": [
+          {
+            "type": "gainPower",
+            "amount": 7
+          }
+        ]
+      }
     },
     {
       "id": "the_rotten",
@@ -2673,7 +2943,7 @@
       "art": "oblivion_gatekeeper.jpg",
       "rawText": "Wraethe Champion. Exhaust: Reveal the top card of your deck. You lose (power) equal to its (gem) cost and put it into your hand. This cannot be prevented by (Guard). Mastery 20: All opponents lose (power) instead of you.",
       "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 159: name='Oblivion Gatekeeper', faction='Wraethe', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Champion shield 5. UNMODELED: Exhaust activated ability (reveal top card, lose power equal to its cost, put into hand) and mastery-20 redirect. verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false.",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 159: name='Oblivion Gatekeeper', faction='Wraethe', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Champion shield 5. UNMODELED: Exhaust activated ability (reveal top card, lose power equal to its cost, put into hand) and mastery-20 redirect. verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false. | [encode-gap] Exhaust: reveal top of deck, lose power equal to its gem cost, put into hand, ignores Guard. Mastery 20: opponents lose power instead. Reveal/self-power-loss-by-cost not in vocabulary.",
       "set": "ioh",
       "cardType": "champion",
       "cost": 4,
@@ -2768,13 +3038,21 @@
       "art": "lasav_tower_commander.jpg",
       "rawText": "Homodeus Champion. (Card art name: 'Lesav, Tower Commander'.) Exhaust: Gain 5 (power). Mastery 15: Gain an additional 5 (power) for each Homodeus Champion you have in play.",
       "verified": false,
-      "notes": "Faction REVIEW NEEDED: BGG source marked faction as 'Homodeus (typo!)'. Do not guess; confirm against physical card. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 165: name='Lasav, Tower Commander', faction='Homodeus (typo!)', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Faction RESOLVED from image: Homodeus (BGG had 'Homodeus (typo!)'; the printed card is Homodeus). Champion shield 5. UNMODELED: Exhaust activated ability ('Gain 5 power'; mastery 15 scaling per Homodeus Champion). verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false.",
+      "notes": "Faction REVIEW NEEDED: BGG source marked faction as 'Homodeus (typo!)'. Do not guess; confirm against physical card. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 165: name='Lasav, Tower Commander', faction='Homodeus (typo!)', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Faction RESOLVED from image: Homodeus (BGG had 'Homodeus (typo!)'; the printed card is Homodeus). Champion shield 5. UNMODELED: Exhaust activated ability ('Gain 5 power'; mastery 15 scaling per Homodeus Champion). verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false. | [encode-gap] Mastery 15: gain +5 power for each Homodeus Champion in play — per-(specific-faction)-champion scaling not in vocabulary (conditionalPower has no faction-filtered champion variant). | [verify-fix] cleared masteryThreshold (Mastery 15 bonus is per-Homodeus-Champion scaling - unmodeled, leaving unencoded)",
       "set": "sos",
       "cardType": "champion",
       "cost": 6,
       "shield": 5,
-      "masteryThreshold": 15,
-      "chapter": 4
+      "masteryThreshold": null,
+      "chapter": 4,
+      "activatedAbility": {
+        "effects": [
+          {
+            "type": "gainPower",
+            "amount": 5
+          }
+        ]
+      }
     },
     {
       "id": "datic_inquisitors",
@@ -2785,7 +3063,7 @@
       "art": "datic_inquisitors.jpg",
       "rawText": "Order Ally. Choose one: Draw 2 cards / Recruit a card with cost 6 or less for free. Mastery 15: Do both instead.",
       "verified": false,
-      "notes": "Note: 'datic' kept verbatim from BGG source (possible lowercase/typo, left as-is). set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 166: name='Datic Inquisitors', faction='Order', amount=1. | art added from TTS spritesheet crop (effects pending verification). | UNMODELED: chooseOne where one branch ('Recruit a card with cost 6 or less for free') has no engine effect, so the chooseOne cannot be faithfully encoded; mastery-15 'Do both instead'. masteryThreshold 15 set. verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false.",
+      "notes": "Note: 'datic' kept verbatim from BGG source (possible lowercase/typo, left as-is). set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 166: name='Datic Inquisitors', faction='Order', amount=1. | art added from TTS spritesheet crop (effects pending verification). | UNMODELED: chooseOne where one branch ('Recruit a card with cost 6 or less for free') has no engine effect, so the chooseOne cannot be faithfully encoded; mastery-15 'Do both instead'. masteryThreshold 15 set. verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false. | [encode-gap] Order Ally. Choose one: Draw 2 cards / Recruit free (recruit-for-free not in vocabulary). Mastery 15: do both. chooseOne not encoded because one branch (free recruit) is unrepresentable.",
       "set": "sos",
       "cardType": "regular",
       "cost": 4,
@@ -2801,7 +3079,7 @@
       "art": "subversion_elders.jpg",
       "rawText": "Order Champion (Ally). Gain 1 (gem) for each Faction you have played this turn. (The Factions are Homodeus, Order, Undergrowth, Wraethe, and Aion.)",
       "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 167: name='Subversion Elders', faction='Order', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Champion shield 4. UNMODELED: scaling 'Gain 1 gem for each Faction you have played this turn'. No fixed base. verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false.",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 167: name='Subversion Elders', faction='Order', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Champion shield 4. UNMODELED: scaling 'Gain 1 gem for each Faction you have played this turn'. No fixed base. verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false. | [encode-gap] Order Champion (Ally). Gains 1 gem per faction played this turn; conditionalPower perFactionPlayedThisTurn scales POWER not gems, so this can't be encoded faithfully.",
       "set": "rotf",
       "cardType": "champion",
       "cost": 5,
@@ -2839,13 +3117,35 @@
       "art": "gian_shard_wyrm.jpg",
       "rawText": "Undergrowth Champion. Exhaust: Gain 2 (power) and 2 (gems). Mastery 15: Gain 5 (power) and 5 (gems) instead.",
       "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 169: name='Gian, Shard Wyrm', faction='Undergrowth', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Champion shield 5. UNMODELED: Exhaust activated ability ('Gain 2 power and 2 gems'; mastery 15 'Gain 5 and 5 instead'). verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false.",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 169: name='Gian, Shard Wyrm', faction='Undergrowth', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Champion shield 5. UNMODELED: Exhaust activated ability ('Gain 2 power and 2 gems'; mastery 15 'Gain 5 and 5 instead'). verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false. | [encode-gap] Exhaust ability gives 2 power + 2 gems; at Mastery 15 it becomes 5/5 INSTEAD (not additive). masteryBonus encodes the upgraded amounts; engine must treat it as a replacement, not a stack.",
       "set": "rotf",
       "cardType": "champion",
       "cost": 6,
       "shield": 5,
       "masteryThreshold": 15,
-      "chapter": 5
+      "chapter": 5,
+      "activatedAbility": {
+        "effects": [
+          {
+            "type": "gainPower",
+            "amount": 2
+          },
+          {
+            "type": "gainGems",
+            "amount": 2
+          }
+        ]
+      },
+      "masteryBonus": [
+        {
+          "type": "gainPower",
+          "amount": 5
+        },
+        {
+          "type": "gainGems",
+          "amount": 5
+        }
+      ]
     },
     {
       "id": "agony",
@@ -2884,7 +3184,7 @@
       "art": "datic_secrets.jpg",
       "rawText": "Datic Secrets\nCost: 5\nExhaust: If you have played 2 or more Order Allies this turn, gain [gem][gem] (2 gems).",
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. Note: 'datic' kept verbatim from BGG source (possible lowercase/typo, left as-is). set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 172: name='Datic Secrets', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/datic_secrets.jpg; conf=high",
+      "notes": "Faction group (non-player): Destiny. Note: 'datic' kept verbatim from BGG source (possible lowercase/typo, left as-is). set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 172: name='Datic Secrets', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/datic_secrets.jpg; conf=high | [encode-gap] Exhaust gain is conditional on having played 2+ Order Allies this turn — no such play-count condition in the vocabulary; encoded the gain 2 gems unconditionally. Cost: 5 is the Destiny mastery line. | [verify-fix] reverted unconditional gainGems; gated on \"2+ Order Allies played this turn\" - play-history condition unmodeled",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
@@ -2899,7 +3199,7 @@
       "art": "the_price_of_power.jpg",
       "rawText": "The Price of Power\nCost: 5\nExhaust: Gain [damage]1 for each Wraethe card in your discard pile.",
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 173: name='The Price of Power', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/the_price_of_power.jpg; conf=high",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 173: name='The Price of Power', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/the_price_of_power.jpg; conf=high | [encode-gap] Exhaust: gain 1 damage per Wraethe card in discard. conditionalPower perCardInDiscard counts ALL discard cards (no faction filter), so the Wraethe-only restriction can't be encoded faithfully.",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
@@ -2914,7 +3214,7 @@
       "art": "one_mind_one_army.jpg",
       "rawText": "One Mind, One Army\nCost: 5\nYour Champions have +[shield]2 (+2 shield).",
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 174: name='One Mind, One Army', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/one_mind_one_army.jpg; conf=high",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 174: name='One Mind, One Army', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/one_mind_one_army.jpg; conf=high | [encode-gap] Static buff 'Your Champions have +2 shield' — shield buffs to other cards aren't in the vocabulary.",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
@@ -2929,7 +3229,7 @@
       "art": "project_yggdrasil.jpg",
       "rawText": "Project Yggdrasil\nCost: 5\nYou may treat Wraethe cards as Undergrowth and Undergrowth cards as Wraethe.",
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 175: name='Project Yggdrasil', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/project_yggdrasil.jpg; conf=high",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 175: name='Project Yggdrasil', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/project_yggdrasil.jpg; conf=high | [encode-gap] Destiny. 'Treat Wraethe cards as Undergrowth and vice versa' (treat-faction-as) not expressible.",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
@@ -2944,7 +3244,7 @@
       "art": "phasic_technology.jpg",
       "rawText": "Phasic Technology\nCost: 5\nYour Homodeus and Order cards have +[shield]2 (+2 shield).",
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 176: name='Phasic Technology', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/phasic_technology.jpg; conf=high",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 176: name='Phasic Technology', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/phasic_technology.jpg; conf=high | [encode-gap] Static buff 'Your Homodeus and Order cards have +2 shield' — shield buffs aren't in the vocabulary.",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
@@ -2959,7 +3259,7 @@
       "art": "blood_for_blood.jpg",
       "rawText": "Blood for Blood\nCost: 5\nIf you deal 5 or more unblocked damage to an opponent, you may banish a card you have played this turn.",
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 177: name='Blood for Blood', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/blood_for_blood.jpg; conf=high",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 177: name='Blood for Blood', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/blood_for_blood.jpg; conf=high | [encode-gap] Conditional banish gated on 'dealt 5+ unblocked damage to an opponent this turn' — no such conditional/trigger in the vocabulary. Cost: 5 is the Destiny mastery line. Nothing encodable.",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
@@ -2974,7 +3274,7 @@
       "art": "bound_for_life.jpg",
       "rawText": "Bound for Life\nCost: 5\nExhaust: All players lose [health]4 (4 health). This cannot be prevented by [shield] (shield).",
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 178: name='Bound for Life', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/bound_for_life.jpg; conf=high",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 178: name='Bound for Life', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/bound_for_life.jpg; conf=high | [encode-gap] Exhaust: ALL players lose 4 health (unpreventable). 'All players' (including self) and shield-prevention bypass aren't expressible; opponentLosesHealth only hits a target opponent.",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
@@ -2989,7 +3289,7 @@
       "art": "nature_dominance.jpg",
       "rawText": "Nature Dominance\nCost: 5\nExhaust: Gain [health]1 (1 health) and [damage]1 (1 damage) for each Undergrowth card you have played this turn.",
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 179: name='Nature Dominance', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/nature_dominance.jpg; conf=high",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 179: name='Nature Dominance', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/nature_dominance.jpg; conf=high | [encode-gap] Exhaust: gain 1 health and 1 damage per Undergrowth card played this turn. Per-faction-card scaling of health+power isn't expressible (conditionalPower only scales power, and not by a specific named faction).",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
@@ -3004,7 +3304,7 @@
       "art": "the_crystal_gate.jpg",
       "rawText": "The Crystal Gate\nCost: 5\nExhaust: If you have played an Order and Undergrowth card this turn, you may recruit a card of cost [gem]3 (3 gems) or less for free.",
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 180: name='The Crystal Gate', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/the_crystal_gate.jpg; conf=high",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 180: name='The Crystal Gate', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/the_crystal_gate.jpg; conf=high | [encode-gap] Exhaust: conditional (played an Order AND Undergrowth card this turn) free recruit of cost-3-or-less card — both the play-condition and the free-recruit are unencodable. Cost: 5 is the Destiny mastery line. Nothing encodable.",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
@@ -3019,7 +3319,7 @@
       "art": "forged_in_flame.jpg",
       "rawText": "Forged in Flame\nCost: 5\nExhaust: If you have played a Wraethe and Homodeus card this turn, banish a card in your hand or discard pile.",
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 181: name='Forged in Flame', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/forged_in_flame.jpg; conf=high",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 181: name='Forged in Flame', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/forged_in_flame.jpg; conf=high | [encode-gap] Destiny. Exhaust: conditional (played a Wraethe AND Homodeus card this turn) then banish a card from hand/discard. Per-turn faction-played condition gating not in vocabulary.",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
@@ -3034,7 +3334,7 @@
       "art": "paradigm_shift.jpg",
       "rawText": "Paradigm Shift\nCost: 5\nExhaust: If you have played an Order and Wraethe card this turn, gain [gem]1 (1 gem).",
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 182: name='Paradigm Shift', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/paradigm_shift.jpg; conf=high",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 182: name='Paradigm Shift', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/paradigm_shift.jpg; conf=high | [encode-gap] Destiny. Exhaust: conditional (played an Order AND Wraethe card this turn) gain 1 gem. Per-turn faction-played condition gating not in vocabulary.",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
@@ -3049,7 +3349,7 @@
       "art": "deadly_recruits.jpg",
       "rawText": "Deadly Recruits\nCost: 5\nExhaust: You may fast-play an Ally from the Center Row of cost [gem]1 (1 gem) for free.\n(Mastery 20): You may fast-play an Ally from the Center Row of cost [gem]2 (2 gems) or less for free instead.",
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 183: name='Deadly Recruits', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/deadly_recruits.jpg; conf=high",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 183: name='Deadly Recruits', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/deadly_recruits.jpg; conf=high | [encode-gap] Exhaust: fast-play an Ally from the Center Row for free (Mastery 20 raises cost cap). Fast-play-from-center is not in the vocabulary.",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
@@ -3064,7 +3364,7 @@
       "art": "biotech_enhancements.jpg",
       "rawText": "Biotech Enhancements\nCost: 5\nExhaust: If you have played a Homodeus and Undergrowth card this turn, draw a card.",
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 184: name='Biotech Enhancements', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/biotech_enhancements.jpg; conf=high",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 184: name='Biotech Enhancements', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/biotech_enhancements.jpg; conf=high | [encode-gap] Exhaust conditional on having played both a Homodeus AND an Undergrowth card this turn (draw a card); cross-faction play condition not expressible.",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
@@ -3079,7 +3379,7 @@
       "art": "absorption_grid.jpg",
       "rawText": "Absorption Grid\nCost: 5\nExhaust: Gain [damage]2 (2 damage) for each Ally with [shield] (shield) you have played this turn.",
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 185: name='Absorption Grid', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/absorption_grid.jpg; conf=high",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 185: name='Absorption Grid', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/absorption_grid.jpg; conf=high | [encode-gap] Exhaust gains 2 power PER Ally-with-shield played this turn (scaling). The conditionalPower vocabulary has no 'per shielded ally played' condition, so the scaling is unencodable; encoded a flat 2 power as the base unit. Cost: 5 is the Destiny mastery line, ignored. | [verify-fix] reverted flat gainPower; Exhaust scales [damage]2 per Ally-with-shield played this turn - scaling-with-filter unmodeled",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
@@ -3094,7 +3394,7 @@
       "art": "maglev_tunnels.jpg",
       "rawText": "Maglev Tunnels\nCost: 5\nYou may put Homodeus Champions you recruit on top of your deck.",
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 186: name='Maglev Tunnels', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/maglev_tunnels.jpg; conf=high",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 186: name='Maglev Tunnels', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/maglev_tunnels.jpg; conf=high | [encode-gap] 'Put Homodeus Champions you recruit on top of your deck' is a recruit/deck-placement modifier not in the vocabulary. Cost: 5 is the Destiny mastery line. Nothing encodable.",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
@@ -3109,7 +3409,7 @@
       "art": "soul_syphon.jpg",
       "rawText": "Soul Syphon\nCost: 5\nExhaust: If you have played cards of at least 3 different factions this turn, gain [health]5 (5 health).",
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 187: name='Soul Syphon', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/soul_syphon.jpg; conf=high",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 187: name='Soul Syphon', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/soul_syphon.jpg; conf=high | [encode-gap] Exhaust conditional on having played cards of 3+ different factions this turn (gain 5 health); faction-count condition has no gainHealth form.",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
@@ -3124,7 +3424,7 @@
       "art": "the_agony_of_choice.jpg",
       "rawText": "The Agony of Choice\nCost: 5\nExhaust: If you have played cards of at least 3 different factions this turn, gain [damage]4 (4 damage).",
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 188: name='The Agony of Choice', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/the_agony_of_choice.jpg; conf=high",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 188: name='The Agony of Choice', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/the_agony_of_choice.jpg; conf=high | [encode-gap] Destiny. Exhaust: if played cards of at least 3 different factions this turn, gain 4 power. Per-turn distinct-faction-count condition gating not in vocabulary.",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
@@ -3139,7 +3439,7 @@
       "art": "the_shard_defiant.jpg",
       "rawText": "The Shard Defiant\nCost: 5\nPay [gem]2 (2 gems), Exhaust: Reveal the top card of the Center Deck. You may recruit or banish it. If you have played an Aion card this turn, you may repeat this effect a second time.",
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 189: name='The Shard Defiant', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/the_shard_defiant.jpg; conf=high",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 189: name='The Shard Defiant', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/the_shard_defiant.jpg; conf=high | [encode-gap] Destiny. Exhaust, pay 2 gems: reveal top of Center Deck, recruit or banish it; repeat if played an Aion card. Reveal/recruit/repeat-on-condition not in vocabulary.",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
@@ -3154,11 +3454,24 @@
       "art": "whatever_it_takes.jpg",
       "rawText": "Whatever it Takes...\nCost: 5\nPay [gem]6 (6 gems), Exhaust: Gain [damage]9 (9 damage).",
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 190: name='Whatever it Takes', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/whatever_it_takes.jpg; conf=high",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 190: name='Whatever it Takes', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/whatever_it_takes.jpg; conf=high | [encode-gap] Destiny regular card, not a champion. 'Pay 6 gems, Exhaust: gain 9 damage' encoded as an activatedAbility with gem cost, but per CLAUDE.md only champions normally carry activatedAbility — flag for review.",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
-      "cardType": "regular"
+      "cardType": "regular",
+      "activatedAbility": {
+        "effects": [
+          {
+            "type": "gainPower",
+            "amount": 9
+          }
+        ],
+        "cost": {
+          "gems": 6,
+          "mastery": 0,
+          "health": 0
+        }
+      }
     },
     {
       "id": "the_last_city",
@@ -3169,7 +3482,7 @@
       "art": "the_last_city.jpg",
       "rawText": "The Last City\nCost: 5\nExhaust: If you have played 2 or more Mercenaries this turn, gain [gem]2 (2 gems).",
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 191: name='The Last City', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/the_last_city.jpg; conf=high",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 191: name='The Last City', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/the_last_city.jpg; conf=high | [encode-gap] Exhaust: if 2+ Mercenaries played this turn, gain 2 gems. The 'mercenaries played this turn' gating condition isn't expressible.",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
@@ -3184,7 +3497,7 @@
       "art": "power_struggle.jpg",
       "rawText": "Power Struggle\nCost: 5\nExhaust: Destroy a Champion you control to gain [damage]5 (5 damage).",
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 192: name='Power Struggle', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/power_struggle.jpg; conf=high",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 192: name='Power Struggle', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/power_struggle.jpg; conf=high | [encode-gap] Destiny. Exhaust: destroy a Champion you control to gain 5 power. Destroying your OWN champion as a cost is not in vocabulary (destroyChampion targets enemies).",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
@@ -3199,7 +3512,7 @@
       "art": "unconditional_conscription.jpg",
       "rawText": "Unconditional Conscription\nCost: 5\nExhaust: If you have played 2 or more non-Item Allies of cost [gem]2 (2 gems) or less this turn, gain [damage]4 (4 damage).",
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 193: name='Unconditional Conscription', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/unconditional_conscription.jpg; conf=high",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 193: name='Unconditional Conscription', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/unconditional_conscription.jpg; conf=high | [encode-gap] Exhaust conditional on having played 2+ non-Item Allies of cost 2 or less this turn (gain 4 damage); this play-history condition is not expressible.",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
@@ -3214,11 +3527,20 @@
       "art": "stolen_future.jpg",
       "rawText": "Stolen Futures\n(Mastery 10) Exhaust: Banish this to look at the top 4 cards of the Destiny Deck. Choose and acquire 2 of them.",
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 194: name='Stolen Future', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/stolen_future.jpg; conf=high",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 194: name='Stolen Future', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/stolen_future.jpg; conf=high | [encode-gap] Mastery 10 Exhaust: 'Banish this to look at top 4 of Destiny Deck and acquire 2' — the look/acquire-from-Destiny-Deck part is unencodable; encoded only the self-banish as banishCard from hand (approximation). The ability is gated behind Mastery 10. | [verify-fix] set masteryThreshold 10 (ability is Mastery-10 gated)",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
-      "cardType": "regular"
+      "cardType": "regular",
+      "activatedAbility": {
+        "effects": [
+          {
+            "type": "banishCard",
+            "source": "hand"
+          }
+        ]
+      },
+      "masteryThreshold": 10
     },
     {
       "id": "strategic_mastermind",
@@ -3229,7 +3551,7 @@
       "art": "strategic_mastermind.jpg",
       "rawText": "Strategic Mastermind\nCost: 5\nExhaust: If you have [mastery]40 (40 mastery) or more, draw a card.",
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 195: name='Strategic Mastermind', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/strategic_mastermind.jpg; conf=high",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 195: name='Strategic Mastermind', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/strategic_mastermind.jpg; conf=high | [encode-gap] Exhaust: if 40+ mastery, draw a card. The mastery-threshold gating on an Exhaust ability isn't expressible (masteryThreshold applies to play/mastery bonuses, not Exhaust gating).",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
@@ -3244,7 +3566,7 @@
       "art": "advanced_weapons.jpg",
       "rawText": "Advanced Weapons\nCost: 5\nExhaust: If you have played two or more odd [gem] (gem) cost cards this turn, gain [damage]3 (3 damage).",
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 196: name='Advanced Weapons', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/advanced_weapons.jpg; conf=high",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 196: name='Advanced Weapons', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/advanced_weapons.jpg; conf=high | [encode-gap] Exhaust conditional on having played 2+ odd-gem-cost cards this turn (gain 3 damage); the 'odd-cost cards played this turn' condition is not in the vocabulary.",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
@@ -3259,7 +3581,7 @@
       "art": "advanced_medicine.jpg",
       "rawText": "Advanced Medicine\nCost: 5\nExhaust: If you have played two or more even [gem] (gem) cost cards this turn, gain [health]4 (4 health).",
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 197: name='Advanced Medicine', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/advanced_medicine.jpg; conf=high",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 197: name='Advanced Medicine', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/advanced_medicine.jpg; conf=high | [encode-gap] Exhaust ability gated on 'played 2+ even gem-cost cards this turn' — that condition is not in the vocabulary, so the gain 4 health cannot be encoded as an unconditional effect.",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
@@ -3274,7 +3596,7 @@
       "art": "healing_hands.jpg",
       "rawText": "Healing Hands\nCost: 5\nExhaust: If you have played a Champion this turn, gain [health]4 (4 health).",
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 198: name='Healing Hands', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/healing_hands.jpg; conf=high",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 198: name='Healing Hands', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/healing_hands.jpg; conf=high | [encode-gap] Exhaust conditional on having played a Champion this turn (gain 4 health); 'played a champion this turn' condition not in vocabulary, and gainHealth has no conditional form.",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
@@ -3289,7 +3611,7 @@
       "art": "war_bound.jpg",
       "rawText": "War Bound\nCost: 5\nExhaust: If you control 2 or more Champions, gain [damage]4 (4 damage).",
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 199: name='War Bound', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/war_bound.jpg; conf=high",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 199: name='War Bound', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/war_bound.jpg; conf=high | [encode-gap] Exhaust: if control 2+ Champions, gain 4 damage. Champion-count gating condition isn't expressible (conditionalPower scales power per champion but isn't a 2+ gate).",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
@@ -3304,7 +3626,7 @@
       "art": "true_leader.jpg",
       "rawText": "True Leader\nCost: 5\nExhaust: If you have played 3 cards of the same faction this turn, gain [mastery]2 (2 mastery).",
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 200: name='True Leader', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/true_leader.jpg; conf=high",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 200: name='True Leader', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/true_leader.jpg; conf=high | [encode-gap] Exhaust: if 3 same-faction cards played this turn, gain 2 mastery. That gating condition isn't expressible.",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
@@ -3319,11 +3641,20 @@
       "art": "synthesis.jpg",
       "rawText": "Synthesis\nCost: 5\n(Mastery 15), Exhaust: Draw a card.",
       "verified": false,
-      "notes": "Faction group (non-player): DestinyDeck. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 201: name='Synthesis', faction='DestinyDeck', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/synthesis.jpg; conf=high",
+      "notes": "Faction group (non-player): DestinyDeck. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 201: name='Synthesis', faction='DestinyDeck', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/synthesis.jpg; conf=high | [encode-gap] Mastery 15 Exhaust: draw a card. The Mastery 15 gating of the activated ability cannot be expressed on the activatedAbility object itself; recorded masteryThreshold 15 and the draw 1 Exhaust. Cost: 5 is the Destiny mastery line. | [verify-fix] set masteryThreshold 15 (ability is Mastery-15 gated)",
       "group": "DestinyDeck",
       "set": "unknown",
       "chapter": 5,
-      "cardType": "regular"
+      "cardType": "regular",
+      "activatedAbility": {
+        "effects": [
+          {
+            "type": "drawCards",
+            "count": 1
+          }
+        ]
+      },
+      "masteryThreshold": 15
     }
   ]
 }
