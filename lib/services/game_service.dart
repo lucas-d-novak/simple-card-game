@@ -34,6 +34,13 @@ class GameService {
   PlayerState get currentPlayer => players[currentPlayerIndex];
   bool get isGameOver => _gameOver;
 
+  /// Whether the current player may take an action. False once the game is over
+  /// or the current player has been eliminated — the latter can happen mid-turn
+  /// via [AllPlayersLoseHealthEffect], which is the only effect that can reduce
+  /// the acting player to 0. A dead player must not keep acting; they recover
+  /// the game by calling [endTurn], which advances past eliminated players.
+  bool get _currentPlayerCanAct => !_gameOver && !currentPlayer.isEliminated;
+
   // -------------------------------------------------------------------------
   // Initialization
   // -------------------------------------------------------------------------
@@ -73,7 +80,7 @@ class GameService {
   /// Each champion can only be activated once per turn.
   /// Returns true if the champion was found and activated.
   bool activateChampion(String championId) {
-    if (_gameOver) return false;
+    if (!_currentPlayerCanAct) return false;
     final player = currentPlayer;
 
     final champion = player.championsInPlay
@@ -107,7 +114,7 @@ class GameService {
   /// true. The free [activateChampion] activation remains independently
   /// available — exhausting does not consume it (and vice versa).
   bool useActivatedAbility(String championId) {
-    if (_gameOver) return false;
+    if (!_currentPlayerCanAct) return false;
     final player = currentPlayer;
 
     final champion =
@@ -181,6 +188,7 @@ class GameService {
   /// [choiceIndex] selects which option for ChooseOneEffect cards (default 0).
   /// Returns true if the card was found and played.
   bool playCard(String cardId, {int choiceIndex = 0}) {
+    if (!_currentPlayerCanAct) return false;
     final player = currentPlayer;
     final handIndex = player.hand.indexWhere((c) => c.id == cardId);
     if (handIndex == -1) return false;
@@ -225,6 +233,7 @@ class GameService {
   /// Buy a card from the center row using gems.
   /// Returns true if the purchase succeeded.
   bool buyCard(String cardId) {
+    if (!_currentPlayerCanAct) return false;
     final rowIndex = centerRow.indexWhere((c) => c.id == cardId);
     if (rowIndex == -1) return false;
 
@@ -271,7 +280,7 @@ class GameService {
   /// shield value. The destroyed champion goes to its owner's discard pile.
   /// Returns true if the attack succeeded.
   bool attackChampion(String championId, String targetPlayerId) {
-    if (_gameOver) return false;
+    if (!_currentPlayerCanAct) return false;
 
     final target = players.firstWhere(
       (p) => p.id == targetPlayerId,
@@ -299,7 +308,7 @@ class GameService {
   /// destroyed first). Deducts from powerPool and calls target.takeDamage().
   /// Returns true if the attack succeeded.
   bool attackPlayer(String targetPlayerId, int amount) {
-    if (_gameOver) return false;
+    if (!_currentPlayerCanAct) return false;
     if (amount <= 0) return false;
 
     final target = players.firstWhere(
@@ -402,7 +411,7 @@ class GameService {
   /// has selected a target (mirrors the banishCard() deferral pattern).
   /// Returns true if the champion was found and destroyed.
   bool destroyChampion(String championId, String targetPlayerId) {
-    if (_gameOver) return false;
+    if (!_currentPlayerCanAct) return false;
 
     final target =
         players.where((p) => p.id == targetPlayerId).firstOrNull;
@@ -426,7 +435,7 @@ class GameService {
   /// Returns false (no state change) unless [championId] names a champion the
   /// current player controls that is currently exhausted.
   bool resetChampion(String championId) {
-    if (_gameOver) return false;
+    if (!_currentPlayerCanAct) return false;
     final player = currentPlayer;
 
     final controls =
@@ -458,7 +467,7 @@ class GameService {
     bool toHand = false,
     bool toTopOfDeck = false,
   }) {
-    if (_gameOver) return false;
+    if (!_currentPlayerCanAct) return false;
     final player = currentPlayer;
 
     final index = centerRow.indexWhere((c) => c.id == cardId);
@@ -502,7 +511,7 @@ class GameService {
     int? maxCost,
     bool alliesOnly = false,
   }) {
-    if (_gameOver) return false;
+    if (!_currentPlayerCanAct) return false;
     final player = currentPlayer;
 
     final index = centerRow.indexWhere((c) => c.id == cardId);
@@ -573,7 +582,7 @@ class GameService {
     required bool keep,
     ScryDisposition disposition = ScryDisposition.drawOrDiscard,
   }) {
-    if (_gameOver) return false;
+    if (!_currentPlayerCanAct) return false;
     final player = currentPlayer;
 
     final index = player.drawPile.indexWhere((c) => c.id == cardId);

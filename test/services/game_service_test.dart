@@ -2818,6 +2818,59 @@ void main() {
       expect(game.winnerId, 'p0');
       expect(player.health, 35);
     });
+
+    // Wave 2 combat-reviewer fix: a player who self-eliminates via
+    // AllPlayersLoseHealth (the only effect that can kill the acting player)
+    // must not keep acting. The game continues (>=2 others alive); the dead
+    // player can no longer play/buy/attack, and endTurn hands off to a live one.
+    test('current player self-eliminating cannot keep acting (3-player)', () {
+      final game = GameService(playerCount: 3, random: Random(7));
+      final p0 = game.currentPlayer;
+      p0.health = 4; // lethal to self
+      p0.hand.add(const CardModel(
+        id: 'self_kill',
+        name: 'Bound For Life',
+        cost: 0,
+        playEffects: [AllPlayersLoseHealthEffect(5)],
+      ));
+      // Give p0 something else to attempt afterwards.
+      p0.powerPool = 10;
+
+      game.playCard('self_kill');
+
+      expect(p0.isEliminated, true, reason: 'self-eliminated');
+      expect(game.isGameOver, false, reason: 'two others still alive');
+      // The dead current player must not be able to act.
+      expect(game.attackPlayer('p1', 5), false, reason: 'dead cannot attack');
+      p0.hand.add(const CardModel(
+          id: 'x', name: 'x', cost: 0, playEffects: [GainGemsEffect(1)]));
+      expect(game.playCard('x'), false, reason: 'dead cannot play');
+      // endTurn is the recovery path: hands control to a live player.
+      game.endTurn();
+      expect(game.currentPlayer.isEliminated, false,
+          reason: 'control passed to a live player');
+    });
+
+    test('multiple players eliminated in one resolution -> game over', () {
+      final game = GameService(playerCount: 3, random: Random(7));
+      final p0 = game.currentPlayer;
+      game.players[1].health = 3;
+      game.players[2].health = 3;
+      p0.health = 40;
+      p0.hand.add(const CardModel(
+        id: 'wipe',
+        name: 'Bound For Life',
+        cost: 0,
+        playEffects: [AllPlayersLoseHealthEffect(5)],
+      ));
+
+      game.playCard('wipe');
+
+      expect(game.players[1].isEliminated, true);
+      expect(game.players[2].isEliminated, true);
+      expect(game.isGameOver, true, reason: 'only p0 remains');
+      expect(game.winnerId, 'p0');
+    });
   });
 
   group('Wave 2: unblockedDamageThisTurn counter + condition', () {
@@ -2842,6 +2895,27 @@ void main() {
 
       game.endTurn(); // p0 -> p1 (resets p0)
       expect(p0.unblockedDamageThisTurn, 0);
+    });
+
+    // Wave 2 combat-reviewer #3: each player's counter is independent and
+    // resets on THEIR own turn boundary, not anyone else's.
+    test('each player counter resets on their own turn (multiplayer)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final p0 = game.currentPlayer;
+      p0.powerPool = 10;
+      game.attackPlayer('p1', 4);
+      expect(p0.unblockedDamageThisTurn, 4);
+
+      game.endTurn(); // now p1's turn; p0 was reset
+      final p1 = game.currentPlayer;
+      expect(p1.id, 'p1');
+      expect(p0.unblockedDamageThisTurn, 0, reason: 'p0 reset on its endTurn');
+      p1.powerPool = 10;
+      game.attackPlayer('p0', 6);
+      expect(p1.unblockedDamageThisTurn, 6, reason: 'p1 counts independently');
+
+      game.endTurn(); // back to p0; p1 reset
+      expect(p1.unblockedDamageThisTurn, 0, reason: 'p1 reset on its endTurn');
     });
 
     test('unblockedDamageAtLeast condition met after enough damage', () {
