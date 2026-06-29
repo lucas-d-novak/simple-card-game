@@ -1875,4 +1875,303 @@ void main() {
       expect(game.players[0].powerPool, 6);
     });
   });
+
+  group('DestroyChampionEffect (Phase 1)', () {
+    CardModel champ(String id, {int shield = 3, bool guard = false}) =>
+        CardModel(
+          id: id,
+          name: id,
+          cost: 0,
+          playEffects: const [],
+          cardType: CardType.champion,
+          shield: shield,
+          hasGuard: guard,
+        );
+
+    test('destroyChampion sends target to owner discard, costs no power', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final me = game.currentPlayer;
+      final opp = game.players.firstWhere((p) => p.id != me.id);
+      me.powerPool = 0;
+      opp.championsInPlay.add(champ('enemy_champ', shield: 5));
+
+      final result = game.destroyChampion('enemy_champ', opp.id);
+
+      expect(result, true);
+      expect(opp.championsInPlay, isEmpty);
+      expect(opp.discardPile.map((c) => c.id), contains('enemy_champ'));
+      expect(me.powerPool, 0); // no power spent
+    });
+
+    test('destroyChampion returns false for missing champion (no target)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final opp = game.players.firstWhere((p) => p.id != game.currentPlayer.id);
+      expect(game.destroyChampion('nope', opp.id), false);
+    });
+
+    test('destroyChampion cannot target your own champion', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final me = game.currentPlayer;
+      me.championsInPlay.add(champ('my_champ'));
+      expect(game.destroyChampion('my_champ', me.id), false);
+      expect(me.championsInPlay, hasLength(1));
+    });
+
+    test('all variant destroys every enemy champion across opponents', () {
+      final game = GameService(playerCount: 3, random: Random(7));
+      final me = game.currentPlayer;
+      final opps = game.players.where((p) => p.id != me.id).toList();
+      opps[0].championsInPlay.addAll([champ('a'), champ('b')]);
+      opps[1].championsInPlay.add(champ('c'));
+
+      me.hand.clear();
+      me.hand.add(const CardModel(
+        id: 'wipe',
+        name: 'Wipe',
+        cost: 0,
+        playEffects: [DestroyChampionEffect(all: true)],
+      ));
+
+      game.playCard('wipe');
+
+      expect(opps[0].championsInPlay, isEmpty);
+      expect(opps[1].championsInPlay, isEmpty);
+      expect(opps[0].discardPile.map((c) => c.id), containsAll(['a', 'b']));
+      expect(opps[1].discardPile.map((c) => c.id), contains('c'));
+    });
+
+    test('all variant is a no-op when no enemy champions exist', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final me = game.currentPlayer;
+      me.hand.clear();
+      me.hand.add(const CardModel(
+        id: 'wipe2',
+        name: 'Wipe2',
+        cost: 0,
+        playEffects: [DestroyChampionEffect(all: true)],
+      ));
+      // Should not throw.
+      expect(game.playCard('wipe2'), true);
+    });
+
+    test('single-target effect defers (does not auto-destroy on play)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final me = game.currentPlayer;
+      final opp = game.players.firstWhere((p) => p.id != me.id);
+      opp.championsInPlay.add(champ('survivor'));
+
+      me.hand.clear();
+      me.hand.add(const CardModel(
+        id: 'single_destroy',
+        name: 'Single Destroy',
+        cost: 0,
+        playEffects: [DestroyChampionEffect()],
+      ));
+      game.playCard('single_destroy');
+
+      // No target chosen yet — champion still in play.
+      expect(opp.championsInPlay, hasLength(1));
+    });
+  });
+
+  group('ReturnFromDiscardEffect (Phase 1)', () {
+    CardModel disc(String id,
+            {CardType type = CardType.regular,
+            Faction faction = Faction.none}) =>
+        CardModel(
+          id: id,
+          name: id,
+          cost: 0,
+          playEffects: const [],
+          cardType: type,
+          faction: faction,
+        );
+
+    test('returns any card from discard to hand', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final me = game.currentPlayer;
+      me.discardPile.add(disc('reclaim'));
+
+      final result = game.returnFromDiscard('reclaim');
+
+      expect(result, true);
+      expect(me.discardPile.where((c) => c.id == 'reclaim'), isEmpty);
+      expect(me.hand.map((c) => c.id), contains('reclaim'));
+    });
+
+    test('returns false on empty / missing discard card', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      game.currentPlayer.discardPile.clear();
+      expect(game.returnFromDiscard('ghost'), false);
+    });
+
+    test('champion filter rejects a non-champion card', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final me = game.currentPlayer;
+      me.discardPile.add(disc('reg', type: CardType.regular));
+
+      final result =
+          game.returnFromDiscard('reg', filter: ReturnFilter.champion);
+
+      expect(result, false);
+      expect(me.discardPile.map((c) => c.id), contains('reg'));
+      expect(me.hand.map((c) => c.id), isNot(contains('reg')));
+    });
+
+    test('champion filter accepts a champion card', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final me = game.currentPlayer;
+      me.discardPile.add(disc('hero', type: CardType.champion));
+
+      expect(
+        game.returnFromDiscard('hero', filter: ReturnFilter.champion),
+        true,
+      );
+      expect(me.hand.map((c) => c.id), contains('hero'));
+    });
+
+    test('faction filter matches only the named faction', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final me = game.currentPlayer;
+      me.discardPile.add(disc('green', faction: Faction.undergrowth));
+      me.discardPile.add(disc('gold', faction: Faction.homodeus));
+
+      expect(
+        game.returnFromDiscard('gold',
+            filter: ReturnFilter.faction, faction: Faction.undergrowth),
+        false,
+      );
+      expect(
+        game.returnFromDiscard('green',
+            filter: ReturnFilter.faction, faction: Faction.undergrowth),
+        true,
+      );
+      expect(me.hand.map((c) => c.id), contains('green'));
+    });
+
+    test('faction filter with null faction never matches', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final me = game.currentPlayer;
+      me.discardPile.add(disc('x', faction: Faction.order));
+      expect(
+        game.returnFromDiscard('x', filter: ReturnFilter.faction),
+        false,
+      );
+    });
+  });
+
+  group('ConditionalPowerEffect expansion (Phase 1)', () {
+    CardModel factionCard(String id, Faction faction,
+            {List<CardEffect> effects = const []}) =>
+        CardModel(
+          id: id,
+          name: id,
+          cost: 0,
+          playEffects: effects,
+          faction: faction,
+        );
+
+    test('perCardInDiscard grants power per discard card', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final me = game.currentPlayer;
+      me.discardPile
+          .addAll([factionCard('d1', Faction.none), factionCard('d2', Faction.none)]);
+      me.hand.clear();
+      me.hand.add(factionCard('scaler', Faction.none,
+          effects: const [
+            ConditionalPowerEffect(PowerCondition.perCardInDiscard)
+          ]));
+
+      game.playCard('scaler');
+
+      expect(me.powerPool, 2);
+    });
+
+    test('perCardInDiscard grants 0 with empty discard', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final me = game.currentPlayer;
+      me.discardPile.clear();
+      me.hand.clear();
+      me.hand.add(factionCard('scaler0', Faction.none,
+          effects: const [
+            ConditionalPowerEffect(PowerCondition.perCardInDiscard)
+          ]));
+
+      game.playCard('scaler0');
+
+      expect(me.powerPool, 0);
+    });
+
+    test('perAllyPlayedThisTurn counts same-faction cards played, excluding self',
+        () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final me = game.currentPlayer;
+      me.hand.clear();
+      // Two Wraethe cards played first, then the scaler (also Wraethe).
+      me.hand.add(factionCard('w1', Faction.wraethe));
+      me.hand.add(factionCard('w2', Faction.wraethe));
+      me.hand.add(factionCard('o1', Faction.order)); // different faction
+      me.hand.add(factionCard('scaler_ally', Faction.wraethe,
+          effects: const [
+            ConditionalPowerEffect(PowerCondition.perAllyPlayedThisTurn)
+          ]));
+
+      game.playCard('w1');
+      game.playCard('w2');
+      game.playCard('o1');
+      game.playCard('scaler_ally');
+
+      // 2 prior Wraethe allies; the Order card and the scaler itself excluded.
+      expect(me.powerPool, 2);
+    });
+
+    test('perAllyPlayedThisTurn is 0 when no allies played', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final me = game.currentPlayer;
+      me.hand.clear();
+      me.hand.add(factionCard('lone', Faction.homodeus,
+          effects: const [
+            ConditionalPowerEffect(PowerCondition.perAllyPlayedThisTurn)
+          ]));
+
+      game.playCard('lone');
+
+      expect(me.powerPool, 0);
+    });
+
+    test('perFactionPlayedThisTurn counts distinct factions, ignoring none', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final me = game.currentPlayer;
+      me.hand.clear();
+      me.hand.add(factionCard('a', Faction.wraethe));
+      me.hand.add(factionCard('b', Faction.wraethe)); // duplicate faction
+      me.hand.add(factionCard('c', Faction.order));
+      me.hand.add(factionCard('n', Faction.none)); // ignored
+      me.hand.add(factionCard('scaler_fac', Faction.homodeus,
+          effects: const [
+            ConditionalPowerEffect(PowerCondition.perFactionPlayedThisTurn)
+          ]));
+
+      game.playCard('a');
+      game.playCard('b');
+      game.playCard('c');
+      game.playCard('n');
+      game.playCard('scaler_fac');
+
+      // Distinct factions played: wraethe, order, homodeus = 3 (none ignored).
+      expect(me.powerPool, 3);
+    });
+
+    test('cardsPlayedThisTurn resets after endTurn', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final me = game.currentPlayer;
+      me.hand.clear();
+      me.hand.add(factionCard('p1', Faction.order));
+      game.playCard('p1');
+      expect(me.cardsPlayedThisTurn, isNotEmpty);
+
+      game.endTurn();
+      expect(me.cardsPlayedThisTurn, isEmpty);
+    });
+  });
 }

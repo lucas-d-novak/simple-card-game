@@ -20,6 +20,13 @@ class PlayerState {
   final List<CardModel> championsInPlay = [];
   final Set<String> activatedChampions = {};
 
+  /// Every card played this turn (regular, champion, and mercenary), recorded
+  /// in play order before any end-of-turn cleanup. Unlike [playedThisTurn],
+  /// this includes champions (which move to [championsInPlay]) and is used by
+  /// per-turn scaling effects (ConditionalPowerEffect). Cleared each turn by
+  /// [resetTurnResources].
+  final List<CardModel> cardsPlayedThisTurn = [];
+
   bool get isEliminated => health <= 0;
 
   void addMastery(int amount) {
@@ -41,6 +48,7 @@ class PlayerState {
     gemPool = 0;
     powerPool = 0;
     activatedChampions.clear();
+    cardsPlayedThisTurn.clear();
   }
 
   /// Moves regular played cards to discard pile and returns mercenaries

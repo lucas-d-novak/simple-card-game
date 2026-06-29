@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:simple_card_game/models/card_effect.dart';
+import 'package:simple_card_game/models/faction.dart';
 
 void main() {
   group('Original effects (unchanged)', () {
@@ -124,6 +125,78 @@ void main() {
     test('InfinityShardEffect constructs with scaling description', () {
       const effect = InfinityShardEffect();
       expect(effect.description, '+1 mastery, power scales with mastery');
+    });
+
+    test('ConditionalPowerEffect descriptions for new conditions', () {
+      expect(
+        const ConditionalPowerEffect(PowerCondition.perAllyPlayedThisTurn)
+            .description,
+        'Gain 1 power for each ally played this turn',
+      );
+      expect(
+        const ConditionalPowerEffect(PowerCondition.perFactionPlayedThisTurn)
+            .description,
+        'Gain 1 power for each faction played this turn',
+      );
+      expect(
+        const ConditionalPowerEffect(PowerCondition.perCardInDiscard)
+            .description,
+        'Gain 1 power for each card in your discard pile',
+      );
+    });
+  });
+
+  group('DestroyChampionEffect (Phase 1)', () {
+    test('single-target default has all == false and description', () {
+      const effect = DestroyChampionEffect();
+      expect(effect.all, false);
+      expect(effect.description, 'Destroy a target enemy champion');
+    });
+
+    test('all variant has all == true and description', () {
+      const effect = DestroyChampionEffect(all: true);
+      expect(effect.all, true);
+      expect(effect.description, 'Destroy all enemy champions');
+    });
+  });
+
+  group('ReturnFromDiscardEffect (Phase 1)', () {
+    test('any filter is the default with description', () {
+      const effect = ReturnFromDiscardEffect();
+      expect(effect.filter, ReturnFilter.any);
+      expect(effect.faction, isNull);
+      expect(
+        effect.description,
+        'Return a card from your discard pile to your hand',
+      );
+    });
+
+    test('champion filter description', () {
+      const effect = ReturnFromDiscardEffect(filter: ReturnFilter.champion);
+      expect(
+        effect.description,
+        'Return a champion from your discard pile to your hand',
+      );
+    });
+
+    test('mercenary filter description', () {
+      const effect = ReturnFromDiscardEffect(filter: ReturnFilter.mercenary);
+      expect(
+        effect.description,
+        'Return a mercenary from your discard pile to your hand',
+      );
+    });
+
+    test('faction filter carries faction and description', () {
+      const effect = ReturnFromDiscardEffect(
+        filter: ReturnFilter.faction,
+        faction: Faction.order,
+      );
+      expect(effect.faction, Faction.order);
+      expect(
+        effect.description,
+        'Return a order card from your discard pile to your hand',
+      );
     });
   });
 

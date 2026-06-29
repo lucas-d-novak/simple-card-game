@@ -85,7 +85,7 @@ class GameService {
     if (player.activatedChampions.contains(championId)) return false;
 
     player.activatedChampions.add(championId);
-    _resolveEffects(champion.playEffects, player);
+    _resolveEffects(champion.playEffects, player, sourceCard: champion);
     _checkMasteryBonus(champion, player);
     _checkAllyAbility(champion, player);
     return true;
@@ -109,8 +109,17 @@ class GameService {
       player.playedThisTurn.add(card);
     }
 
+    // Record for per-turn scaling effects (ConditionalPowerEffect). Includes
+    // champions and mercenaries, in play order.
+    player.cardsPlayedThisTurn.add(card);
+
     // Resolve play effects
-    _resolveEffects(card.playEffects, player, choiceIndex: choiceIndex);
+    _resolveEffects(
+      card.playEffects,
+      player,
+      choiceIndex: choiceIndex,
+      sourceCard: card,
+    );
 
     // Step 11: check mastery threshold bonus
     _checkMasteryBonus(card, player);
@@ -286,6 +295,91 @@ class GameService {
   }
 
   // -------------------------------------------------------------------------
+  // Champion destruction by effect (Phase 1: DestroyChampionEffect)
+  // -------------------------------------------------------------------------
+
+  /// Destroy a specific enemy champion via a card effect (no power cost).
+  ///
+  /// Resolves like the destruction half of [attackChampion]: the champion is
+  /// removed from its owner's [championsInPlay] and placed in their discard
+  /// pile, but no power is spent and the champion's shield is irrelevant.
+  /// Used to fulfil a single-target [DestroyChampionEffect] after the player
+  /// has selected a target (mirrors the banishCard() deferral pattern).
+  /// Returns true if the champion was found and destroyed.
+  bool destroyChampion(String championId, String targetPlayerId) {
+    if (_gameOver) return false;
+
+    final target =
+        players.where((p) => p.id == targetPlayerId).firstOrNull;
+    if (target == null) return false;
+    if (target.id == currentPlayer.id) return false;
+
+    final champIndex =
+        target.championsInPlay.indexWhere((c) => c.id == championId);
+    if (champIndex == -1) return false;
+
+    final champion = target.championsInPlay.removeAt(champIndex);
+    target.discardPile.add(champion);
+    return true;
+  }
+
+  /// Destroy every enemy champion (the [DestroyChampionEffect.all] variant).
+  /// Each destroyed champion goes to its owner's discard pile. No power cost.
+  void _destroyAllEnemyChampions(PlayerState source) {
+    for (final player in players) {
+      if (player.id == source.id) continue;
+      if (player.championsInPlay.isEmpty) continue;
+      player.discardPile.addAll(player.championsInPlay);
+      player.championsInPlay.clear();
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Return from discard (Phase 1: ReturnFromDiscardEffect)
+  // -------------------------------------------------------------------------
+
+  /// Return a card from the current player's discard pile to their hand.
+  ///
+  /// Requires target selection (the effect defers to this method, like
+  /// banishCard). The [filter]/[faction] must be supplied by the caller from
+  /// the [ReturnFromDiscardEffect] so the selection can be validated.
+  /// Returns true if the card was found, matched the filter, and was returned.
+  bool returnFromDiscard(
+    String cardId, {
+    ReturnFilter filter = ReturnFilter.any,
+    Faction? faction,
+  }) {
+    final player = currentPlayer;
+    final index = player.discardPile.indexWhere((c) => c.id == cardId);
+    if (index == -1) return false;
+
+    final card = player.discardPile[index];
+    if (!_matchesReturnFilter(card, filter, faction)) return false;
+
+    player.discardPile.removeAt(index);
+    player.hand.add(card);
+    return true;
+  }
+
+  bool _matchesReturnFilter(
+    CardModel card,
+    ReturnFilter filter,
+    Faction? faction,
+  ) {
+    switch (filter) {
+      case ReturnFilter.any:
+        return true;
+      case ReturnFilter.champion:
+        return card.cardType == CardType.champion;
+      case ReturnFilter.mercenary:
+        return card.cardType == CardType.mercenary;
+      case ReturnFilter.faction:
+        if (faction == null) return false;
+        return card.faction == faction;
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // Effect resolution
   // -------------------------------------------------------------------------
 
@@ -293,6 +387,7 @@ class GameService {
     List<CardEffect> effects,
     PlayerState player, {
     int choiceIndex = 0,
+    CardModel? sourceCard,
   }) {
     for (final effect in effects) {
       switch (effect) {
@@ -310,9 +405,22 @@ class GameService {
           _applyOpponentHealthLoss(player, effect.amount);
         case ChooseOneEffect():
           final idx = choiceIndex.clamp(0, effect.choices.length - 1);
-          _resolveEffects(effect.choices[idx], player);
+          _resolveEffects(effect.choices[idx], player, sourceCard: sourceCard);
         case ConditionalPowerEffect():
-          player.powerPool += _evaluateCondition(effect.condition, player);
+          player.powerPool +=
+              _evaluateCondition(effect.condition, player, sourceCard);
+        case DestroyChampionEffect():
+          if (effect.all) {
+            _destroyAllEnemyChampions(player);
+          }
+          // Single-target destruction requires target selection — the player
+          // should call destroyChampion() separately after this effect, the
+          // same way BanishCardEffect defers to banishCard().
+          break;
+        case ReturnFromDiscardEffect():
+          // Requires card selection — the player should call
+          // returnFromDiscard() separately after this effect.
+          break;
         case BanishCardEffect():
           // Requires card selection — auto-banish not possible without target.
           // The player should call banishCard() separately after this effect.
@@ -378,7 +486,7 @@ class GameService {
     if (card.faction == Faction.none && !card.countsAsAllFactions) return;
 
     if (_hasAllyInPlay(card, player)) {
-      _resolveEffects(card.allyAbility, player);
+      _resolveEffects(card.allyAbility, player, sourceCard: card);
     }
   }
 
@@ -432,7 +540,7 @@ class GameService {
     if (card.masteryThreshold == null) return;
     if (card.masteryBonus.isEmpty) return;
     if (player.mastery >= card.masteryThreshold!) {
-      _resolveEffects(card.masteryBonus, player);
+      _resolveEffects(card.masteryBonus, player, sourceCard: card);
     }
   }
 
@@ -455,10 +563,47 @@ class GameService {
     _checkGameOver();
   }
 
-  int _evaluateCondition(PowerCondition condition, PlayerState player) {
+  int _evaluateCondition(
+    PowerCondition condition,
+    PlayerState player,
+    CardModel? sourceCard,
+  ) {
     switch (condition) {
       case PowerCondition.perChampionControlled:
         return player.championsInPlay.length;
+      case PowerCondition.perAllyPlayedThisTurn:
+        // Count cards played this turn whose faction matches the source card's
+        // faction (allies), excluding the source card itself. Mirrors the
+        // ally-matching rule (countsAsAllFactions matches any faction).
+        if (sourceCard == null) return 0;
+        var count = 0;
+        var skippedSelf = false;
+        for (final played in player.cardsPlayedThisTurn) {
+          if (!skippedSelf && identical(played, sourceCard)) {
+            skippedSelf = true;
+            continue;
+          }
+          if (_factionsMatch(
+            sourceCard.faction,
+            sourceCard.countsAsAllFactions,
+            played.faction,
+            played.countsAsAllFactions,
+          )) {
+            count++;
+          }
+        }
+        return count;
+      case PowerCondition.perFactionPlayedThisTurn:
+        // Number of distinct (non-none) factions played this turn.
+        final factions = <Faction>{};
+        for (final played in player.cardsPlayedThisTurn) {
+          if (played.faction != Faction.none) {
+            factions.add(played.faction);
+          }
+        }
+        return factions.length;
+      case PowerCondition.perCardInDiscard:
+        return player.discardPile.length;
     }
   }
 
