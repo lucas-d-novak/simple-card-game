@@ -265,12 +265,66 @@ final class ConditionalPowerEffect extends CardEffect {
   }
 }
 
-// TODO(phase2): Exhaust / activated champion abilities are intentionally NOT
-// modelled here. They require a structural per-champion ability model (an
-// activation cost + once-per-turn "exhausted" state on the champion instance),
-// not a flat CardEffect subtype. Adding them as a CardEffect would not capture
-// the exhaust lifecycle correctly. Implement as a dedicated ability model in a
-// later phase rather than half-implementing it now.
+/// The cost a player must pay to use an [ActivatedAbility].
+///
+/// Activated abilities in Shards of Infinity sometimes cost resources on top of
+/// the Exhaust (e.g. "Exhaust, pay 1 mastery: ..."). Each field is the amount
+/// deducted from the corresponding player pool when the ability is used; 0 means
+/// that resource is not part of the cost. All fields default to 0 so the common
+/// "Exhaust only" ability needs no cost at all (use [ActivationCost.none]).
+final class ActivationCost {
+  const ActivationCost({this.gems = 0, this.mastery = 0, this.health = 0});
+
+  /// Gems spent from the player's gem pool.
+  final int gems;
+
+  /// Mastery spent (permanently reduced) from the player's mastery.
+  final int mastery;
+
+  /// Health paid from the player's current health total.
+  final int health;
+
+  /// A free cost — Exhaust is the only requirement.
+  static const ActivationCost none = ActivationCost();
+
+  /// Whether this cost requires no resources (Exhaust-only ability).
+  bool get isFree => gems == 0 && mastery == 0 && health == 0;
+}
+
+/// An Exhaust-gated activated ability attached to a champion (Shards of
+/// Infinity's "Exhaust: <effect>" abilities).
+///
+/// This is deliberately NOT a [CardEffect] subtype. The original design note
+/// (now removed) explained why: an activated ability has a *lifecycle* the flat
+/// effect vocabulary can't express — it costs an activation (and optionally
+/// resources), then leaves the champion **exhausted** (tapped) until the start
+/// of the owner's next turn. Modelling it as a value type that *contains* a list
+/// of ordinary [CardEffect]s keeps the effect vocabulary unchanged while giving
+/// the champion instance the structural state (exhaustion) the mechanic needs.
+///
+/// Resolution and the per-champion exhausted state live in `GameService`
+/// (`useActivatedAbility`), distinct from a champion's free once-per-turn
+/// [CardModel.playEffects] activation (`activateChampion`).
+final class ActivatedAbility {
+  const ActivatedAbility({
+    required this.effects,
+    this.cost = ActivationCost.none,
+  });
+
+  /// The effects resolved when this ability is used. Reuses the existing
+  /// [CardEffect] vocabulary — an activated ability is a *container* of effects,
+  /// not a new effect kind.
+  final List<CardEffect> effects;
+
+  /// The resource cost (beyond Exhaust) to use the ability.
+  final ActivationCost cost;
+
+  /// Human-readable summary for UI display.
+  String get description {
+    final body = effects.map((e) => e.description).join(', ');
+    return 'Exhaust: $body';
+  }
+}
 
 /// The Infinity Shard — scales with mastery.
 /// Always grants 1 mastery. Power scales: 0/3/6/10/15/20 at mastery 0/5/10/15/20/25.

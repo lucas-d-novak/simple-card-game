@@ -131,6 +131,7 @@ class CardRecord {
         masteryThreshold: json['masteryThreshold'] as int?,
         masteryBonus: decodeEffectList(json['masteryBonus']),
         countsAsAllFactions: (json['countsAsAllFactions'] as bool?) ?? false,
+        activatedAbility: decodeActivatedAbility(json['activatedAbility']),
       ),
     );
   }

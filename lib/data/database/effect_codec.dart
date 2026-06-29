@@ -15,6 +15,61 @@ List<CardEffect> decodeEffectList(dynamic raw) {
   return [for (final e in raw) decodeEffect(e as Map<String, dynamic>)];
 }
 
+/// Decodes a card's optional `activatedAbility` object into an
+/// [ActivatedAbility]. Returns null when [raw] is null (the common case — most
+/// cards have no activated ability).
+///
+/// Shape:
+/// ```json
+/// "activatedAbility": {
+///   "effects": [ { "type": "gainPower", "amount": 2 } ],
+///   "cost": { "gems": 0, "mastery": 1, "health": 0 }   // optional
+/// }
+/// ```
+/// `effects` is required and reuses the ordinary effect vocabulary. `cost` is
+/// optional; any of its `gems` / `mastery` / `health` keys default to 0
+/// (an absent `cost` means Exhaust-only).
+ActivatedAbility? decodeActivatedAbility(dynamic raw) {
+  if (raw == null) return null;
+  if (raw is! Map<String, dynamic>) {
+    throw const FormatException('activatedAbility must be a JSON object');
+  }
+  final effects = decodeEffectList(raw['effects']);
+  if (effects.isEmpty) {
+    throw const FormatException(
+        'activatedAbility requires a non-empty "effects" array');
+  }
+  return ActivatedAbility(
+    effects: effects,
+    cost: _activationCost(raw['cost']),
+  );
+}
+
+ActivationCost _activationCost(dynamic raw) {
+  if (raw == null) return ActivationCost.none;
+  if (raw is! Map<String, dynamic>) {
+    throw const FormatException('activatedAbility "cost" must be a JSON object');
+  }
+  return ActivationCost(
+    gems: _optInt(raw, 'gems'),
+    mastery: _optInt(raw, 'mastery'),
+    health: _optInt(raw, 'health'),
+  );
+}
+
+/// Encodes an [ActivatedAbility] back to its JSON map. Omits an all-zero cost.
+Map<String, dynamic> encodeActivatedAbility(ActivatedAbility ability) {
+  return {
+    'effects': [for (final e in ability.effects) encodeEffect(e)],
+    if (!ability.cost.isFree)
+      'cost': {
+        if (ability.cost.gems != 0) 'gems': ability.cost.gems,
+        if (ability.cost.mastery != 0) 'mastery': ability.cost.mastery,
+        if (ability.cost.health != 0) 'health': ability.cost.health,
+      },
+  };
+}
+
 CardEffect decodeEffect(Map<String, dynamic> json) {
   final type = json['type'] as String?;
   switch (type) {
@@ -110,6 +165,15 @@ int _int(Map<String, dynamic> json, String key) {
   final v = json[key];
   if (v is int) return v;
   throw FormatException('effect "${json['type']}" requires integer "$key"');
+}
+
+/// Reads an optional integer key, defaulting to 0 when absent. Throws if present
+/// but not an integer. Used for the optional fields of an [ActivationCost].
+int _optInt(Map<String, dynamic> json, String key) {
+  final v = json[key];
+  if (v == null) return 0;
+  if (v is int) return v;
+  throw FormatException('activation cost "$key" must be an integer');
 }
 
 BanishSource _banishSource(String? raw) {

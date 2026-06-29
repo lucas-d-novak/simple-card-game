@@ -91,6 +91,65 @@ class GameService {
     return true;
   }
 
+  /// Use a champion's Exhaust-gated activated ability.
+  ///
+  /// This is a SEPARATE action from [activateChampion]. [activateChampion]
+  /// re-resolves the champion's normal [CardModel.playEffects] (free, once per
+  /// turn). This method resolves the champion's [CardModel.activatedAbility] —
+  /// an additional ability that costs an Exhaust (and optionally resources) and
+  /// leaves the champion **exhausted** (tapped) until the start of the owner's
+  /// next turn (the [PlayerState.exhaustedChampions] set is cleared in
+  /// [PlayerState.resetTurnResources] during [endTurn]).
+  ///
+  /// Fails (returns false, with no state change) if: the game is over, the
+  /// champion is not in play, it has no activated ability, it is already
+  /// exhausted this turn, or the cost is unpayable. On success it pays the cost,
+  /// resolves the ability's effects, marks the champion exhausted, and returns
+  /// true. The free [activateChampion] activation remains independently
+  /// available — exhausting does not consume it (and vice versa).
+  bool useActivatedAbility(String championId) {
+    if (_gameOver) return false;
+    final player = currentPlayer;
+
+    final champion =
+        player.championsInPlay.where((c) => c.id == championId).firstOrNull;
+    if (champion == null) return false;
+
+    final ability = champion.activatedAbility;
+    if (ability == null) return false;
+
+    // Already exhausted this turn — cannot reuse until next turn.
+    if (player.exhaustedChampions.contains(championId)) return false;
+
+    // Validate the cost is fully payable BEFORE mutating any state, so a
+    // rejected activation is a no-op (mirrors buyCard / attackChampion).
+    if (!_canPayActivationCost(player, ability.cost)) return false;
+
+    _payActivationCost(player, ability.cost);
+    player.exhaustedChampions.add(championId);
+    _resolveEffects(ability.effects, player, sourceCard: champion);
+    return true;
+  }
+
+  /// Whether [player] can afford [cost] (gems, mastery, and health are all
+  /// available). Mastery and health costs must not drop the player to/below the
+  /// floor that would be illegal (health must stay > 0; mastery cannot go
+  /// negative).
+  bool _canPayActivationCost(PlayerState player, ActivationCost cost) {
+    if (cost.isFree) return true;
+    if (player.gemPool < cost.gems) return false;
+    if (player.mastery < cost.mastery) return false;
+    // Paying health may not be lethal to oneself.
+    if (cost.health > 0 && player.health <= cost.health) return false;
+    return true;
+  }
+
+  void _payActivationCost(PlayerState player, ActivationCost cost) {
+    player.gemPool -= cost.gems;
+    player.mastery -= cost.mastery;
+    if (cost.health > 0) player.takeDamage(cost.health);
+  }
+
   /// Play a card from the current player's hand.
   ///
   /// [choiceIndex] selects which option for ChooseOneEffect cards (default 0).

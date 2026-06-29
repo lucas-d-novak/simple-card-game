@@ -39,6 +39,14 @@ class CardModel {
   /// (e.g. Universal Soldier).
   final bool countsAsAllFactions;
 
+  /// An optional Exhaust-gated activated ability (champions only). Null for
+  /// cards without one. This is DISTINCT from [playEffects]: [playEffects] are
+  /// the card's normal effects (resolved on play, and re-resolvable each turn
+  /// for champions via the free `activateChampion`). The activated ability is a
+  /// separate, additional action that exhausts (taps) the champion until the
+  /// start of the owner's next turn. See [ActivatedAbility].
+  final ActivatedAbility? activatedAbility;
+
   const CardModel({
     required this.id,
     required this.name,
@@ -52,5 +60,6 @@ class CardModel {
     this.masteryThreshold,
     this.masteryBonus = const <CardEffect>[],
     this.countsAsAllFactions = false,
+    this.activatedAbility,
   });
 }

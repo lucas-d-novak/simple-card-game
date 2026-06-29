@@ -18,7 +18,18 @@ class PlayerState {
   final List<CardModel> discardPile = [];
   final List<CardModel> playedThisTurn = [];
   final List<CardModel> championsInPlay = [];
+
+  /// Champion ids that have used their free once-per-turn [CardModel.playEffects]
+  /// activation this turn (see GameService.activateChampion).
   final Set<String> activatedChampions = {};
+
+  /// Champion ids that are currently **exhausted** (tapped) — they have used
+  /// their Exhaust-gated [CardModel.activatedAbility] and cannot use it again
+  /// until the start of the owner's next turn. Distinct from
+  /// [activatedChampions]: a champion can have its free play-effect activation
+  /// AND its activated ability available independently. Cleared each turn by
+  /// [resetTurnResources], so it is fresh at the start of the owner's next turn.
+  final Set<String> exhaustedChampions = {};
 
   /// Every card played this turn (regular, champion, and mercenary), recorded
   /// in play order before any end-of-turn cleanup. Unlike [playedThisTurn],
@@ -48,6 +59,7 @@ class PlayerState {
     gemPool = 0;
     powerPool = 0;
     activatedChampions.clear();
+    exhaustedChampions.clear();
     cardsPlayedThisTurn.clear();
   }
 
