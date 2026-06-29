@@ -29,10 +29,12 @@ Core game logic. Three service layers — GameService is the active engine, AiSe
 | `attackChampion(championId, targetPlayerId)` | Spend power >= shield to destroy. Champion → owner's discard. |
 | `banishCard(cardId, source)` | Remove card from hand/discard permanently. |
 | `scrapFromCenterRow(cardId)` | Remove from center row permanently, refill. |
+| `destroyChampion(championId, targetPlayerId)` | Destroy a single chosen enemy champion with no power cost (champion → owner's discard). Fulfils a single-target `DestroyChampionEffect` after target selection; the `all` variant destroys every enemy champion inline during effect resolution. |
+| `returnFromDiscard(cardId, {filter, faction})` | Return a card from the current player's discard pile to hand, validated against the `ReturnFromDiscardEffect` filter. Fulfils the effect after target selection (mirrors `banishCard`). |
 | `startTurn()` | Empty — champions require manual activation via `activateChampion()`. |
 | `activateChampion(championId)` | Activate a champion once per turn — resolves its effects, mastery bonus, ally ability. |
 
-**Effect resolution:** `_resolveEffects()` handles all 12 CardEffect subtypes via exhaustive switch.
+**Effect resolution:** `_resolveEffects()` handles all 14 CardEffect subtypes via exhaustive switch. `ConditionalPowerEffect`'s per-turn conditions (`perAllyPlayedThisTurn`, `perFactionPlayedThisTurn`) read `PlayerState.cardsPlayedThisTurn` — a per-turn list of cards played, appended in `playCard()` and cleared each turn.
 
 **Win conditions:**
 - Elimination: all opponents health <= 0

@@ -43,7 +43,7 @@ lib/
 │       └── effect_codec.dart           # JSON ⇄ CardEffect codec
 ├── models/
 │   ├── card_model.dart                 # CardModel with faction, type, shield, guard, etc.
-│   ├── card_effect.dart                # Sealed class hierarchy (12 effect types)
+│   ├── card_effect.dart                # Sealed class hierarchy (14 effect types)
 │   ├── card_type.dart                  # regular | champion | mercenary
 │   ├── faction.dart                    # homodeus | wraethe | order | undergrowth | none
 │   └── player_state.dart              # Per-player mutable state (HP, mastery, zones)
@@ -72,7 +72,7 @@ lib/
 ## Subsystems
 
 - **Card database** — [`assets/card_db/`](assets/card_db/README.md) holds the
-  authoritative `cards.json` (201 entries), its `schema.json` contract, and a
+  authoritative `cards.json` (183 entries), its `schema.json` contract, and a
   data-entry workflow. Loaded by
   [`lib/data/database/`](lib/data/CLAUDE.md) (`CardDatabase`, `CardRecord`,
   `effect_codec`) and validated by
@@ -104,7 +104,7 @@ lib/
 | Mechanic | Status | File |
 |----------|--------|------|
 | Turn lifecycle (play/buy/end) | Done | `game_service.dart` |
-| All 12 card effect types | Done | `card_effect.dart` |
+| All 14 card effect types | Done | `card_effect.dart` |
 | Center row / market (6 cards, auto-refill) | Done | `game_service.dart` |
 | Champion deployment & persistence | Done | `game_service.dart` |
 | Champion manual activation (tap to activate) | Done | `game_service.dart` |
@@ -121,7 +121,9 @@ lib/
 | Elimination & game over detection | Done | `game_service.dart` |
 | Mercenary cleanup (removed from game) | Done | `game_service.dart` |
 | ChooseOneEffect (player choice) | Done | `game_service.dart` |
-| ConditionalPowerEffect (per champion) | Done | `game_service.dart` |
+| ConditionalPowerEffect (per champion / per ally / per faction / per discard) | Done | `game_service.dart` |
+| DestroyChampionEffect (single target / all enemy champions) | Done | `game_service.dart` |
+| ReturnFromDiscardEffect (any / champion / mercenary / faction filter) | Done | `game_service.dart` |
 | Banish/Scrap UI (target selection dialogs) | Done | `game_screen.dart` |
 | AI opponent (heuristic, solo play) | Done | `ai_service.dart` |
 | Card detail popup (long-press) | Done | `game_screen.dart` |
@@ -187,6 +189,7 @@ Cross-referenced. The mechanics doc is source of truth for game rules.
 - [`ai-docs/implementation_plan_review.md`](ai-docs/implementation_plan_review.md) — Peer review of v5 plan, all issues addressed in v6.
 - [`ai-docs/animation_system_design.md`](ai-docs/animation_system_design.md) — Design (5 iterations) behind the 3-speed animation system (`lib/ui/theme/animation_timing.dart`).
 - [`ai-docs/responsive_ui_design.md`](ai-docs/responsive_ui_design.md) — Design (5 iterations) behind the responsive breakpoints (`lib/ui/theme/responsive.dart`).
+- [`ai-docs/engine_gaps.md`](ai-docs/engine_gaps.md) — Catalogue of unmodeled competitive-multiplayer card mechanics the current `CardEffect` vocabulary can't express, plus a phased plan to extend the engine.
 
 ## Open pull requests (temporary)
 

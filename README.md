@@ -120,6 +120,7 @@ flutter test test/screenshot_test.dart --update-goldens
 - [`ai-docs/flutter_deck_draw_plan.md`](ai-docs/flutter_deck_draw_plan.md): historical design notes from an earlier stage of the prototype
 - [`ai-docs/animation_system_design.md`](ai-docs/animation_system_design.md): design notes for the 3-speed animation system
 - [`ai-docs/responsive_ui_design.md`](ai-docs/responsive_ui_design.md): design notes for the responsive breakpoints
+- [`ai-docs/engine_gaps.md`](ai-docs/engine_gaps.md): catalogue of unmodeled competitive-multiplayer card mechanics and a phased plan to extend the engine
 
 The `android/`, `ios/`, and `web/` folders are the main product targets. The desktop folders are standard Flutter scaffolding and are not the stated focus of the project right now.
 
@@ -128,7 +129,7 @@ The `android/`, `ios/`, and `web/` folders are the main product targets. The des
 The authoritative source of card data is the JSON database in
 [`assets/card_db/`](assets/card_db/README.md):
 
-- [`cards.json`](assets/card_db/cards.json) — the 201-card database, one entry per unique card.
+- [`cards.json`](assets/card_db/cards.json) — the 183-card database, one entry per unique card.
 - [`schema.json`](assets/card_db/schema.json) — the per-field contract (`set`, `faction`, `group`, `cardType`, `cost`, `playEffects`, `art`, `verified`, and more).
 - [`README.md`](assets/card_db/README.md) — the data-entry workflow (phone photos + OCR → structured fields).
 
