@@ -727,9 +727,16 @@ class GameService {
   /// it, then moves it to [removedFromGame]. A no-op if [source] is null.
   void _selfBanish(PlayerState player, CardModel? source) {
     if (source == null) return;
+    final wasChampion =
+        player.championsInPlay.any((c) => identical(c, source));
     player.playedThisTurn.removeWhere((c) => identical(c, source));
     player.championsInPlay.removeWhere((c) => identical(c, source));
     player.cardsPlayedThisTurn.removeWhere((c) => identical(c, source));
+    // If a champion self-banishes, release any cards tucked under it (to the
+    // owner's discard) and drop its self-scoped shield modifier — otherwise the
+    // under-cards orphan in the map and the modifier dangles. Mirrors every
+    // other champion-removal path (attack/destroy/eliminate).
+    if (wasChampion) _releaseUnderCards(player, source.id);
     removedFromGame.add(source);
   }
 

@@ -264,6 +264,46 @@ void main() {
       );
     });
 
+    // Wave-5b reviewer follow-up: self-banish is a fifth champion-removal path
+    // and must also release under-cards, or they orphan + the buff dangles.
+    test('a self-banishing champion releases its under-cards + clears buff', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      // A champion that, when played, tucks nothing but self-banishes. We
+      // pre-seed under-cards + buff (as if it had tucked earlier), then play it
+      // so its SelfBanishEffect resolves through the real engine path.
+      const sbChamp = CardModel(
+        id: 'sb_champ',
+        name: 'Self-Banish Champ',
+        cost: 2,
+        cardType: CardType.champion,
+        shield: 4,
+        playEffects: [SelfBanishEffect()],
+      );
+      player.hand.add(sbChamp);
+      // playCard moves it into championsInPlay before resolving effects; pre-seed
+      // its under-state keyed by the champion id so self-banish must release it.
+      player.staticModifiers.add(const StaticModifier(
+        kind: StaticModifierKind.shieldPerCardUnder,
+        amount: 2,
+        sourceChampionId: 'sb_champ',
+      ));
+      player.cardsUnderChampion['sb_champ'] = [ally('u1'), ally('u2')];
+
+      game.playCard('sb_champ');
+
+      expect(player.championsInPlay.any((c) => c.id == 'sb_champ'), false);
+      expect(game.removedFromGame.any((c) => c.id == 'sb_champ'), true);
+      // Under-cards released to discard; dangling buff cleared.
+      expect(player.cardsUnderChampion.containsKey('sb_champ'), false);
+      expect(player.discardPile.where((c) => c.id == 'u1'), hasLength(1));
+      expect(
+        player.staticModifiers
+            .where((m) => m.kind == StaticModifierKind.shieldPerCardUnder),
+        isEmpty,
+      );
+    });
+
     test('copyUnderCards re-resolves each under-card play effect', () {
       final game = GameService(playerCount: 2, random: Random(7));
       final player = game.currentPlayer;
