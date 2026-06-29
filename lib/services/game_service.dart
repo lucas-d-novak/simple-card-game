@@ -14,9 +14,17 @@ class GameService {
   GameService({
     required int playerCount,
     Random? random,
+    List<Character?>? characters,
   })  : _random = random ?? Random(),
-        assert(playerCount >= 2 && playerCount <= 4) {
+        assert(playerCount >= 2 && playerCount <= 4),
+        assert(characters == null || characters.length == playerCount,
+            'characters, when provided, must have one entry per player') {
     _initializeGame(playerCount);
+    if (characters != null) {
+      for (var i = 0; i < playerCount; i++) {
+        players[i].character = characters[i];
+      }
+    }
   }
 
   final Random _random;
@@ -33,6 +41,13 @@ class GameService {
 
   PlayerState get currentPlayer => players[currentPlayerIndex];
   bool get isGameOver => _gameOver;
+
+  /// Whether the current player may take an action. False once the game is over
+  /// or the current player has been eliminated — the latter can happen mid-turn
+  /// via [AllPlayersLoseHealthEffect], which is the only effect that can reduce
+  /// the acting player to 0. A dead player must not keep acting; they recover
+  /// the game by calling [endTurn], which advances past eliminated players.
+  bool get _currentPlayerCanAct => !_gameOver && !currentPlayer.isEliminated;
 
   // -------------------------------------------------------------------------
   // Initialization
@@ -59,6 +74,17 @@ class GameService {
     }
   }
 
+  /// Assign (or clear) the Character a player has chosen, by player id. Lets the
+  /// setup flow pick characters after construction (the constructor's
+  /// `characters` param is the other supported path). Returns false if no player
+  /// has [playerId]. A null [character] clears the assignment (no character).
+  bool setCharacter(String playerId, Character? character) {
+    final player = players.where((p) => p.id == playerId).firstOrNull;
+    if (player == null) return false;
+    player.character = character;
+    return true;
+  }
+
   // -------------------------------------------------------------------------
   // Turn lifecycle
   // -------------------------------------------------------------------------
@@ -73,7 +99,7 @@ class GameService {
   /// Each champion can only be activated once per turn.
   /// Returns true if the champion was found and activated.
   bool activateChampion(String championId) {
-    if (_gameOver) return false;
+    if (!_currentPlayerCanAct) return false;
     final player = currentPlayer;
 
     final champion = player.championsInPlay
@@ -85,8 +111,7 @@ class GameService {
     if (player.activatedChampions.contains(championId)) return false;
 
     player.activatedChampions.add(championId);
-    _resolveEffects(champion.playEffects, player, sourceCard: champion);
-    _checkMasteryBonus(champion, player);
+    _resolvePlayOrMastery(champion, player);
     _checkAllyAbility(champion, player);
     return true;
   }
@@ -108,7 +133,7 @@ class GameService {
   /// true. The free [activateChampion] activation remains independently
   /// available — exhausting does not consume it (and vice versa).
   bool useActivatedAbility(String championId) {
-    if (_gameOver) return false;
+    if (!_currentPlayerCanAct) return false;
     final player = currentPlayer;
 
     final champion =
@@ -127,8 +152,35 @@ class GameService {
 
     _payActivationCost(player, ability.cost);
     player.exhaustedChampions.add(championId);
-    _resolveEffects(ability.effects, player, sourceCard: champion);
+    _resolveActivatedAbility(ability, player, sourceCard: champion);
     return true;
+  }
+
+  /// Resolves an [ActivatedAbility]'s effects, honouring its optional mastery
+  /// tier. When the ability has a [ActivatedAbility.masteryThreshold] the owner
+  /// has reached: if [ActivatedAbility.replaces] is true the mastery effects
+  /// resolve INSTEAD OF the base effects; otherwise they resolve ADDITIVELY on
+  /// top. With no mastery threshold (the default), only [effects] resolve.
+  void _resolveActivatedAbility(
+    ActivatedAbility ability,
+    PlayerState player, {
+    required CardModel sourceCard,
+  }) {
+    final tierMet = ability.masteryThreshold != null &&
+        ability.masteryBonusEffects.isNotEmpty &&
+        player.mastery >= ability.masteryThreshold!;
+
+    if (tierMet && ability.replaces) {
+      _resolveEffects(ability.masteryBonusEffects, player,
+          sourceCard: sourceCard);
+      return;
+    }
+
+    _resolveEffects(ability.effects, player, sourceCard: sourceCard);
+    if (tierMet) {
+      _resolveEffects(ability.masteryBonusEffects, player,
+          sourceCard: sourceCard);
+    }
   }
 
   /// Whether [player] can afford [cost] (gems, mastery, and health are all
@@ -150,11 +202,327 @@ class GameService {
     if (cost.health > 0) player.takeDamage(cost.health);
   }
 
+  // -------------------------------------------------------------------------
+  // Static modifier consults (Engine Phase 2, wave 5a — Family 11)
+  // -------------------------------------------------------------------------
+
+  /// Whether a [StaticModifier]'s optional faction/type filters match [card].
+  /// A null filter matches anything; faction matching honours
+  /// countsAsAllFactions (no alias player — static buffs are not turn-scoped).
+  bool _modifierApplies(StaticModifier mod, CardModel card) {
+    if (mod.faction != null &&
+        !_factionsMatch(mod.faction!, false, card.faction,
+            card.countsAsAllFactions)) {
+      return false;
+    }
+    if (mod.cardType != null && card.cardType != mod.cardType) return false;
+    return true;
+  }
+
+  /// The effective shield of [champion] owned by [owner]: its printed shield,
+  /// plus every matching [StaticModifierKind.shieldBuff] the owner holds, plus —
+  /// for a [StaticModifierKind.shieldPerCardUnder] modifier whose
+  /// [StaticModifier.sourceChampionId] is THIS champion — `amount` per card
+  /// currently tucked under it (carmine_eclipse). The per-card-under term is the
+  /// single shield path (Wave 5b extends this Wave-5a helper; combat reads only
+  /// `_effectiveShield`).
+  int _effectiveShield(CardModel champion, PlayerState owner) {
+    var shield = champion.shield;
+    for (final mod in owner.staticModifiers) {
+      switch (mod.kind) {
+        case StaticModifierKind.shieldBuff:
+          if (_modifierApplies(mod, champion)) shield += mod.amount;
+        case StaticModifierKind.shieldPerCardUnder:
+          // Self-scoped: only buffs the champion that owns the modifier, scaling
+          // with that champion's under-card count.
+          if (mod.sourceChampionId == champion.id) {
+            shield += mod.amount * owner.cardsUnderCount(champion.id);
+          }
+        case StaticModifierKind.cardCostReduction:
+        case StaticModifierKind.cannotBeAttacked:
+        case StaticModifierKind.recruitToTopOfDeck:
+          break;
+      }
+    }
+    return shield;
+  }
+
+  /// Resolve the under-card state when [championId]'s champion leaves [owner]'s
+  /// play (destroyed or eliminated). Moves any cards tucked under it to the
+  /// owner's discard pile (paradigm_the_archivist "put all cards under it into
+  /// your discard pile" — the simple, default disposition; carmine_eclipse's
+  /// optional "recruit any, banish the rest" is a documented follow-up) and
+  /// drops any self-scoped shieldPerCardUnder modifier the champion carried so a
+  /// stale buff cannot linger. A no-op when the champion had no under-cards /
+  /// modifier.
+  void _releaseUnderCards(PlayerState owner, String championId) {
+    final under = owner.cardsUnderChampion.remove(championId);
+    if (under != null && under.isNotEmpty) {
+      owner.discardPile.addAll(under);
+    }
+    owner.staticModifiers.removeWhere((m) =>
+        m.kind == StaticModifierKind.shieldPerCardUnder &&
+        m.sourceChampionId == championId);
+  }
+
+  /// Whether [player] owns a [StaticModifierKind.cannotBeAttacked] modifier.
+  bool _hasCannotBeAttacked(PlayerState player) => player.staticModifiers
+      .any((m) => m.kind == StaticModifierKind.cannotBeAttacked);
+
+  /// [card]'s acquisition cost for [buyer] after applying every matching
+  /// [StaticModifierKind.cardCostReduction] modifier, floored at 1 gem.
+  int _discountedCost(CardModel card, PlayerState buyer) {
+    var cost = card.cost;
+    for (final mod in buyer.staticModifiers) {
+      if (mod.kind == StaticModifierKind.cardCostReduction &&
+          _modifierApplies(mod, card)) {
+        cost -= mod.amount;
+      }
+    }
+    return cost < 1 ? 1 : cost;
+  }
+
+  /// Whether a recruited [card] should be routed to the top of [player]'s deck
+  /// because of a matching [StaticModifierKind.recruitToTopOfDeck] modifier.
+  bool _recruitsToTopOfDeck(CardModel card, PlayerState player) =>
+      player.staticModifiers.any((m) =>
+          m.kind == StaticModifierKind.recruitToTopOfDeck &&
+          _modifierApplies(m, card));
+
+  // -------------------------------------------------------------------------
+  // Opponent draw / discard (Engine Phase 2, wave 5a — Family 13)
+  // -------------------------------------------------------------------------
+
+  /// Every player except [source] draws [count] card(s) from their own draw
+  /// pile, reshuffling their discard when the draw pile empties (mirrors
+  /// [_drawCards]). Eliminated players are skipped. Used by [OpponentDrawsEffect]
+  /// (blitz_shard_runner).
+  void _eachOtherPlayerDraws(PlayerState source, int count) {
+    if (count <= 0) return;
+    for (final player in players) {
+      if (player.id == source.id || player.isEliminated) continue;
+      _drawCards(player, count);
+    }
+  }
+
+  /// Every player except [source] discards [count] card(s) from their hand
+  /// (the first [count], or all they have if fewer). Eliminated players are
+  /// skipped. Used by [OpponentDiscardsEffect] (blitz_shard_runner mastery
+  /// variant).
+  void _eachOtherPlayerDiscards(PlayerState source, int count) {
+    if (count <= 0) return;
+    for (final player in players) {
+      if (player.id == source.id || player.isEliminated) continue;
+      final n = count > player.hand.length ? player.hand.length : count;
+      for (var i = 0; i < n; i++) {
+        player.discardPile.add(player.hand.removeAt(0));
+      }
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Copy-effect (Engine Phase 2, wave 5a — Family 9)
+  // -------------------------------------------------------------------------
+
+  /// Re-resolve the play effects of a card the current player already played
+  /// this turn, fulfilling a [CopyPlayedCardEffect] after the player selects a
+  /// target. [cardId] must name a card in [PlayerState.cardsPlayedThisTurn].
+  ///
+  /// Honours the effect's [CopyFilter] (nonChampion excludes champions).
+  ///
+  /// RE-ENTRANCY GUARD: a card that itself contains a [CopyPlayedCardEffect] is
+  /// NOT copyable (returns false) — this prevents a copy-of-a-copy from looping.
+  /// In addition, when re-resolving, any [InfinityShardEffect] in the copied
+  /// card's play effects is SKIPPED so copying can never grant mastery or
+  /// trigger a spurious Infinity Shard win.
+  ///
+  /// Returns false (no state change) if the game is over / the player can't act,
+  /// the card is not found, it does not match the filter, or it is itself a copy
+  /// card.
+  bool copyPlayedCard(
+    String cardId, {
+    CopyFilter filter = CopyFilter.nonChampion,
+  }) {
+    if (!_currentPlayerCanAct) return false;
+    final player = currentPlayer;
+
+    final card =
+        player.cardsPlayedThisTurn.where((c) => c.id == cardId).firstOrNull;
+    if (card == null) return false;
+
+    if (filter == CopyFilter.nonChampion &&
+        card.cardType == CardType.champion) {
+      return false;
+    }
+
+    // Re-entrancy guard: refuse to copy a card that itself copies.
+    if (_containsCopyEffect(card.playEffects)) return false;
+
+    // Re-resolve the copied card's play effects, excluding InfinityShardEffect
+    // so the copy never causes a mastery gain / spurious win.
+    final copyable = [
+      for (final e in card.playEffects)
+        if (e is! InfinityShardEffect) e,
+    ];
+    _resolveEffects(copyable, player, sourceCard: card);
+    return true;
+  }
+
+  bool _containsCopyEffect(List<CardEffect> effects) {
+    for (final e in effects) {
+      if (e is CopyPlayedCardEffect) return true;
+      // Guard nested copies inside chooseOne / conditional too.
+      if (e is ChooseOneEffect) {
+        for (final group in e.choices) {
+          if (_containsCopyEffect(group)) return true;
+        }
+      }
+      if (e is ConditionalEffect && _containsCopyEffect(e.then)) return true;
+    }
+    return false;
+  }
+
+  // -------------------------------------------------------------------------
+  // Under-card stacking (Engine Phase 2, wave 5b — Family 13)
+  // -------------------------------------------------------------------------
+
+  /// Tuck [cardId] from the current player's HAND under their champion
+  /// [championId], fulfilling a [TuckUnderChampionEffect] (source hand) after
+  /// the player selects both. The card is removed from hand and appended to the
+  /// champion's under-card list ([PlayerState.cardsUnderChampion]); its effects
+  /// do NOT resolve (it is tucked, not played).
+  ///
+  /// When [alliesOnly] is true, champions cannot be tucked (an ally is a
+  /// non-champion card). Returns false (no state change) if the game is over /
+  /// the player can't act, the champion is not controlled by the player, the
+  /// card is not in hand, or it fails the allies-only filter.
+  bool tuckUnderChampion(
+    String championId,
+    String cardId, {
+    bool alliesOnly = false,
+  }) {
+    if (!_currentPlayerCanAct) return false;
+    final player = currentPlayer;
+
+    final controls = player.championsInPlay.any((c) => c.id == championId);
+    if (!controls) return false;
+
+    final handIndex = player.hand.indexWhere((c) => c.id == cardId);
+    if (handIndex == -1) return false;
+    if (alliesOnly && player.hand[handIndex].cardType == CardType.champion) {
+      return false;
+    }
+
+    final card = player.hand.removeAt(handIndex);
+    player.cardsUnderChampion.putIfAbsent(championId, () => []).add(card);
+    return true;
+  }
+
+  /// Tuck the top card of the CENTER (infinity) deck under [championId]
+  /// (gene_scavs ambush). Immediate variant of [TuckUnderChampionEffect] (source
+  /// centerDeck), called inline during effect resolution. Returns false (no
+  /// state change) if the player doesn't control the champion or the infinity
+  /// deck is empty.
+  bool _tuckTopOfCenterDeck(PlayerState player, String championId) {
+    final controls = player.championsInPlay.any((c) => c.id == championId);
+    if (!controls) return false;
+    if (infinityDeck.isEmpty) return false;
+    final card = infinityDeck.removeLast();
+    player.cardsUnderChampion.putIfAbsent(championId, () => []).add(card);
+    return true;
+  }
+
+  /// Re-resolve the `playEffects` of every card tucked under [championId] for
+  /// the current player, fulfilling a [CopyUnderCardsEffect]
+  /// (paradigm_the_archivist). Cards are copied in tuck order. The under-cards
+  /// themselves are NOT consumed — they stay under the champion.
+  ///
+  /// RE-ENTRANCY / SAFETY: among each under-card's effects, [InfinityShardEffect]
+  /// is skipped (no spurious mastery/win, mirroring [copyPlayedCard]), and
+  /// [TuckUnderChampionEffect] / [CopyUnderCardsEffect] are skipped to avoid
+  /// re-entrant tucking/copying.
+  ///
+  /// Returns false (no state change) if the game is over / the player can't act,
+  /// the player doesn't control the champion, or there are no cards under it.
+  bool copyUnderCards(String championId) {
+    if (!_currentPlayerCanAct) return false;
+    final player = currentPlayer;
+
+    final controls = player.championsInPlay.any((c) => c.id == championId);
+    if (!controls) return false;
+
+    final under = player.cardsUnderChampion[championId];
+    if (under == null || under.isEmpty) return false;
+
+    // Snapshot so re-resolution can't mutate the list mid-iteration.
+    for (final card in List<CardModel>.from(under)) {
+      final copyable = [
+        for (final e in card.playEffects)
+          if (e is! InfinityShardEffect &&
+              e is! TuckUnderChampionEffect &&
+              e is! CopyUnderCardsEffect)
+            e,
+      ];
+      _resolveEffects(copyable, player, sourceCard: card);
+    }
+    return true;
+  }
+
+  // -------------------------------------------------------------------------
+  // Center-deck scry (Engine Phase 2, wave 5a — extends Family 8)
+  // -------------------------------------------------------------------------
+
+  /// Peek at the top card of the CENTER (infinity) deck WITHOUT removing it (for
+  /// UI display before a [CenterDeckScryEffect] resolution). Returns null when
+  /// the infinity deck is empty. The "top" is the END of [infinityDeck] (the
+  /// next card [_refillCenterRow] would deal, via removeLast()).
+  CardModel? centerDeckScryReveal() {
+    if (infinityDeck.isEmpty) return null;
+    return infinityDeck.last;
+  }
+
+  /// Resolve a [CenterDeckScryEffect] against the top card of the infinity deck,
+  /// after the player has seen it (deferred-selection). [cardId] must name the
+  /// current top card (returned by [centerDeckScryReveal]).
+  ///
+  /// - [CenterScryDisposition.acquire] (the_shard_defiant): the revealed card is
+  ///   removed from the infinity deck and acquired to the player's discard pile,
+  ///   for free.
+  /// - [CenterScryDisposition.toHandLosePowerEqualToCost] (oblivion_gatekeeper):
+  ///   the revealed card is put into the player's hand and they lose power equal
+  ///   to its gem cost (power pool floored at 0). This "ignores Guard" — it is a
+  ///   pure resource interaction with no targeting, so Guard never applies.
+  ///
+  /// Returns false (no state change) if the game is over / the player can't act,
+  /// the deck is empty, or [cardId] is not the current top card.
+  bool centerDeckScryResolve(
+    String cardId, {
+    CenterScryDisposition disposition = CenterScryDisposition.acquire,
+  }) {
+    if (!_currentPlayerCanAct) return false;
+    if (infinityDeck.isEmpty) return false;
+    if (infinityDeck.last.id != cardId) return false;
+
+    final player = currentPlayer;
+    final card = infinityDeck.removeLast();
+
+    switch (disposition) {
+      case CenterScryDisposition.acquire:
+        player.discardPile.add(card);
+      case CenterScryDisposition.toHandLosePowerEqualToCost:
+        player.hand.add(card);
+        player.powerPool -= card.cost;
+        if (player.powerPool < 0) player.powerPool = 0;
+    }
+    return true;
+  }
+
   /// Play a card from the current player's hand.
   ///
   /// [choiceIndex] selects which option for ChooseOneEffect cards (default 0).
   /// Returns true if the card was found and played.
   bool playCard(String cardId, {int choiceIndex = 0}) {
+    if (!_currentPlayerCanAct) return false;
     final player = currentPlayer;
     final handIndex = player.hand.indexWhere((c) => c.id == cardId);
     if (handIndex == -1) return false;
@@ -172,16 +540,9 @@ class GameService {
     // champions and mercenaries, in play order.
     player.cardsPlayedThisTurn.add(card);
 
-    // Resolve play effects
-    _resolveEffects(
-      card.playEffects,
-      player,
-      choiceIndex: choiceIndex,
-      sourceCard: card,
-    );
-
-    // Step 11: check mastery threshold bonus
-    _checkMasteryBonus(card, player);
+    // Resolve play effects (or, for masteryReplaces cards at threshold, the
+    // mastery bonus INSTEAD; otherwise the additive mastery bonus on top).
+    _resolvePlayOrMastery(card, player, choiceIndex: choiceIndex);
 
     // Step 9: check ally ability
     _checkAllyAbility(card, player);
@@ -206,13 +567,17 @@ class GameService {
   /// Buy a card from the center row using gems.
   /// Returns true if the purchase succeeded.
   bool buyCard(String cardId) {
+    if (!_currentPlayerCanAct) return false;
     final rowIndex = centerRow.indexWhere((c) => c.id == cardId);
     if (rowIndex == -1) return false;
 
     final card = centerRow[rowIndex];
-    if (currentPlayer.gemPool < card.cost) return false;
+    // aedifex: apply any cardCostReduction static modifiers the buyer owns
+    // (min 1 gem). Mirrored in recruitFromCenter for non-free recruits.
+    final price = _discountedCost(card, currentPlayer);
+    if (currentPlayer.gemPool < price) return false;
 
-    currentPlayer.gemPool -= card.cost;
+    currentPlayer.gemPool -= price;
     centerRow.removeAt(rowIndex);
     currentPlayer.discardPile.add(card);
     _refillCenterRow();
@@ -252,7 +617,7 @@ class GameService {
   /// shield value. The destroyed champion goes to its owner's discard pile.
   /// Returns true if the attack succeeded.
   bool attackChampion(String championId, String targetPlayerId) {
-    if (_gameOver) return false;
+    if (!_currentPlayerCanAct) return false;
 
     final target = players.firstWhere(
       (p) => p.id == targetPlayerId,
@@ -264,12 +629,28 @@ class GameService {
         target.championsInPlay.indexWhere((c) => c.id == championId);
     if (champIndex == -1) return false;
 
-    final champion = target.championsInPlay[champIndex];
-    if (currentPlayer.powerPool < champion.shield) return false;
+    // zetta_the_encryptor: a player with a cannotBeAttacked static modifier
+    // cannot have their champions targeted by an attack either (the whole
+    // player is untargetable). Card-effect destruction (destroyChampion) is a
+    // separate path and is intentionally not gated here.
+    if (_hasCannotBeAttacked(target)) return false;
 
-    currentPlayer.powerPool -= champion.shield;
+    final champion = target.championsInPlay[champIndex];
+    // spirit_leech: while the attacker ignores shield this turn, the shield
+    // value required to destroy a champion is treated as 0 (any power, including
+    // 0, destroys it). The normal path is untouched when the flag is false.
+    // Otherwise the effective shield is the printed shield PLUS any shieldBuff
+    // static modifiers the target owns that apply to this champion
+    // (one_mind_one_army, phasic_technology).
+    final shieldNeeded = currentPlayer.ignoresShieldThisTurn
+        ? 0
+        : _effectiveShield(champion, target);
+    if (currentPlayer.powerPool < shieldNeeded) return false;
+
+    currentPlayer.powerPool -= shieldNeeded;
     target.championsInPlay.removeAt(champIndex);
     target.discardPile.add(champion);
+    _releaseUnderCards(target, champion.id);
 
     return true;
   }
@@ -280,7 +661,7 @@ class GameService {
   /// destroyed first). Deducts from powerPool and calls target.takeDamage().
   /// Returns true if the attack succeeded.
   bool attackPlayer(String targetPlayerId, int amount) {
-    if (_gameOver) return false;
+    if (!_currentPlayerCanAct) return false;
     if (amount <= 0) return false;
 
     final target = players.firstWhere(
@@ -290,6 +671,10 @@ class GameService {
     if (target.id == currentPlayer.id) return false;
     if (target.isEliminated) return false;
 
+    // zetta_the_encryptor: a cannotBeAttacked static modifier makes the target
+    // untargetable by direct attacks.
+    if (_hasCannotBeAttacked(target)) return false;
+
     // Guard check: target must have no guard champions
     final hasGuard = target.championsInPlay.any((c) => c.hasGuard);
     if (hasGuard) return false;
@@ -298,6 +683,10 @@ class GameService {
 
     currentPlayer.powerPool -= amount;
     target.takeDamage(amount);
+
+    // Record unblocked damage dealt this turn (guard already ruled out above),
+    // for GameConditionKind.unblockedDamageAtLeast (e.g. blood_for_blood).
+    currentPlayer.unblockedDamageThisTurn += amount;
 
     // Check elimination and clean up zones if the target was just eliminated
     if (target.isEliminated) {
@@ -329,6 +718,26 @@ class GameService {
         if (_banishFromZone(player.hand, cardId)) return true;
         return _banishFromZone(player.discardPile, cardId);
     }
+  }
+
+  /// Banish the in-flight source card itself ("Then, banish this"). Removes it
+  /// from whichever zone it currently occupies (playedThisTurn for regular/
+  /// mercenary cards, championsInPlay for champions, and always the
+  /// cardsPlayedThisTurn history) so end-of-turn cleanup does not also discard
+  /// it, then moves it to [removedFromGame]. A no-op if [source] is null.
+  void _selfBanish(PlayerState player, CardModel? source) {
+    if (source == null) return;
+    final wasChampion =
+        player.championsInPlay.any((c) => identical(c, source));
+    player.playedThisTurn.removeWhere((c) => identical(c, source));
+    player.championsInPlay.removeWhere((c) => identical(c, source));
+    player.cardsPlayedThisTurn.removeWhere((c) => identical(c, source));
+    // If a champion self-banishes, release any cards tucked under it (to the
+    // owner's discard) and drop its self-scoped shield modifier — otherwise the
+    // under-cards orphan in the map and the modifier dangles. Mirrors every
+    // other champion-removal path (attack/destroy/eliminate).
+    if (wasChampion) _releaseUnderCards(player, source.id);
+    removedFromGame.add(source);
   }
 
   bool _banishFromZone(List<CardModel> zone, String cardId) {
@@ -366,7 +775,7 @@ class GameService {
   /// has selected a target (mirrors the banishCard() deferral pattern).
   /// Returns true if the champion was found and destroyed.
   bool destroyChampion(String championId, String targetPlayerId) {
-    if (_gameOver) return false;
+    if (!_currentPlayerCanAct) return false;
 
     final target =
         players.where((p) => p.id == targetPlayerId).firstOrNull;
@@ -379,7 +788,202 @@ class GameService {
 
     final champion = target.championsInPlay.removeAt(champIndex);
     target.discardPile.add(champion);
+    _releaseUnderCards(target, champion.id);
     return true;
+  }
+
+  /// Reset (un-exhaust) one of the current player's champions, clearing it from
+  /// [PlayerState.exhaustedChampions] so it can use its Exhaust-gated activated
+  /// ability again this turn. Fulfils a [ResetChampionEffect] after the player
+  /// selects a target (deferred-selection, like [banishCard]).
+  ///
+  /// Returns false (no state change) unless [championId] names a champion the
+  /// current player controls that is currently exhausted.
+  bool resetChampion(String championId) {
+    if (!_currentPlayerCanAct) return false;
+    final player = currentPlayer;
+
+    final controls =
+        player.championsInPlay.any((c) => c.id == championId);
+    if (!controls) return false;
+    if (!player.exhaustedChampions.contains(championId)) return false;
+
+    player.exhaustedChampions.remove(championId);
+    return true;
+  }
+
+  // -------------------------------------------------------------------------
+  // Deferred-selection action effects (Engine Phase 2, wave 3)
+  // -------------------------------------------------------------------------
+
+  /// Recruit (acquire) a card from the center row, fulfilling a
+  /// [RecruitFromCenterEffect] after the player selects a target.
+  ///
+  /// Validates the card is in [centerRow] and within [maxCost] (when set). When
+  /// [free] is false the player must afford the card's gem cost (it is charged).
+  /// The acquired card is routed to: the discard pile (default), the player's
+  /// hand ([toHand]), or the TOP of the draw pile ([toTopOfDeck] — it becomes
+  /// the next draw). [toHand] takes precedence over [toTopOfDeck] if both set.
+  /// Refills the center row. Returns false (no state change) on any failure.
+  bool recruitFromCenter(
+    String cardId, {
+    required bool free,
+    int? maxCost,
+    bool toHand = false,
+    bool toTopOfDeck = false,
+  }) {
+    if (!_currentPlayerCanAct) return false;
+    final player = currentPlayer;
+
+    final index = centerRow.indexWhere((c) => c.id == cardId);
+    if (index == -1) return false;
+
+    final card = centerRow[index];
+    if (maxCost != null && card.cost > maxCost) return false;
+
+    // aedifex: cost reduction applies to non-free recruits (min 1 gem).
+    final price = free ? 0 : _discountedCost(card, player);
+    if (player.gemPool < price) return false;
+
+    player.gemPool -= price;
+    centerRow.removeAt(index);
+
+    // maglev_tunnels: a recruitToTopOfDeck static modifier matching this card
+    // overrides the default discard destination, routing it to the top of the
+    // deck. An explicit toHand / toTopOfDeck on the effect still takes priority.
+    final modifierToTop = !toHand && _recruitsToTopOfDeck(card, player);
+
+    if (toHand) {
+      player.hand.add(card);
+    } else if (toTopOfDeck || modifierToTop) {
+      // _drawCards draws via removeLast(), so the TOP of the deck (next draw) is
+      // the END of the drawPile list. Append so this card is drawn next.
+      player.drawPile.add(card);
+    } else {
+      player.discardPile.add(card);
+    }
+
+    _refillCenterRow();
+    return true;
+  }
+
+  /// Fast-play ("warp") a card from the center row, fulfilling a
+  /// [FastPlayFromCenterEffect] after the player selects a target.
+  ///
+  /// Validates the card is in [centerRow], within [maxCost] (when set), and —
+  /// when [alliesOnly] — is not a champion ("ally" = any non-champion card; the
+  /// engine treats allies as cards that are not champions). The card is removed
+  /// from the center row, PLAYED immediately (its play effects resolve and it is
+  /// recorded in playedThisTurn + cardsPlayedThisTurn, and its ally ability is
+  /// checked), then BANISHED to [removedFromGame] per Shards warp rules. The
+  /// center row refills. Returns false (no state change) on any failure.
+  bool fastPlayFromCenter(
+    String cardId, {
+    int? maxCost,
+    bool alliesOnly = false,
+  }) {
+    if (!_currentPlayerCanAct) return false;
+    final player = currentPlayer;
+
+    final index = centerRow.indexWhere((c) => c.id == cardId);
+    if (index == -1) return false;
+
+    final card = centerRow[index];
+    if (maxCost != null && card.cost > maxCost) return false;
+    // "Allies only" — exclude champions. (An ally is a non-champion card; the
+    // engine has no separate Ally type, so champions are the excluded case.)
+    if (alliesOnly && card.cardType == CardType.champion) return false;
+
+    centerRow.removeAt(index);
+
+    // Play it immediately (without going through hand). Record in the same
+    // zones playCard() uses for a non-champion regular/mercenary card so
+    // per-turn scaling and ally checks see it.
+    player.playedThisTurn.add(card);
+    player.cardsPlayedThisTurn.add(card);
+    _resolvePlayOrMastery(card, player);
+    _checkAllyAbility(card, player);
+
+    // Per warp rules: banish the card after it resolves. Remove it from
+    // playedThisTurn so end-of-turn cleanup does not also move it to discard,
+    // then move it to removedFromGame. NOTE: it deliberately STAYS in
+    // cardsPlayedThisTurn — the ally was genuinely played this turn, so later
+    // cards' play-history scaling/conditions (perAllyPlayedThisTurn, etc.)
+    // should still count it even though the physical card is now banished.
+    player.playedThisTurn.removeWhere((c) => identical(c, card));
+    removedFromGame.add(card);
+
+    _refillCenterRow();
+    return true;
+  }
+
+  /// Peek at the top [count] card(s) of the current player's draw pile WITHOUT
+  /// removing them (for UI display before a [ScryEffect] resolution). Triggers a
+  /// reshuffle of the discard pile when the draw pile is empty, mirroring
+  /// [_drawCards]. The returned list is ordered top-of-deck first (the next card
+  /// that would be drawn is element 0).
+  List<CardModel> scryReveal({int count = 1}) {
+    final player = currentPlayer;
+    if (player.drawPile.isEmpty && player.discardPile.isNotEmpty) {
+      player.drawPile.addAll(player.discardPile);
+      player.discardPile.clear();
+      player.drawPile.shuffle(_random);
+    }
+    final revealed = <CardModel>[];
+    // Top of deck (next draw) is the END of drawPile; iterate from the end.
+    for (int i = player.drawPile.length - 1;
+        i >= 0 && revealed.length < count;
+        i--) {
+      revealed.add(player.drawPile[i]);
+    }
+    return revealed;
+  }
+
+  /// Resolve a single revealed scry card (keeper_of_datic_vessels-style),
+  /// fulfilling a [ScryEffect] after the player chooses. [cardId] must name a
+  /// card currently on top of the draw pile (within the revealed window — here,
+  /// simply present in the draw pile). The disposition decides what [keep] does:
+  ///
+  /// - [ScryDisposition.drawOrDiscard]: keep → draw to hand; else → discard.
+  /// - [ScryDisposition.drawOrBanish]:  keep → draw to hand; else → banish.
+  /// - [ScryDisposition.toHand]:        keep → take to hand; else → leave on top
+  ///   (no state change).
+  ///
+  /// Returns false (no state change) if the card is not in the draw pile.
+  bool scryResolve(
+    String cardId, {
+    required bool keep,
+    ScryDisposition disposition = ScryDisposition.drawOrDiscard,
+  }) {
+    if (!_currentPlayerCanAct) return false;
+    final player = currentPlayer;
+
+    final index = player.drawPile.indexWhere((c) => c.id == cardId);
+    if (index == -1) return false;
+
+    switch (disposition) {
+      case ScryDisposition.drawOrDiscard:
+        final card = player.drawPile.removeAt(index);
+        if (keep) {
+          player.hand.add(card);
+        } else {
+          player.discardPile.add(card);
+        }
+        return true;
+      case ScryDisposition.drawOrBanish:
+        final card = player.drawPile.removeAt(index);
+        if (keep) {
+          player.hand.add(card);
+        } else {
+          removedFromGame.add(card);
+        }
+        return true;
+      case ScryDisposition.toHand:
+        if (!keep) return true; // leave on top, no change
+        final card = player.drawPile.removeAt(index);
+        player.hand.add(card);
+        return true;
+    }
   }
 
   /// Destroy every enemy champion (the [DestroyChampionEffect.all] variant).
@@ -388,6 +992,9 @@ class GameService {
     for (final player in players) {
       if (player.id == source.id) continue;
       if (player.championsInPlay.isEmpty) continue;
+      for (final champion in player.championsInPlay) {
+        _releaseUnderCards(player, champion.id);
+      }
       player.discardPile.addAll(player.championsInPlay);
       player.championsInPlay.clear();
     }
@@ -462,12 +1069,31 @@ class GameService {
           _drawCards(player, effect.count);
         case OpponentLosesHealthEffect():
           _applyOpponentHealthLoss(player, effect.amount);
+        case AllPlayersLoseHealthEffect():
+          _applyAllPlayersHealthLoss(player, effect.amount);
         case ChooseOneEffect():
           final idx = choiceIndex.clamp(0, effect.choices.length - 1);
           _resolveEffects(effect.choices[idx], player, sourceCard: sourceCard);
         case ConditionalPowerEffect():
           player.powerPool +=
               _evaluateCondition(effect.condition, player, sourceCard);
+        case ScalingResourceEffect():
+          final count = _evaluateScalingCount(
+            effect.condition,
+            effect.faction,
+            player,
+            sourceCard,
+          );
+          _gainResource(player, effect.resource, count * effect.perN);
+        case ConditionalEffect():
+          if (_evaluateGameCondition(effect.condition, player, sourceCard)) {
+            _resolveEffects(
+              effect.then,
+              player,
+              choiceIndex: choiceIndex,
+              sourceCard: sourceCard,
+            );
+          }
         case DestroyChampionEffect():
           if (effect.all) {
             _destroyAllEnemyChampions(player);
@@ -487,6 +1113,103 @@ class GameService {
         case ScrapFromCenterRowEffect():
           // Requires card selection — the player should call
           // scrapFromCenterRow() separately after this effect.
+          break;
+        case SelfBanishEffect():
+          _selfBanish(player, sourceCard);
+        case ResetChampionEffect():
+          // Requires champion selection — the player should call
+          // resetChampion() separately after this effect (deferred-selection).
+          break;
+        case RecruitFromCenterEffect():
+          // Requires center-row selection — the player should call
+          // recruitFromCenter() separately after this effect.
+          break;
+        case FastPlayFromCenterEffect():
+          // Requires center-row selection — the player should call
+          // fastPlayFromCenter() separately after this effect.
+          break;
+        case ScryEffect():
+          // Requires UI peek + per-card choice — the player should call
+          // scryReveal() then scryResolve() separately after this effect.
+          break;
+        case TreatFactionAsEffect():
+          // Turn-scoped: register the alias on the current player so faction
+          // matching (ally checks + faction-filtered scaling/conditions) treats
+          // `from` as `to` for the rest of this turn. Bidirectional adds the
+          // reverse mapping too. Cleared by resetTurnResources.
+          player.factionAliasesThisTurn
+              .add((from: effect.from, to: effect.to));
+          if (effect.bidirectional) {
+            player.factionAliasesThisTurn
+                .add((from: effect.to, to: effect.from));
+          }
+        case IgnoreShieldThisTurnEffect():
+          // Turn-scoped: this player's attacks ignore enemy champion shield for
+          // the destroy threshold this turn (see attackChampion). Cleared by
+          // resetTurnResources.
+          player.ignoresShieldThisTurn = true;
+        case AddStaticModifierEffect():
+          // Immediate: append the persistent modifier to the player's list. It
+          // stays for the rest of the game (wave-5a lifetime). Consulted by
+          // attackChampion / attackPlayer / buyCard / recruitFromCenter.
+          //
+          // When the source is a CHAMPION, its playEffects re-resolve every turn
+          // it is activated (activateChampion) — so we MUST stamp the modifier
+          // with the champion's id and add it only ONCE, else it accumulates a
+          // duplicate buff each turn (unbounded growth). Regular/mercenary
+          // sources resolve once per play, so they need no dedupe but are still
+          // stamped when a source card is known. A shieldPerCardUnder modifier
+          // is additionally SELF-scoped so _effectiveShield only buffs that
+          // champion (carmine_eclipse).
+          final stamped = effect.modifier.sourceChampionId == null &&
+                  sourceCard != null
+              ? StaticModifier(
+                  kind: effect.modifier.kind,
+                  amount: effect.modifier.amount,
+                  faction: effect.modifier.faction,
+                  cardType: effect.modifier.cardType,
+                  sourceChampionId: sourceCard.id,
+                )
+              : effect.modifier;
+          final alreadyApplied = stamped.sourceChampionId != null &&
+              player.staticModifiers.any((m) =>
+                  m.sourceChampionId == stamped.sourceChampionId &&
+                  m.kind == stamped.kind &&
+                  m.amount == stamped.amount &&
+                  m.faction == stamped.faction &&
+                  m.cardType == stamped.cardType);
+          if (!alreadyApplied) {
+            player.staticModifiers.add(stamped);
+          }
+        case TuckUnderChampionEffect():
+          // hand source: deferred-selection — the player calls
+          // tuckUnderChampion() after picking a champion + hand card.
+          // centerDeck source: immediate — tuck the top center-deck card under
+          // the in-flight champion (gene_scavs ambush).
+          if (effect.source == TuckSource.centerDeck && sourceCard != null) {
+            _tuckTopOfCenterDeck(player, sourceCard.id);
+          }
+        case CopyUnderCardsEffect():
+          // Re-resolve every under-card's effects for the in-flight champion
+          // (paradigm_the_archivist). When resolved via an activated ability the
+          // sourceCard IS the champion; otherwise the player calls
+          // copyUnderCards() with the champion id.
+          if (sourceCard != null &&
+              player.championsInPlay.any((c) => c.id == sourceCard.id)) {
+            copyUnderCards(sourceCard.id);
+          }
+        case OpponentDrawsEffect():
+          _eachOtherPlayerDraws(player, effect.count);
+        case OpponentDiscardsEffect():
+          _eachOtherPlayerDiscards(player, effect.count);
+        case CopyPlayedCardEffect():
+          // Requires selecting which previously-played card to copy — the player
+          // should call copyPlayedCard() separately after this effect.
+          break;
+        case CenterDeckScryEffect():
+          // Requires a center-deck peek + per-card disposition — the player
+          // should call centerDeckScryReveal() then centerDeckScryResolve()
+          // separately after this effect.
           break;
         case InfinityShardEffect():
           _resolveInfinityShard(player);
@@ -558,7 +1281,7 @@ class GameService {
     for (final other in player.playedThisTurn) {
       if (other.id == card.id) continue;
       if (_factionsMatch(cardFaction, card.countsAsAllFactions,
-          other.faction, other.countsAsAllFactions)) {
+          other.faction, other.countsAsAllFactions, aliasPlayer: player)) {
         return true;
       }
     }
@@ -567,7 +1290,7 @@ class GameService {
     for (final other in player.championsInPlay) {
       if (other.id == card.id) continue;
       if (_factionsMatch(cardFaction, card.countsAsAllFactions,
-          other.faction, other.countsAsAllFactions)) {
+          other.faction, other.countsAsAllFactions, aliasPlayer: player)) {
         return true;
       }
     }
@@ -577,23 +1300,94 @@ class GameService {
 
   /// Returns true if two cards' factions match for ally ability purposes.
   /// A card with countsAsAllFactions matches any non-none faction.
+  ///
+  /// [aliasPlayer], when supplied AND holding turn-scoped faction aliases
+  /// (set by [TreatFactionAsEffect]), canonicalizes both factions through that
+  /// player's [PlayerState.factionAliasesThisTurn] before comparing. When no
+  /// alias player is passed, or the player has no aliases (the common case),
+  /// behaviour is IDENTICAL to the un-aliased comparison — every existing call
+  /// site that omits [aliasPlayer] is unaffected.
   bool _factionsMatch(
     Faction factionA, bool allFactionsA,
-    Faction factionB, bool allFactionsB,
-  ) {
-    // If either is factionless and doesn't count as all factions, no match
+    Faction factionB, bool allFactionsB, {
+    PlayerState? aliasPlayer,
+  }) {
+    // If either is factionless and doesn't count as all factions, no match.
+    // (countsAsAllFactions and the none-faction guard are evaluated on the
+    // RAW factions, before aliasing — an alias only redirects a real faction
+    // to another real faction, it never grants/removes "all factions".)
     if (factionA == Faction.none && !allFactionsA) return false;
     if (factionB == Faction.none && !allFactionsB) return false;
 
     // If either counts as all factions, it matches any non-none faction
     if (allFactionsA || allFactionsB) return true;
 
-    return factionA == factionB;
+    // Fast path: identical factions always match (also the common no-alias
+    // case), with zero allocation.
+    if (factionA == factionB) return true;
+
+    // Alias-aware path. A `from -> to` alias means a `from` card ALSO counts as
+    // `to` (it keeps its own faction too). Two factions therefore match when
+    // their alias-expanded faction sets intersect. With no alias player / no
+    // aliases this loop is skipped entirely and we've already returned for the
+    // equal-faction case, so behaviour is identical to the original.
+    if (aliasPlayer == null || aliasPlayer.factionAliasesThisTurn.isEmpty) {
+      return false;
+    }
+    final setA = _aliasExpand(factionA, aliasPlayer);
+    final setB = _aliasExpand(factionB, aliasPlayer);
+    return setA.any(setB.contains);
+  }
+
+  /// The set of factions [faction] counts as given [player]'s turn-scoped
+  /// aliases: always itself, plus the `to` of any alias whose `from` is
+  /// [faction]. A single hop (aliases are not transitively chained); a
+  /// bidirectional alias already records both directions explicitly.
+  Set<Faction> _aliasExpand(Faction faction, PlayerState player) {
+    final set = {faction};
+    for (final alias in player.factionAliasesThisTurn) {
+      if (alias.from == faction) set.add(alias.to);
+    }
+    return set;
   }
 
   // -------------------------------------------------------------------------
   // Mastery threshold (Step 11)
   // -------------------------------------------------------------------------
+
+  /// Resolves a card's [CardModel.playEffects] together with its mastery
+  /// threshold, used by both [playCard] and [activateChampion].
+  ///
+  /// - When [CardModel.masteryReplaces] is true AND the card has a
+  ///   [CardModel.masteryThreshold] the player has reached, the
+  ///   [CardModel.masteryBonus] resolves INSTEAD OF [CardModel.playEffects].
+  /// - Otherwise (the legacy default), [CardModel.playEffects] resolve and the
+  ///   mastery bonus is checked ADDITIVELY on top via [_checkMasteryBonus].
+  void _resolvePlayOrMastery(
+    CardModel card,
+    PlayerState player, {
+    int choiceIndex = 0,
+  }) {
+    final thresholdMet = card.masteryThreshold != null &&
+        card.masteryBonus.isNotEmpty &&
+        player.mastery >= card.masteryThreshold!;
+
+    if (card.masteryReplaces && thresholdMet) {
+      // REPLACE: resolve the mastery bonus instead of the normal play effects,
+      // and do NOT additively check mastery again.
+      _resolveEffects(card.masteryBonus, player, sourceCard: card);
+      return;
+    }
+
+    // Default / additive path — unchanged from prior behavior.
+    _resolveEffects(
+      card.playEffects,
+      player,
+      choiceIndex: choiceIndex,
+      sourceCard: card,
+    );
+    _checkMasteryBonus(card, player);
+  }
 
   void _checkMasteryBonus(CardModel card, PlayerState player) {
     if (card.masteryThreshold == null) return;
@@ -622,6 +1416,216 @@ class GameService {
     _checkGameOver();
   }
 
+  /// Apply [amount] of direct health loss to EVERY player including [source]
+  /// (the controlling player). Bypasses guard/shield — a raw subtraction.
+  /// Mirrors the elimination/cleanup/game-over handling of
+  /// [_applyOpponentHealthLoss]. Used by [AllPlayersLoseHealthEffect].
+  void _applyAllPlayersHealthLoss(PlayerState source, int amount) {
+    if (amount <= 0) return;
+    for (final player in players) {
+      if (player.isEliminated) continue;
+      player.takeDamage(amount);
+      if (player.isEliminated) {
+        _cleanupEliminatedPlayer(player);
+      }
+    }
+    _checkGameOver();
+  }
+
+  /// Route [amount] of [resource] into the matching player pool. Negative or
+  /// zero amounts are no-ops for gem/power (additive) and clamped by the
+  /// underlying PlayerState helpers for mastery/health.
+  void _gainResource(PlayerState player, ScalingResource resource, int amount) {
+    switch (resource) {
+      case ScalingResource.power:
+        player.powerPool += amount;
+      case ScalingResource.gems:
+        player.gemPool += amount;
+      case ScalingResource.health:
+        player.heal(amount);
+      case ScalingResource.mastery:
+        player.addMastery(amount);
+    }
+  }
+
+  /// Counts the units a [ScalingResourceEffect] scales by. [filterFaction] is
+  /// the effect's explicit faction filter; when null the `perFaction*`
+  /// conditions fall back to the source card's faction (mirroring ally logic).
+  int _evaluateScalingCount(
+    ScalingCondition condition,
+    Faction? filterFaction,
+    PlayerState player,
+    CardModel? sourceCard,
+  ) {
+    // The four original conditions delegate to _evaluateCondition so behaviour
+    // is provably identical to ConditionalPowerEffect (regression guarantee).
+    switch (condition) {
+      case ScalingCondition.perChampionControlled:
+        return _evaluateCondition(
+            PowerCondition.perChampionControlled, player, sourceCard);
+      case ScalingCondition.perAllyPlayedThisTurn:
+        return _evaluateCondition(
+            PowerCondition.perAllyPlayedThisTurn, player, sourceCard);
+      case ScalingCondition.perFactionPlayedThisTurn:
+        return _evaluateCondition(
+            PowerCondition.perFactionPlayedThisTurn, player, sourceCard);
+      case ScalingCondition.perCardInDiscard:
+        return _evaluateCondition(
+            PowerCondition.perCardInDiscard, player, sourceCard);
+      case ScalingCondition.perFactionCardInDiscard:
+        final f = filterFaction ?? sourceCard?.faction;
+        if (f == null) return 0;
+        return player.discardPile
+            .where((c) => _factionsMatch(
+                f, false, c.faction, c.countsAsAllFactions,
+                aliasPlayer: player))
+            .length;
+      case ScalingCondition.perFactionChampionControlled:
+        final f = filterFaction ?? sourceCard?.faction;
+        if (f == null) return 0;
+        return player.championsInPlay
+            .where((c) => _factionsMatch(
+                f, false, c.faction, c.countsAsAllFactions,
+                aliasPlayer: player))
+            .length;
+      case ScalingCondition.perFactionCardPlayedThisTurn:
+        final f = filterFaction ?? sourceCard?.faction;
+        if (f == null) return 0;
+        return _countPlayedThisTurn(
+          player,
+          sourceCard,
+          (c) => _factionsMatch(f, false, c.faction, c.countsAsAllFactions,
+              aliasPlayer: player),
+        );
+      case ScalingCondition.perAllyWithShieldPlayedThisTurn:
+        final f = filterFaction ?? sourceCard?.faction;
+        if (f == null) return 0;
+        return _countPlayedThisTurn(
+          player,
+          sourceCard,
+          (c) =>
+              c.shield > 0 &&
+              _factionsMatch(f, false, c.faction, c.countsAsAllFactions,
+                  aliasPlayer: player),
+        );
+    }
+  }
+
+  /// Counts cards played this turn matching [test], skipping the in-flight
+  /// source card exactly once (mirrors the perAllyPlayedThisTurn skip).
+  int _countPlayedThisTurn(
+    PlayerState player,
+    CardModel? sourceCard,
+    bool Function(CardModel) test,
+  ) {
+    var count = 0;
+    var skippedSelf = false;
+    for (final played in player.cardsPlayedThisTurn) {
+      if (!skippedSelf &&
+          sourceCard != null &&
+          identical(played, sourceCard)) {
+        skippedSelf = true;
+        continue;
+      }
+      if (test(played)) count++;
+    }
+    return count;
+  }
+
+  /// Evaluates a [GameCondition] predicate against current game state.
+  /// [source] is the in-flight card (skipped via `identical` where the
+  /// existing per-ally counting does, so a card doesn't count itself).
+  bool _evaluateGameCondition(
+    GameCondition c,
+    PlayerState player,
+    CardModel? source,
+  ) {
+    switch (c.kind) {
+      case GameConditionKind.alliesOfFactionPlayed:
+        final f = c.faction ?? source?.faction;
+        if (f == null || f == Faction.none) return false;
+        final count = _countPlayedThisTurn(
+          player,
+          source,
+          (card) => _factionsMatch(f, false, card.faction,
+              card.countsAsAllFactions, aliasPlayer: player),
+        );
+        return count >= c.threshold;
+      case GameConditionKind.factionsPlayedAll:
+        if (c.factions.isEmpty) return false;
+        final played = <Faction>{
+          for (final card in player.cardsPlayedThisTurn)
+            if (card.faction != Faction.none) card.faction,
+        };
+        return c.factions.every(played.contains);
+      case GameConditionKind.distinctFactionsPlayed:
+        return _evaluateCondition(
+                PowerCondition.perFactionPlayedThisTurn, player, source) >=
+            c.threshold;
+      case GameConditionKind.cardTypePlayed:
+        final type = c.cardType;
+        if (type == null) return false;
+        final count = _countPlayedThisTurn(
+            player, source, (card) => card.cardType == type);
+        return count >= c.threshold;
+      case GameConditionKind.gemParityCardsPlayed:
+        final parity = c.parity ?? GemParity.even;
+        final count = _countPlayedThisTurn(
+          player,
+          source,
+          (card) => c.faction == null
+              ? true
+              : _factionsMatch(c.faction!, false, card.faction,
+                  card.countsAsAllFactions, aliasPlayer: player),
+        );
+        final isEven = count.isEven;
+        return parity == GemParity.even ? isEven : !isEven;
+      case GameConditionKind.filteredCardsPlayed:
+        final count = _countPlayedThisTurn(
+          player,
+          source,
+          (card) {
+            if (c.faction != null &&
+                !_factionsMatch(c.faction!, false, card.faction,
+                    card.countsAsAllFactions, aliasPlayer: player)) {
+              return false;
+            }
+            if (c.maxCost != null && card.cost > c.maxCost!) return false;
+            return true;
+          },
+        );
+        return count >= c.threshold;
+      case GameConditionKind.championsControlled:
+        return player.championsInPlay.length >= c.threshold;
+      case GameConditionKind.championsOfFactionControlled:
+        final f = c.faction ?? source?.faction;
+        if (f == null || f == Faction.none) return false;
+        final count = player.championsInPlay
+            .where((card) => _factionsMatch(
+                f, false, card.faction, card.countsAsAllFactions,
+                aliasPlayer: player))
+            .length;
+        return count >= c.threshold;
+      case GameConditionKind.masteryAtLeast:
+        return player.mastery >= c.threshold;
+      case GameConditionKind.sameFactionCountPlayed:
+        final f = c.faction ?? source?.faction;
+        if (f == null || f == Faction.none) return false;
+        // Count ALL same-faction cards played this turn INCLUDING the source.
+        final count = player.cardsPlayedThisTurn
+            .where((card) => _factionsMatch(
+                f, false, card.faction, card.countsAsAllFactions,
+                aliasPlayer: player))
+            .length;
+        return count >= c.threshold;
+      case GameConditionKind.isCharacter:
+        if (c.character == null) return false;
+        return player.character == c.character;
+      case GameConditionKind.unblockedDamageAtLeast:
+        return player.unblockedDamageThisTurn >= c.threshold;
+    }
+  }
+
   int _evaluateCondition(
     PowerCondition condition,
     PlayerState player,
@@ -647,6 +1651,7 @@ class GameService {
             sourceCard.countsAsAllFactions,
             played.faction,
             played.countsAsAllFactions,
+            aliasPlayer: player,
           )) {
             count++;
           }
@@ -784,5 +1789,11 @@ class GameService {
 
     removedFromGame.addAll(player.championsInPlay);
     player.championsInPlay.clear();
+
+    // Cards tucked under any of this player's champions also leave the game.
+    for (final under in player.cardsUnderChampion.values) {
+      removedFromGame.addAll(under);
+    }
+    player.cardsUnderChampion.clear();
   }
 }

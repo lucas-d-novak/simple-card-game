@@ -46,6 +46,50 @@ void main() {
       expect(r.model.masteryBonus.single, isA<GainPowerEffect>());
     });
 
+    test('masteryReplaces defaults to false when absent', () {
+      final db = CardDatabase.fromJsonString('''
+      {"version":1,"cards":[{
+        "id":"legacy_mastery","name":"Legacy","set":"base",
+        "masteryThreshold":15,
+        "playEffects":[{"type":"gainGems","amount":2}],
+        "masteryBonus":[{"type":"gainPower","amount":5}]
+      }]}
+      ''');
+      expect(db.byId('legacy_mastery')!.model.masteryReplaces, false);
+    });
+
+    test('decodes masteryReplaces: true', () {
+      final db = CardDatabase.fromJsonString('''
+      {"version":1,"cards":[{
+        "id":"replace_mastery","name":"Replace","set":"base",
+        "masteryThreshold":15,"masteryReplaces":true,
+        "playEffects":[{"type":"gainGems","amount":2}],
+        "masteryBonus":[{"type":"gainPower","amount":5}]
+      }]}
+      ''');
+      expect(db.byId('replace_mastery')!.model.masteryReplaces, true);
+    });
+
+    test('decodes an activatedAbility with mastery replace fields', () {
+      final db = CardDatabase.fromJsonString('''
+      {"version":1,"cards":[{
+        "id":"gian_shard_wyrm","name":"Shard Wyrm","set":"base",
+        "cardType":"champion","shield":4,
+        "playEffects":[{"type":"gainGems","amount":1}],
+        "activatedAbility":{
+          "effects":[{"type":"gainPower","amount":2},{"type":"gainMastery","amount":2}],
+          "masteryThreshold":15,
+          "masteryReplaces":true,
+          "masteryBonusEffects":[{"type":"gainPower","amount":5},{"type":"gainMastery","amount":5}]
+        }
+      }]}
+      ''');
+      final ability = db.byId('gian_shard_wyrm')!.model.activatedAbility!;
+      expect(ability.masteryThreshold, 15);
+      expect(ability.replaces, true);
+      expect(ability.masteryBonusEffects, hasLength(2));
+    });
+
     test('decodes a chooseOne effect with nested groups', () {
       final db = CardDatabase.fromJsonString('''
       {"version":1,"cards":[{

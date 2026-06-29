@@ -229,12 +229,29 @@ class DeckService {
         case GainMasteryEffect():
         case GainHealthEffect():
         case OpponentLosesHealthEffect():
+        case AllPlayersLoseHealthEffect():
         case BanishCardEffect():
         case ScrapFromCenterRowEffect():
+        case SelfBanishEffect():
+        case ResetChampionEffect():
+        case RecruitFromCenterEffect():
+        case FastPlayFromCenterEffect():
+        case ScryEffect():
         case DestroyChampionEffect():
         case ReturnFromDiscardEffect():
         case ChooseOneEffect():
         case ConditionalPowerEffect():
+        case ScalingResourceEffect():
+        case ConditionalEffect():
+        case TreatFactionAsEffect():
+        case IgnoreShieldThisTurnEffect():
+        case AddStaticModifierEffect():
+        case OpponentDrawsEffect():
+        case OpponentDiscardsEffect():
+        case CopyPlayedCardEffect():
+        case CenterDeckScryEffect():
+        case TuckUnderChampionEffect():
+        case CopyUnderCardsEffect():
         case InfinityShardEffect():
           break; // Handled by GameService, not DeckService
       }

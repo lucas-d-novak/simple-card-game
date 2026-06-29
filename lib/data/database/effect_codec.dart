@@ -1,4 +1,5 @@
 import 'package:simple_card_game/models/card_effect.dart';
+import 'package:simple_card_game/models/card_type.dart';
 import 'package:simple_card_game/models/faction.dart';
 
 /// Decodes the `playEffects` / `allyAbility` / `masteryBonus` JSON arrays from
@@ -29,6 +30,12 @@ List<CardEffect> decodeEffectList(dynamic raw) {
 /// `effects` is required and reuses the ordinary effect vocabulary. `cost` is
 /// optional; any of its `gems` / `mastery` / `health` keys default to 0
 /// (an absent `cost` means Exhaust-only).
+///
+/// Optional mastery scaling (all absent by default): `masteryThreshold` (int),
+/// `masteryBonusEffects` (effect array) and `masteryReplaces` (bool). When
+/// `masteryReplaces` is true and the threshold is met, the bonus effects
+/// resolve INSTEAD OF `effects`; otherwise additively. `masteryBonusEffects`,
+/// if present, must be a non-empty array.
 ActivatedAbility? decodeActivatedAbility(dynamic raw) {
   if (raw == null) return null;
   if (raw is! Map<String, dynamic>) {
@@ -39,9 +46,17 @@ ActivatedAbility? decodeActivatedAbility(dynamic raw) {
     throw const FormatException(
         'activatedAbility requires a non-empty "effects" array');
   }
+  final masteryBonusEffects = decodeEffectList(raw['masteryBonusEffects']);
+  if (raw.containsKey('masteryBonusEffects') && masteryBonusEffects.isEmpty) {
+    throw const FormatException(
+        'activatedAbility "masteryBonusEffects" must be a non-empty array');
+  }
   return ActivatedAbility(
     effects: effects,
     cost: _activationCost(raw['cost']),
+    masteryThreshold: _optNullInt(raw, 'masteryThreshold'),
+    masteryBonusEffects: masteryBonusEffects,
+    replaces: (raw['masteryReplaces'] as bool?) ?? false,
   );
 }
 
@@ -57,7 +72,8 @@ ActivationCost _activationCost(dynamic raw) {
   );
 }
 
-/// Encodes an [ActivatedAbility] back to its JSON map. Omits an all-zero cost.
+/// Encodes an [ActivatedAbility] back to its JSON map. Omits an all-zero cost
+/// and omits the mastery fields when the ability has no mastery threshold.
 Map<String, dynamic> encodeActivatedAbility(ActivatedAbility ability) {
   return {
     'effects': [for (final e in ability.effects) encodeEffect(e)],
@@ -67,6 +83,13 @@ Map<String, dynamic> encodeActivatedAbility(ActivatedAbility ability) {
         if (ability.cost.mastery != 0) 'mastery': ability.cost.mastery,
         if (ability.cost.health != 0) 'health': ability.cost.health,
       },
+    if (ability.masteryThreshold != null)
+      'masteryThreshold': ability.masteryThreshold,
+    if (ability.masteryBonusEffects.isNotEmpty)
+      'masteryBonusEffects': [
+        for (final e in ability.masteryBonusEffects) encodeEffect(e),
+      ],
+    if (ability.replaces) 'masteryReplaces': ability.replaces,
   };
 }
 
@@ -85,10 +108,33 @@ CardEffect decodeEffect(Map<String, dynamic> json) {
       return DrawCardsEffect(_int(json, 'count'));
     case 'opponentLosesHealth':
       return OpponentLosesHealthEffect(_int(json, 'amount'));
+    case 'allPlayersLoseHealth':
+      return AllPlayersLoseHealthEffect(_int(json, 'amount'));
     case 'banishCard':
       return BanishCardEffect(_banishSource(json['source'] as String?));
     case 'scrapFromCenterRow':
       return const ScrapFromCenterRowEffect();
+    case 'selfBanish':
+      return const SelfBanishEffect();
+    case 'resetChampion':
+      return const ResetChampionEffect();
+    case 'recruitFromCenter':
+      return RecruitFromCenterEffect(
+        maxCost: json.containsKey('maxCost') ? _int(json, 'maxCost') : null,
+        free: (json['free'] as bool?) ?? false,
+        toHand: (json['toHand'] as bool?) ?? false,
+        toTopOfDeck: (json['toTopOfDeck'] as bool?) ?? false,
+      );
+    case 'fastPlayFromCenter':
+      return FastPlayFromCenterEffect(
+        maxCost: json.containsKey('maxCost') ? _int(json, 'maxCost') : null,
+        alliesOnly: (json['alliesOnly'] as bool?) ?? false,
+      );
+    case 'scry':
+      return ScryEffect(
+        count: json.containsKey('count') ? _int(json, 'count') : 1,
+        disposition: _scryDisposition(json['disposition'] as String?),
+      );
     case 'destroyChampion':
       return DestroyChampionEffect(all: (json['all'] as bool?) ?? false);
     case 'returnFromDiscard':
@@ -101,6 +147,65 @@ CardEffect decodeEffect(Map<String, dynamic> json) {
       );
     case 'conditionalPower':
       return ConditionalPowerEffect(_powerCondition(json['condition'] as String?));
+    case 'scalingResource':
+      return ScalingResourceEffect(
+        resource: _scalingResource(json['resource'] as String?),
+        condition: _scalingCondition(json['condition'] as String?),
+        perN: json.containsKey('perN') ? _int(json, 'perN') : 1,
+        faction: json['faction'] != null
+            ? _faction(json['faction'] as String?)
+            : null,
+      );
+    case 'conditional':
+      final then = json['then'];
+      if (then is! List) {
+        throw const FormatException('conditional requires a "then" array');
+      }
+      return ConditionalEffect(
+        condition: _gameCondition(json['condition']),
+        then: decodeEffectList(then),
+      );
+    case 'treatFactionAs':
+      return TreatFactionAsEffect(
+        from: _faction(json['from'] as String?),
+        to: _faction(json['to'] as String?),
+        bidirectional: (json['bidirectional'] as bool?) ?? false,
+      );
+    case 'ignoreShieldThisTurn':
+      return const IgnoreShieldThisTurnEffect();
+    case 'addStaticModifier':
+      return AddStaticModifierEffect(StaticModifier(
+        kind: _staticModifierKind(json['kind'] as String?),
+        amount: json.containsKey('amount') ? _int(json, 'amount') : 0,
+        faction: json['faction'] != null
+            ? _faction(json['faction'] as String?)
+            : null,
+        cardType: _cardType(json['cardType'] as String?),
+        sourceChampionId: json['sourceChampionId'] as String?,
+      ));
+    case 'opponentDraws':
+      return OpponentDrawsEffect(
+        count: json.containsKey('count') ? _int(json, 'count') : 1,
+      );
+    case 'opponentDiscards':
+      return OpponentDiscardsEffect(
+        count: json.containsKey('count') ? _int(json, 'count') : 1,
+      );
+    case 'copyPlayedCard':
+      return CopyPlayedCardEffect(
+        filter: _copyFilter(json['filter'] as String?),
+      );
+    case 'centerDeckScry':
+      return CenterDeckScryEffect(
+        disposition: _centerScryDisposition(json['disposition'] as String?),
+      );
+    case 'tuckUnderChampion':
+      return TuckUnderChampionEffect(
+        source: _tuckSource(json['source'] as String?),
+        alliesOnly: (json['alliesOnly'] as bool?) ?? false,
+      );
+    case 'copyUnderCards':
+      return const CopyUnderCardsEffect();
     case 'infinityShard':
       return const InfinityShardEffect();
     case 'chooseOne':
@@ -131,10 +236,37 @@ Map<String, dynamic> encodeEffect(CardEffect effect) {
       return {'type': 'drawCards', 'count': effect.count};
     case OpponentLosesHealthEffect():
       return {'type': 'opponentLosesHealth', 'amount': effect.amount};
+    case AllPlayersLoseHealthEffect():
+      return {'type': 'allPlayersLoseHealth', 'amount': effect.amount};
     case BanishCardEffect():
       return {'type': 'banishCard', 'source': effect.source.name};
     case ScrapFromCenterRowEffect():
       return {'type': 'scrapFromCenterRow'};
+    case SelfBanishEffect():
+      return {'type': 'selfBanish'};
+    case ResetChampionEffect():
+      return {'type': 'resetChampion'};
+    case RecruitFromCenterEffect():
+      return {
+        'type': 'recruitFromCenter',
+        if (effect.maxCost != null) 'maxCost': effect.maxCost,
+        if (effect.free) 'free': true,
+        if (effect.toHand) 'toHand': true,
+        if (effect.toTopOfDeck) 'toTopOfDeck': true,
+      };
+    case FastPlayFromCenterEffect():
+      return {
+        'type': 'fastPlayFromCenter',
+        if (effect.maxCost != null) 'maxCost': effect.maxCost,
+        if (effect.alliesOnly) 'alliesOnly': true,
+      };
+    case ScryEffect():
+      return {
+        'type': 'scry',
+        if (effect.count != 1) 'count': effect.count,
+        if (effect.disposition != ScryDisposition.drawOrDiscard)
+          'disposition': effect.disposition.name,
+      };
     case DestroyChampionEffect():
       return {'type': 'destroyChampion', 'all': effect.all};
     case ReturnFromDiscardEffect():
@@ -145,6 +277,65 @@ Map<String, dynamic> encodeEffect(CardEffect effect) {
       };
     case ConditionalPowerEffect():
       return {'type': 'conditionalPower', 'condition': effect.condition.name};
+    case ScalingResourceEffect():
+      return {
+        'type': 'scalingResource',
+        'resource': effect.resource.name,
+        'condition': effect.condition.name,
+        if (effect.perN != 1) 'perN': effect.perN,
+        if (effect.faction != null) 'faction': effect.faction!.name,
+      };
+    case ConditionalEffect():
+      return {
+        'type': 'conditional',
+        'condition': _encodeGameCondition(effect.condition),
+        'then': [for (final e in effect.then) encodeEffect(e)],
+      };
+    case TreatFactionAsEffect():
+      return {
+        'type': 'treatFactionAs',
+        'from': effect.from.name,
+        'to': effect.to.name,
+        if (effect.bidirectional) 'bidirectional': true,
+      };
+    case IgnoreShieldThisTurnEffect():
+      return {'type': 'ignoreShieldThisTurn'};
+    case AddStaticModifierEffect():
+      final m = effect.modifier;
+      return {
+        'type': 'addStaticModifier',
+        'kind': m.kind.name,
+        if (m.amount != 0) 'amount': m.amount,
+        if (m.faction != null) 'faction': m.faction!.name,
+        if (m.cardType != null) 'cardType': m.cardType!.name,
+        if (m.sourceChampionId != null)
+          'sourceChampionId': m.sourceChampionId,
+      };
+    case OpponentDrawsEffect():
+      return {
+        'type': 'opponentDraws',
+        if (effect.count != 1) 'count': effect.count,
+      };
+    case OpponentDiscardsEffect():
+      return {
+        'type': 'opponentDiscards',
+        if (effect.count != 1) 'count': effect.count,
+      };
+    case CopyPlayedCardEffect():
+      return {'type': 'copyPlayedCard', 'filter': effect.filter.name};
+    case CenterDeckScryEffect():
+      return {
+        'type': 'centerDeckScry',
+        'disposition': effect.disposition.name,
+      };
+    case TuckUnderChampionEffect():
+      return {
+        'type': 'tuckUnderChampion',
+        if (effect.source != TuckSource.hand) 'source': effect.source.name,
+        if (effect.alliesOnly) 'alliesOnly': true,
+      };
+    case CopyUnderCardsEffect():
+      return {'type': 'copyUnderCards'};
     case InfinityShardEffect():
       return {'type': 'infinityShard'};
     case ChooseOneEffect():
@@ -176,6 +367,16 @@ int _optInt(Map<String, dynamic> json, String key) {
   throw FormatException('activation cost "$key" must be an integer');
 }
 
+/// Reads an optional integer key, returning null when absent. Throws if present
+/// but not an integer. Used for the optional `masteryThreshold` of an
+/// [ActivatedAbility].
+int? _optNullInt(Map<String, dynamic> json, String key) {
+  final v = json[key];
+  if (v == null) return null;
+  if (v is int) return v;
+  throw FormatException('"$key" must be an integer');
+}
+
 BanishSource _banishSource(String? raw) {
   switch (raw) {
     case 'hand':
@@ -203,6 +404,168 @@ PowerCondition _powerCondition(String? raw) {
       return PowerCondition.perCardInDiscard;
     default:
       throw FormatException('unknown power condition: $raw');
+  }
+}
+
+ScalingResource _scalingResource(String? raw) {
+  switch (raw) {
+    case 'power':
+    case null:
+      return ScalingResource.power;
+    case 'gems':
+      return ScalingResource.gems;
+    case 'health':
+      return ScalingResource.health;
+    case 'mastery':
+      return ScalingResource.mastery;
+    default:
+      throw FormatException('unknown scaling resource: $raw');
+  }
+}
+
+ScalingCondition _scalingCondition(String? raw) {
+  for (final v in ScalingCondition.values) {
+    if (v.name == raw) return v;
+  }
+  if (raw == null) return ScalingCondition.perChampionControlled;
+  throw FormatException('unknown scaling condition: $raw');
+}
+
+/// Decodes a [GameCondition] from its JSON object. The `kind` string selects the
+/// predicate; remaining keys parameterise it. Unknown kind -> FormatException.
+GameCondition _gameCondition(dynamic raw) {
+  if (raw is! Map<String, dynamic>) {
+    throw const FormatException('conditional requires a "condition" object');
+  }
+  final kindStr = raw['kind'] as String?;
+  GameConditionKind? kind;
+  for (final v in GameConditionKind.values) {
+    if (v.name == kindStr) {
+      kind = v;
+      break;
+    }
+  }
+  if (kind == null) {
+    throw FormatException('unknown game condition kind: $kindStr');
+  }
+  return GameCondition(
+    kind: kind,
+    threshold: raw.containsKey('threshold') ? _int(raw, 'threshold') : 1,
+    faction: raw['faction'] != null ? _faction(raw['faction'] as String?) : null,
+    factions: raw['factions'] is List
+        ? [for (final f in raw['factions'] as List) _faction(f as String?)]
+        : const [],
+    parity: _gemParity(raw['parity'] as String?),
+    cardType: _cardType(raw['cardType'] as String?),
+    maxCost: raw.containsKey('maxCost') ? _int(raw, 'maxCost') : null,
+    character: _character(raw['character'] as String?),
+  );
+}
+
+Map<String, dynamic> _encodeGameCondition(GameCondition c) {
+  return {
+    'kind': c.kind.name,
+    if (c.threshold != 1) 'threshold': c.threshold,
+    if (c.faction != null) 'faction': c.faction!.name,
+    if (c.factions.isNotEmpty)
+      'factions': [for (final f in c.factions) f.name],
+    if (c.parity != null) 'parity': c.parity!.name,
+    if (c.cardType != null) 'cardType': c.cardType!.name,
+    if (c.maxCost != null) 'maxCost': c.maxCost,
+    if (c.character != null) 'character': c.character!.name,
+  };
+}
+
+GemParity? _gemParity(String? raw) {
+  switch (raw) {
+    case null:
+      return null;
+    case 'even':
+      return GemParity.even;
+    case 'odd':
+      return GemParity.odd;
+    default:
+      throw FormatException('unknown gem parity: $raw');
+  }
+}
+
+CardType? _cardType(String? raw) {
+  switch (raw) {
+    case null:
+      return null;
+    case 'regular':
+      return CardType.regular;
+    case 'champion':
+      return CardType.champion;
+    case 'mercenary':
+      return CardType.mercenary;
+    default:
+      throw FormatException('unknown card type: $raw');
+  }
+}
+
+Character? _character(String? raw) {
+  if (raw == null) return null;
+  for (final v in Character.values) {
+    if (v.name == raw) return v;
+  }
+  throw FormatException('unknown character: $raw');
+}
+
+StaticModifierKind _staticModifierKind(String? raw) {
+  for (final v in StaticModifierKind.values) {
+    if (v.name == raw) return v;
+  }
+  throw FormatException('unknown static modifier kind: $raw');
+}
+
+CopyFilter _copyFilter(String? raw) {
+  switch (raw) {
+    case 'nonChampion':
+    case null:
+      return CopyFilter.nonChampion;
+    case 'any':
+      return CopyFilter.any;
+    default:
+      throw FormatException('unknown copy filter: $raw');
+  }
+}
+
+TuckSource _tuckSource(String? raw) {
+  switch (raw) {
+    case 'hand':
+    case null:
+      return TuckSource.hand;
+    case 'centerDeck':
+      return TuckSource.centerDeck;
+    default:
+      throw FormatException('unknown tuck source: $raw');
+  }
+}
+
+CenterScryDisposition _centerScryDisposition(String? raw) {
+  switch (raw) {
+    case 'acquire':
+    case null:
+      return CenterScryDisposition.acquire;
+    case 'toHandLosePowerEqualToCost':
+      return CenterScryDisposition.toHandLosePowerEqualToCost;
+    default:
+      throw FormatException('unknown center scry disposition: $raw');
+  }
+}
+
+ScryDisposition _scryDisposition(String? raw) {
+  switch (raw) {
+    case 'drawOrDiscard':
+    case null:
+      return ScryDisposition.drawOrDiscard;
+    case 'drawOrBanish':
+      return ScryDisposition.drawOrBanish;
+    case 'toHand':
+      return ScryDisposition.toHand;
+    default:
+      throw FormatException('unknown scry disposition: $raw');
   }
 }
 

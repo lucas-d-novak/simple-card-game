@@ -2427,4 +2427,962 @@ void main() {
       expect(game.currentPlayer.powerPool, 2);
     });
   });
+
+  // -------------------------------------------------------------------------
+  // Wave 1 — mastery REPLACE (vs additive) behavior
+  // -------------------------------------------------------------------------
+  group('mastery replace vs additive', () {
+    // A card that normally gives 2 gems but, at mastery 15, gives 5 power.
+    CardModel replaceCard() => const CardModel(
+          id: 'test_replace',
+          name: 'Replace Card',
+          cost: 0,
+          playEffects: [GainGemsEffect(2)],
+          masteryThreshold: 15,
+          masteryBonus: [GainPowerEffect(5)],
+          masteryReplaces: true,
+        );
+
+    // Same effects, but additive (the legacy default).
+    CardModel additiveCard() => const CardModel(
+          id: 'test_additive',
+          name: 'Additive Card',
+          cost: 0,
+          playEffects: [GainGemsEffect(2)],
+          masteryThreshold: 15,
+          masteryBonus: [GainPowerEffect(5)],
+          // masteryReplaces defaults to false
+        );
+
+    test('REPLACE below threshold: playEffects resolve, bonus does NOT', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.mastery = 10; // below 15
+      player.hand.add(replaceCard());
+
+      game.playCard('test_replace');
+
+      expect(player.gemPool, 2, reason: 'playEffects resolved');
+      expect(player.powerPool, 0, reason: 'mastery bonus did NOT resolve');
+    });
+
+    test('REPLACE at/above threshold: bonus resolves INSTEAD of playEffects',
+        () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.mastery = 15; // at threshold
+      player.hand.add(replaceCard());
+
+      game.playCard('test_replace');
+
+      // The distinguishing assertion: playEffects were SKIPPED.
+      expect(player.gemPool, 0, reason: 'playEffects did NOT resolve');
+      expect(player.powerPool, 5, reason: 'mastery bonus resolved instead');
+    });
+
+    test('ADDITIVE default below threshold is unchanged (playEffects only)',
+        () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.mastery = 10;
+      player.hand.add(additiveCard());
+
+      game.playCard('test_additive');
+
+      expect(player.gemPool, 2);
+      expect(player.powerPool, 0);
+    });
+
+    test('ADDITIVE default at threshold is unchanged (BOTH resolve)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.mastery = 15;
+      player.hand.add(additiveCard());
+
+      game.playCard('test_additive');
+
+      // Proves the default behavior is untouched: playEffects AND bonus.
+      expect(player.gemPool, 2, reason: 'playEffects still resolve');
+      expect(player.powerPool, 5, reason: 'mastery bonus added on top');
+    });
+
+    // Wave 1 review follow-up: masteryReplaces=true is meaningless without a
+    // bonus to replace WITH; it must degrade safely to playEffects rather than
+    // resolving nothing.
+    test('REPLACE with empty masteryBonus degrades to playEffects at threshold',
+        () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.mastery = 30; // well above any threshold
+      player.hand.add(const CardModel(
+        id: 'test_replace_empty',
+        name: 'Replace Empty',
+        cost: 0,
+        playEffects: [GainGemsEffect(2)],
+        masteryThreshold: 15,
+        masteryBonus: [], // nothing to replace with
+        masteryReplaces: true,
+      ));
+
+      game.playCard('test_replace_empty');
+
+      // Did NOT silently resolve nothing — playEffects still ran.
+      expect(player.gemPool, 2, reason: 'falls back to playEffects');
+      expect(player.powerPool, 0);
+    });
+
+    test('REPLACE applies to champion free activation too', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.mastery = 15;
+      const champ = CardModel(
+        id: 'test_replace_champ',
+        name: 'Replace Champ',
+        cost: 0,
+        cardType: CardType.champion,
+        shield: 3,
+        playEffects: [GainGemsEffect(2)],
+        masteryThreshold: 15,
+        masteryBonus: [GainPowerEffect(5)],
+        masteryReplaces: true,
+      );
+      player.hand.add(champ);
+      game.playCard('test_replace_champ'); // deploy resolves replace once
+
+      expect(player.gemPool, 0);
+      expect(player.powerPool, 5);
+
+      // Free activation a fresh turn would also replace; simulate by reusing.
+      player.activatedChampions.clear();
+      player.gemPool = 0;
+      player.powerPool = 0;
+      expect(game.activateChampion('test_replace_champ'), true);
+      expect(player.gemPool, 0);
+      expect(player.powerPool, 5);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Wave 1 — ActivatedAbility mastery replace / additive
+  // -------------------------------------------------------------------------
+  group('activated ability mastery tier', () {
+    CardModel wyrm({required bool replaces}) => CardModel(
+          id: 'test_wyrm',
+          name: 'Shard Wyrm',
+          cost: 0,
+          cardType: CardType.champion,
+          shield: 4,
+          playEffects: const [GainGemsEffect(1)],
+          activatedAbility: ActivatedAbility(
+            effects: const [GainPowerEffect(2), GainMasteryEffect(2)],
+            masteryThreshold: 15,
+            masteryBonusEffects: const [
+              GainPowerEffect(5),
+              GainMasteryEffect(5),
+            ],
+            replaces: replaces,
+          ),
+        );
+
+    test('below threshold: base effects resolve, bonus does NOT', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.hand.add(wyrm(replaces: true));
+      game.playCard('test_wyrm');
+      player.mastery = 10; // below 15 (play gave none; set after deploy)
+
+      expect(game.useActivatedAbility('test_wyrm'), true);
+      expect(player.powerPool, 2, reason: 'base 2 power');
+      expect(player.mastery, 12, reason: '10 + base 2 mastery');
+    });
+
+    test('REPLACE at threshold: bonus resolves INSTEAD of base', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.hand.add(wyrm(replaces: true));
+      game.playCard('test_wyrm');
+      player.mastery = 15;
+
+      expect(game.useActivatedAbility('test_wyrm'), true);
+      // Distinguishing: base (2/2) skipped, bonus (5/5) instead.
+      expect(player.powerPool, 5);
+      expect(player.mastery, 20, reason: '15 + bonus 5 (NOT base 2)');
+    });
+
+    test('ADDITIVE at threshold: base AND bonus both resolve', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.hand.add(wyrm(replaces: false));
+      game.playCard('test_wyrm');
+      player.mastery = 15;
+
+      expect(game.useActivatedAbility('test_wyrm'), true);
+      expect(player.powerPool, 7, reason: 'base 2 + bonus 5');
+      expect(player.mastery, 22, reason: '15 + base 2 + bonus 5');
+    });
+
+    test('plain ability with no mastery fields is unaffected', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.mastery = 30;
+      const plain = CardModel(
+        id: 'test_plain_exh',
+        name: 'Plain Exhaust',
+        cost: 0,
+        cardType: CardType.champion,
+        shield: 2,
+        playEffects: [GainGemsEffect(1)],
+        activatedAbility: ActivatedAbility(effects: [GainPowerEffect(3)]),
+      );
+      player.hand.add(plain);
+      game.playCard('test_plain_exh');
+
+      expect(game.useActivatedAbility('test_plain_exh'), true);
+      expect(player.powerPool, 3);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Engine Phase 2 — Wave 2 (self-contained leaf effects)
+  // -------------------------------------------------------------------------
+
+  group('Wave 2: SelfBanishEffect', () {
+    test('regular card banishes itself after resolving its other effects', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      const card = CardModel(
+        id: 'aion_guide',
+        name: 'Aion Guide',
+        cost: 0,
+        playEffects: [GainGemsEffect(3), SelfBanishEffect()],
+      );
+      player.hand.add(card);
+
+      expect(game.playCard('aion_guide'), true);
+      // Other effect still resolved.
+      expect(player.gemPool, 3);
+      // Source moved to removedFromGame, not lingering in any zone.
+      expect(game.removedFromGame.map((c) => c.id), contains('aion_guide'));
+      expect(player.playedThisTurn.any((c) => c.id == 'aion_guide'), false);
+      expect(player.cardsPlayedThisTurn.any((c) => c.id == 'aion_guide'),
+          false);
+    });
+
+    test('self-banished card is NOT discarded after endTurn', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      const card = CardModel(
+        id: 'wandering_ghost',
+        name: 'Wandering Ghost',
+        cost: 0,
+        playEffects: [GainPowerEffect(2), SelfBanishEffect()],
+      );
+      player.hand.add(card);
+      game.playCard('wandering_ghost');
+
+      game.endTurn();
+
+      expect(game.removedFromGame.map((c) => c.id), contains('wandering_ghost'));
+      expect(player.discardPile.any((c) => c.id == 'wandering_ghost'), false);
+    });
+
+    test('champion source self-banishes out of championsInPlay', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      const champ = CardModel(
+        id: 'ghost_champ',
+        name: 'Ghost Champion',
+        cost: 0,
+        cardType: CardType.champion,
+        shield: 2,
+        playEffects: [GainGemsEffect(1), SelfBanishEffect()],
+      );
+      player.hand.add(champ);
+      game.playCard('ghost_champ');
+
+      expect(player.gemPool, 1);
+      expect(player.championsInPlay.any((c) => c.id == 'ghost_champ'), false);
+      expect(game.removedFromGame.map((c) => c.id), contains('ghost_champ'));
+    });
+  });
+
+  group('Wave 2: ResetChampionEffect / resetChampion()', () {
+    CardModel exhaustChampion(String id) => CardModel(
+          id: id,
+          name: id,
+          cost: 0,
+          playEffects: const [],
+          cardType: CardType.champion,
+          shield: 3,
+          activatedAbility:
+              const ActivatedAbility(effects: [GainPowerEffect(1)]),
+        );
+
+    test('reset un-exhausts a champion so it is usable again same turn', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.hand.add(exhaustChampion('reset_me'));
+      game.playCard('reset_me');
+
+      // Exhaust it.
+      expect(game.useActivatedAbility('reset_me'), true);
+      expect(player.powerPool, 1);
+      expect(player.exhaustedChampions, contains('reset_me'));
+      // Cannot reuse while exhausted.
+      expect(game.useActivatedAbility('reset_me'), false);
+
+      // Reset it.
+      expect(game.resetChampion('reset_me'), true);
+      expect(player.exhaustedChampions, isEmpty);
+
+      // Usable again this same turn.
+      expect(game.useActivatedAbility('reset_me'), true);
+      expect(player.powerPool, 2);
+    });
+
+    test('resetChampion rejects a champion that is not exhausted', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.hand.add(exhaustChampion('not_exhausted'));
+      game.playCard('not_exhausted');
+
+      expect(game.resetChampion('not_exhausted'), false);
+    });
+
+    test('resetChampion rejects a champion the player does not control', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      // p1 owns and exhausts a champion; p0 (current) cannot reset it.
+      final p1 = game.players[1];
+      p1.championsInPlay.add(exhaustChampion('enemy_champ'));
+      p1.exhaustedChampions.add('enemy_champ');
+
+      expect(game.resetChampion('enemy_champ'), false);
+      expect(p1.exhaustedChampions, contains('enemy_champ'));
+    });
+
+    test('ResetChampionEffect is a no-op during resolution (deferred)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.championsInPlay.add(exhaustChampion('deferred_champ'));
+      player.exhaustedChampions.add('deferred_champ');
+      const card = CardModel(
+        id: 'g_48',
+        name: 'g_48',
+        cost: 0,
+        playEffects: [ResetChampionEffect()],
+      );
+      player.hand.add(card);
+
+      game.playCard('g_48');
+      // Effect alone does not reset — selection is deferred to resetChampion().
+      expect(player.exhaustedChampions, contains('deferred_champ'));
+    });
+  });
+
+  group('Wave 2: AllPlayersLoseHealthEffect', () {
+    test('every player including the current one loses N health', () {
+      final game = GameService(playerCount: 3, random: Random(7));
+      final player = game.currentPlayer;
+      const card = CardModel(
+        id: 'bound_for_life',
+        name: 'Bound For Life',
+        cost: 0,
+        playEffects: [AllPlayersLoseHealthEffect(4)],
+      );
+      player.hand.add(card);
+
+      game.playCard('bound_for_life');
+
+      for (final p in game.players) {
+        expect(p.health, 46);
+      }
+    });
+
+    test('triggers game over when an opponent hits 0', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      game.players[1].health = 5;
+      player.health = 40;
+      const card = CardModel(
+        id: 'bound_for_life_lethal',
+        name: 'Bound For Life',
+        cost: 0,
+        playEffects: [AllPlayersLoseHealthEffect(5)],
+      );
+      player.hand.add(card);
+
+      game.playCard('bound_for_life_lethal');
+
+      expect(game.players[1].isEliminated, true);
+      expect(game.isGameOver, true);
+      expect(game.winnerId, 'p0');
+      expect(player.health, 35);
+    });
+
+    // Wave 2 combat-reviewer fix: a player who self-eliminates via
+    // AllPlayersLoseHealth (the only effect that can kill the acting player)
+    // must not keep acting. The game continues (>=2 others alive); the dead
+    // player can no longer play/buy/attack, and endTurn hands off to a live one.
+    test('current player self-eliminating cannot keep acting (3-player)', () {
+      final game = GameService(playerCount: 3, random: Random(7));
+      final p0 = game.currentPlayer;
+      p0.health = 4; // lethal to self
+      p0.hand.add(const CardModel(
+        id: 'self_kill',
+        name: 'Bound For Life',
+        cost: 0,
+        playEffects: [AllPlayersLoseHealthEffect(5)],
+      ));
+      // Give p0 something else to attempt afterwards.
+      p0.powerPool = 10;
+
+      game.playCard('self_kill');
+
+      expect(p0.isEliminated, true, reason: 'self-eliminated');
+      expect(game.isGameOver, false, reason: 'two others still alive');
+      // The dead current player must not be able to act.
+      expect(game.attackPlayer('p1', 5), false, reason: 'dead cannot attack');
+      p0.hand.add(const CardModel(
+          id: 'x', name: 'x', cost: 0, playEffects: [GainGemsEffect(1)]));
+      expect(game.playCard('x'), false, reason: 'dead cannot play');
+      // endTurn is the recovery path: hands control to a live player.
+      game.endTurn();
+      expect(game.currentPlayer.isEliminated, false,
+          reason: 'control passed to a live player');
+    });
+
+    test('multiple players eliminated in one resolution -> game over', () {
+      final game = GameService(playerCount: 3, random: Random(7));
+      final p0 = game.currentPlayer;
+      game.players[1].health = 3;
+      game.players[2].health = 3;
+      p0.health = 40;
+      p0.hand.add(const CardModel(
+        id: 'wipe',
+        name: 'Bound For Life',
+        cost: 0,
+        playEffects: [AllPlayersLoseHealthEffect(5)],
+      ));
+
+      game.playCard('wipe');
+
+      expect(game.players[1].isEliminated, true);
+      expect(game.players[2].isEliminated, true);
+      expect(game.isGameOver, true, reason: 'only p0 remains');
+      expect(game.winnerId, 'p0');
+    });
+  });
+
+  group('Wave 2: unblockedDamageThisTurn counter + condition', () {
+    test('attackPlayer increments unblockedDamageThisTurn by damage dealt', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final p0 = game.currentPlayer;
+      p0.powerPool = 10;
+
+      expect(p0.unblockedDamageThisTurn, 0);
+      expect(game.attackPlayer('p1', 3), true);
+      expect(p0.unblockedDamageThisTurn, 3);
+      expect(game.attackPlayer('p1', 4), true);
+      expect(p0.unblockedDamageThisTurn, 7);
+    });
+
+    test('counter resets on the next turn', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final p0 = game.currentPlayer;
+      p0.powerPool = 10;
+      game.attackPlayer('p1', 5);
+      expect(p0.unblockedDamageThisTurn, 5);
+
+      game.endTurn(); // p0 -> p1 (resets p0)
+      expect(p0.unblockedDamageThisTurn, 0);
+    });
+
+    // Wave 2 combat-reviewer #3: each player's counter is independent and
+    // resets on THEIR own turn boundary, not anyone else's.
+    test('each player counter resets on their own turn (multiplayer)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final p0 = game.currentPlayer;
+      p0.powerPool = 10;
+      game.attackPlayer('p1', 4);
+      expect(p0.unblockedDamageThisTurn, 4);
+
+      game.endTurn(); // now p1's turn; p0 was reset
+      final p1 = game.currentPlayer;
+      expect(p1.id, 'p1');
+      expect(p0.unblockedDamageThisTurn, 0, reason: 'p0 reset on its endTurn');
+      p1.powerPool = 10;
+      game.attackPlayer('p0', 6);
+      expect(p1.unblockedDamageThisTurn, 6, reason: 'p1 counts independently');
+
+      game.endTurn(); // back to p0; p1 reset
+      expect(p1.unblockedDamageThisTurn, 0, reason: 'p1 reset on its endTurn');
+    });
+
+    test('unblockedDamageAtLeast condition met after enough damage', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final p0 = game.currentPlayer;
+      p0.powerPool = 10;
+      game.attackPlayer('p1', 5);
+
+      const card = CardModel(
+        id: 'blood_for_blood',
+        name: 'Blood For Blood',
+        cost: 0,
+        playEffects: [
+          ConditionalEffect(
+            condition: GameCondition(
+              kind: GameConditionKind.unblockedDamageAtLeast,
+              threshold: 5,
+            ),
+            then: [GainPowerEffect(3)],
+          ),
+        ],
+      );
+      p0.hand.add(card);
+      game.playCard('blood_for_blood');
+
+      // 10 power - 5 spent attacking + 3 from the met condition.
+      expect(p0.powerPool, 8);
+    });
+
+    test('unblockedDamageAtLeast condition NOT met below threshold', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final p0 = game.currentPlayer;
+      p0.powerPool = 10;
+      game.attackPlayer('p1', 2); // only 2 unblocked
+
+      const card = CardModel(
+        id: 'blood_for_blood_2',
+        name: 'Blood For Blood',
+        cost: 0,
+        playEffects: [
+          ConditionalEffect(
+            condition: GameCondition(
+              kind: GameConditionKind.unblockedDamageAtLeast,
+              threshold: 5,
+            ),
+            then: [GainPowerEffect(3)],
+          ),
+        ],
+      );
+      p0.hand.add(card);
+      game.playCard('blood_for_blood_2');
+
+      // 10 - 2 spent, condition not met so no bonus.
+      expect(p0.powerPool, 8);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Engine Phase 2 — Wave 3 (deferred-selection action effects)
+  // -------------------------------------------------------------------------
+
+  group('Wave 3: RecruitFromCenterEffect / recruitFromCenter()', () {
+    // Replace the center row with a known card so cost/destination is testable.
+    CardModel seedCenter(GameService game, {required int cost, String id = 'recruit_target'}) {
+      final card = CardModel(id: id, name: id, cost: cost, playEffects: const []);
+      game.centerRow.clear();
+      game.centerRow.add(card);
+      return card;
+    }
+
+    test('effect alone changes nothing (deferred selection)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      seedCenter(game, cost: 2);
+      final centerBefore = game.centerRow.length;
+      const card = CardModel(
+        id: 'portal_monk',
+        name: 'Portal Monk',
+        cost: 0,
+        playEffects: [RecruitFromCenterEffect(maxCost: 4, free: true)],
+      );
+      player.hand.add(card);
+
+      game.playCard('portal_monk');
+
+      // No recruit happened: center row unchanged, no card in discard/hand.
+      expect(game.centerRow.length, centerBefore);
+      expect(player.discardPile.any((c) => c.id == 'recruit_target'), false);
+    });
+
+    test('free recruit to discard (default destination), no gems charged', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      seedCenter(game, cost: 3);
+      player.gemPool = 5;
+
+      expect(
+        game.recruitFromCenter('recruit_target', free: true, maxCost: 4),
+        true,
+      );
+      expect(player.gemPool, 5); // free → no charge
+      expect(game.centerRow.any((c) => c.id == 'recruit_target'), false);
+      expect(player.discardPile.last.id, 'recruit_target');
+      expect(game.centerRow.length, 6); // refilled
+    });
+
+    test('paid recruit charges the card cost', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      seedCenter(game, cost: 3);
+      player.gemPool = 5;
+
+      expect(game.recruitFromCenter('recruit_target', free: false), true);
+      expect(player.gemPool, 2); // 5 - 3
+    });
+
+    test('paid recruit rejected when unaffordable (no state change)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      seedCenter(game, cost: 3);
+      player.gemPool = 2;
+
+      expect(game.recruitFromCenter('recruit_target', free: false), false);
+      expect(player.gemPool, 2);
+      expect(game.centerRow.any((c) => c.id == 'recruit_target'), true);
+    });
+
+    test('rejected when over maxCost (no state change)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      seedCenter(game, cost: 5);
+      player.gemPool = 9;
+
+      expect(
+        game.recruitFromCenter('recruit_target', free: true, maxCost: 4),
+        false,
+      );
+      expect(game.centerRow.any((c) => c.id == 'recruit_target'), true);
+      expect(player.gemPool, 9);
+    });
+
+    test('rejected when card not in center row', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      expect(game.recruitFromCenter('not_present', free: true), false);
+    });
+
+    test('recruit to hand', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      seedCenter(game, cost: 2);
+
+      expect(
+        game.recruitFromCenter('recruit_target', free: true, toHand: true),
+        true,
+      );
+      expect(player.hand.any((c) => c.id == 'recruit_target'), true);
+      expect(player.discardPile.any((c) => c.id == 'recruit_target'), false);
+    });
+
+    test('recruit to top of deck is the next card drawn', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      // Ensure a known draw pile.
+      player.drawPile
+        ..clear()
+        ..addAll([
+          const CardModel(id: 'bottom', name: 'bottom', cost: 0, playEffects: []),
+        ]);
+      player.hand.clear();
+      seedCenter(game, cost: 2);
+
+      expect(
+        game.recruitFromCenter('recruit_target',
+            free: true, toTopOfDeck: true),
+        true,
+      );
+      // Not in discard/hand yet.
+      expect(player.discardPile.any((c) => c.id == 'recruit_target'), false);
+      expect(player.hand.any((c) => c.id == 'recruit_target'), false);
+
+      // The card is now on TOP of the draw pile — it is what scryReveal (which
+      // peeks the next-to-draw card) returns, i.e. the very next draw.
+      expect(game.scryReveal().single.id, 'recruit_target');
+      // And it is the last element of drawPile (the removeLast() draw target).
+      expect(player.drawPile.last.id, 'recruit_target');
+    });
+  });
+
+  group('Wave 3: FastPlayFromCenterEffect / fastPlayFromCenter()', () {
+    CardModel seedCenter(
+      GameService game, {
+      required int cost,
+      List<CardEffect> playEffects = const [],
+      CardType cardType = CardType.regular,
+      Faction faction = Faction.none,
+      String id = 'warp_target',
+    }) {
+      final card = CardModel(
+        id: id,
+        name: id,
+        cost: cost,
+        playEffects: playEffects,
+        cardType: cardType,
+        faction: faction,
+      );
+      game.centerRow.clear();
+      game.centerRow.add(card);
+      return card;
+    }
+
+    test('effect alone changes nothing (deferred selection)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      seedCenter(game, cost: 2, playEffects: [const GainPowerEffect(3)]);
+      const card = CardModel(
+        id: 'aion_egressor',
+        name: 'Aion Egressor',
+        cost: 0,
+        playEffects: [FastPlayFromCenterEffect(maxCost: 4)],
+      );
+      player.hand.add(card);
+
+      game.playCard('aion_egressor');
+      expect(player.powerPool, 0); // warp target not played
+      expect(game.centerRow.any((c) => c.id == 'warp_target'), true);
+    });
+
+    test('card is played (effects resolve) then banished, center refilled', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      seedCenter(game, cost: 2, playEffects: [const GainPowerEffect(3)]);
+
+      expect(game.fastPlayFromCenter('warp_target', maxCost: 4), true);
+      expect(player.powerPool, 3); // play effects resolved
+      // The physical card is banished and out of the discard/play-area zones.
+      expect(player.playedThisTurn.any((c) => c.id == 'warp_target'), false);
+      expect(player.discardPile.any((c) => c.id == 'warp_target'), false);
+      expect(game.removedFromGame.any((c) => c.id == 'warp_target'), true);
+      // But it STAYS recorded in cardsPlayedThisTurn — it was genuinely played,
+      // so later cards' play-history scaling should still count it.
+      expect(player.cardsPlayedThisTurn.any((c) => c.id == 'warp_target'), true,
+          reason: 'warped ally still counts as played this turn');
+      expect(game.centerRow.length, 6); // refilled
+    });
+
+    test('warped ally counts toward a later card\'s play-history scaling', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      // Seed an Order ally in the center to warp.
+      seedCenter(game,
+          cost: 2, faction: Faction.order, playEffects: const []);
+      expect(game.fastPlayFromCenter('warp_target', maxCost: 4), true);
+
+      // Now play an Order card whose effect scales per Order ally played.
+      player.hand.add(const CardModel(
+        id: 'scaler',
+        name: 'Scaler',
+        cost: 0,
+        faction: Faction.order,
+        playEffects: [
+          ScalingResourceEffect(
+            resource: ScalingResource.power,
+            condition: ScalingCondition.perAllyPlayedThisTurn,
+          ),
+        ],
+      ));
+      game.playCard('scaler');
+      // The banished-but-played warp target counts -> 1 power.
+      expect(player.powerPool, 1,
+          reason: 'warped ally counted toward later scaling');
+    });
+
+    test('warped card is NOT pulled into discard after endTurn', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      seedCenter(game, cost: 2, playEffects: [const GainPowerEffect(3)]);
+      game.fastPlayFromCenter('warp_target', maxCost: 4);
+
+      game.endTurn();
+
+      expect(player.discardPile.any((c) => c.id == 'warp_target'), false,
+          reason: 'cleanup must not discard a banished warp card');
+      expect(game.removedFromGame.any((c) => c.id == 'warp_target'), true);
+    });
+
+    test('alliesOnly:false allows a champion to be warped (banished, not kept)',
+        () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      seedCenter(game,
+          cost: 2,
+          cardType: CardType.champion,
+          playEffects: [const GainPowerEffect(3)]);
+
+      expect(game.fastPlayFromCenter('warp_target'), true); // alliesOnly false
+      expect(player.powerPool, 3);
+      // Banished, did NOT persist as a champion.
+      expect(player.championsInPlay.any((c) => c.id == 'warp_target'), false);
+      expect(game.removedFromGame.any((c) => c.id == 'warp_target'), true);
+    });
+
+    test('rejected over maxCost (no state change)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      seedCenter(game, cost: 5, playEffects: [const GainPowerEffect(3)]);
+
+      expect(game.fastPlayFromCenter('warp_target', maxCost: 4), false);
+      expect(player.powerPool, 0);
+      expect(game.centerRow.any((c) => c.id == 'warp_target'), true);
+    });
+
+    test('alliesOnly rejects a champion', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      seedCenter(game,
+          cost: 2,
+          cardType: CardType.champion,
+          playEffects: [const GainPowerEffect(3)]);
+
+      expect(game.fastPlayFromCenter('warp_target', alliesOnly: true), false);
+      expect(game.centerRow.any((c) => c.id == 'warp_target'), true);
+    });
+
+    test('rejected when card not in center row', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      expect(game.fastPlayFromCenter('not_present'), false);
+    });
+  });
+
+  group('Wave 3: ScryEffect / scryReveal() + scryResolve()', () {
+    test('scryReveal does not remove the card', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.drawPile
+        ..clear()
+        ..addAll([
+          const CardModel(id: 'under', name: 'under', cost: 0, playEffects: []),
+          const CardModel(id: 'top', name: 'top', cost: 0, playEffects: []),
+        ]);
+      final sizeBefore = player.drawPile.length;
+
+      final revealed = game.scryReveal();
+      expect(revealed.single.id, 'top'); // top = end of drawPile
+      expect(player.drawPile.length, sizeBefore); // not removed
+    });
+
+    test('effect alone changes nothing (deferred selection)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.drawPile
+        ..clear()
+        ..addAll([const CardModel(id: 'top', name: 'top', cost: 0, playEffects: [])]);
+      player.hand.clear();
+      const card = CardModel(
+        id: 'keeper',
+        name: 'Keeper',
+        cost: 0,
+        playEffects: [ScryEffect()],
+      );
+      player.hand.add(card);
+
+      game.playCard('keeper');
+      // 'top' still on the deck; nothing drawn/discarded by the effect alone.
+      expect(player.drawPile.any((c) => c.id == 'top'), true);
+    });
+
+    test('scryResolve keep=true draws to hand (drawOrDiscard)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.drawPile
+        ..clear()
+        ..addAll([const CardModel(id: 'top', name: 'top', cost: 0, playEffects: [])]);
+      player.hand.clear();
+
+      expect(game.scryResolve('top', keep: true), true);
+      expect(player.hand.single.id, 'top');
+      expect(player.drawPile.any((c) => c.id == 'top'), false);
+      expect(player.discardPile.any((c) => c.id == 'top'), false);
+    });
+
+    test('scryResolve keep=false discards (drawOrDiscard)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.drawPile
+        ..clear()
+        ..addAll([const CardModel(id: 'top', name: 'top', cost: 0, playEffects: [])]);
+      player.discardPile.clear();
+
+      expect(game.scryResolve('top', keep: false), true);
+      expect(player.discardPile.single.id, 'top');
+      expect(player.drawPile.any((c) => c.id == 'top'), false);
+    });
+
+    test('scryResolve keep=false banishes (drawOrBanish)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.drawPile
+        ..clear()
+        ..addAll([const CardModel(id: 'top', name: 'top', cost: 0, playEffects: [])]);
+
+      expect(
+        game.scryResolve('top',
+            keep: false, disposition: ScryDisposition.drawOrBanish),
+        true,
+      );
+      expect(game.removedFromGame.any((c) => c.id == 'top'), true);
+      expect(player.drawPile.any((c) => c.id == 'top'), false);
+    });
+
+    test('scryResolve rejects a card not in the draw pile', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      expect(game.scryResolve('absent', keep: true), false);
+    });
+
+    // Wave 3 recruit/scry-reviewer follow-ups.
+    test('toHand disposition: keep=true draws to hand', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.drawPile
+        ..clear()
+        ..addAll(
+            [const CardModel(id: 'top', name: 'top', cost: 0, playEffects: [])]);
+      player.hand.clear();
+
+      expect(
+        game.scryResolve('top',
+            keep: true, disposition: ScryDisposition.toHand),
+        true,
+      );
+      expect(player.hand.single.id, 'top');
+      expect(player.drawPile.any((c) => c.id == 'top'), false);
+    });
+
+    test('toHand disposition: keep=false leaves the card on top (no-op)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.drawPile
+        ..clear()
+        ..addAll(
+            [const CardModel(id: 'top', name: 'top', cost: 0, playEffects: [])]);
+      player.hand.clear();
+
+      expect(
+        game.scryResolve('top',
+            keep: false, disposition: ScryDisposition.toHand),
+        true,
+      );
+      // Left on top, not drawn or discarded.
+      expect(player.drawPile.last.id, 'top');
+      expect(player.hand.isEmpty, true);
+      expect(player.discardPile.any((c) => c.id == 'top'), false);
+    });
+
+    test('scryReveal(count: 2) returns the top two cards, top first', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.drawPile
+        ..clear()
+        ..addAll([
+          const CardModel(id: 'bottom', name: 'bottom', cost: 0, playEffects: []),
+          const CardModel(id: 'under', name: 'under', cost: 0, playEffects: []),
+          const CardModel(id: 'top', name: 'top', cost: 0, playEffects: []),
+        ]);
+
+      final revealed = game.scryReveal(count: 2);
+      expect(revealed.map((c) => c.id).toList(), ['top', 'under'],
+          reason: 'top of deck (end of list) first');
+      expect(player.drawPile.length, 3, reason: 'reveal does not remove');
+    });
+  });
 }

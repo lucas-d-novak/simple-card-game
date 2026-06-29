@@ -200,6 +200,65 @@ void main() {
     });
   });
 
+  group('ScalingResourceEffect (Phase 2 wave 0)', () {
+    test('carries resource, condition, perN, faction', () {
+      const effect = ScalingResourceEffect(
+        resource: ScalingResource.gems,
+        condition: ScalingCondition.perFactionCardInDiscard,
+        perN: 2,
+        faction: Faction.wraethe,
+      );
+      expect(effect.resource, ScalingResource.gems);
+      expect(effect.condition, ScalingCondition.perFactionCardInDiscard);
+      expect(effect.perN, 2);
+      expect(effect.faction, Faction.wraethe);
+      expect(effect.description, isNotEmpty);
+    });
+
+    test('defaults perN to 1 and faction to null', () {
+      const effect = ScalingResourceEffect(
+        resource: ScalingResource.power,
+        condition: ScalingCondition.perCardInDiscard,
+      );
+      expect(effect.perN, 1);
+      expect(effect.faction, isNull);
+    });
+  });
+
+  group('ConditionalEffect + GameCondition (Phase 2 wave 0)', () {
+    test('wrapper carries condition and then list', () {
+      const effect = ConditionalEffect(
+        condition: GameCondition(
+          kind: GameConditionKind.masteryAtLeast,
+          threshold: 20,
+        ),
+        then: [GainPowerEffect(5)],
+      );
+      expect(effect.condition.kind, GameConditionKind.masteryAtLeast);
+      expect(effect.condition.threshold, 20);
+      expect(effect.then, hasLength(1));
+      expect(effect.description, isNotEmpty);
+    });
+
+    test('GameCondition defaults: threshold 1, empty factions, null optionals',
+        () {
+      const c = GameCondition(kind: GameConditionKind.championsControlled);
+      expect(c.threshold, 1);
+      expect(c.factions, isEmpty);
+      expect(c.faction, isNull);
+      expect(c.parity, isNull);
+      expect(c.cardType, isNull);
+      expect(c.maxCost, isNull);
+      expect(c.character, isNull);
+    });
+
+    test('every GameConditionKind yields a non-empty description', () {
+      for (final kind in GameConditionKind.values) {
+        expect(GameCondition(kind: kind).description, isNotEmpty);
+      }
+    });
+  });
+
   group('All effects are CardEffect subtypes', () {
     test('every effect is a CardEffect with a description', () {
       const List<CardEffect> effects = [

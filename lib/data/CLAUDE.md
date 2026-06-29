@@ -70,14 +70,42 @@ types in [`lib/models/card_effect.dart`](../models/card_effect.dart) and the
   `tool/validate_card_db.dart` call the decoder so bad data surfaces.
 
 Supported `type` values: `gainGems`, `gainPower`, `gainMastery`, `gainHealth`,
-`drawCards`, `opponentLosesHealth`, `banishCard` (`source`:
-`hand`/`discard`/`handOrDiscard`), `scrapFromCenterRow`, `destroyChampion`
+`drawCards`, `opponentLosesHealth`, `allPlayersLoseHealth` (`amount` — every
+player INCLUDING the current one loses health, bypassing shield/guard),
+`banishCard` (`source`:
+`hand`/`discard`/`handOrDiscard`), `scrapFromCenterRow`, `selfBanish` ("then,
+banish this" — the source card removes itself; list LAST in the effect array),
+`resetChampion` (deferred-selection: un-exhaust a champion you control via
+`GameService.resetChampion`), `destroyChampion`
 (`all`: bool — single target vs. all enemy champions), `returnFromDiscard`
 (`filter`: `any`/`champion`/`mercenary`/`faction`, plus `faction` when
 filtering by faction), `conditionalPower` (`condition`:
 `perChampionControlled`/`perAllyPlayedThisTurn`/`perFactionPlayedThisTurn`/`perCardInDiscard`),
+`scalingResource` (`resource`: `power`/`gems`/`health`/`mastery`; `condition`:
+the four `conditionalPower` conditions plus `perFactionCardInDiscard`/
+`perFactionChampionControlled`/`perFactionCardPlayedThisTurn`/
+`perAllyWithShieldPlayedThisTurn`; optional `perN` (default 1) and `faction`),
+`conditional` (`condition`: a `GameCondition` object with a `kind` (incl.
+`unblockedDamageAtLeast` — `threshold` = unblocked damage dealt this turn) +
+optional `threshold`/`faction`/`factions`/`parity`/`cardType`/`maxCost`/`character`;
+`then`: effects resolved only when the condition holds),
+`addStaticModifier` (`kind`: `shieldBuff`/`cardCostReduction`/`cannotBeAttacked`/
+`recruitToTopOfDeck`; optional `amount`/`faction`/`cardType`; adds a persistent
+board-wide [StaticModifier] to the player — rest-of-game lifetime),
+`opponentDraws`/`opponentDiscards` (`count`: each OTHER player draws/discards N),
+`copyPlayedCard` (deferred-selection: `filter` `any`/`nonChampion`; re-resolves a
+played card's effects via `GameService.copyPlayedCard`; copy-cards and
+`infinityShard` are excluded), `centerDeckScry` (deferred-selection: `disposition`
+`acquire`/`toHandLosePowerEqualToCost`; reveals the top of the CENTER deck via
+`GameService.centerDeckScryReveal`/`centerDeckScryResolve`),
 `infinityShard`, `chooseOne` (`choices`: array of effect groups). `gainMoney`
 is legacy and not part of the Shards of Infinity database.
+
+`scalingResource` generalises `conditionalPower` to any resource pool;
+`conditionalPower` is kept for back-compat (it still decodes to
+`ConditionalPowerEffect`). `conditional` wraps any effect list behind a
+board-state predicate and works in `playEffects`, `allyAbility`, `masteryBonus`,
+and inside an `activatedAbility`.
 
 ### Encoding Exhaust / activated abilities
 
@@ -96,6 +124,16 @@ card (NOT an entry in the effect `type` enum). Shape:
 - `cost` (optional) — extra resources paid on top of Exhaust. Keys `gems` /
   `mastery` / `health` each default to 0; omit `cost` entirely for an
   Exhaust-only ability. Health cost may not be lethal to oneself.
+- `masteryThreshold` / `masteryBonusEffects` / `masteryReplaces` (all optional,
+  default null/empty/false) — optional mastery tier for the ability. When
+  `masteryReplaces` is true and the owner's mastery is at/above
+  `masteryThreshold`, `masteryBonusEffects` resolve INSTEAD OF `effects` (e.g.
+  gian_shard_wyrm gives 2/2 normally, 5/5 at mastery 15); otherwise additively
+  on top. `masteryBonusEffects`, if present, must be non-empty.
+
+The card-level `masteryReplaces` (bool, default false) on the record controls
+whether a card's `masteryBonus` replaces `playEffects` (true) or stacks on top
+(false, the legacy default) at/above `masteryThreshold`.
 
 Only champions should carry `activatedAbility`. The 24 DB cards whose `rawText`
 mentions "exhaust" are the encoding targets.

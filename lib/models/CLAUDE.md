@@ -13,6 +13,7 @@ Immutable data classes and enums for the Shards of Infinity card game.
 - `hasGuard` (bool) — must destroy before attacking player
 - `allyAbility` (List\<CardEffect\>) — triggers when same-faction card in play
 - `masteryThreshold` / `masteryBonus` — bonus effects at mastery level
+- `masteryReplaces` (bool, default false) — when false (legacy default) `masteryBonus` is ADDITIVE on top of `playEffects` at/above the threshold; when true it REPLACES `playEffects` ("gain 5/5 instead of 2/2 at mastery 15")
 - `countsAsAllFactions` (bool) — matches any faction for ally abilities
 
 All fields have defaults for backward compatibility with legacy DeckService.

@@ -73,6 +73,11 @@
       "minimum": 0,
       "description": "Mastery level required to unlock masteryBonus. null = no threshold."
     },
+    "masteryReplaces": {
+      "type": "boolean",
+      "default": false,
+      "description": "How masteryBonus resolves at/above masteryThreshold. false (default) = ADDITIVE: masteryBonus resolves on top of playEffects. true = REPLACE: masteryBonus resolves INSTEAD OF playEffects (e.g. 'gain 5/5 instead of 2/2 at mastery 15')."
+    },
     "playEffects": {
       "type": "array",
       "items": { "$ref": "#/definitions/effect" },
@@ -129,6 +134,22 @@
             "mastery": { "type": "integer", "minimum": 0, "description": "Mastery permanently reduced." },
             "health": { "type": "integer", "minimum": 0, "description": "Health paid (cannot be lethal to oneself)." }
           }
+        },
+        "masteryThreshold": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "Optional. Mastery level at which masteryBonusEffects become relevant. null/absent = ability has no mastery scaling."
+        },
+        "masteryBonusEffects": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/effect" },
+          "description": "Optional. Mastery-tier effects. When masteryReplaces is true and mastery >= masteryThreshold, these resolve INSTEAD OF effects (e.g. gian_shard_wyrm: 5/5 instead of 2/2 at mastery 15); otherwise additively on top."
+        },
+        "masteryReplaces": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether masteryBonusEffects replace effects (true) or add to them (false) at/above masteryThreshold. Default false."
         }
       }
     },
@@ -147,45 +168,139 @@
             "gainHealth",
             "drawCards",
             "opponentLosesHealth",
+            "allPlayersLoseHealth",
             "banishCard",
             "scrapFromCenterRow",
+            "selfBanish",
+            "resetChampion",
+            "recruitFromCenter",
+            "fastPlayFromCenter",
+            "scry",
             "destroyChampion",
             "returnFromDiscard",
             "chooseOne",
             "conditionalPower",
+            "scalingResource",
+            "conditional",
+            "treatFactionAs",
+            "ignoreShieldThisTurn",
+            "addStaticModifier",
+            "opponentDraws",
+            "opponentDiscards",
+            "copyPlayedCard",
+            "centerDeckScry",
+            "tuckUnderChampion",
+            "copyUnderCards",
             "infinityShard"
           ]
         },
-        "amount": { "type": "integer", "description": "For gain*/opponentLosesHealth." },
-        "count": { "type": "integer", "description": "For drawCards." },
+        "amount": { "type": "integer", "description": "For gain*/opponentLosesHealth/allPlayersLoseHealth." },
+        "count": { "type": "integer", "description": "For drawCards (cards to draw) and scry (top cards to reveal)." },
         "source": {
           "type": "string",
-          "enum": ["hand", "discard", "handOrDiscard"],
-          "description": "For banishCard."
+          "enum": ["hand", "discard", "handOrDiscard", "centerDeck"],
+          "description": "For banishCard (hand/discard/handOrDiscard). For tuckUnderChampion: hand=deferred-selection (player picks a hand card via GameService.tuckUnderChampion); centerDeck=immediate (top of the center deck, gene_scavs ambush)."
         },
         "all": {
           "type": "boolean",
           "description": "For destroyChampion: if true, destroy ALL enemy champions instead of a single target."
         },
+        "maxCost": {
+          "type": "integer",
+          "description": "For recruitFromCenter / fastPlayFromCenter: inclusive cost cap on the eligible center-row card (absent = no cap). (Also used inside gameCondition for filteredCardsPlayed.)"
+        },
+        "free": {
+          "type": "boolean",
+          "description": "For recruitFromCenter: if true, the recruited card is acquired without paying its gem cost."
+        },
+        "toHand": {
+          "type": "boolean",
+          "description": "For recruitFromCenter: if true, the recruited card goes to the player's hand (default is the discard pile). Takes precedence over toTopOfDeck."
+        },
+        "toTopOfDeck": {
+          "type": "boolean",
+          "description": "For recruitFromCenter: if true, the recruited card goes to the TOP of the draw pile (the player's next draw)."
+        },
+        "alliesOnly": {
+          "type": "boolean",
+          "description": "For fastPlayFromCenter / tuckUnderChampion (hand source): if true, only allies (non-champion cards) may be chosen."
+        },
+        "disposition": {
+          "type": "string",
+          "enum": ["drawOrDiscard", "drawOrBanish", "toHand", "acquire", "toHandLosePowerEqualToCost"],
+          "description": "For scry: drawOrDiscard=keep draws to hand else discards; drawOrBanish=keep draws to hand else banishes; toHand=keep takes to hand else leaves on top. For centerDeckScry: acquire=take revealed center-deck card to discard; toHandLosePowerEqualToCost=take it to hand and lose power equal to its gem cost (ignores Guard)."
+        },
         "filter": {
           "type": "string",
-          "enum": ["any", "champion", "mercenary", "faction"],
-          "description": "For returnFromDiscard: which discard-pile cards are eligible to return."
+          "enum": ["any", "champion", "mercenary", "faction", "nonChampion"],
+          "description": "For returnFromDiscard: which discard-pile cards are eligible to return (any/champion/mercenary/faction). For copyPlayedCard: which played cards may be copied (any/nonChampion)."
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["shieldBuff", "cardCostReduction", "cannotBeAttacked", "recruitToTopOfDeck", "shieldPerCardUnder"],
+          "description": "For addStaticModifier: which persistent board-wide modifier to add. shieldBuff/cardCostReduction use 'amount'; both plus recruitToTopOfDeck may use optional 'faction'/'cardType' filters; cannotBeAttacked ignores amount/filters; shieldPerCardUnder is SELF-scoped to the source champion (carmine_eclipse), buffing it by 'amount' per card tucked under it."
+        },
+        "cardType": {
+          "type": "string",
+          "enum": ["regular", "champion", "mercenary"],
+          "description": "For addStaticModifier: optional card-type filter restricting which cards/champions the modifier applies to."
+        },
+        "sourceChampionId": {
+          "type": "string",
+          "description": "For addStaticModifier with kind shieldPerCardUnder: the owning champion's id (normally stamped at runtime from the source card; rarely set in data)."
         },
         "faction": {
           "type": "string",
           "enum": ["homodeus", "wraethe", "order", "undergrowth", "none"],
           "description": "For returnFromDiscard when filter is 'faction': the required faction."
         },
-        "condition": {
+        "from": {
           "type": "string",
-          "enum": [
-            "perChampionControlled",
-            "perAllyPlayedThisTurn",
-            "perFactionPlayedThisTurn",
-            "perCardInDiscard"
-          ],
-          "description": "For conditionalPower."
+          "enum": ["homodeus", "wraethe", "order", "undergrowth", "none"],
+          "description": "For treatFactionAs: the faction treated as 'to' this turn."
+        },
+        "to": {
+          "type": "string",
+          "enum": ["homodeus", "wraethe", "order", "undergrowth", "none"],
+          "description": "For treatFactionAs: the faction that 'from' is treated as this turn."
+        },
+        "bidirectional": {
+          "type": "boolean",
+          "description": "For treatFactionAs: if true, 'to' is also treated as 'from' (the alias works both ways)."
+        },
+        "condition": {
+          "description": "For conditionalPower / scalingResource: a STRING naming the scaling quantity. For conditional: an OBJECT (see the condition object shape below). conditionalPower enum: perChampionControlled, perAllyPlayedThisTurn, perFactionPlayedThisTurn, perCardInDiscard. scalingResource adds: perFactionCardInDiscard, perFactionChampionControlled, perFactionCardPlayedThisTurn, perAllyWithShieldPlayedThisTurn.",
+          "oneOf": [
+            {
+              "type": "string",
+              "enum": [
+                "perChampionControlled",
+                "perAllyPlayedThisTurn",
+                "perFactionPlayedThisTurn",
+                "perCardInDiscard",
+                "perFactionCardInDiscard",
+                "perFactionChampionControlled",
+                "perFactionCardPlayedThisTurn",
+                "perAllyWithShieldPlayedThisTurn"
+              ]
+            },
+            { "$ref": "#/definitions/gameCondition" }
+          ]
+        },
+        "resource": {
+          "type": "string",
+          "enum": ["power", "gems", "health", "mastery"],
+          "description": "For scalingResource: which resource pool the scaled amount feeds into."
+        },
+        "perN": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "For scalingResource: how much resource to grant per counted unit (default 1)."
+        },
+        "then": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/effect" },
+          "description": "For conditional: the effects resolved only when the condition holds."
         },
         "choices": {
           "type": "array",
@@ -194,6 +309,68 @@
             "items": { "$ref": "#/definitions/effect" }
           },
           "description": "For chooseOne: each entry is a group of effects applied together if chosen."
+        }
+      }
+    },
+    "gameCondition": {
+      "type": "object",
+      "required": ["kind"],
+      "additionalProperties": false,
+      "description": "A board-state predicate (lib/models/card_effect.dart GameCondition) carried by a 'conditional' effect. Only 'kind' is required; the other keys parameterise the specific kind.",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "alliesOfFactionPlayed",
+            "factionsPlayedAll",
+            "distinctFactionsPlayed",
+            "cardTypePlayed",
+            "gemParityCardsPlayed",
+            "filteredCardsPlayed",
+            "championsControlled",
+            "championsOfFactionControlled",
+            "masteryAtLeast",
+            "sameFactionCountPlayed",
+            "isCharacter",
+            "unblockedDamageAtLeast"
+          ],
+          "description": "Which predicate to evaluate."
+        },
+        "threshold": {
+          "type": "integer",
+          "description": "The 'at least N' bar for count-based kinds (default 1)."
+        },
+        "faction": {
+          "type": "string",
+          "enum": ["homodeus", "wraethe", "order", "undergrowth", "none"],
+          "description": "Single-faction filter; null = use the source card's faction where applicable."
+        },
+        "factions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["homodeus", "wraethe", "order", "undergrowth", "none"]
+          },
+          "description": "For factionsPlayedAll: every faction that must have been played."
+        },
+        "parity": {
+          "type": "string",
+          "enum": ["even", "odd"],
+          "description": "For gemParityCardsPlayed."
+        },
+        "cardType": {
+          "type": "string",
+          "enum": ["regular", "champion", "mercenary"],
+          "description": "For cardTypePlayed."
+        },
+        "maxCost": {
+          "type": "integer",
+          "description": "For filteredCardsPlayed: inclusive max cost of counted cards."
+        },
+        "character": {
+          "type": "string",
+          "enum": ["decima", "tetra", "volos", "rez", "koSynWu", "chroma"],
+          "description": "For isCharacter: the required Character."
         }
       }
     }

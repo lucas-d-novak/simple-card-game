@@ -45,3 +45,4 @@ lib/generated_plugin_registrant.dart
 screenshots/
 node_modules/
 .server_pid
+test/failures/
