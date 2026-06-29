@@ -9,7 +9,12 @@ its mechanics, set, copy count, art, and verification status — lives here.
 |------|-----------|
 | `cards.json` | The database. One entry per unique card. Loaded by the app. |
 | `schema.json` | JSON Schema documenting every field. The contract. |
+| `COVERAGE.md` | Auto-generated coverage matrix (art / effects / raw text / verified) per card, with per-set and per-faction rollups. Regenerate with `dart run tool/gen_coverage_readme.dart`. |
 | `README.md` | This file. |
+
+See also [`ai-docs/card_coverage_gaps.md`](../../ai-docs/card_coverage_gaps.md)
+— the working gap list: which cards are encodable now (have raw text) vs. which
+still need effect-info hunting.
 
 ## How a card flows into the game
 
