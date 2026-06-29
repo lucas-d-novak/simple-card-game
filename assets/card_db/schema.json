@@ -184,6 +184,11 @@
             "conditional",
             "treatFactionAs",
             "ignoreShieldThisTurn",
+            "addStaticModifier",
+            "opponentDraws",
+            "opponentDiscards",
+            "copyPlayedCard",
+            "centerDeckScry",
             "infinityShard"
           ]
         },
@@ -220,13 +225,23 @@
         },
         "disposition": {
           "type": "string",
-          "enum": ["drawOrDiscard", "drawOrBanish", "toHand"],
-          "description": "For scry: what keeping vs. letting go does. drawOrDiscard=keep draws to hand else discards; drawOrBanish=keep draws to hand else banishes; toHand=keep takes to hand else leaves on top."
+          "enum": ["drawOrDiscard", "drawOrBanish", "toHand", "acquire", "toHandLosePowerEqualToCost"],
+          "description": "For scry: drawOrDiscard=keep draws to hand else discards; drawOrBanish=keep draws to hand else banishes; toHand=keep takes to hand else leaves on top. For centerDeckScry: acquire=take revealed center-deck card to discard; toHandLosePowerEqualToCost=take it to hand and lose power equal to its gem cost (ignores Guard)."
         },
         "filter": {
           "type": "string",
-          "enum": ["any", "champion", "mercenary", "faction"],
-          "description": "For returnFromDiscard: which discard-pile cards are eligible to return."
+          "enum": ["any", "champion", "mercenary", "faction", "nonChampion"],
+          "description": "For returnFromDiscard: which discard-pile cards are eligible to return (any/champion/mercenary/faction). For copyPlayedCard: which played cards may be copied (any/nonChampion)."
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["shieldBuff", "cardCostReduction", "cannotBeAttacked", "recruitToTopOfDeck"],
+          "description": "For addStaticModifier: which persistent board-wide modifier to add. shieldBuff/cardCostReduction use 'amount'; both plus recruitToTopOfDeck may use optional 'faction'/'cardType' filters; cannotBeAttacked ignores amount/filters."
+        },
+        "cardType": {
+          "type": "string",
+          "enum": ["regular", "champion", "mercenary"],
+          "description": "For addStaticModifier: optional card-type filter restricting which cards/champions the modifier applies to."
         },
         "faction": {
           "type": "string",

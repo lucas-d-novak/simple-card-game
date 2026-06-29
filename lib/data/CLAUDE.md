@@ -89,6 +89,15 @@ the four `conditionalPower` conditions plus `perFactionCardInDiscard`/
 `unblockedDamageAtLeast` — `threshold` = unblocked damage dealt this turn) +
 optional `threshold`/`faction`/`factions`/`parity`/`cardType`/`maxCost`/`character`;
 `then`: effects resolved only when the condition holds),
+`addStaticModifier` (`kind`: `shieldBuff`/`cardCostReduction`/`cannotBeAttacked`/
+`recruitToTopOfDeck`; optional `amount`/`faction`/`cardType`; adds a persistent
+board-wide [StaticModifier] to the player — rest-of-game lifetime),
+`opponentDraws`/`opponentDiscards` (`count`: each OTHER player draws/discards N),
+`copyPlayedCard` (deferred-selection: `filter` `any`/`nonChampion`; re-resolves a
+played card's effects via `GameService.copyPlayedCard`; copy-cards and
+`infinityShard` are excluded), `centerDeckScry` (deferred-selection: `disposition`
+`acquire`/`toHandLosePowerEqualToCost`; reveals the top of the CENTER deck via
+`GameService.centerDeckScryReveal`/`centerDeckScryResolve`),
 `infinityShard`, `chooseOne` (`choices`: array of effect groups). `gainMoney`
 is legacy and not part of the Shards of Infinity database.
 

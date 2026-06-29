@@ -429,6 +429,218 @@ final class IgnoreShieldThisTurnEffect extends CardEffect {
 }
 
 // ---------------------------------------------------------------------------
+// Static board-wide modifiers (Engine Phase 2, wave 5a — Family 11)
+//
+// Persistent buffs/protections/cost-reductions that read off a player's
+// [PlayerState.staticModifiers] list while the source card remains in play.
+// An [AddStaticModifierEffect] appends one to the list when its source resolves.
+// ---------------------------------------------------------------------------
+
+/// The kind of persistent board-wide modifier a [StaticModifier] applies.
+enum StaticModifierKind {
+  /// Your champions (optionally faction/type-filtered) have +amount shield —
+  /// they require that much extra power to destroy (one_mind_one_army,
+  /// phasic_technology). Consulted in `attackChampion`.
+  shieldBuff,
+
+  /// Cards you acquire from the center row cost `amount` less gems, to a
+  /// minimum of 1 (aedifex "Champions cost 3 less"). Optional faction/type
+  /// filter restricts which cards get the discount. Consulted in `buyCard` and
+  /// `recruitFromCenter`.
+  cardCostReduction,
+
+  /// You cannot be attacked (zetta_the_encryptor). Consulted in `attackPlayer`
+  /// (and `attackChampion` targeting). `amount`/filters are ignored.
+  cannotBeAttacked,
+
+  /// Champions (optionally faction/type-filtered) you RECRUIT go to the top of
+  /// your deck instead of the discard pile (maglev_tunnels "put recruited
+  /// Homodeus Champions on top of deck"). Consulted in `recruitFromCenter`.
+  recruitToTopOfDeck,
+}
+
+/// A persistent, board-wide modifier owned by a player. Carried in
+/// [PlayerState.staticModifiers] and consulted by combat / acquisition methods.
+///
+/// LIFETIME: a modifier added by [AddStaticModifierEffect] stays for the REST OF
+/// THE GAME (it is never automatically removed). This is the documented, simple
+/// semantics chosen for wave 5a: the engine does not yet model "while this card
+/// is in play" removal when a regular card leaves play or a champion is
+/// destroyed. It is a defensible approximation because the cards carrying these
+/// modifiers are champions (one_mind_one_army, aedifex, zetta_the_encryptor,
+/// maglev_tunnels, phasic_technology) that persist anyway; a regular card that
+/// granted a static buff would over-stay by design until removal is added.
+class StaticModifier {
+  const StaticModifier({
+    required this.kind,
+    this.amount = 0,
+    this.faction,
+    this.cardType,
+  });
+
+  final StaticModifierKind kind;
+
+  /// The magnitude (shield bonus, cost reduction). Ignored by
+  /// [StaticModifierKind.cannotBeAttacked] and [StaticModifierKind.recruitToTopOfDeck].
+  final int amount;
+
+  /// Optional faction filter — the modifier only applies to cards/champions of
+  /// this faction. Null = applies regardless of faction.
+  final Faction? faction;
+
+  /// Optional card-type filter — the modifier only applies to cards of this
+  /// type. Null = applies regardless of type.
+  final CardType? cardType;
+
+  String get description {
+    final f = faction != null ? '${faction!.name} ' : '';
+    final t = cardType != null ? '${cardType!.name} ' : '';
+    switch (kind) {
+      case StaticModifierKind.shieldBuff:
+        return 'Your $f${t}champions have +$amount shield';
+      case StaticModifierKind.cardCostReduction:
+        return 'Your $f${t}cards cost $amount less';
+      case StaticModifierKind.cannotBeAttacked:
+        return 'You cannot be attacked';
+      case StaticModifierKind.recruitToTopOfDeck:
+        return 'Recruited $f${t}cards go to the top of your deck';
+    }
+  }
+}
+
+/// Adds a persistent [StaticModifier] to the controlling player's
+/// [PlayerState.staticModifiers] when this effect resolves. Immediate (not
+/// deferred): its `_resolveEffects` case appends the modifier inline.
+final class AddStaticModifierEffect extends CardEffect {
+  const AddStaticModifierEffect(this.modifier);
+
+  final StaticModifier modifier;
+
+  @override
+  String get description => modifier.description;
+}
+
+// ---------------------------------------------------------------------------
+// Copy-effect (Engine Phase 2, wave 5a — Family 9)
+// ---------------------------------------------------------------------------
+
+/// Which previously-played cards a [CopyPlayedCardEffect] may copy.
+enum CopyFilter {
+  /// Any card played this turn (subject to the universal re-entrancy / shard
+  /// exclusions enforced by [GameService.copyPlayedCard]).
+  any,
+
+  /// Only non-champion cards played this turn (ojas_genesis_druid,
+  /// taur_archpriest "copy a non-Champion card you played this turn").
+  nonChampion,
+}
+
+/// "Copy the effect of a [filter] card you played this turn"
+/// (ojas_genesis_druid, taur_archpriest). DEFERRED-SELECTION: a no-op in
+/// `_resolveEffects`; the player calls [GameService.copyPlayedCard] with the
+/// chosen card's id, which RE-RESOLVES that card's `playEffects` for the current
+/// player.
+///
+/// RE-ENTRANCY GUARD (enforced in [GameService.copyPlayedCard]): a card that
+/// itself contains a [CopyPlayedCardEffect] is NOT copyable (prevents infinite
+/// recursion), and an [InfinityShardEffect] is excluded from the re-resolved
+/// effects (so copying never causes a spurious mastery/win).
+final class CopyPlayedCardEffect extends CardEffect {
+  const CopyPlayedCardEffect({this.filter = CopyFilter.nonChampion});
+
+  final CopyFilter filter;
+
+  @override
+  String get description {
+    switch (filter) {
+      case CopyFilter.any:
+        return 'Copy the effect of a card you played this turn';
+      case CopyFilter.nonChampion:
+        return 'Copy the effect of a non-champion card you played this turn';
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Opponent draw / discard (Engine Phase 2, wave 5a — Family 13)
+// ---------------------------------------------------------------------------
+
+/// "Each OTHER player draws [count] card(s)" (blitz_shard_runner). Immediate:
+/// its `_resolveEffects` case makes every player except the controller draw
+/// from their own draw pile (reshuffling their discard when empty).
+final class OpponentDrawsEffect extends CardEffect {
+  const OpponentDrawsEffect({this.count = 1});
+
+  final int count;
+
+  @override
+  String get description =>
+      'Each other player draws $count ${count == 1 ? 'card' : 'cards'}';
+}
+
+/// "Each OTHER player discards [count] card(s)" (blitz_shard_runner mastery
+/// variant). Immediate: its `_resolveEffects` case makes every player except the
+/// controller discard from their hand (the first [count] cards, or all they have
+/// if fewer).
+final class OpponentDiscardsEffect extends CardEffect {
+  const OpponentDiscardsEffect({this.count = 1});
+
+  final int count;
+
+  @override
+  String get description =>
+      'Each other player discards $count ${count == 1 ? 'card' : 'cards'}';
+}
+
+// ---------------------------------------------------------------------------
+// Center-deck scry (Engine Phase 2, wave 5a — extends Family 8)
+// ---------------------------------------------------------------------------
+
+/// What a [CenterDeckScryEffect] does with the card revealed off the center /
+/// infinity deck.
+enum CenterScryDisposition {
+  /// Acquire the revealed card (it goes to the player's discard pile — like a
+  /// free recruit). the_shard_defiant "reveal top of the center deck and
+  /// acquire it".
+  acquire,
+
+  /// Put the revealed card into the player's HAND and lose power equal to its
+  /// gem cost; the reveal ignores Guard (oblivion_gatekeeper). The lose-power
+  /// half is handled inline (no separate effect needed) because it is tied to
+  /// the revealed card's cost.
+  toHandLosePowerEqualToCost,
+}
+
+/// "Reveal the top card of the CENTER (infinity) deck and act on it"
+/// (oblivion_gatekeeper, the_shard_defiant). DEFERRED-SELECTION: a no-op in
+/// `_resolveEffects`; the player calls [GameService.centerDeckScryReveal] to
+/// peek at the top center-deck card, then [GameService.centerDeckScryResolve] to
+/// apply the [disposition].
+///
+/// This is the center-deck counterpart to [ScryEffect] (which reveals the
+/// player's OWN draw pile). Modelled as a distinct effect rather than a flag on
+/// [ScryEffect] because its dispositions (acquire / lose-power-by-cost) and the
+/// deck it reads are different.
+final class CenterDeckScryEffect extends CardEffect {
+  const CenterDeckScryEffect({
+    this.disposition = CenterScryDisposition.acquire,
+  });
+
+  final CenterScryDisposition disposition;
+
+  @override
+  String get description {
+    switch (disposition) {
+      case CenterScryDisposition.acquire:
+        return 'Reveal the top of the center deck and acquire it';
+      case CenterScryDisposition.toHandLosePowerEqualToCost:
+        return 'Reveal the top of the center deck, take it to hand and lose '
+            'power equal to its cost';
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Complex / composite effects
 // ---------------------------------------------------------------------------
 

@@ -780,4 +780,99 @@ void main() {
       });
     });
   });
+
+  group('effect_codec — Phase 2 wave 5a effects', () {
+    group('addStaticModifier', () {
+      test('round-trips every kind with filters', () {
+        const mods = [
+          StaticModifier(kind: StaticModifierKind.shieldBuff, amount: 2),
+          StaticModifier(
+            kind: StaticModifierKind.cardCostReduction,
+            amount: 3,
+            cardType: CardType.champion,
+          ),
+          StaticModifier(kind: StaticModifierKind.cannotBeAttacked),
+          StaticModifier(
+            kind: StaticModifierKind.recruitToTopOfDeck,
+            faction: Faction.homodeus,
+            cardType: CardType.champion,
+          ),
+        ];
+        for (final m in mods) {
+          final decoded =
+              decodeEffect(encodeEffect(AddStaticModifierEffect(m)))
+                  as AddStaticModifierEffect;
+          expect(decoded.modifier.kind, m.kind);
+          expect(decoded.modifier.amount, m.amount);
+          expect(decoded.modifier.faction, m.faction);
+          expect(decoded.modifier.cardType, m.cardType);
+        }
+      });
+
+      test('unknown kind throws FormatException', () {
+        expect(
+          () => decodeEffect({'type': 'addStaticModifier', 'kind': 'bogus'}),
+          throwsFormatException,
+        );
+      });
+    });
+
+    group('opponentDraws / opponentDiscards', () {
+      test('round-trips with and without count', () {
+        for (final c in [1, 2]) {
+          final draws = decodeEffect(encodeEffect(OpponentDrawsEffect(count: c)))
+              as OpponentDrawsEffect;
+          expect(draws.count, c);
+          final discards =
+              decodeEffect(encodeEffect(OpponentDiscardsEffect(count: c)))
+                  as OpponentDiscardsEffect;
+          expect(discards.count, c);
+        }
+      });
+
+      test('non-int count throws FormatException', () {
+        expect(
+          () => decodeEffect({'type': 'opponentDraws', 'count': 'x'}),
+          throwsFormatException,
+        );
+      });
+    });
+
+    group('copyPlayedCard', () {
+      test('round-trips both filters', () {
+        for (final f in CopyFilter.values) {
+          final decoded =
+              decodeEffect(encodeEffect(CopyPlayedCardEffect(filter: f)))
+                  as CopyPlayedCardEffect;
+          expect(decoded.filter, f);
+        }
+      });
+
+      test('unknown filter throws FormatException', () {
+        expect(
+          () => decodeEffect({'type': 'copyPlayedCard', 'filter': 'bogus'}),
+          throwsFormatException,
+        );
+      });
+    });
+
+    group('centerDeckScry', () {
+      test('round-trips both dispositions', () {
+        for (final d in CenterScryDisposition.values) {
+          final decoded =
+              decodeEffect(encodeEffect(CenterDeckScryEffect(disposition: d)))
+                  as CenterDeckScryEffect;
+          expect(decoded.disposition, d);
+        }
+      });
+
+      test('unknown disposition throws FormatException', () {
+        expect(
+          () =>
+              decodeEffect({'type': 'centerDeckScry', 'disposition': 'bogus'}),
+          throwsFormatException,
+        );
+      });
+    });
+  });
 }

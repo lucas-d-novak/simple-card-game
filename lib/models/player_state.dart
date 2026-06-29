@@ -40,6 +40,15 @@ class PlayerState {
   /// champion). Cleared each turn by [resetTurnResources].
   bool ignoresShieldThisTurn = false;
 
+  /// Persistent board-wide modifiers this player owns (Engine Phase 2 wave 5a —
+  /// [StaticModifier]). Added by [AddStaticModifierEffect]. LIFETIME: these are
+  /// NOT cleared by [resetTurnResources] — a static modifier stays for the rest
+  /// of the game (the documented wave-5a semantics; no per-card removal yet).
+  /// Consulted by `GameService.attackChampion` (shield buff), `attackPlayer`
+  /// (cannot-be-attacked), `buyCard` / `recruitFromCenter` (cost reduction,
+  /// recruit-to-top placement).
+  final List<StaticModifier> staticModifiers = [];
+
   final List<CardModel> hand = [];
   final List<CardModel> drawPile = [];
   final List<CardModel> discardPile = [];

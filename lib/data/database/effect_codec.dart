@@ -173,6 +173,31 @@ CardEffect decodeEffect(Map<String, dynamic> json) {
       );
     case 'ignoreShieldThisTurn':
       return const IgnoreShieldThisTurnEffect();
+    case 'addStaticModifier':
+      return AddStaticModifierEffect(StaticModifier(
+        kind: _staticModifierKind(json['kind'] as String?),
+        amount: json.containsKey('amount') ? _int(json, 'amount') : 0,
+        faction: json['faction'] != null
+            ? _faction(json['faction'] as String?)
+            : null,
+        cardType: _cardType(json['cardType'] as String?),
+      ));
+    case 'opponentDraws':
+      return OpponentDrawsEffect(
+        count: json.containsKey('count') ? _int(json, 'count') : 1,
+      );
+    case 'opponentDiscards':
+      return OpponentDiscardsEffect(
+        count: json.containsKey('count') ? _int(json, 'count') : 1,
+      );
+    case 'copyPlayedCard':
+      return CopyPlayedCardEffect(
+        filter: _copyFilter(json['filter'] as String?),
+      );
+    case 'centerDeckScry':
+      return CenterDeckScryEffect(
+        disposition: _centerScryDisposition(json['disposition'] as String?),
+      );
     case 'infinityShard':
       return const InfinityShardEffect();
     case 'chooseOne':
@@ -267,6 +292,32 @@ Map<String, dynamic> encodeEffect(CardEffect effect) {
       };
     case IgnoreShieldThisTurnEffect():
       return {'type': 'ignoreShieldThisTurn'};
+    case AddStaticModifierEffect():
+      final m = effect.modifier;
+      return {
+        'type': 'addStaticModifier',
+        'kind': m.kind.name,
+        if (m.amount != 0) 'amount': m.amount,
+        if (m.faction != null) 'faction': m.faction!.name,
+        if (m.cardType != null) 'cardType': m.cardType!.name,
+      };
+    case OpponentDrawsEffect():
+      return {
+        'type': 'opponentDraws',
+        if (effect.count != 1) 'count': effect.count,
+      };
+    case OpponentDiscardsEffect():
+      return {
+        'type': 'opponentDiscards',
+        if (effect.count != 1) 'count': effect.count,
+      };
+    case CopyPlayedCardEffect():
+      return {'type': 'copyPlayedCard', 'filter': effect.filter.name};
+    case CenterDeckScryEffect():
+      return {
+        'type': 'centerDeckScry',
+        'disposition': effect.disposition.name,
+      };
     case InfinityShardEffect():
       return {'type': 'infinityShard'};
     case ChooseOneEffect():
@@ -441,6 +492,37 @@ Character? _character(String? raw) {
     if (v.name == raw) return v;
   }
   throw FormatException('unknown character: $raw');
+}
+
+StaticModifierKind _staticModifierKind(String? raw) {
+  for (final v in StaticModifierKind.values) {
+    if (v.name == raw) return v;
+  }
+  throw FormatException('unknown static modifier kind: $raw');
+}
+
+CopyFilter _copyFilter(String? raw) {
+  switch (raw) {
+    case 'nonChampion':
+    case null:
+      return CopyFilter.nonChampion;
+    case 'any':
+      return CopyFilter.any;
+    default:
+      throw FormatException('unknown copy filter: $raw');
+  }
+}
+
+CenterScryDisposition _centerScryDisposition(String? raw) {
+  switch (raw) {
+    case 'acquire':
+    case null:
+      return CenterScryDisposition.acquire;
+    case 'toHandLosePowerEqualToCost':
+      return CenterScryDisposition.toHandLosePowerEqualToCost;
+    default:
+      throw FormatException('unknown center scry disposition: $raw');
+  }
 }
 
 ScryDisposition _scryDisposition(String? raw) {

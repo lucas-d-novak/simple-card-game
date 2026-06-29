@@ -245,6 +245,11 @@ class DeckService {
         case ConditionalEffect():
         case TreatFactionAsEffect():
         case IgnoreShieldThisTurnEffect():
+        case AddStaticModifierEffect():
+        case OpponentDrawsEffect():
+        case OpponentDiscardsEffect():
+        case CopyPlayedCardEffect():
+        case CenterDeckScryEffect():
         case InfinityShardEffect():
           break; // Handled by GameService, not DeckService
       }

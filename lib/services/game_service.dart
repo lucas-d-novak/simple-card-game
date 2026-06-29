@@ -183,6 +183,202 @@ class GameService {
     if (cost.health > 0) player.takeDamage(cost.health);
   }
 
+  // -------------------------------------------------------------------------
+  // Static modifier consults (Engine Phase 2, wave 5a — Family 11)
+  // -------------------------------------------------------------------------
+
+  /// Whether a [StaticModifier]'s optional faction/type filters match [card].
+  /// A null filter matches anything; faction matching honours
+  /// countsAsAllFactions (no alias player — static buffs are not turn-scoped).
+  bool _modifierApplies(StaticModifier mod, CardModel card) {
+    if (mod.faction != null &&
+        !_factionsMatch(mod.faction!, false, card.faction,
+            card.countsAsAllFactions)) {
+      return false;
+    }
+    if (mod.cardType != null && card.cardType != mod.cardType) return false;
+    return true;
+  }
+
+  /// The effective shield of [champion] owned by [owner]: its printed shield
+  /// plus every matching [StaticModifierKind.shieldBuff] the owner holds.
+  int _effectiveShield(CardModel champion, PlayerState owner) {
+    var shield = champion.shield;
+    for (final mod in owner.staticModifiers) {
+      if (mod.kind == StaticModifierKind.shieldBuff &&
+          _modifierApplies(mod, champion)) {
+        shield += mod.amount;
+      }
+    }
+    return shield;
+  }
+
+  /// Whether [player] owns a [StaticModifierKind.cannotBeAttacked] modifier.
+  bool _hasCannotBeAttacked(PlayerState player) => player.staticModifiers
+      .any((m) => m.kind == StaticModifierKind.cannotBeAttacked);
+
+  /// [card]'s acquisition cost for [buyer] after applying every matching
+  /// [StaticModifierKind.cardCostReduction] modifier, floored at 1 gem.
+  int _discountedCost(CardModel card, PlayerState buyer) {
+    var cost = card.cost;
+    for (final mod in buyer.staticModifiers) {
+      if (mod.kind == StaticModifierKind.cardCostReduction &&
+          _modifierApplies(mod, card)) {
+        cost -= mod.amount;
+      }
+    }
+    return cost < 1 ? 1 : cost;
+  }
+
+  /// Whether a recruited [card] should be routed to the top of [player]'s deck
+  /// because of a matching [StaticModifierKind.recruitToTopOfDeck] modifier.
+  bool _recruitsToTopOfDeck(CardModel card, PlayerState player) =>
+      player.staticModifiers.any((m) =>
+          m.kind == StaticModifierKind.recruitToTopOfDeck &&
+          _modifierApplies(m, card));
+
+  // -------------------------------------------------------------------------
+  // Opponent draw / discard (Engine Phase 2, wave 5a — Family 13)
+  // -------------------------------------------------------------------------
+
+  /// Every player except [source] draws [count] card(s) from their own draw
+  /// pile, reshuffling their discard when the draw pile empties (mirrors
+  /// [_drawCards]). Eliminated players are skipped. Used by [OpponentDrawsEffect]
+  /// (blitz_shard_runner).
+  void _eachOtherPlayerDraws(PlayerState source, int count) {
+    if (count <= 0) return;
+    for (final player in players) {
+      if (player.id == source.id || player.isEliminated) continue;
+      _drawCards(player, count);
+    }
+  }
+
+  /// Every player except [source] discards [count] card(s) from their hand
+  /// (the first [count], or all they have if fewer). Eliminated players are
+  /// skipped. Used by [OpponentDiscardsEffect] (blitz_shard_runner mastery
+  /// variant).
+  void _eachOtherPlayerDiscards(PlayerState source, int count) {
+    if (count <= 0) return;
+    for (final player in players) {
+      if (player.id == source.id || player.isEliminated) continue;
+      final n = count > player.hand.length ? player.hand.length : count;
+      for (var i = 0; i < n; i++) {
+        player.discardPile.add(player.hand.removeAt(0));
+      }
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Copy-effect (Engine Phase 2, wave 5a — Family 9)
+  // -------------------------------------------------------------------------
+
+  /// Re-resolve the play effects of a card the current player already played
+  /// this turn, fulfilling a [CopyPlayedCardEffect] after the player selects a
+  /// target. [cardId] must name a card in [PlayerState.cardsPlayedThisTurn].
+  ///
+  /// Honours the effect's [CopyFilter] (nonChampion excludes champions).
+  ///
+  /// RE-ENTRANCY GUARD: a card that itself contains a [CopyPlayedCardEffect] is
+  /// NOT copyable (returns false) — this prevents a copy-of-a-copy from looping.
+  /// In addition, when re-resolving, any [InfinityShardEffect] in the copied
+  /// card's play effects is SKIPPED so copying can never grant mastery or
+  /// trigger a spurious Infinity Shard win.
+  ///
+  /// Returns false (no state change) if the game is over / the player can't act,
+  /// the card is not found, it does not match the filter, or it is itself a copy
+  /// card.
+  bool copyPlayedCard(
+    String cardId, {
+    CopyFilter filter = CopyFilter.nonChampion,
+  }) {
+    if (!_currentPlayerCanAct) return false;
+    final player = currentPlayer;
+
+    final card =
+        player.cardsPlayedThisTurn.where((c) => c.id == cardId).firstOrNull;
+    if (card == null) return false;
+
+    if (filter == CopyFilter.nonChampion &&
+        card.cardType == CardType.champion) {
+      return false;
+    }
+
+    // Re-entrancy guard: refuse to copy a card that itself copies.
+    if (_containsCopyEffect(card.playEffects)) return false;
+
+    // Re-resolve the copied card's play effects, excluding InfinityShardEffect
+    // so the copy never causes a mastery gain / spurious win.
+    final copyable = [
+      for (final e in card.playEffects)
+        if (e is! InfinityShardEffect) e,
+    ];
+    _resolveEffects(copyable, player, sourceCard: card);
+    return true;
+  }
+
+  bool _containsCopyEffect(List<CardEffect> effects) {
+    for (final e in effects) {
+      if (e is CopyPlayedCardEffect) return true;
+      // Guard nested copies inside chooseOne / conditional too.
+      if (e is ChooseOneEffect) {
+        for (final group in e.choices) {
+          if (_containsCopyEffect(group)) return true;
+        }
+      }
+      if (e is ConditionalEffect && _containsCopyEffect(e.then)) return true;
+    }
+    return false;
+  }
+
+  // -------------------------------------------------------------------------
+  // Center-deck scry (Engine Phase 2, wave 5a — extends Family 8)
+  // -------------------------------------------------------------------------
+
+  /// Peek at the top card of the CENTER (infinity) deck WITHOUT removing it (for
+  /// UI display before a [CenterDeckScryEffect] resolution). Returns null when
+  /// the infinity deck is empty. The "top" is the END of [infinityDeck] (the
+  /// next card [_refillCenterRow] would deal, via removeLast()).
+  CardModel? centerDeckScryReveal() {
+    if (infinityDeck.isEmpty) return null;
+    return infinityDeck.last;
+  }
+
+  /// Resolve a [CenterDeckScryEffect] against the top card of the infinity deck,
+  /// after the player has seen it (deferred-selection). [cardId] must name the
+  /// current top card (returned by [centerDeckScryReveal]).
+  ///
+  /// - [CenterScryDisposition.acquire] (the_shard_defiant): the revealed card is
+  ///   removed from the infinity deck and acquired to the player's discard pile,
+  ///   for free.
+  /// - [CenterScryDisposition.toHandLosePowerEqualToCost] (oblivion_gatekeeper):
+  ///   the revealed card is put into the player's hand and they lose power equal
+  ///   to its gem cost (power pool floored at 0). This "ignores Guard" — it is a
+  ///   pure resource interaction with no targeting, so Guard never applies.
+  ///
+  /// Returns false (no state change) if the game is over / the player can't act,
+  /// the deck is empty, or [cardId] is not the current top card.
+  bool centerDeckScryResolve(
+    String cardId, {
+    CenterScryDisposition disposition = CenterScryDisposition.acquire,
+  }) {
+    if (!_currentPlayerCanAct) return false;
+    if (infinityDeck.isEmpty) return false;
+    if (infinityDeck.last.id != cardId) return false;
+
+    final player = currentPlayer;
+    final card = infinityDeck.removeLast();
+
+    switch (disposition) {
+      case CenterScryDisposition.acquire:
+        player.discardPile.add(card);
+      case CenterScryDisposition.toHandLosePowerEqualToCost:
+        player.hand.add(card);
+        player.powerPool -= card.cost;
+        if (player.powerPool < 0) player.powerPool = 0;
+    }
+    return true;
+  }
+
   /// Play a card from the current player's hand.
   ///
   /// [choiceIndex] selects which option for ChooseOneEffect cards (default 0).
@@ -238,9 +434,12 @@ class GameService {
     if (rowIndex == -1) return false;
 
     final card = centerRow[rowIndex];
-    if (currentPlayer.gemPool < card.cost) return false;
+    // aedifex: apply any cardCostReduction static modifiers the buyer owns
+    // (min 1 gem). Mirrored in recruitFromCenter for non-free recruits.
+    final price = _discountedCost(card, currentPlayer);
+    if (currentPlayer.gemPool < price) return false;
 
-    currentPlayer.gemPool -= card.cost;
+    currentPlayer.gemPool -= price;
     centerRow.removeAt(rowIndex);
     currentPlayer.discardPile.add(card);
     _refillCenterRow();
@@ -292,12 +491,22 @@ class GameService {
         target.championsInPlay.indexWhere((c) => c.id == championId);
     if (champIndex == -1) return false;
 
+    // zetta_the_encryptor: a player with a cannotBeAttacked static modifier
+    // cannot have their champions targeted by an attack either (the whole
+    // player is untargetable). Card-effect destruction (destroyChampion) is a
+    // separate path and is intentionally not gated here.
+    if (_hasCannotBeAttacked(target)) return false;
+
     final champion = target.championsInPlay[champIndex];
     // spirit_leech: while the attacker ignores shield this turn, the shield
     // value required to destroy a champion is treated as 0 (any power, including
     // 0, destroys it). The normal path is untouched when the flag is false.
-    final shieldNeeded =
-        currentPlayer.ignoresShieldThisTurn ? 0 : champion.shield;
+    // Otherwise the effective shield is the printed shield PLUS any shieldBuff
+    // static modifiers the target owns that apply to this champion
+    // (one_mind_one_army, phasic_technology).
+    final shieldNeeded = currentPlayer.ignoresShieldThisTurn
+        ? 0
+        : _effectiveShield(champion, target);
     if (currentPlayer.powerPool < shieldNeeded) return false;
 
     currentPlayer.powerPool -= shieldNeeded;
@@ -322,6 +531,10 @@ class GameService {
     );
     if (target.id == currentPlayer.id) return false;
     if (target.isEliminated) return false;
+
+    // zetta_the_encryptor: a cannotBeAttacked static modifier makes the target
+    // untargetable by direct attacks.
+    if (_hasCannotBeAttacked(target)) return false;
 
     // Guard check: target must have no guard champions
     final hasGuard = target.championsInPlay.any((c) => c.hasGuard);
@@ -481,15 +694,21 @@ class GameService {
     final card = centerRow[index];
     if (maxCost != null && card.cost > maxCost) return false;
 
-    final price = free ? 0 : card.cost;
+    // aedifex: cost reduction applies to non-free recruits (min 1 gem).
+    final price = free ? 0 : _discountedCost(card, player);
     if (player.gemPool < price) return false;
 
     player.gemPool -= price;
     centerRow.removeAt(index);
 
+    // maglev_tunnels: a recruitToTopOfDeck static modifier matching this card
+    // overrides the default discard destination, routing it to the top of the
+    // deck. An explicit toHand / toTopOfDeck on the effect still takes priority.
+    final modifierToTop = !toHand && _recruitsToTopOfDeck(card, player);
+
     if (toHand) {
       player.hand.add(card);
-    } else if (toTopOfDeck) {
+    } else if (toTopOfDeck || modifierToTop) {
       // _drawCards draws via removeLast(), so the TOP of the deck (next draw) is
       // the END of the drawPile list. Append so this card is drawn next.
       player.drawPile.add(card);
@@ -779,6 +998,24 @@ class GameService {
           // the destroy threshold this turn (see attackChampion). Cleared by
           // resetTurnResources.
           player.ignoresShieldThisTurn = true;
+        case AddStaticModifierEffect():
+          // Immediate: append the persistent modifier to the player's list. It
+          // stays for the rest of the game (wave-5a lifetime). Consulted by
+          // attackChampion / attackPlayer / buyCard / recruitFromCenter.
+          player.staticModifiers.add(effect.modifier);
+        case OpponentDrawsEffect():
+          _eachOtherPlayerDraws(player, effect.count);
+        case OpponentDiscardsEffect():
+          _eachOtherPlayerDiscards(player, effect.count);
+        case CopyPlayedCardEffect():
+          // Requires selecting which previously-played card to copy — the player
+          // should call copyPlayedCard() separately after this effect.
+          break;
+        case CenterDeckScryEffect():
+          // Requires a center-deck peek + per-card disposition — the player
+          // should call centerDeckScryReveal() then centerDeckScryResolve()
+          // separately after this effect.
+          break;
         case InfinityShardEffect():
           _resolveInfinityShard(player);
         case GainMoneyEffect():
