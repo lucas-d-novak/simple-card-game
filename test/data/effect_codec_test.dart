@@ -700,5 +700,84 @@ void main() {
         );
       });
     });
+
+    group('treatFactionAs (Phase 2 wave 4)', () {
+      test('decodes one-directional alias (no bidirectional field)', () {
+        final e = decodeEffect({
+          'type': 'treatFactionAs',
+          'from': 'wraethe',
+          'to': 'undergrowth',
+        }) as TreatFactionAsEffect;
+        expect(e.from, Faction.wraethe);
+        expect(e.to, Faction.undergrowth);
+        expect(e.bidirectional, false);
+      });
+
+      test('decodes bidirectional alias', () {
+        final e = decodeEffect({
+          'type': 'treatFactionAs',
+          'from': 'wraethe',
+          'to': 'undergrowth',
+          'bidirectional': true,
+        }) as TreatFactionAsEffect;
+        expect(e.bidirectional, true);
+      });
+
+      test('round-trips one-directional (omits bidirectional)', () {
+        const original = TreatFactionAsEffect(
+          from: Faction.homodeus,
+          to: Faction.order,
+        );
+        final encoded = encodeEffect(original);
+        expect(encoded.containsKey('bidirectional'), false);
+        final decoded = decodeEffect(encoded) as TreatFactionAsEffect;
+        expect(decoded.from, Faction.homodeus);
+        expect(decoded.to, Faction.order);
+        expect(decoded.bidirectional, false);
+      });
+
+      test('round-trips bidirectional', () {
+        const original = TreatFactionAsEffect(
+          from: Faction.wraethe,
+          to: Faction.undergrowth,
+          bidirectional: true,
+        );
+        final decoded =
+            decodeEffect(encodeEffect(original)) as TreatFactionAsEffect;
+        expect(decoded.from, Faction.wraethe);
+        expect(decoded.to, Faction.undergrowth);
+        expect(decoded.bidirectional, true);
+      });
+
+      test('missing "from" throws FormatException', () {
+        expect(
+          () => decodeEffect({'type': 'treatFactionAs', 'to': 'order'}),
+          throwsFormatException,
+        );
+      });
+
+      test('unknown faction value throws FormatException', () {
+        expect(
+          () => decodeEffect(
+              {'type': 'treatFactionAs', 'from': 'bogus', 'to': 'order'}),
+          throwsFormatException,
+        );
+      });
+    });
+
+    group('ignoreShieldThisTurn (Phase 2 wave 4)', () {
+      test('decodes', () {
+        expect(
+          decodeEffect({'type': 'ignoreShieldThisTurn'}),
+          isA<IgnoreShieldThisTurnEffect>(),
+        );
+      });
+
+      test('round-trips', () {
+        const original = IgnoreShieldThisTurnEffect();
+        final decoded = decodeEffect(encodeEffect(original));
+        expect(decoded, isA<IgnoreShieldThisTurnEffect>());
+      });
+    });
   });
 }

@@ -293,9 +293,14 @@ class GameService {
     if (champIndex == -1) return false;
 
     final champion = target.championsInPlay[champIndex];
-    if (currentPlayer.powerPool < champion.shield) return false;
+    // spirit_leech: while the attacker ignores shield this turn, the shield
+    // value required to destroy a champion is treated as 0 (any power, including
+    // 0, destroys it). The normal path is untouched when the flag is false.
+    final shieldNeeded =
+        currentPlayer.ignoresShieldThisTurn ? 0 : champion.shield;
+    if (currentPlayer.powerPool < shieldNeeded) return false;
 
-    currentPlayer.powerPool -= champion.shield;
+    currentPlayer.powerPool -= shieldNeeded;
     target.championsInPlay.removeAt(champIndex);
     target.discardPile.add(champion);
 
@@ -756,6 +761,22 @@ class GameService {
           // Requires UI peek + per-card choice — the player should call
           // scryReveal() then scryResolve() separately after this effect.
           break;
+        case TreatFactionAsEffect():
+          // Turn-scoped: register the alias on the current player so faction
+          // matching (ally checks + faction-filtered scaling/conditions) treats
+          // `from` as `to` for the rest of this turn. Bidirectional adds the
+          // reverse mapping too. Cleared by resetTurnResources.
+          player.factionAliasesThisTurn
+              .add((from: effect.from, to: effect.to));
+          if (effect.bidirectional) {
+            player.factionAliasesThisTurn
+                .add((from: effect.to, to: effect.from));
+          }
+        case IgnoreShieldThisTurnEffect():
+          // Turn-scoped: this player's attacks ignore enemy champion shield for
+          // the destroy threshold this turn (see attackChampion). Cleared by
+          // resetTurnResources.
+          player.ignoresShieldThisTurn = true;
         case InfinityShardEffect():
           _resolveInfinityShard(player);
         case GainMoneyEffect():
@@ -826,7 +847,7 @@ class GameService {
     for (final other in player.playedThisTurn) {
       if (other.id == card.id) continue;
       if (_factionsMatch(cardFaction, card.countsAsAllFactions,
-          other.faction, other.countsAsAllFactions)) {
+          other.faction, other.countsAsAllFactions, aliasPlayer: player)) {
         return true;
       }
     }
@@ -835,7 +856,7 @@ class GameService {
     for (final other in player.championsInPlay) {
       if (other.id == card.id) continue;
       if (_factionsMatch(cardFaction, card.countsAsAllFactions,
-          other.faction, other.countsAsAllFactions)) {
+          other.faction, other.countsAsAllFactions, aliasPlayer: player)) {
         return true;
       }
     }
@@ -845,18 +866,55 @@ class GameService {
 
   /// Returns true if two cards' factions match for ally ability purposes.
   /// A card with countsAsAllFactions matches any non-none faction.
+  ///
+  /// [aliasPlayer], when supplied AND holding turn-scoped faction aliases
+  /// (set by [TreatFactionAsEffect]), canonicalizes both factions through that
+  /// player's [PlayerState.factionAliasesThisTurn] before comparing. When no
+  /// alias player is passed, or the player has no aliases (the common case),
+  /// behaviour is IDENTICAL to the un-aliased comparison — every existing call
+  /// site that omits [aliasPlayer] is unaffected.
   bool _factionsMatch(
     Faction factionA, bool allFactionsA,
-    Faction factionB, bool allFactionsB,
-  ) {
-    // If either is factionless and doesn't count as all factions, no match
+    Faction factionB, bool allFactionsB, {
+    PlayerState? aliasPlayer,
+  }) {
+    // If either is factionless and doesn't count as all factions, no match.
+    // (countsAsAllFactions and the none-faction guard are evaluated on the
+    // RAW factions, before aliasing — an alias only redirects a real faction
+    // to another real faction, it never grants/removes "all factions".)
     if (factionA == Faction.none && !allFactionsA) return false;
     if (factionB == Faction.none && !allFactionsB) return false;
 
     // If either counts as all factions, it matches any non-none faction
     if (allFactionsA || allFactionsB) return true;
 
-    return factionA == factionB;
+    // Fast path: identical factions always match (also the common no-alias
+    // case), with zero allocation.
+    if (factionA == factionB) return true;
+
+    // Alias-aware path. A `from -> to` alias means a `from` card ALSO counts as
+    // `to` (it keeps its own faction too). Two factions therefore match when
+    // their alias-expanded faction sets intersect. With no alias player / no
+    // aliases this loop is skipped entirely and we've already returned for the
+    // equal-faction case, so behaviour is identical to the original.
+    if (aliasPlayer == null || aliasPlayer.factionAliasesThisTurn.isEmpty) {
+      return false;
+    }
+    final setA = _aliasExpand(factionA, aliasPlayer);
+    final setB = _aliasExpand(factionB, aliasPlayer);
+    return setA.any(setB.contains);
+  }
+
+  /// The set of factions [faction] counts as given [player]'s turn-scoped
+  /// aliases: always itself, plus the `to` of any alias whose `from` is
+  /// [faction]. A single hop (aliases are not transitively chained); a
+  /// bidirectional alias already records both directions explicitly.
+  Set<Faction> _aliasExpand(Faction faction, PlayerState player) {
+    final set = {faction};
+    for (final alias in player.factionAliasesThisTurn) {
+      if (alias.from == faction) set.add(alias.to);
+    }
+    return set;
   }
 
   // -------------------------------------------------------------------------
@@ -985,14 +1043,16 @@ class GameService {
         if (f == null) return 0;
         return player.discardPile
             .where((c) => _factionsMatch(
-                f, false, c.faction, c.countsAsAllFactions))
+                f, false, c.faction, c.countsAsAllFactions,
+                aliasPlayer: player))
             .length;
       case ScalingCondition.perFactionChampionControlled:
         final f = filterFaction ?? sourceCard?.faction;
         if (f == null) return 0;
         return player.championsInPlay
             .where((c) => _factionsMatch(
-                f, false, c.faction, c.countsAsAllFactions))
+                f, false, c.faction, c.countsAsAllFactions,
+                aliasPlayer: player))
             .length;
       case ScalingCondition.perFactionCardPlayedThisTurn:
         final f = filterFaction ?? sourceCard?.faction;
@@ -1000,7 +1060,8 @@ class GameService {
         return _countPlayedThisTurn(
           player,
           sourceCard,
-          (c) => _factionsMatch(f, false, c.faction, c.countsAsAllFactions),
+          (c) => _factionsMatch(f, false, c.faction, c.countsAsAllFactions,
+              aliasPlayer: player),
         );
       case ScalingCondition.perAllyWithShieldPlayedThisTurn:
         final f = filterFaction ?? sourceCard?.faction;
@@ -1010,7 +1071,8 @@ class GameService {
           sourceCard,
           (c) =>
               c.shield > 0 &&
-              _factionsMatch(f, false, c.faction, c.countsAsAllFactions),
+              _factionsMatch(f, false, c.faction, c.countsAsAllFactions,
+                  aliasPlayer: player),
         );
     }
   }
@@ -1052,7 +1114,7 @@ class GameService {
           player,
           source,
           (card) => _factionsMatch(f, false, card.faction,
-              card.countsAsAllFactions),
+              card.countsAsAllFactions, aliasPlayer: player),
         );
         return count >= c.threshold;
       case GameConditionKind.factionsPlayedAll:
@@ -1080,7 +1142,7 @@ class GameService {
           (card) => c.faction == null
               ? true
               : _factionsMatch(c.faction!, false, card.faction,
-                  card.countsAsAllFactions),
+                  card.countsAsAllFactions, aliasPlayer: player),
         );
         final isEven = count.isEven;
         return parity == GemParity.even ? isEven : !isEven;
@@ -1091,7 +1153,7 @@ class GameService {
           (card) {
             if (c.faction != null &&
                 !_factionsMatch(c.faction!, false, card.faction,
-                    card.countsAsAllFactions)) {
+                    card.countsAsAllFactions, aliasPlayer: player)) {
               return false;
             }
             if (c.maxCost != null && card.cost > c.maxCost!) return false;
@@ -1106,7 +1168,8 @@ class GameService {
         if (f == null || f == Faction.none) return false;
         final count = player.championsInPlay
             .where((card) => _factionsMatch(
-                f, false, card.faction, card.countsAsAllFactions))
+                f, false, card.faction, card.countsAsAllFactions,
+                aliasPlayer: player))
             .length;
         return count >= c.threshold;
       case GameConditionKind.masteryAtLeast:
@@ -1117,7 +1180,8 @@ class GameService {
         // Count ALL same-faction cards played this turn INCLUDING the source.
         final count = player.cardsPlayedThisTurn
             .where((card) => _factionsMatch(
-                f, false, card.faction, card.countsAsAllFactions))
+                f, false, card.faction, card.countsAsAllFactions,
+                aliasPlayer: player))
             .length;
         return count >= c.threshold;
       case GameConditionKind.isCharacter:
@@ -1153,6 +1217,7 @@ class GameService {
             sourceCard.countsAsAllFactions,
             played.faction,
             played.countsAsAllFactions,
+            aliasPlayer: player,
           )) {
             count++;
           }

@@ -383,6 +383,52 @@ final class ScryEffect extends CardEffect {
 }
 
 // ---------------------------------------------------------------------------
+// Turn-scoped matching modifiers (Engine Phase 2, wave 4)
+// ---------------------------------------------------------------------------
+
+/// "Treat [from] cards as [to] this turn" (project_yggdrasil; isa_tel_tor
+/// mastery-20). A TURN-SCOPED modifier to faction matching, not an immediate
+/// action with a visible result. Its `_resolveEffects` case mutates the current
+/// player's [PlayerState.factionAliasesThisTurn]: it records `from -> to`, and
+/// (when [bidirectional]) also `to -> from`, so the two factions count as each
+/// other for ally abilities and faction-filtered scaling/conditions for the rest
+/// of the turn. Cleared by [PlayerState.resetTurnResources].
+final class TreatFactionAsEffect extends CardEffect {
+  const TreatFactionAsEffect({
+    required this.from,
+    required this.to,
+    this.bidirectional = false,
+  });
+
+  /// The faction that should be treated as [to].
+  final Faction from;
+
+  /// The faction [from] is treated as.
+  final Faction to;
+
+  /// When true, [to] is also treated as [from] (the alias works both ways).
+  final bool bidirectional;
+
+  @override
+  String get description => bidirectional
+      ? 'Treat ${from.name} and ${to.name} as the same faction this turn'
+      : 'Treat ${from.name} cards as ${to.name} this turn';
+}
+
+/// "You ignore shield this turn" (spirit_leech). A TURN-SCOPED modifier: its
+/// `_resolveEffects` case sets the current player's
+/// [PlayerState.ignoresShieldThisTurn] true, so any of that player's attacks
+/// destroy an enemy champion regardless of its shield value (the shield is
+/// treated as 0 for the destroy threshold). Cleared by
+/// [PlayerState.resetTurnResources].
+final class IgnoreShieldThisTurnEffect extends CardEffect {
+  const IgnoreShieldThisTurnEffect();
+
+  @override
+  String get description => 'You ignore shield this turn';
+}
+
+// ---------------------------------------------------------------------------
 // Complex / composite effects
 // ---------------------------------------------------------------------------
 

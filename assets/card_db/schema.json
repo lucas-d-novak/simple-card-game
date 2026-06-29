@@ -182,6 +182,8 @@
             "conditionalPower",
             "scalingResource",
             "conditional",
+            "treatFactionAs",
+            "ignoreShieldThisTurn",
             "infinityShard"
           ]
         },
@@ -230,6 +232,20 @@
           "type": "string",
           "enum": ["homodeus", "wraethe", "order", "undergrowth", "none"],
           "description": "For returnFromDiscard when filter is 'faction': the required faction."
+        },
+        "from": {
+          "type": "string",
+          "enum": ["homodeus", "wraethe", "order", "undergrowth", "none"],
+          "description": "For treatFactionAs: the faction treated as 'to' this turn."
+        },
+        "to": {
+          "type": "string",
+          "enum": ["homodeus", "wraethe", "order", "undergrowth", "none"],
+          "description": "For treatFactionAs: the faction that 'from' is treated as this turn."
+        },
+        "bidirectional": {
+          "type": "boolean",
+          "description": "For treatFactionAs: if true, 'to' is also treated as 'from' (the alias works both ways)."
         },
         "condition": {
           "description": "For conditionalPower / scalingResource: a STRING naming the scaling quantity. For conditional: an OBJECT (see the condition object shape below). conditionalPower enum: perChampionControlled, perAllyPlayedThisTurn, perFactionPlayedThisTurn, perCardInDiscard. scalingResource adds: perFactionCardInDiscard, perFactionChampionControlled, perFactionCardPlayedThisTurn, perAllyWithShieldPlayedThisTurn.",

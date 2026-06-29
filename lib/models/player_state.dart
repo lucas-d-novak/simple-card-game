@@ -1,6 +1,7 @@
 import 'package:simple_card_game/models/card_effect.dart';
 import 'package:simple_card_game/models/card_model.dart';
 import 'package:simple_card_game/models/card_type.dart';
+import 'package:simple_card_game/models/faction.dart';
 
 /// Mutable per-player state for a Shards of Infinity game.
 class PlayerState {
@@ -23,6 +24,21 @@ class PlayerState {
   /// [GameService.attackPlayer]). Read by `GameConditionKind.unblockedDamageAtLeast`
   /// (e.g. blood_for_blood). Reset each turn by [resetTurnResources].
   int unblockedDamageThisTurn = 0;
+
+  /// Turn-scoped faction aliases set by [TreatFactionAsEffect] (e.g.
+  /// project_yggdrasil "treat Wraethe cards as Undergrowth this turn"). Each
+  /// entry maps a `from` faction to a `to` faction; when matching factions for
+  /// ally abilities and faction-filtered scaling/conditions, the engine
+  /// canonicalizes a faction through these aliases (`from` is treated as `to`).
+  /// Bidirectional effects add both directions. Cleared each turn by
+  /// [resetTurnResources] so the alias only lasts the controlling player's turn.
+  final List<({Faction from, Faction to})> factionAliasesThisTurn = [];
+
+  /// Turn-scoped flag set by [IgnoreShieldThisTurnEffect] (spirit_leech "you
+  /// ignore shield this turn"). While true, this player's attacks treat enemy
+  /// champion shield as 0 for the destroy threshold (any power destroys the
+  /// champion). Cleared each turn by [resetTurnResources].
+  bool ignoresShieldThisTurn = false;
 
   final List<CardModel> hand = [];
   final List<CardModel> drawPile = [];
@@ -70,6 +86,8 @@ class PlayerState {
     gemPool = 0;
     powerPool = 0;
     unblockedDamageThisTurn = 0;
+    factionAliasesThisTurn.clear();
+    ignoresShieldThisTurn = false;
     activatedChampions.clear();
     exhaustedChampions.clear();
     cardsPlayedThisTurn.clear();

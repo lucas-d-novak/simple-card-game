@@ -243,6 +243,8 @@ class DeckService {
         case ConditionalPowerEffect():
         case ScalingResourceEffect():
         case ConditionalEffect():
+        case TreatFactionAsEffect():
+        case IgnoreShieldThisTurnEffect():
         case InfinityShardEffect():
           break; // Handled by GameService, not DeckService
       }

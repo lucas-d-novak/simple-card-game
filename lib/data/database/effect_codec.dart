@@ -165,6 +165,14 @@ CardEffect decodeEffect(Map<String, dynamic> json) {
         condition: _gameCondition(json['condition']),
         then: decodeEffectList(then),
       );
+    case 'treatFactionAs':
+      return TreatFactionAsEffect(
+        from: _faction(json['from'] as String?),
+        to: _faction(json['to'] as String?),
+        bidirectional: (json['bidirectional'] as bool?) ?? false,
+      );
+    case 'ignoreShieldThisTurn':
+      return const IgnoreShieldThisTurnEffect();
     case 'infinityShard':
       return const InfinityShardEffect();
     case 'chooseOne':
@@ -250,6 +258,15 @@ Map<String, dynamic> encodeEffect(CardEffect effect) {
         'condition': _encodeGameCondition(effect.condition),
         'then': [for (final e in effect.then) encodeEffect(e)],
       };
+    case TreatFactionAsEffect():
+      return {
+        'type': 'treatFactionAs',
+        'from': effect.from.name,
+        'to': effect.to.name,
+        if (effect.bidirectional) 'bidirectional': true,
+      };
+    case IgnoreShieldThisTurnEffect():
+      return {'type': 'ignoreShieldThisTurn'};
     case InfinityShardEffect():
       return {'type': 'infinityShard'};
     case ChooseOneEffect():
