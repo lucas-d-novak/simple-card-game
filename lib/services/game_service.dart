@@ -1145,22 +1145,34 @@ class GameService {
           // Immediate: append the persistent modifier to the player's list. It
           // stays for the rest of the game (wave-5a lifetime). Consulted by
           // attackChampion / attackPlayer / buyCard / recruitFromCenter.
-          // A shieldPerCardUnder modifier is SELF-scoped: stamp it with the
-          // in-flight champion's id so _effectiveShield only buffs that champion
-          // (carmine_eclipse). Other kinds are stored verbatim.
-          if (effect.modifier.kind ==
-                  StaticModifierKind.shieldPerCardUnder &&
-              effect.modifier.sourceChampionId == null &&
-              sourceCard != null) {
-            player.staticModifiers.add(StaticModifier(
-              kind: effect.modifier.kind,
-              amount: effect.modifier.amount,
-              faction: effect.modifier.faction,
-              cardType: effect.modifier.cardType,
-              sourceChampionId: sourceCard.id,
-            ));
-          } else {
-            player.staticModifiers.add(effect.modifier);
+          //
+          // When the source is a CHAMPION, its playEffects re-resolve every turn
+          // it is activated (activateChampion) — so we MUST stamp the modifier
+          // with the champion's id and add it only ONCE, else it accumulates a
+          // duplicate buff each turn (unbounded growth). Regular/mercenary
+          // sources resolve once per play, so they need no dedupe but are still
+          // stamped when a source card is known. A shieldPerCardUnder modifier
+          // is additionally SELF-scoped so _effectiveShield only buffs that
+          // champion (carmine_eclipse).
+          final stamped = effect.modifier.sourceChampionId == null &&
+                  sourceCard != null
+              ? StaticModifier(
+                  kind: effect.modifier.kind,
+                  amount: effect.modifier.amount,
+                  faction: effect.modifier.faction,
+                  cardType: effect.modifier.cardType,
+                  sourceChampionId: sourceCard.id,
+                )
+              : effect.modifier;
+          final alreadyApplied = stamped.sourceChampionId != null &&
+              player.staticModifiers.any((m) =>
+                  m.sourceChampionId == stamped.sourceChampionId &&
+                  m.kind == stamped.kind &&
+                  m.amount == stamped.amount &&
+                  m.faction == stamped.faction &&
+                  m.cardType == stamped.cardType);
+          if (!alreadyApplied) {
+            player.staticModifiers.add(stamped);
           }
         case TuckUnderChampionEffect():
           // hand source: deferred-selection — the player calls

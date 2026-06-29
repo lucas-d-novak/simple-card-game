@@ -105,6 +105,44 @@ void main() {
       expect(player.staticModifiers.first.kind, StaticModifierKind.shieldBuff);
     });
 
+    test(
+        'champion re-activation does NOT duplicate its static modifier '
+        '(no unbounded buff growth)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+
+      const champ = CardModel(
+        id: 'buff_champ',
+        name: 'Buff Champ',
+        cost: 0,
+        cardType: CardType.champion,
+        shield: 4,
+        playEffects: [
+          AddStaticModifierEffect(StaticModifier(
+            kind: StaticModifierKind.shieldBuff,
+            amount: 1,
+          )),
+        ],
+      );
+      player.hand.add(champ);
+
+      // Deploy: modifier added once.
+      game.playCard('buff_champ');
+      expect(player.staticModifiers, hasLength(1));
+
+      // Simulate later turns: the champion's free activation re-resolves its
+      // playEffects. The modifier must NOT be re-appended each time.
+      game.currentPlayer.activatedChampions.clear();
+      game.activateChampion('buff_champ');
+      expect(player.staticModifiers, hasLength(1),
+          reason: 'modifier deduped on re-activation');
+
+      game.currentPlayer.activatedChampions.clear();
+      game.activateChampion('buff_champ');
+      expect(player.staticModifiers, hasLength(1),
+          reason: 'still exactly one after a second re-activation');
+    });
+
     test('static modifier is NOT cleared by endTurn (rest-of-game lifetime)',
         () {
       final game = GameService(playerCount: 2, random: Random(7));
