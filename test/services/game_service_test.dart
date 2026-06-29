@@ -2616,4 +2616,261 @@ void main() {
       expect(player.powerPool, 3);
     });
   });
+
+  // -------------------------------------------------------------------------
+  // Engine Phase 2 — Wave 2 (self-contained leaf effects)
+  // -------------------------------------------------------------------------
+
+  group('Wave 2: SelfBanishEffect', () {
+    test('regular card banishes itself after resolving its other effects', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      const card = CardModel(
+        id: 'aion_guide',
+        name: 'Aion Guide',
+        cost: 0,
+        playEffects: [GainGemsEffect(3), SelfBanishEffect()],
+      );
+      player.hand.add(card);
+
+      expect(game.playCard('aion_guide'), true);
+      // Other effect still resolved.
+      expect(player.gemPool, 3);
+      // Source moved to removedFromGame, not lingering in any zone.
+      expect(game.removedFromGame.map((c) => c.id), contains('aion_guide'));
+      expect(player.playedThisTurn.any((c) => c.id == 'aion_guide'), false);
+      expect(player.cardsPlayedThisTurn.any((c) => c.id == 'aion_guide'),
+          false);
+    });
+
+    test('self-banished card is NOT discarded after endTurn', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      const card = CardModel(
+        id: 'wandering_ghost',
+        name: 'Wandering Ghost',
+        cost: 0,
+        playEffects: [GainPowerEffect(2), SelfBanishEffect()],
+      );
+      player.hand.add(card);
+      game.playCard('wandering_ghost');
+
+      game.endTurn();
+
+      expect(game.removedFromGame.map((c) => c.id), contains('wandering_ghost'));
+      expect(player.discardPile.any((c) => c.id == 'wandering_ghost'), false);
+    });
+
+    test('champion source self-banishes out of championsInPlay', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      const champ = CardModel(
+        id: 'ghost_champ',
+        name: 'Ghost Champion',
+        cost: 0,
+        cardType: CardType.champion,
+        shield: 2,
+        playEffects: [GainGemsEffect(1), SelfBanishEffect()],
+      );
+      player.hand.add(champ);
+      game.playCard('ghost_champ');
+
+      expect(player.gemPool, 1);
+      expect(player.championsInPlay.any((c) => c.id == 'ghost_champ'), false);
+      expect(game.removedFromGame.map((c) => c.id), contains('ghost_champ'));
+    });
+  });
+
+  group('Wave 2: ResetChampionEffect / resetChampion()', () {
+    CardModel exhaustChampion(String id) => CardModel(
+          id: id,
+          name: id,
+          cost: 0,
+          playEffects: const [],
+          cardType: CardType.champion,
+          shield: 3,
+          activatedAbility:
+              const ActivatedAbility(effects: [GainPowerEffect(1)]),
+        );
+
+    test('reset un-exhausts a champion so it is usable again same turn', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.hand.add(exhaustChampion('reset_me'));
+      game.playCard('reset_me');
+
+      // Exhaust it.
+      expect(game.useActivatedAbility('reset_me'), true);
+      expect(player.powerPool, 1);
+      expect(player.exhaustedChampions, contains('reset_me'));
+      // Cannot reuse while exhausted.
+      expect(game.useActivatedAbility('reset_me'), false);
+
+      // Reset it.
+      expect(game.resetChampion('reset_me'), true);
+      expect(player.exhaustedChampions, isEmpty);
+
+      // Usable again this same turn.
+      expect(game.useActivatedAbility('reset_me'), true);
+      expect(player.powerPool, 2);
+    });
+
+    test('resetChampion rejects a champion that is not exhausted', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.hand.add(exhaustChampion('not_exhausted'));
+      game.playCard('not_exhausted');
+
+      expect(game.resetChampion('not_exhausted'), false);
+    });
+
+    test('resetChampion rejects a champion the player does not control', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      // p1 owns and exhausts a champion; p0 (current) cannot reset it.
+      final p1 = game.players[1];
+      p1.championsInPlay.add(exhaustChampion('enemy_champ'));
+      p1.exhaustedChampions.add('enemy_champ');
+
+      expect(game.resetChampion('enemy_champ'), false);
+      expect(p1.exhaustedChampions, contains('enemy_champ'));
+    });
+
+    test('ResetChampionEffect is a no-op during resolution (deferred)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.championsInPlay.add(exhaustChampion('deferred_champ'));
+      player.exhaustedChampions.add('deferred_champ');
+      const card = CardModel(
+        id: 'g_48',
+        name: 'g_48',
+        cost: 0,
+        playEffects: [ResetChampionEffect()],
+      );
+      player.hand.add(card);
+
+      game.playCard('g_48');
+      // Effect alone does not reset — selection is deferred to resetChampion().
+      expect(player.exhaustedChampions, contains('deferred_champ'));
+    });
+  });
+
+  group('Wave 2: AllPlayersLoseHealthEffect', () {
+    test('every player including the current one loses N health', () {
+      final game = GameService(playerCount: 3, random: Random(7));
+      final player = game.currentPlayer;
+      const card = CardModel(
+        id: 'bound_for_life',
+        name: 'Bound For Life',
+        cost: 0,
+        playEffects: [AllPlayersLoseHealthEffect(4)],
+      );
+      player.hand.add(card);
+
+      game.playCard('bound_for_life');
+
+      for (final p in game.players) {
+        expect(p.health, 46);
+      }
+    });
+
+    test('triggers game over when an opponent hits 0', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      game.players[1].health = 5;
+      player.health = 40;
+      const card = CardModel(
+        id: 'bound_for_life_lethal',
+        name: 'Bound For Life',
+        cost: 0,
+        playEffects: [AllPlayersLoseHealthEffect(5)],
+      );
+      player.hand.add(card);
+
+      game.playCard('bound_for_life_lethal');
+
+      expect(game.players[1].isEliminated, true);
+      expect(game.isGameOver, true);
+      expect(game.winnerId, 'p0');
+      expect(player.health, 35);
+    });
+  });
+
+  group('Wave 2: unblockedDamageThisTurn counter + condition', () {
+    test('attackPlayer increments unblockedDamageThisTurn by damage dealt', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final p0 = game.currentPlayer;
+      p0.powerPool = 10;
+
+      expect(p0.unblockedDamageThisTurn, 0);
+      expect(game.attackPlayer('p1', 3), true);
+      expect(p0.unblockedDamageThisTurn, 3);
+      expect(game.attackPlayer('p1', 4), true);
+      expect(p0.unblockedDamageThisTurn, 7);
+    });
+
+    test('counter resets on the next turn', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final p0 = game.currentPlayer;
+      p0.powerPool = 10;
+      game.attackPlayer('p1', 5);
+      expect(p0.unblockedDamageThisTurn, 5);
+
+      game.endTurn(); // p0 -> p1 (resets p0)
+      expect(p0.unblockedDamageThisTurn, 0);
+    });
+
+    test('unblockedDamageAtLeast condition met after enough damage', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final p0 = game.currentPlayer;
+      p0.powerPool = 10;
+      game.attackPlayer('p1', 5);
+
+      const card = CardModel(
+        id: 'blood_for_blood',
+        name: 'Blood For Blood',
+        cost: 0,
+        playEffects: [
+          ConditionalEffect(
+            condition: GameCondition(
+              kind: GameConditionKind.unblockedDamageAtLeast,
+              threshold: 5,
+            ),
+            then: [GainPowerEffect(3)],
+          ),
+        ],
+      );
+      p0.hand.add(card);
+      game.playCard('blood_for_blood');
+
+      // 10 power - 5 spent attacking + 3 from the met condition.
+      expect(p0.powerPool, 8);
+    });
+
+    test('unblockedDamageAtLeast condition NOT met below threshold', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final p0 = game.currentPlayer;
+      p0.powerPool = 10;
+      game.attackPlayer('p1', 2); // only 2 unblocked
+
+      const card = CardModel(
+        id: 'blood_for_blood_2',
+        name: 'Blood For Blood',
+        cost: 0,
+        playEffects: [
+          ConditionalEffect(
+            condition: GameCondition(
+              kind: GameConditionKind.unblockedDamageAtLeast,
+              threshold: 5,
+            ),
+            then: [GainPowerEffect(3)],
+          ),
+        ],
+      );
+      p0.hand.add(card);
+      game.playCard('blood_for_blood_2');
+
+      // 10 - 2 spent, condition not met so no bonus.
+      expect(p0.powerPool, 8);
+    });
+  });
 }

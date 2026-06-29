@@ -523,4 +523,73 @@ void main() {
       expect(encoded.containsKey('masteryReplaces'), false);
     });
   });
+
+  group('effect_codec — Wave 2 leaf effects', () {
+    test('allPlayersLoseHealth decodes and round-trips', () {
+      final e = decodeEffect({'type': 'allPlayersLoseHealth', 'amount': 4});
+      expect(e, isA<AllPlayersLoseHealthEffect>());
+      expect((e as AllPlayersLoseHealthEffect).amount, 4);
+
+      final encoded = encodeEffect(const AllPlayersLoseHealthEffect(4));
+      expect(encoded, {'type': 'allPlayersLoseHealth', 'amount': 4});
+      final decoded = decodeEffect(encoded) as AllPlayersLoseHealthEffect;
+      expect(decoded.amount, 4);
+    });
+
+    test('allPlayersLoseHealth without amount throws FormatException', () {
+      expect(
+        () => decodeEffect({'type': 'allPlayersLoseHealth'}),
+        throwsFormatException,
+      );
+    });
+
+    test('selfBanish decodes and round-trips', () {
+      final e = decodeEffect({'type': 'selfBanish'});
+      expect(e, isA<SelfBanishEffect>());
+      expect(encodeEffect(const SelfBanishEffect()), {'type': 'selfBanish'});
+      expect(decodeEffect(encodeEffect(const SelfBanishEffect())),
+          isA<SelfBanishEffect>());
+    });
+
+    test('resetChampion decodes and round-trips', () {
+      final e = decodeEffect({'type': 'resetChampion'});
+      expect(e, isA<ResetChampionEffect>());
+      expect(
+          encodeEffect(const ResetChampionEffect()), {'type': 'resetChampion'});
+      expect(decodeEffect(encodeEffect(const ResetChampionEffect())),
+          isA<ResetChampionEffect>());
+    });
+
+    test('unblockedDamageAtLeast game condition round-trips', () {
+      const cond = ConditionalEffect(
+        condition: GameCondition(
+          kind: GameConditionKind.unblockedDamageAtLeast,
+          threshold: 5,
+        ),
+        then: [GainPowerEffect(3)],
+      );
+      final encoded = encodeEffect(cond);
+      final decoded = decodeEffect(encoded) as ConditionalEffect;
+      expect(decoded.condition.kind, GameConditionKind.unblockedDamageAtLeast);
+      expect(decoded.condition.threshold, 5);
+    });
+
+    test('unknown game condition kind throws FormatException', () {
+      expect(
+        () => decodeEffect({
+          'type': 'conditional',
+          'condition': {'kind': 'bogusKind'},
+          'then': <Map<String, dynamic>>[],
+        }),
+        throwsFormatException,
+      );
+    });
+
+    test('unknown effect type still throws FormatException', () {
+      expect(
+        () => decodeEffect({'type': 'totallyMadeUpEffect'}),
+        throwsFormatException,
+      );
+    });
+  });
 }

@@ -19,6 +19,11 @@ class PlayerState {
   int gemPool = 0;
   int powerPool = 0;
 
+  /// Total unblocked damage this player has dealt to opponents this turn (via
+  /// [GameService.attackPlayer]). Read by `GameConditionKind.unblockedDamageAtLeast`
+  /// (e.g. blood_for_blood). Reset each turn by [resetTurnResources].
+  int unblockedDamageThisTurn = 0;
+
   final List<CardModel> hand = [];
   final List<CardModel> drawPile = [];
   final List<CardModel> discardPile = [];
@@ -64,6 +69,7 @@ class PlayerState {
   void resetTurnResources() {
     gemPool = 0;
     powerPool = 0;
+    unblockedDamageThisTurn = 0;
     activatedChampions.clear();
     exhaustedChampions.clear();
     cardsPlayedThisTurn.clear();

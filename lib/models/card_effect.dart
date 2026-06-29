@@ -108,6 +108,27 @@ final class OpponentLosesHealthEffect extends CardEffect {
       'Target opponent loses $amount health';
 }
 
+/// Every player in the game (INCLUDING the current/controlling player) loses
+/// [amount] health directly. Cannot be prevented by shield/guard — it is a raw
+/// health subtraction applied to all players simultaneously (e.g. bound_for_life
+/// "All players lose N health").
+///
+/// DESIGN CHOICE: modelled as its own effect rather than overloading
+/// [OpponentLosesHealthEffect] with includeSelf/ignoreShield flags. The
+/// "all players" semantics are cleaner as a distinct type: there is no target
+/// selection, the current player is always affected, and both existing effects
+/// already bypass shield (the engine has no per-attack shield gate outside the
+/// guard check in `attackPlayer`). Keeping them separate avoids mutating an
+/// existing effect's JSON shape and switch cases.
+final class AllPlayersLoseHealthEffect extends CardEffect {
+  const AllPlayersLoseHealthEffect(this.amount);
+
+  final int amount;
+
+  @override
+  String get description => 'All players lose $amount health';
+}
+
 // ---------------------------------------------------------------------------
 // Banish / scrap effects (deck thinning and market denial)
 // ---------------------------------------------------------------------------
@@ -147,6 +168,32 @@ final class ScrapFromCenterRowEffect extends CardEffect {
 
   @override
   String get description => 'Scrap a card from the center row';
+}
+
+/// "Then, banish this." — the source card removes ITSELF from the game after
+/// resolving its other effects. Resolved against the in-flight `sourceCard` in
+/// `_resolveEffects`: the source moves to `removedFromGame` and is excised from
+/// any zone (playedThisTurn / cardsPlayedThisTurn / championsInPlay) so the
+/// end-of-turn cleanup does not also discard it. Must be listed LAST in a card's
+/// effect list so the card's other effects resolve before it leaves the game.
+/// Cards: aion_guide, wandering_ghost (self-banish half).
+final class SelfBanishEffect extends CardEffect {
+  const SelfBanishEffect();
+
+  @override
+  String get description => 'Then, banish this';
+}
+
+/// "Reset another Champion you control." — un-exhausts a champion (clears it
+/// from `exhaustedChampions`) so it may use its Exhaust-gated activated ability
+/// again this turn. Deferred-selection (like [BanishCardEffect]): a no-op in
+/// `_resolveEffects`; the player calls [GameService.resetChampion] with the
+/// chosen champion id after selection. Card: g_48.
+final class ResetChampionEffect extends CardEffect {
+  const ResetChampionEffect();
+
+  @override
+  String get description => 'Reset another champion you control';
 }
 
 // ---------------------------------------------------------------------------
@@ -299,6 +346,12 @@ enum GameConditionKind {
 
   /// The controlling player IS the named `character`.
   isCharacter,
+
+  /// The controlling player has dealt at least `threshold` unblocked damage to
+  /// opponents this turn (via `attackPlayer`). Resets at the start of each
+  /// player's turn. Used by blood_for_blood ("if you dealt 5+ unblocked damage
+  /// this turn").
+  unblockedDamageAtLeast,
 }
 
 /// A board-state predicate evaluated by `GameService._evaluateGameCondition`.
@@ -374,6 +427,8 @@ class GameCondition {
         return 'if you have played $threshold+ same-faction cards this turn';
       case GameConditionKind.isCharacter:
         return 'if you are ${character?.name ?? 'a character'}';
+      case GameConditionKind.unblockedDamageAtLeast:
+        return 'if you dealt $threshold+ unblocked damage this turn';
     }
   }
 }

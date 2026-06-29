@@ -108,10 +108,16 @@ CardEffect decodeEffect(Map<String, dynamic> json) {
       return DrawCardsEffect(_int(json, 'count'));
     case 'opponentLosesHealth':
       return OpponentLosesHealthEffect(_int(json, 'amount'));
+    case 'allPlayersLoseHealth':
+      return AllPlayersLoseHealthEffect(_int(json, 'amount'));
     case 'banishCard':
       return BanishCardEffect(_banishSource(json['source'] as String?));
     case 'scrapFromCenterRow':
       return const ScrapFromCenterRowEffect();
+    case 'selfBanish':
+      return const SelfBanishEffect();
+    case 'resetChampion':
+      return const ResetChampionEffect();
     case 'destroyChampion':
       return DestroyChampionEffect(all: (json['all'] as bool?) ?? false);
     case 'returnFromDiscard':
@@ -172,10 +178,16 @@ Map<String, dynamic> encodeEffect(CardEffect effect) {
       return {'type': 'drawCards', 'count': effect.count};
     case OpponentLosesHealthEffect():
       return {'type': 'opponentLosesHealth', 'amount': effect.amount};
+    case AllPlayersLoseHealthEffect():
+      return {'type': 'allPlayersLoseHealth', 'amount': effect.amount};
     case BanishCardEffect():
       return {'type': 'banishCard', 'source': effect.source.name};
     case ScrapFromCenterRowEffect():
       return {'type': 'scrapFromCenterRow'};
+    case SelfBanishEffect():
+      return {'type': 'selfBanish'};
+    case ResetChampionEffect():
+      return {'type': 'resetChampion'};
     case DestroyChampionEffect():
       return {'type': 'destroyChampion', 'all': effect.all};
     case ReturnFromDiscardEffect():

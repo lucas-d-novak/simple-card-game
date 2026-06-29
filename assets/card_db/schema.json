@@ -168,8 +168,11 @@
             "gainHealth",
             "drawCards",
             "opponentLosesHealth",
+            "allPlayersLoseHealth",
             "banishCard",
             "scrapFromCenterRow",
+            "selfBanish",
+            "resetChampion",
             "destroyChampion",
             "returnFromDiscard",
             "chooseOne",
@@ -179,7 +182,7 @@
             "infinityShard"
           ]
         },
-        "amount": { "type": "integer", "description": "For gain*/opponentLosesHealth." },
+        "amount": { "type": "integer", "description": "For gain*/opponentLosesHealth/allPlayersLoseHealth." },
         "count": { "type": "integer", "description": "For drawCards." },
         "source": {
           "type": "string",
@@ -263,7 +266,8 @@
             "championsOfFactionControlled",
             "masteryAtLeast",
             "sameFactionCountPlayed",
-            "isCharacter"
+            "isCharacter",
+            "unblockedDamageAtLeast"
           ],
           "description": "Which predicate to evaluate."
         },

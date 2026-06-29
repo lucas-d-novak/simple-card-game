@@ -318,6 +318,10 @@ class GameService {
     currentPlayer.powerPool -= amount;
     target.takeDamage(amount);
 
+    // Record unblocked damage dealt this turn (guard already ruled out above),
+    // for GameConditionKind.unblockedDamageAtLeast (e.g. blood_for_blood).
+    currentPlayer.unblockedDamageThisTurn += amount;
+
     // Check elimination and clean up zones if the target was just eliminated
     if (target.isEliminated) {
       _cleanupEliminatedPlayer(target);
@@ -348,6 +352,19 @@ class GameService {
         if (_banishFromZone(player.hand, cardId)) return true;
         return _banishFromZone(player.discardPile, cardId);
     }
+  }
+
+  /// Banish the in-flight source card itself ("Then, banish this"). Removes it
+  /// from whichever zone it currently occupies (playedThisTurn for regular/
+  /// mercenary cards, championsInPlay for champions, and always the
+  /// cardsPlayedThisTurn history) so end-of-turn cleanup does not also discard
+  /// it, then moves it to [removedFromGame]. A no-op if [source] is null.
+  void _selfBanish(PlayerState player, CardModel? source) {
+    if (source == null) return;
+    player.playedThisTurn.removeWhere((c) => identical(c, source));
+    player.championsInPlay.removeWhere((c) => identical(c, source));
+    player.cardsPlayedThisTurn.removeWhere((c) => identical(c, source));
+    removedFromGame.add(source);
   }
 
   bool _banishFromZone(List<CardModel> zone, String cardId) {
@@ -398,6 +415,26 @@ class GameService {
 
     final champion = target.championsInPlay.removeAt(champIndex);
     target.discardPile.add(champion);
+    return true;
+  }
+
+  /// Reset (un-exhaust) one of the current player's champions, clearing it from
+  /// [PlayerState.exhaustedChampions] so it can use its Exhaust-gated activated
+  /// ability again this turn. Fulfils a [ResetChampionEffect] after the player
+  /// selects a target (deferred-selection, like [banishCard]).
+  ///
+  /// Returns false (no state change) unless [championId] names a champion the
+  /// current player controls that is currently exhausted.
+  bool resetChampion(String championId) {
+    if (_gameOver) return false;
+    final player = currentPlayer;
+
+    final controls =
+        player.championsInPlay.any((c) => c.id == championId);
+    if (!controls) return false;
+    if (!player.exhaustedChampions.contains(championId)) return false;
+
+    player.exhaustedChampions.remove(championId);
     return true;
   }
 
@@ -481,6 +518,8 @@ class GameService {
           _drawCards(player, effect.count);
         case OpponentLosesHealthEffect():
           _applyOpponentHealthLoss(player, effect.amount);
+        case AllPlayersLoseHealthEffect():
+          _applyAllPlayersHealthLoss(player, effect.amount);
         case ChooseOneEffect():
           final idx = choiceIndex.clamp(0, effect.choices.length - 1);
           _resolveEffects(effect.choices[idx], player, sourceCard: sourceCard);
@@ -523,6 +562,12 @@ class GameService {
         case ScrapFromCenterRowEffect():
           // Requires card selection — the player should call
           // scrapFromCenterRow() separately after this effect.
+          break;
+        case SelfBanishEffect():
+          _selfBanish(player, sourceCard);
+        case ResetChampionEffect():
+          // Requires champion selection — the player should call
+          // resetChampion() separately after this effect (deferred-selection).
           break;
         case InfinityShardEffect():
           _resolveInfinityShard(player);
@@ -687,6 +732,22 @@ class GameService {
         if (player.isEliminated) {
           _cleanupEliminatedPlayer(player);
         }
+      }
+    }
+    _checkGameOver();
+  }
+
+  /// Apply [amount] of direct health loss to EVERY player including [source]
+  /// (the controlling player). Bypasses guard/shield — a raw subtraction.
+  /// Mirrors the elimination/cleanup/game-over handling of
+  /// [_applyOpponentHealthLoss]. Used by [AllPlayersLoseHealthEffect].
+  void _applyAllPlayersHealthLoss(PlayerState source, int amount) {
+    if (amount <= 0) return;
+    for (final player in players) {
+      if (player.isEliminated) continue;
+      player.takeDamage(amount);
+      if (player.isEliminated) {
+        _cleanupEliminatedPlayer(player);
       }
     }
     _checkGameOver();
@@ -875,6 +936,8 @@ class GameService {
       case GameConditionKind.isCharacter:
         if (c.character == null) return false;
         return player.character == c.character;
+      case GameConditionKind.unblockedDamageAtLeast:
+        return player.unblockedDamageThisTurn >= c.threshold;
     }
   }
 

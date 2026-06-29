@@ -70,8 +70,13 @@ types in [`lib/models/card_effect.dart`](../models/card_effect.dart) and the
   `tool/validate_card_db.dart` call the decoder so bad data surfaces.
 
 Supported `type` values: `gainGems`, `gainPower`, `gainMastery`, `gainHealth`,
-`drawCards`, `opponentLosesHealth`, `banishCard` (`source`:
-`hand`/`discard`/`handOrDiscard`), `scrapFromCenterRow`, `destroyChampion`
+`drawCards`, `opponentLosesHealth`, `allPlayersLoseHealth` (`amount` — every
+player INCLUDING the current one loses health, bypassing shield/guard),
+`banishCard` (`source`:
+`hand`/`discard`/`handOrDiscard`), `scrapFromCenterRow`, `selfBanish` ("then,
+banish this" — the source card removes itself; list LAST in the effect array),
+`resetChampion` (deferred-selection: un-exhaust a champion you control via
+`GameService.resetChampion`), `destroyChampion`
 (`all`: bool — single target vs. all enemy champions), `returnFromDiscard`
 (`filter`: `any`/`champion`/`mercenary`/`faction`, plus `faction` when
 filtering by faction), `conditionalPower` (`condition`:
@@ -80,8 +85,9 @@ filtering by faction), `conditionalPower` (`condition`:
 the four `conditionalPower` conditions plus `perFactionCardInDiscard`/
 `perFactionChampionControlled`/`perFactionCardPlayedThisTurn`/
 `perAllyWithShieldPlayedThisTurn`; optional `perN` (default 1) and `faction`),
-`conditional` (`condition`: a `GameCondition` object with a `kind` + optional
-`threshold`/`faction`/`factions`/`parity`/`cardType`/`maxCost`/`character`;
+`conditional` (`condition`: a `GameCondition` object with a `kind` (incl.
+`unblockedDamageAtLeast` — `threshold` = unblocked damage dealt this turn) +
+optional `threshold`/`faction`/`factions`/`parity`/`cardType`/`maxCost`/`character`;
 `then`: effects resolved only when the condition holds),
 `infinityShard`, `chooseOne` (`choices`: array of effect groups). `gainMoney`
 is legacy and not part of the Shards of Infinity database.
