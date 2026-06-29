@@ -618,4 +618,152 @@ void main() {
       expect(power, 2);
     });
   });
+
+  // Wave-0 review follow-ups: close the test gaps the per-mechanic reviewers
+  // flagged (source-faction inclusion, explicit-faction precedence, edge cases,
+  // and end-to-end health/mastery resource routing).
+  group('ConditionalEffect — review-gap coverage', () {
+    List<CardEffect> thenPower10() => const [GainPowerEffect(10)];
+
+    test('distinctFactionsPlayed counts the source card\'s own faction', () {
+      // One prior faction played; the source (a second, distinct faction)
+      // pushes the distinct count to 2 on its own.
+      final game = GameService(playerCount: 2, random: Random(7));
+      game.currentPlayer.hand.add(_card(id: 'pre_order', faction: Faction.order));
+      game.playCard('pre_order');
+      final src = _card(
+        id: 'src_wraethe',
+        faction: Faction.wraethe,
+        playEffects: [
+          ConditionalEffect(
+            condition: const GameCondition(
+              kind: GameConditionKind.distinctFactionsPlayed,
+              threshold: 2,
+            ),
+            then: thenPower10(),
+          ),
+        ],
+      );
+      // Source's Wraethe + prior Order = 2 distinct -> met.
+      expect(_playAndReadPower(game, src), 10);
+    });
+
+    test('explicit condition faction is honored over the source faction', () {
+      // Source is Order, but the condition asks for Wraethe allies. A prior
+      // Wraethe card should satisfy it; the source\'s own Order should not.
+      final game = GameService(playerCount: 2, random: Random(7));
+      game.currentPlayer.hand.add(_card(id: 'pre_w', faction: Faction.wraethe));
+      game.playCard('pre_w');
+      final src = _card(
+        id: 'order_src',
+        faction: Faction.order,
+        playEffects: [
+          ConditionalEffect(
+            condition: const GameCondition(
+              kind: GameConditionKind.alliesOfFactionPlayed,
+              faction: Faction.wraethe,
+            ),
+            then: thenPower10(),
+          ),
+        ],
+      );
+      expect(_playAndReadPower(game, src), 10);
+
+      // Control: same source, condition faction = Homodeus (none played) -> 0.
+      final game2 = GameService(playerCount: 2, random: Random(7));
+      game2.currentPlayer.hand.add(_card(id: 'pre_w2', faction: Faction.wraethe));
+      game2.playCard('pre_w2');
+      final src2 = _card(
+        id: 'order_src2',
+        faction: Faction.order,
+        playEffects: [
+          ConditionalEffect(
+            condition: const GameCondition(
+              kind: GameConditionKind.alliesOfFactionPlayed,
+              faction: Faction.homodeus,
+            ),
+            then: thenPower10(),
+          ),
+        ],
+      );
+      expect(_playAndReadPower(game2, src2), 0);
+    });
+
+    test('empty factions list -> factionsPlayedAll is false', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final src = _card(
+        id: 'empty_factions',
+        playEffects: [
+          ConditionalEffect(
+            condition: const GameCondition(
+              kind: GameConditionKind.factionsPlayedAll,
+              factions: [],
+            ),
+            then: thenPower10(),
+          ),
+        ],
+      );
+      expect(_playAndReadPower(game, src), 0);
+    });
+
+    test('threshold 0 makes a count-based kind trivially true', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final src = _card(
+        id: 'thresh0',
+        faction: Faction.order,
+        playEffects: [
+          ConditionalEffect(
+            condition: const GameCondition(
+              kind: GameConditionKind.alliesOfFactionPlayed,
+              threshold: 0,
+            ),
+            then: thenPower10(),
+          ),
+        ],
+      );
+      expect(_playAndReadPower(game, src), 10);
+    });
+  });
+
+  group('ScalingResourceEffect — health and mastery routing (end-to-end)', () {
+    test('health resource adds to the controlling player\'s health', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      final before = player.health;
+      // 2 cards in discard, gain 1 health per discard card.
+      player.discardPile.add(_card(id: 'd1'));
+      player.discardPile.add(_card(id: 'd2'));
+      player.hand.add(_card(
+        id: 'heal_src',
+        playEffects: const [
+          ScalingResourceEffect(
+            resource: ScalingResource.health,
+            condition: ScalingCondition.perCardInDiscard,
+          ),
+        ],
+      ));
+      game.playCard('heal_src');
+      expect(player.health, before + 2);
+    });
+
+    test('mastery resource adds to the controlling player\'s mastery', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      final before = player.mastery;
+      player.discardPile.add(_card(id: 'm1'));
+      player.discardPile.add(_card(id: 'm2'));
+      player.discardPile.add(_card(id: 'm3'));
+      player.hand.add(_card(
+        id: 'mastery_src',
+        playEffects: const [
+          ScalingResourceEffect(
+            resource: ScalingResource.mastery,
+            condition: ScalingCondition.perCardInDiscard,
+          ),
+        ],
+      ));
+      game.playCard('mastery_src');
+      expect(player.mastery, before + 3);
+    });
+  });
 }

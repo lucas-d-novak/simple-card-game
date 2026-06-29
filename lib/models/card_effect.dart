@@ -267,7 +267,8 @@ enum GameConditionKind {
   factionsPlayedAll,
 
   /// At least `threshold` DISTINCT (non-none) factions have been played this
-  /// turn.
+  /// turn. The resolving source card's own faction IS counted toward the set
+  /// (unlike the self-skipping "this turn" count kinds).
   distinctFactionsPlayed,
 
   /// At least `threshold` cards of `cardType` have been played this turn.
@@ -275,6 +276,8 @@ enum GameConditionKind {
 
   /// The number of matching cards played this turn has the given `parity`
   /// (even/odd). When `faction` is set, only cards of that faction are counted.
+  /// The resolving source card is EXCLUDED from the count (so a lone card sees
+  /// count 0 = even) — encoders should pick thresholds accordingly.
   gemParityCardsPlayed,
 
   /// At least `threshold` cards played this turn match the filter (`faction`

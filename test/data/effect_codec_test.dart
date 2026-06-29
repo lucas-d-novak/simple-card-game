@@ -293,6 +293,17 @@ void main() {
       );
     });
 
+    test('present-but-non-int maxCost throws FormatException', () {
+      expect(
+        () => decodeEffect({
+          'type': 'conditional',
+          'condition': {'kind': 'filteredCardsPlayed', 'maxCost': '3'},
+          'then': <dynamic>[],
+        }),
+        throwsFormatException,
+      );
+    });
+
     test('unknown condition kind throws FormatException', () {
       expect(
         () => decodeEffect({

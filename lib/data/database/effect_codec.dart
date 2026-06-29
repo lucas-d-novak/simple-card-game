@@ -289,7 +289,7 @@ GameCondition _gameCondition(dynamic raw) {
         : const [],
     parity: _gemParity(raw['parity'] as String?),
     cardType: _cardType(raw['cardType'] as String?),
-    maxCost: raw['maxCost'] is int ? raw['maxCost'] as int : null,
+    maxCost: raw.containsKey('maxCost') ? _int(raw, 'maxCost') : null,
     character: _character(raw['character'] as String?),
   );
 }
