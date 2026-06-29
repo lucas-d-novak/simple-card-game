@@ -1,4 +1,5 @@
 import 'package:simple_card_game/models/card_effect.dart';
+import 'package:simple_card_game/models/card_type.dart';
 import 'package:simple_card_game/models/faction.dart';
 
 /// Decodes the `playEffects` / `allyAbility` / `masteryBonus` JSON arrays from
@@ -101,6 +102,24 @@ CardEffect decodeEffect(Map<String, dynamic> json) {
       );
     case 'conditionalPower':
       return ConditionalPowerEffect(_powerCondition(json['condition'] as String?));
+    case 'scalingResource':
+      return ScalingResourceEffect(
+        resource: _scalingResource(json['resource'] as String?),
+        condition: _scalingCondition(json['condition'] as String?),
+        perN: json.containsKey('perN') ? _int(json, 'perN') : 1,
+        faction: json['faction'] != null
+            ? _faction(json['faction'] as String?)
+            : null,
+      );
+    case 'conditional':
+      final then = json['then'];
+      if (then is! List) {
+        throw const FormatException('conditional requires a "then" array');
+      }
+      return ConditionalEffect(
+        condition: _gameCondition(json['condition']),
+        then: decodeEffectList(then),
+      );
     case 'infinityShard':
       return const InfinityShardEffect();
     case 'chooseOne':
@@ -145,6 +164,20 @@ Map<String, dynamic> encodeEffect(CardEffect effect) {
       };
     case ConditionalPowerEffect():
       return {'type': 'conditionalPower', 'condition': effect.condition.name};
+    case ScalingResourceEffect():
+      return {
+        'type': 'scalingResource',
+        'resource': effect.resource.name,
+        'condition': effect.condition.name,
+        if (effect.perN != 1) 'perN': effect.perN,
+        if (effect.faction != null) 'faction': effect.faction!.name,
+      };
+    case ConditionalEffect():
+      return {
+        'type': 'conditional',
+        'condition': _encodeGameCondition(effect.condition),
+        'then': [for (final e in effect.then) encodeEffect(e)],
+      };
     case InfinityShardEffect():
       return {'type': 'infinityShard'};
     case ChooseOneEffect():
@@ -204,6 +237,111 @@ PowerCondition _powerCondition(String? raw) {
     default:
       throw FormatException('unknown power condition: $raw');
   }
+}
+
+ScalingResource _scalingResource(String? raw) {
+  switch (raw) {
+    case 'power':
+    case null:
+      return ScalingResource.power;
+    case 'gems':
+      return ScalingResource.gems;
+    case 'health':
+      return ScalingResource.health;
+    case 'mastery':
+      return ScalingResource.mastery;
+    default:
+      throw FormatException('unknown scaling resource: $raw');
+  }
+}
+
+ScalingCondition _scalingCondition(String? raw) {
+  for (final v in ScalingCondition.values) {
+    if (v.name == raw) return v;
+  }
+  if (raw == null) return ScalingCondition.perChampionControlled;
+  throw FormatException('unknown scaling condition: $raw');
+}
+
+/// Decodes a [GameCondition] from its JSON object. The `kind` string selects the
+/// predicate; remaining keys parameterise it. Unknown kind -> FormatException.
+GameCondition _gameCondition(dynamic raw) {
+  if (raw is! Map<String, dynamic>) {
+    throw const FormatException('conditional requires a "condition" object');
+  }
+  final kindStr = raw['kind'] as String?;
+  GameConditionKind? kind;
+  for (final v in GameConditionKind.values) {
+    if (v.name == kindStr) {
+      kind = v;
+      break;
+    }
+  }
+  if (kind == null) {
+    throw FormatException('unknown game condition kind: $kindStr');
+  }
+  return GameCondition(
+    kind: kind,
+    threshold: raw.containsKey('threshold') ? _int(raw, 'threshold') : 1,
+    faction: raw['faction'] != null ? _faction(raw['faction'] as String?) : null,
+    factions: raw['factions'] is List
+        ? [for (final f in raw['factions'] as List) _faction(f as String?)]
+        : const [],
+    parity: _gemParity(raw['parity'] as String?),
+    cardType: _cardType(raw['cardType'] as String?),
+    maxCost: raw['maxCost'] is int ? raw['maxCost'] as int : null,
+    character: _character(raw['character'] as String?),
+  );
+}
+
+Map<String, dynamic> _encodeGameCondition(GameCondition c) {
+  return {
+    'kind': c.kind.name,
+    if (c.threshold != 1) 'threshold': c.threshold,
+    if (c.faction != null) 'faction': c.faction!.name,
+    if (c.factions.isNotEmpty)
+      'factions': [for (final f in c.factions) f.name],
+    if (c.parity != null) 'parity': c.parity!.name,
+    if (c.cardType != null) 'cardType': c.cardType!.name,
+    if (c.maxCost != null) 'maxCost': c.maxCost,
+    if (c.character != null) 'character': c.character!.name,
+  };
+}
+
+GemParity? _gemParity(String? raw) {
+  switch (raw) {
+    case null:
+      return null;
+    case 'even':
+      return GemParity.even;
+    case 'odd':
+      return GemParity.odd;
+    default:
+      throw FormatException('unknown gem parity: $raw');
+  }
+}
+
+CardType? _cardType(String? raw) {
+  switch (raw) {
+    case null:
+      return null;
+    case 'regular':
+      return CardType.regular;
+    case 'champion':
+      return CardType.champion;
+    case 'mercenary':
+      return CardType.mercenary;
+    default:
+      throw FormatException('unknown card type: $raw');
+  }
+}
+
+Character? _character(String? raw) {
+  if (raw == null) return null;
+  for (final v in Character.values) {
+    if (v.name == raw) return v;
+  }
+  throw FormatException('unknown character: $raw');
 }
 
 ReturnFilter _returnFilter(String? raw) {

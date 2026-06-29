@@ -1,9 +1,27 @@
+import 'package:simple_card_game/models/card_type.dart';
 import 'package:simple_card_game/models/faction.dart';
 
 sealed class CardEffect {
   const CardEffect();
 
   String get description;
+}
+
+// ---------------------------------------------------------------------------
+// Characters (Engine Phase 2, wave 0 — minimal enum; PlayerState.character is
+// wired up in a later wave). Listed here so GameCondition.isCharacter can name
+// a target. Add more values as character cards are encoded.
+// ---------------------------------------------------------------------------
+
+/// A playable Character a player may have chosen for the game. Character-gated
+/// card effects (`GameConditionKind.isCharacter`) only resolve when the
+/// controlling player IS that character.
+enum Character {
+  decima,
+  tetra,
+  volos,
+  rez,
+  koSynWu,
 }
 
 // ---------------------------------------------------------------------------
@@ -227,6 +245,153 @@ final class ChooseOneEffect extends CardEffect {
   }
 }
 
+// ---------------------------------------------------------------------------
+// GameCondition predicate + ConditionalEffect wrapper (Engine Phase 2, wave 0)
+// ---------------------------------------------------------------------------
+
+/// Parity for [GameConditionKind.gemParityCardsPlayed] — whether the count of
+/// matching cards played this turn must be even or odd.
+enum GemParity { even, odd }
+
+/// The kind of board-state predicate a [GameCondition] evaluates. Each kind
+/// reads game state (cards played this turn, champions in play, mastery, the
+/// controlling player's Character) and answers true/false. The optional
+/// [GameCondition] fields (`threshold`, `faction`, `factions`, `parity`,
+/// `cardType`, `maxCost`, `character`) parameterise the specific kind.
+enum GameConditionKind {
+  /// At least `threshold` allies (cards matching `faction`, or the source
+  /// card's faction when `faction` is null) have been played this turn.
+  alliesOfFactionPlayed,
+
+  /// Every faction in `factions` has been played this turn.
+  factionsPlayedAll,
+
+  /// At least `threshold` DISTINCT (non-none) factions have been played this
+  /// turn.
+  distinctFactionsPlayed,
+
+  /// At least `threshold` cards of `cardType` have been played this turn.
+  cardTypePlayed,
+
+  /// The number of matching cards played this turn has the given `parity`
+  /// (even/odd). When `faction` is set, only cards of that faction are counted.
+  gemParityCardsPlayed,
+
+  /// At least `threshold` cards played this turn match the filter (`faction`
+  /// and/or `maxCost` when provided).
+  filteredCardsPlayed,
+
+  /// The player controls at least `threshold` champions.
+  championsControlled,
+
+  /// The player controls at least `threshold` champions of `faction`.
+  championsOfFactionControlled,
+
+  /// The player's mastery is at least `threshold`.
+  masteryAtLeast,
+
+  /// At least `threshold` cards of the SAME faction (the source card's faction,
+  /// or `faction` when set) have been played this turn (counting the source).
+  sameFactionCountPlayed,
+
+  /// The controlling player IS the named `character`.
+  isCharacter,
+}
+
+/// A board-state predicate evaluated by `GameService._evaluateGameCondition`.
+///
+/// This is a value type, NOT a [CardEffect]. It is carried by
+/// [ConditionalEffect] (the wrapper effect) and answers a single yes/no
+/// question about current game state. Fields beyond [kind] are optional and
+/// only meaningful for the kinds that read them.
+class GameCondition {
+  const GameCondition({
+    required this.kind,
+    this.threshold = 1,
+    this.faction,
+    this.factions = const [],
+    this.parity,
+    this.cardType,
+    this.maxCost,
+    this.character,
+  });
+
+  final GameConditionKind kind;
+
+  /// The numeric bar for "at least N" kinds (default 1).
+  final int threshold;
+
+  /// A single faction filter (e.g. for `alliesOfFactionPlayed`,
+  /// `championsOfFactionControlled`). Null = use the source card's faction
+  /// where applicable.
+  final Faction? faction;
+
+  /// A set of factions for `factionsPlayedAll`.
+  final List<Faction> factions;
+
+  /// Parity for `gemParityCardsPlayed`.
+  final GemParity? parity;
+
+  /// A card-type filter for `cardTypePlayed`.
+  final CardType? cardType;
+
+  /// A max-cost filter for `filteredCardsPlayed` (inclusive). Null = no cap.
+  final int? maxCost;
+
+  /// The required Character for `isCharacter`.
+  final Character? character;
+
+  String get description {
+    switch (kind) {
+      case GameConditionKind.alliesOfFactionPlayed:
+        final f = faction?.name ?? 'same-faction';
+        return 'if you have played $threshold+ $f allies this turn';
+      case GameConditionKind.factionsPlayedAll:
+        final names = factions.map((f) => f.name).join(', ');
+        return 'if you have played all of: $names this turn';
+      case GameConditionKind.distinctFactionsPlayed:
+        return 'if you have played $threshold+ distinct factions this turn';
+      case GameConditionKind.cardTypePlayed:
+        final t = cardType?.name ?? 'card';
+        return 'if you have played $threshold+ ${t}s this turn';
+      case GameConditionKind.gemParityCardsPlayed:
+        final p = parity?.name ?? 'even';
+        final f = faction != null ? '${faction!.name} ' : '';
+        return 'if an $p number of ${f}cards were played this turn';
+      case GameConditionKind.filteredCardsPlayed:
+        return 'if you have played $threshold+ matching cards this turn';
+      case GameConditionKind.championsControlled:
+        return 'if you control $threshold+ champions';
+      case GameConditionKind.championsOfFactionControlled:
+        final f = faction?.name ?? 'faction';
+        return 'if you control $threshold+ $f champions';
+      case GameConditionKind.masteryAtLeast:
+        return 'if your mastery is $threshold+';
+      case GameConditionKind.sameFactionCountPlayed:
+        return 'if you have played $threshold+ same-faction cards this turn';
+      case GameConditionKind.isCharacter:
+        return 'if you are ${character?.name ?? 'a character'}';
+    }
+  }
+}
+
+/// A wrapper effect that resolves its [then] effects only when [condition]
+/// holds. Works uniformly in `playEffects`, `allyAbility`, `masteryBonus`, and
+/// inside an `activatedAbility` (since each routes through
+/// `GameService._resolveEffects`).
+final class ConditionalEffect extends CardEffect {
+  const ConditionalEffect({required this.condition, required this.then});
+
+  final GameCondition condition;
+  final List<CardEffect> then;
+
+  @override
+  String get description {
+    final body = then.map((e) => e.description).join(', ');
+    return '${condition.description}: $body';
+  }
+}
+
 /// The condition type for scaling power effects.
 enum PowerCondition {
   /// Gain power equal to the number of champions you control.
@@ -263,6 +428,99 @@ final class ConditionalPowerEffect extends CardEffect {
         return 'Gain 1 power for each card in your discard pile';
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// ScalingResourceEffect (Engine Phase 2, wave 0) — generalises
+// ConditionalPowerEffect to any resource pool with faction-filtered conditions.
+//
+// MIGRATION CHOICE: ConditionalPowerEffect is KEPT as-is (its JSON type
+// "conditionalPower" still decodes to it, and all existing model + codec tests
+// stay green with zero churn). ScalingResourceEffect is added as a SEPARATE new
+// effect with its own JSON type "scalingResource". No card data uses
+// "conditionalPower" yet (only rawText/notes mention it), so there is nothing to
+// re-key; keeping both side by side is the lowest-risk path that keeps the 263
+// existing tests passing. ScalingResourceEffect with resource=power +
+// the 4 original conditions is behaviourally identical to ConditionalPowerEffect.
+// ---------------------------------------------------------------------------
+
+/// The resource pool a [ScalingResourceEffect] feeds into.
+enum ScalingResource { power, gems, health, mastery }
+
+/// The board-state quantity a [ScalingResourceEffect] scales by. The first four
+/// mirror [PowerCondition] exactly; the rest add faction-filtered variants.
+enum ScalingCondition {
+  /// Per champion you control.
+  perChampionControlled,
+
+  /// Per ally (same-faction card) played this turn (excludes the source).
+  perAllyPlayedThisTurn,
+
+  /// Per distinct (non-none) faction played this turn.
+  perFactionPlayedThisTurn,
+
+  /// Per card in your discard pile.
+  perCardInDiscard,
+
+  /// Per card of [ScalingResourceEffect.faction] in your discard pile.
+  perFactionCardInDiscard,
+
+  /// Per champion of [ScalingResourceEffect.faction] you control.
+  perFactionChampionControlled,
+
+  /// Per card of [ScalingResourceEffect.faction] played this turn.
+  perFactionCardPlayedThisTurn,
+
+  /// Per ally with a shield (champion of the source faction) played this turn.
+  perAllyWithShieldPlayedThisTurn,
+}
+
+/// A resource gain that scales with game state rather than a fixed amount.
+///
+/// Grants `perN` of [resource] for each unit counted by [condition] (optionally
+/// filtered by [faction]). Generalises [ConditionalPowerEffect] across all four
+/// resource pools.
+final class ScalingResourceEffect extends CardEffect {
+  const ScalingResourceEffect({
+    required this.resource,
+    required this.condition,
+    this.perN = 1,
+    this.faction,
+  });
+
+  final ScalingResource resource;
+  final ScalingCondition condition;
+
+  /// How much of [resource] to grant per counted unit (default 1).
+  final int perN;
+
+  /// The faction filter for the `perFaction*` conditions. Null = use the source
+  /// card's faction.
+  final Faction? faction;
+
+  String get _unit {
+    switch (condition) {
+      case ScalingCondition.perChampionControlled:
+        return 'champion you control';
+      case ScalingCondition.perAllyPlayedThisTurn:
+        return 'ally played this turn';
+      case ScalingCondition.perFactionPlayedThisTurn:
+        return 'faction played this turn';
+      case ScalingCondition.perCardInDiscard:
+        return 'card in your discard pile';
+      case ScalingCondition.perFactionCardInDiscard:
+        return '${faction?.name ?? 'faction'} card in your discard pile';
+      case ScalingCondition.perFactionChampionControlled:
+        return '${faction?.name ?? 'faction'} champion you control';
+      case ScalingCondition.perFactionCardPlayedThisTurn:
+        return '${faction?.name ?? 'faction'} card played this turn';
+      case ScalingCondition.perAllyWithShieldPlayedThisTurn:
+        return 'ally with shield played this turn';
+    }
+  }
+
+  @override
+  String get description => 'Gain $perN ${resource.name} for each $_unit';
 }
 
 /// The cost a player must pay to use an [ActivatedAbility].

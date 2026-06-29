@@ -235,6 +235,8 @@ class DeckService {
         case ReturnFromDiscardEffect():
         case ChooseOneEffect():
         case ConditionalPowerEffect():
+        case ScalingResourceEffect():
+        case ConditionalEffect():
         case InfinityShardEffect():
           break; // Handled by GameService, not DeckService
       }

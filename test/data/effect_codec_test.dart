@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:simple_card_game/data/database/effect_codec.dart';
 import 'package:simple_card_game/models/card_effect.dart';
+import 'package:simple_card_game/models/card_type.dart';
 import 'package:simple_card_game/models/faction.dart';
 
 void main() {
@@ -123,6 +124,218 @@ void main() {
           expect(decoded.condition, condition);
         }
       });
+    });
+  });
+
+  group('effect_codec — scalingResource (Phase 2 wave 0)', () {
+    test('decodes power + original condition with default perN/faction', () {
+      final e = decodeEffect({
+        'type': 'scalingResource',
+        'resource': 'power',
+        'condition': 'perChampionControlled',
+      }) as ScalingResourceEffect;
+      expect(e.resource, ScalingResource.power);
+      expect(e.condition, ScalingCondition.perChampionControlled);
+      expect(e.perN, 1);
+      expect(e.faction, isNull);
+    });
+
+    test('decodes faction-filtered condition with perN + faction', () {
+      final e = decodeEffect({
+        'type': 'scalingResource',
+        'resource': 'gems',
+        'condition': 'perFactionCardInDiscard',
+        'perN': 2,
+        'faction': 'wraethe',
+      }) as ScalingResourceEffect;
+      expect(e.resource, ScalingResource.gems);
+      expect(e.condition, ScalingCondition.perFactionCardInDiscard);
+      expect(e.perN, 2);
+      expect(e.faction, Faction.wraethe);
+    });
+
+    test('round-trips every (resource, condition) combo', () {
+      for (final resource in ScalingResource.values) {
+        for (final condition in ScalingCondition.values) {
+          final effect = ScalingResourceEffect(
+            resource: resource,
+            condition: condition,
+            perN: 3,
+            faction: Faction.order,
+          );
+          final decoded =
+              decodeEffect(encodeEffect(effect)) as ScalingResourceEffect;
+          expect(decoded.resource, resource);
+          expect(decoded.condition, condition);
+          expect(decoded.perN, 3);
+          expect(decoded.faction, Faction.order);
+        }
+      }
+    });
+
+    test('encode omits perN when 1 and faction when null', () {
+      final encoded = encodeEffect(const ScalingResourceEffect(
+        resource: ScalingResource.power,
+        condition: ScalingCondition.perCardInDiscard,
+      ));
+      expect(encoded.containsKey('perN'), false);
+      expect(encoded.containsKey('faction'), false);
+    });
+
+    test('unknown resource throws FormatException', () {
+      expect(
+        () => decodeEffect({
+          'type': 'scalingResource',
+          'resource': 'luck',
+          'condition': 'perCardInDiscard',
+        }),
+        throwsFormatException,
+      );
+    });
+
+    test('unknown scaling condition throws FormatException', () {
+      expect(
+        () => decodeEffect({
+          'type': 'scalingResource',
+          'resource': 'power',
+          'condition': 'perBananaEaten',
+        }),
+        throwsFormatException,
+      );
+    });
+  });
+
+  group('effect_codec — conditional + GameCondition (Phase 2 wave 0)', () {
+    test('decodes a minimal condition (kind only) + then effects', () {
+      final e = decodeEffect({
+        'type': 'conditional',
+        'condition': {'kind': 'masteryAtLeast', 'threshold': 20},
+        'then': [
+          {'type': 'gainPower', 'amount': 5},
+        ],
+      }) as ConditionalEffect;
+      expect(e.condition.kind, GameConditionKind.masteryAtLeast);
+      expect(e.condition.threshold, 20);
+      expect(e.then, hasLength(1));
+      expect(e.then.first, isA<GainPowerEffect>());
+    });
+
+    test('round-trips a fully-populated condition', () {
+      const effect = ConditionalEffect(
+        condition: GameCondition(
+          kind: GameConditionKind.filteredCardsPlayed,
+          threshold: 2,
+          faction: Faction.order,
+          factions: [Faction.order, Faction.wraethe],
+          parity: GemParity.odd,
+          cardType: CardType.champion,
+          maxCost: 3,
+          character: Character.decima,
+        ),
+        then: [GainGemsEffect(1), GainMasteryEffect(2)],
+      );
+      final decoded =
+          decodeEffect(encodeEffect(effect)) as ConditionalEffect;
+      final c = decoded.condition;
+      expect(c.kind, GameConditionKind.filteredCardsPlayed);
+      expect(c.threshold, 2);
+      expect(c.faction, Faction.order);
+      expect(c.factions, [Faction.order, Faction.wraethe]);
+      expect(c.parity, GemParity.odd);
+      expect(c.cardType, CardType.champion);
+      expect(c.maxCost, 3);
+      expect(c.character, Character.decima);
+      expect(decoded.then, hasLength(2));
+    });
+
+    test('round-trips every GameConditionKind (kind-only)', () {
+      for (final kind in GameConditionKind.values) {
+        final effect = ConditionalEffect(
+          condition: GameCondition(kind: kind),
+          then: const [GainPowerEffect(1)],
+        );
+        final decoded =
+            decodeEffect(encodeEffect(effect)) as ConditionalEffect;
+        expect(decoded.condition.kind, kind);
+        expect(decoded.condition.threshold, 1);
+      }
+    });
+
+    test('default threshold (omitted) decodes to 1', () {
+      final e = decodeEffect({
+        'type': 'conditional',
+        'condition': {'kind': 'championsControlled'},
+        'then': [
+          {'type': 'gainPower', 'amount': 1},
+        ],
+      }) as ConditionalEffect;
+      expect(e.condition.threshold, 1);
+    });
+
+    test('missing "then" array throws FormatException', () {
+      expect(
+        () => decodeEffect({
+          'type': 'conditional',
+          'condition': {'kind': 'championsControlled'},
+        }),
+        throwsFormatException,
+      );
+    });
+
+    test('non-object condition throws FormatException', () {
+      expect(
+        () => decodeEffect({
+          'type': 'conditional',
+          'condition': 'championsControlled',
+          'then': <dynamic>[],
+        }),
+        throwsFormatException,
+      );
+    });
+
+    test('unknown condition kind throws FormatException', () {
+      expect(
+        () => decodeEffect({
+          'type': 'conditional',
+          'condition': {'kind': 'youAreWinning'},
+          'then': <dynamic>[],
+        }),
+        throwsFormatException,
+      );
+    });
+
+    test('unknown parity throws FormatException', () {
+      expect(
+        () => decodeEffect({
+          'type': 'conditional',
+          'condition': {'kind': 'gemParityCardsPlayed', 'parity': 'prime'},
+          'then': <dynamic>[],
+        }),
+        throwsFormatException,
+      );
+    });
+
+    test('unknown character throws FormatException', () {
+      expect(
+        () => decodeEffect({
+          'type': 'conditional',
+          'condition': {'kind': 'isCharacter', 'character': 'nobody'},
+          'then': <dynamic>[],
+        }),
+        throwsFormatException,
+      );
+    });
+  });
+
+  group('effect_codec — conditionalPower still decodes (back-compat)', () {
+    test('conditionalPower JSON decodes to ConditionalPowerEffect, not scaling',
+        () {
+      final e = decodeEffect({
+        'type': 'conditionalPower',
+        'condition': 'perChampionControlled',
+      });
+      expect(e, isA<ConditionalPowerEffect>());
+      expect(e, isNot(isA<ScalingResourceEffect>()));
     });
   });
 

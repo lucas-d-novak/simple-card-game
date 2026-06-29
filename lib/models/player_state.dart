@@ -1,12 +1,18 @@
+import 'package:simple_card_game/models/card_effect.dart';
 import 'package:simple_card_game/models/card_model.dart';
 import 'package:simple_card_game/models/card_type.dart';
 
 /// Mutable per-player state for a Shards of Infinity game.
 class PlayerState {
-  PlayerState({required this.id, required this.name});
+  PlayerState({required this.id, required this.name, this.character});
 
   final String id;
   final String name;
+
+  /// The Character this player chose, if any. Character selection is wired up
+  /// in a later Engine Phase 2 wave; until then this stays null and any
+  /// `GameConditionKind.isCharacter` predicate evaluates false.
+  Character? character;
 
   int health = 50;
   int mastery = 0;

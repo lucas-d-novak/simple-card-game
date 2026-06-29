@@ -468,6 +468,23 @@ class GameService {
         case ConditionalPowerEffect():
           player.powerPool +=
               _evaluateCondition(effect.condition, player, sourceCard);
+        case ScalingResourceEffect():
+          final count = _evaluateScalingCount(
+            effect.condition,
+            effect.faction,
+            player,
+            sourceCard,
+          );
+          _gainResource(player, effect.resource, count * effect.perN);
+        case ConditionalEffect():
+          if (_evaluateGameCondition(effect.condition, player, sourceCard)) {
+            _resolveEffects(
+              effect.then,
+              player,
+              choiceIndex: choiceIndex,
+              sourceCard: sourceCard,
+            );
+          }
         case DestroyChampionEffect():
           if (effect.all) {
             _destroyAllEnemyChampions(player);
@@ -620,6 +637,192 @@ class GameService {
       }
     }
     _checkGameOver();
+  }
+
+  /// Route [amount] of [resource] into the matching player pool. Negative or
+  /// zero amounts are no-ops for gem/power (additive) and clamped by the
+  /// underlying PlayerState helpers for mastery/health.
+  void _gainResource(PlayerState player, ScalingResource resource, int amount) {
+    switch (resource) {
+      case ScalingResource.power:
+        player.powerPool += amount;
+      case ScalingResource.gems:
+        player.gemPool += amount;
+      case ScalingResource.health:
+        player.heal(amount);
+      case ScalingResource.mastery:
+        player.addMastery(amount);
+    }
+  }
+
+  /// Counts the units a [ScalingResourceEffect] scales by. [filterFaction] is
+  /// the effect's explicit faction filter; when null the `perFaction*`
+  /// conditions fall back to the source card's faction (mirroring ally logic).
+  int _evaluateScalingCount(
+    ScalingCondition condition,
+    Faction? filterFaction,
+    PlayerState player,
+    CardModel? sourceCard,
+  ) {
+    // The four original conditions delegate to _evaluateCondition so behaviour
+    // is provably identical to ConditionalPowerEffect (regression guarantee).
+    switch (condition) {
+      case ScalingCondition.perChampionControlled:
+        return _evaluateCondition(
+            PowerCondition.perChampionControlled, player, sourceCard);
+      case ScalingCondition.perAllyPlayedThisTurn:
+        return _evaluateCondition(
+            PowerCondition.perAllyPlayedThisTurn, player, sourceCard);
+      case ScalingCondition.perFactionPlayedThisTurn:
+        return _evaluateCondition(
+            PowerCondition.perFactionPlayedThisTurn, player, sourceCard);
+      case ScalingCondition.perCardInDiscard:
+        return _evaluateCondition(
+            PowerCondition.perCardInDiscard, player, sourceCard);
+      case ScalingCondition.perFactionCardInDiscard:
+        final f = filterFaction ?? sourceCard?.faction;
+        if (f == null) return 0;
+        return player.discardPile
+            .where((c) => _factionsMatch(
+                f, false, c.faction, c.countsAsAllFactions))
+            .length;
+      case ScalingCondition.perFactionChampionControlled:
+        final f = filterFaction ?? sourceCard?.faction;
+        if (f == null) return 0;
+        return player.championsInPlay
+            .where((c) => _factionsMatch(
+                f, false, c.faction, c.countsAsAllFactions))
+            .length;
+      case ScalingCondition.perFactionCardPlayedThisTurn:
+        final f = filterFaction ?? sourceCard?.faction;
+        if (f == null) return 0;
+        return _countPlayedThisTurn(
+          player,
+          sourceCard,
+          (c) => _factionsMatch(f, false, c.faction, c.countsAsAllFactions),
+        );
+      case ScalingCondition.perAllyWithShieldPlayedThisTurn:
+        final f = filterFaction ?? sourceCard?.faction;
+        if (f == null) return 0;
+        return _countPlayedThisTurn(
+          player,
+          sourceCard,
+          (c) =>
+              c.shield > 0 &&
+              _factionsMatch(f, false, c.faction, c.countsAsAllFactions),
+        );
+    }
+  }
+
+  /// Counts cards played this turn matching [test], skipping the in-flight
+  /// source card exactly once (mirrors the perAllyPlayedThisTurn skip).
+  int _countPlayedThisTurn(
+    PlayerState player,
+    CardModel? sourceCard,
+    bool Function(CardModel) test,
+  ) {
+    var count = 0;
+    var skippedSelf = false;
+    for (final played in player.cardsPlayedThisTurn) {
+      if (!skippedSelf &&
+          sourceCard != null &&
+          identical(played, sourceCard)) {
+        skippedSelf = true;
+        continue;
+      }
+      if (test(played)) count++;
+    }
+    return count;
+  }
+
+  /// Evaluates a [GameCondition] predicate against current game state.
+  /// [source] is the in-flight card (skipped via `identical` where the
+  /// existing per-ally counting does, so a card doesn't count itself).
+  bool _evaluateGameCondition(
+    GameCondition c,
+    PlayerState player,
+    CardModel? source,
+  ) {
+    switch (c.kind) {
+      case GameConditionKind.alliesOfFactionPlayed:
+        final f = c.faction ?? source?.faction;
+        if (f == null || f == Faction.none) return false;
+        final count = _countPlayedThisTurn(
+          player,
+          source,
+          (card) => _factionsMatch(f, false, card.faction,
+              card.countsAsAllFactions),
+        );
+        return count >= c.threshold;
+      case GameConditionKind.factionsPlayedAll:
+        if (c.factions.isEmpty) return false;
+        final played = <Faction>{
+          for (final card in player.cardsPlayedThisTurn)
+            if (card.faction != Faction.none) card.faction,
+        };
+        return c.factions.every(played.contains);
+      case GameConditionKind.distinctFactionsPlayed:
+        return _evaluateCondition(
+                PowerCondition.perFactionPlayedThisTurn, player, source) >=
+            c.threshold;
+      case GameConditionKind.cardTypePlayed:
+        final type = c.cardType;
+        if (type == null) return false;
+        final count = _countPlayedThisTurn(
+            player, source, (card) => card.cardType == type);
+        return count >= c.threshold;
+      case GameConditionKind.gemParityCardsPlayed:
+        final parity = c.parity ?? GemParity.even;
+        final count = _countPlayedThisTurn(
+          player,
+          source,
+          (card) => c.faction == null
+              ? true
+              : _factionsMatch(c.faction!, false, card.faction,
+                  card.countsAsAllFactions),
+        );
+        final isEven = count.isEven;
+        return parity == GemParity.even ? isEven : !isEven;
+      case GameConditionKind.filteredCardsPlayed:
+        final count = _countPlayedThisTurn(
+          player,
+          source,
+          (card) {
+            if (c.faction != null &&
+                !_factionsMatch(c.faction!, false, card.faction,
+                    card.countsAsAllFactions)) {
+              return false;
+            }
+            if (c.maxCost != null && card.cost > c.maxCost!) return false;
+            return true;
+          },
+        );
+        return count >= c.threshold;
+      case GameConditionKind.championsControlled:
+        return player.championsInPlay.length >= c.threshold;
+      case GameConditionKind.championsOfFactionControlled:
+        final f = c.faction ?? source?.faction;
+        if (f == null || f == Faction.none) return false;
+        final count = player.championsInPlay
+            .where((card) => _factionsMatch(
+                f, false, card.faction, card.countsAsAllFactions))
+            .length;
+        return count >= c.threshold;
+      case GameConditionKind.masteryAtLeast:
+        return player.mastery >= c.threshold;
+      case GameConditionKind.sameFactionCountPlayed:
+        final f = c.faction ?? source?.faction;
+        if (f == null || f == Faction.none) return false;
+        // Count ALL same-faction cards played this turn INCLUDING the source.
+        final count = player.cardsPlayedThisTurn
+            .where((card) => _factionsMatch(
+                f, false, card.faction, card.countsAsAllFactions))
+            .length;
+        return count >= c.threshold;
+      case GameConditionKind.isCharacter:
+        if (c.character == null) return false;
+        return player.character == c.character;
+    }
   }
 
   int _evaluateCondition(

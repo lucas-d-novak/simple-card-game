@@ -153,6 +153,8 @@
             "returnFromDiscard",
             "chooseOne",
             "conditionalPower",
+            "scalingResource",
+            "conditional",
             "infinityShard"
           ]
         },
@@ -178,14 +180,38 @@
           "description": "For returnFromDiscard when filter is 'faction': the required faction."
         },
         "condition": {
+          "description": "For conditionalPower / scalingResource: a STRING naming the scaling quantity. For conditional: an OBJECT (see the condition object shape below). conditionalPower enum: perChampionControlled, perAllyPlayedThisTurn, perFactionPlayedThisTurn, perCardInDiscard. scalingResource adds: perFactionCardInDiscard, perFactionChampionControlled, perFactionCardPlayedThisTurn, perAllyWithShieldPlayedThisTurn.",
+          "oneOf": [
+            {
+              "type": "string",
+              "enum": [
+                "perChampionControlled",
+                "perAllyPlayedThisTurn",
+                "perFactionPlayedThisTurn",
+                "perCardInDiscard",
+                "perFactionCardInDiscard",
+                "perFactionChampionControlled",
+                "perFactionCardPlayedThisTurn",
+                "perAllyWithShieldPlayedThisTurn"
+              ]
+            },
+            { "$ref": "#/definitions/gameCondition" }
+          ]
+        },
+        "resource": {
           "type": "string",
-          "enum": [
-            "perChampionControlled",
-            "perAllyPlayedThisTurn",
-            "perFactionPlayedThisTurn",
-            "perCardInDiscard"
-          ],
-          "description": "For conditionalPower."
+          "enum": ["power", "gems", "health", "mastery"],
+          "description": "For scalingResource: which resource pool the scaled amount feeds into."
+        },
+        "perN": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "For scalingResource: how much resource to grant per counted unit (default 1)."
+        },
+        "then": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/effect" },
+          "description": "For conditional: the effects resolved only when the condition holds."
         },
         "choices": {
           "type": "array",
@@ -194,6 +220,67 @@
             "items": { "$ref": "#/definitions/effect" }
           },
           "description": "For chooseOne: each entry is a group of effects applied together if chosen."
+        }
+      }
+    },
+    "gameCondition": {
+      "type": "object",
+      "required": ["kind"],
+      "additionalProperties": false,
+      "description": "A board-state predicate (lib/models/card_effect.dart GameCondition) carried by a 'conditional' effect. Only 'kind' is required; the other keys parameterise the specific kind.",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "alliesOfFactionPlayed",
+            "factionsPlayedAll",
+            "distinctFactionsPlayed",
+            "cardTypePlayed",
+            "gemParityCardsPlayed",
+            "filteredCardsPlayed",
+            "championsControlled",
+            "championsOfFactionControlled",
+            "masteryAtLeast",
+            "sameFactionCountPlayed",
+            "isCharacter"
+          ],
+          "description": "Which predicate to evaluate."
+        },
+        "threshold": {
+          "type": "integer",
+          "description": "The 'at least N' bar for count-based kinds (default 1)."
+        },
+        "faction": {
+          "type": "string",
+          "enum": ["homodeus", "wraethe", "order", "undergrowth", "none"],
+          "description": "Single-faction filter; null = use the source card's faction where applicable."
+        },
+        "factions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["homodeus", "wraethe", "order", "undergrowth", "none"]
+          },
+          "description": "For factionsPlayedAll: every faction that must have been played."
+        },
+        "parity": {
+          "type": "string",
+          "enum": ["even", "odd"],
+          "description": "For gemParityCardsPlayed."
+        },
+        "cardType": {
+          "type": "string",
+          "enum": ["regular", "champion", "mercenary"],
+          "description": "For cardTypePlayed."
+        },
+        "maxCost": {
+          "type": "integer",
+          "description": "For filteredCardsPlayed: inclusive max cost of counted cards."
+        },
+        "character": {
+          "type": "string",
+          "enum": ["decima", "tetra", "volos", "rez", "koSynWu"],
+          "description": "For isCharacter: the required Character."
         }
       }
     }

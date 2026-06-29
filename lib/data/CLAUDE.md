@@ -76,8 +76,21 @@ Supported `type` values: `gainGems`, `gainPower`, `gainMastery`, `gainHealth`,
 (`filter`: `any`/`champion`/`mercenary`/`faction`, plus `faction` when
 filtering by faction), `conditionalPower` (`condition`:
 `perChampionControlled`/`perAllyPlayedThisTurn`/`perFactionPlayedThisTurn`/`perCardInDiscard`),
+`scalingResource` (`resource`: `power`/`gems`/`health`/`mastery`; `condition`:
+the four `conditionalPower` conditions plus `perFactionCardInDiscard`/
+`perFactionChampionControlled`/`perFactionCardPlayedThisTurn`/
+`perAllyWithShieldPlayedThisTurn`; optional `perN` (default 1) and `faction`),
+`conditional` (`condition`: a `GameCondition` object with a `kind` + optional
+`threshold`/`faction`/`factions`/`parity`/`cardType`/`maxCost`/`character`;
+`then`: effects resolved only when the condition holds),
 `infinityShard`, `chooseOne` (`choices`: array of effect groups). `gainMoney`
 is legacy and not part of the Shards of Infinity database.
+
+`scalingResource` generalises `conditionalPower` to any resource pool;
+`conditionalPower` is kept for back-compat (it still decodes to
+`ConditionalPowerEffect`). `conditional` wraps any effect list behind a
+board-state predicate and works in `playEffects`, `allyAbility`, `masteryBonus`,
+and inside an `activatedAbility`.
 
 ### Encoding Exhaust / activated abilities
 
