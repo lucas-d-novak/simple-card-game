@@ -2506,6 +2506,31 @@ void main() {
       expect(player.powerPool, 5, reason: 'mastery bonus added on top');
     });
 
+    // Wave 1 review follow-up: masteryReplaces=true is meaningless without a
+    // bonus to replace WITH; it must degrade safely to playEffects rather than
+    // resolving nothing.
+    test('REPLACE with empty masteryBonus degrades to playEffects at threshold',
+        () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.mastery = 30; // well above any threshold
+      player.hand.add(const CardModel(
+        id: 'test_replace_empty',
+        name: 'Replace Empty',
+        cost: 0,
+        playEffects: [GainGemsEffect(2)],
+        masteryThreshold: 15,
+        masteryBonus: [], // nothing to replace with
+        masteryReplaces: true,
+      ));
+
+      game.playCard('test_replace_empty');
+
+      // Did NOT silently resolve nothing — playEffects still ran.
+      expect(player.gemPool, 2, reason: 'falls back to playEffects');
+      expect(player.powerPool, 0);
+    });
+
     test('REPLACE applies to champion free activation too', () {
       final game = GameService(playerCount: 2, random: Random(7));
       final player = game.currentPlayer;
