@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:simple_card_game/models/card_effect.dart';
 import 'package:simple_card_game/services/ai_service.dart';
 import 'package:simple_card_game/services/game_service.dart';
 import 'package:simple_card_game/ui/screens/game_screen.dart';
@@ -18,8 +19,36 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
   int _playerCount = 2;
   bool _vsAi = false;
 
+  /// Per-player Character selection (null = "None"). Index = player index;
+  /// length always 4 (max players) so it survives player-count changes — only
+  /// the first [_playerCount] entries are used when starting a game.
+  final List<Character?> _characters = List<Character?>.filled(4, null);
+
+  /// Human-readable label for a Character choice in the picker.
+  static String _characterLabel(Character? c) {
+    switch (c) {
+      case null:
+        return 'None';
+      case Character.decima:
+        return 'Decima';
+      case Character.tetra:
+        return 'Tetra';
+      case Character.volos:
+        return 'Volos';
+      case Character.rez:
+        return 'Rez';
+      case Character.koSynWu:
+        return 'Ko Syn Wu';
+      case Character.chroma:
+        return 'Chroma';
+    }
+  }
+
   void _startGame() {
-    final gameService = GameService(playerCount: _playerCount);
+    final gameService = GameService(
+      playerCount: _playerCount,
+      characters: _characters.take(_playerCount).toList(),
+    );
     AiService? aiService;
     if (_vsAi && _playerCount == 2) {
       // Pace the AI using the global animation speed (instant under reduced
@@ -168,6 +197,72 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                         letterSpacing: 1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            const SizedBox(height: 32),
+
+            // Character selector (one dropdown per player; "None" allowed)
+            const Text(
+              'CHARACTERS',
+              style: TextStyle(
+                color: GameTheme.textSecondary,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 2,
+              ),
+            ),
+            const SizedBox(height: 12),
+            for (int i = 0; i < _playerCount; i++)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 110,
+                      child: Text(
+                        _vsAi && i == 1 ? 'Player ${i + 1} (AI)'
+                            : 'Player ${i + 1}',
+                        style: const TextStyle(
+                          color: GameTheme.textPrimary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: GameTheme.surfaceDark,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: DropdownButton<Character?>(
+                        key: ValueKey('characterPicker_$i'),
+                        value: _characters[i],
+                        dropdownColor: GameTheme.surfaceDark,
+                        underline: const SizedBox.shrink(),
+                        iconEnabledColor: GameTheme.gold,
+                        style: const TextStyle(
+                          color: GameTheme.textPrimary,
+                          fontSize: 14,
+                        ),
+                        items: <Character?>[null, ...Character.values]
+                            .map((c) => DropdownMenuItem<Character?>(
+                                  value: c,
+                                  child: Text(_characterLabel(c)),
+                                ))
+                            .toList(),
+                        onChanged: (value) =>
+                            setState(() => _characters[i] = value),
                       ),
                     ),
                   ],

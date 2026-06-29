@@ -22,6 +22,7 @@ enum Character {
   volos,
   rez,
   koSynWu,
+  chroma,
 }
 
 // ---------------------------------------------------------------------------
@@ -457,6 +458,15 @@ enum StaticModifierKind {
   /// your deck instead of the discard pile (maglev_tunnels "put recruited
   /// Homodeus Champions on top of deck"). Consulted in `recruitFromCenter`.
   recruitToTopOfDeck,
+
+  /// The SOURCE champion gains `amount` shield for each card currently tucked
+  /// under it (carmine_eclipse "+2 shield for each card under this"). Unlike the
+  /// other kinds this is SELF-scoped: it only buffs the champion that owns the
+  /// modifier, scaling with that champion's under-card count
+  /// ([PlayerState.cardsUnderChampion]). Consulted in `attackChampion` via
+  /// `_effectiveShield`. The modifier carries the owning champion's id in
+  /// [StaticModifier.sourceChampionId].
+  shieldPerCardUnder,
 }
 
 /// A persistent, board-wide modifier owned by a player. Carried in
@@ -476,11 +486,13 @@ class StaticModifier {
     this.amount = 0,
     this.faction,
     this.cardType,
+    this.sourceChampionId,
   });
 
   final StaticModifierKind kind;
 
-  /// The magnitude (shield bonus, cost reduction). Ignored by
+  /// The magnitude (shield bonus, cost reduction; per-card shield bonus for
+  /// [StaticModifierKind.shieldPerCardUnder]). Ignored by
   /// [StaticModifierKind.cannotBeAttacked] and [StaticModifierKind.recruitToTopOfDeck].
   final int amount;
 
@@ -491,6 +503,13 @@ class StaticModifier {
   /// Optional card-type filter — the modifier only applies to cards of this
   /// type. Null = applies regardless of type.
   final CardType? cardType;
+
+  /// For [StaticModifierKind.shieldPerCardUnder] ONLY: the id of the champion
+  /// this self-scoped buff belongs to. The buff scales with that champion's
+  /// under-card count and applies only to that champion. Stamped automatically
+  /// when an [AddStaticModifierEffect] resolves with the in-flight champion as
+  /// its source card. Null for every other kind.
+  final String? sourceChampionId;
 
   String get description {
     final f = faction != null ? '${faction!.name} ' : '';
@@ -504,6 +523,8 @@ class StaticModifier {
         return 'You cannot be attacked';
       case StaticModifierKind.recruitToTopOfDeck:
         return 'Recruited $f${t}cards go to the top of your deck';
+      case StaticModifierKind.shieldPerCardUnder:
+        return 'This champion has +$amount shield for each card under it';
     }
   }
 }
@@ -518,6 +539,80 @@ final class AddStaticModifierEffect extends CardEffect {
 
   @override
   String get description => modifier.description;
+}
+
+// ---------------------------------------------------------------------------
+// Under-card stacking (Engine Phase 2, wave 5b — Family 13)
+//
+// Some champions accumulate other cards "tucked under" them and then reference
+// the number of under-cards (carmine_eclipse "+2 shield per card under this")
+// or replay their effects (paradigm_the_archivist "copy the effect of all cards
+// under this"). The per-champion under-card list lives on
+// [PlayerState.cardsUnderChampion] (keyed by champion id). These effects mutate
+// or read that state.
+// ---------------------------------------------------------------------------
+
+/// Where a [TuckUnderChampionEffect] takes the card it tucks from.
+enum TuckSource {
+  /// Tuck a card chosen from the controlling player's hand
+  /// (paradigm_the_archivist "Put an Ally from your hand under this").
+  hand,
+
+  /// Tuck the top card of the CENTER (infinity) deck
+  /// (gene_scavs "Ambush — put the top card of the Center Deck under this").
+  centerDeck,
+}
+
+/// "Put a card under [champion]." DEFERRED-SELECTION for [TuckSource.hand] (the
+/// player calls [GameService.tuckUnderChampion] with the chosen champion id and
+/// card id after selection); IMMEDIATE for [TuckSource.centerDeck] (resolved
+/// inline against the top of the infinity deck — no choice needed).
+///
+/// The tucked card is removed from its origin zone and appended to the
+/// champion's under-card list ([PlayerState.cardsUnderChampion]). It is NOT a
+/// regular play (its effects do not resolve when tucked). When [alliesOnly] is
+/// true, only allies (non-champion cards) may be tucked from hand.
+final class TuckUnderChampionEffect extends CardEffect {
+  const TuckUnderChampionEffect({
+    this.source = TuckSource.hand,
+    this.alliesOnly = false,
+  });
+
+  final TuckSource source;
+
+  /// When true (and [source] is [TuckSource.hand]), only non-champion cards may
+  /// be tucked.
+  final bool alliesOnly;
+
+  @override
+  String get description {
+    switch (source) {
+      case TuckSource.hand:
+        final who = alliesOnly ? 'an ally' : 'a card';
+        return 'Put $who from your hand under this champion';
+      case TuckSource.centerDeck:
+        return 'Put the top card of the center deck under this champion';
+    }
+  }
+}
+
+/// "Copy the effect of all cards under this champion"
+/// (paradigm_the_archivist). DEFERRED-SELECTION: a no-op in `_resolveEffects`
+/// (the champion is identified by the in-flight source card when resolved via
+/// an activated ability, so the player calls [GameService.copyUnderCards] with
+/// the champion id). Re-resolves the `playEffects` of every card currently
+/// tucked under that champion, in tuck order, for the controlling player.
+///
+/// RE-ENTRANCY GUARD (enforced in [GameService.copyUnderCards]): any
+/// [InfinityShardEffect] among an under-card's effects is skipped (mirrors
+/// [CopyPlayedCardEffect]), so copying never grants a spurious mastery/win, and
+/// a [TuckUnderChampionEffect] / [CopyUnderCardsEffect] among them is skipped to
+/// avoid re-entrant tucking/copying.
+final class CopyUnderCardsEffect extends CardEffect {
+  const CopyUnderCardsEffect();
+
+  @override
+  String get description => 'Copy the effect of all cards under this champion';
 }
 
 // ---------------------------------------------------------------------------

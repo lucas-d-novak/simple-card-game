@@ -55,6 +55,21 @@ class PlayerState {
   final List<CardModel> playedThisTurn = [];
   final List<CardModel> championsInPlay = [];
 
+  /// Cards tucked UNDER a champion (Engine Phase 2 wave 5b — Family 13), keyed
+  /// by the champion's id. Populated by [TuckUnderChampionEffect] (carmine_eclipse
+  /// fast-play-under, paradigm_the_archivist "put an Ally under this", gene_scavs
+  /// ambush). The list per champion is in tuck order. Read by
+  /// `GameService._effectiveShield` (carmine_eclipse "+shield per card under")
+  /// and `GameService.copyUnderCards` (paradigm). NOT cleared by
+  /// [resetTurnResources] — under-cards persist with their champion until it
+  /// leaves play.
+  final Map<String, List<CardModel>> cardsUnderChampion = {};
+
+  /// The number of cards currently tucked under the champion with [championId]
+  /// (0 if none / unknown). Convenience for shield-per-card scaling.
+  int cardsUnderCount(String championId) =>
+      cardsUnderChampion[championId]?.length ?? 0;
+
   /// Champion ids that have used their free once-per-turn [CardModel.playEffects]
   /// activation this turn (see GameService.activateChampion).
   final Set<String> activatedChampions = {};

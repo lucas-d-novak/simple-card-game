@@ -250,6 +250,8 @@ class DeckService {
         case OpponentDiscardsEffect():
         case CopyPlayedCardEffect():
         case CenterDeckScryEffect():
+        case TuckUnderChampionEffect():
+        case CopyUnderCardsEffect():
         case InfinityShardEffect():
           break; // Handled by GameService, not DeckService
       }

@@ -181,6 +181,7 @@ CardEffect decodeEffect(Map<String, dynamic> json) {
             ? _faction(json['faction'] as String?)
             : null,
         cardType: _cardType(json['cardType'] as String?),
+        sourceChampionId: json['sourceChampionId'] as String?,
       ));
     case 'opponentDraws':
       return OpponentDrawsEffect(
@@ -198,6 +199,13 @@ CardEffect decodeEffect(Map<String, dynamic> json) {
       return CenterDeckScryEffect(
         disposition: _centerScryDisposition(json['disposition'] as String?),
       );
+    case 'tuckUnderChampion':
+      return TuckUnderChampionEffect(
+        source: _tuckSource(json['source'] as String?),
+        alliesOnly: (json['alliesOnly'] as bool?) ?? false,
+      );
+    case 'copyUnderCards':
+      return const CopyUnderCardsEffect();
     case 'infinityShard':
       return const InfinityShardEffect();
     case 'chooseOne':
@@ -300,6 +308,8 @@ Map<String, dynamic> encodeEffect(CardEffect effect) {
         if (m.amount != 0) 'amount': m.amount,
         if (m.faction != null) 'faction': m.faction!.name,
         if (m.cardType != null) 'cardType': m.cardType!.name,
+        if (m.sourceChampionId != null)
+          'sourceChampionId': m.sourceChampionId,
       };
     case OpponentDrawsEffect():
       return {
@@ -318,6 +328,14 @@ Map<String, dynamic> encodeEffect(CardEffect effect) {
         'type': 'centerDeckScry',
         'disposition': effect.disposition.name,
       };
+    case TuckUnderChampionEffect():
+      return {
+        'type': 'tuckUnderChampion',
+        if (effect.source != TuckSource.hand) 'source': effect.source.name,
+        if (effect.alliesOnly) 'alliesOnly': true,
+      };
+    case CopyUnderCardsEffect():
+      return {'type': 'copyUnderCards'};
     case InfinityShardEffect():
       return {'type': 'infinityShard'};
     case ChooseOneEffect():
@@ -510,6 +528,18 @@ CopyFilter _copyFilter(String? raw) {
       return CopyFilter.any;
     default:
       throw FormatException('unknown copy filter: $raw');
+  }
+}
+
+TuckSource _tuckSource(String? raw) {
+  switch (raw) {
+    case 'hand':
+    case null:
+      return TuckSource.hand;
+    case 'centerDeck':
+      return TuckSource.centerDeck;
+    default:
+      throw FormatException('unknown tuck source: $raw');
   }
 }
 

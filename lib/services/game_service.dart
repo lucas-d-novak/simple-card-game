@@ -14,9 +14,17 @@ class GameService {
   GameService({
     required int playerCount,
     Random? random,
+    List<Character?>? characters,
   })  : _random = random ?? Random(),
-        assert(playerCount >= 2 && playerCount <= 4) {
+        assert(playerCount >= 2 && playerCount <= 4),
+        assert(characters == null || characters.length == playerCount,
+            'characters, when provided, must have one entry per player') {
     _initializeGame(playerCount);
+    if (characters != null) {
+      for (var i = 0; i < playerCount; i++) {
+        players[i].character = characters[i];
+      }
+    }
   }
 
   final Random _random;
@@ -64,6 +72,17 @@ class GameService {
     for (int i = 0; i < players.length; i++) {
       _drawCards(players[i], 5);
     }
+  }
+
+  /// Assign (or clear) the Character a player has chosen, by player id. Lets the
+  /// setup flow pick characters after construction (the constructor's
+  /// `characters` param is the other supported path). Returns false if no player
+  /// has [playerId]. A null [character] clears the assignment (no character).
+  bool setCharacter(String playerId, Character? character) {
+    final player = players.where((p) => p.id == playerId).firstOrNull;
+    if (player == null) return false;
+    player.character = character;
+    return true;
   }
 
   // -------------------------------------------------------------------------
@@ -200,17 +219,50 @@ class GameService {
     return true;
   }
 
-  /// The effective shield of [champion] owned by [owner]: its printed shield
-  /// plus every matching [StaticModifierKind.shieldBuff] the owner holds.
+  /// The effective shield of [champion] owned by [owner]: its printed shield,
+  /// plus every matching [StaticModifierKind.shieldBuff] the owner holds, plus —
+  /// for a [StaticModifierKind.shieldPerCardUnder] modifier whose
+  /// [StaticModifier.sourceChampionId] is THIS champion — `amount` per card
+  /// currently tucked under it (carmine_eclipse). The per-card-under term is the
+  /// single shield path (Wave 5b extends this Wave-5a helper; combat reads only
+  /// `_effectiveShield`).
   int _effectiveShield(CardModel champion, PlayerState owner) {
     var shield = champion.shield;
     for (final mod in owner.staticModifiers) {
-      if (mod.kind == StaticModifierKind.shieldBuff &&
-          _modifierApplies(mod, champion)) {
-        shield += mod.amount;
+      switch (mod.kind) {
+        case StaticModifierKind.shieldBuff:
+          if (_modifierApplies(mod, champion)) shield += mod.amount;
+        case StaticModifierKind.shieldPerCardUnder:
+          // Self-scoped: only buffs the champion that owns the modifier, scaling
+          // with that champion's under-card count.
+          if (mod.sourceChampionId == champion.id) {
+            shield += mod.amount * owner.cardsUnderCount(champion.id);
+          }
+        case StaticModifierKind.cardCostReduction:
+        case StaticModifierKind.cannotBeAttacked:
+        case StaticModifierKind.recruitToTopOfDeck:
+          break;
       }
     }
     return shield;
+  }
+
+  /// Resolve the under-card state when [championId]'s champion leaves [owner]'s
+  /// play (destroyed or eliminated). Moves any cards tucked under it to the
+  /// owner's discard pile (paradigm_the_archivist "put all cards under it into
+  /// your discard pile" — the simple, default disposition; carmine_eclipse's
+  /// optional "recruit any, banish the rest" is a documented follow-up) and
+  /// drops any self-scoped shieldPerCardUnder modifier the champion carried so a
+  /// stale buff cannot linger. A no-op when the champion had no under-cards /
+  /// modifier.
+  void _releaseUnderCards(PlayerState owner, String championId) {
+    final under = owner.cardsUnderChampion.remove(championId);
+    if (under != null && under.isNotEmpty) {
+      owner.discardPile.addAll(under);
+    }
+    owner.staticModifiers.removeWhere((m) =>
+        m.kind == StaticModifierKind.shieldPerCardUnder &&
+        m.sourceChampionId == championId);
   }
 
   /// Whether [player] owns a [StaticModifierKind.cannotBeAttacked] modifier.
@@ -328,6 +380,92 @@ class GameService {
       if (e is ConditionalEffect && _containsCopyEffect(e.then)) return true;
     }
     return false;
+  }
+
+  // -------------------------------------------------------------------------
+  // Under-card stacking (Engine Phase 2, wave 5b — Family 13)
+  // -------------------------------------------------------------------------
+
+  /// Tuck [cardId] from the current player's HAND under their champion
+  /// [championId], fulfilling a [TuckUnderChampionEffect] (source hand) after
+  /// the player selects both. The card is removed from hand and appended to the
+  /// champion's under-card list ([PlayerState.cardsUnderChampion]); its effects
+  /// do NOT resolve (it is tucked, not played).
+  ///
+  /// When [alliesOnly] is true, champions cannot be tucked (an ally is a
+  /// non-champion card). Returns false (no state change) if the game is over /
+  /// the player can't act, the champion is not controlled by the player, the
+  /// card is not in hand, or it fails the allies-only filter.
+  bool tuckUnderChampion(
+    String championId,
+    String cardId, {
+    bool alliesOnly = false,
+  }) {
+    if (!_currentPlayerCanAct) return false;
+    final player = currentPlayer;
+
+    final controls = player.championsInPlay.any((c) => c.id == championId);
+    if (!controls) return false;
+
+    final handIndex = player.hand.indexWhere((c) => c.id == cardId);
+    if (handIndex == -1) return false;
+    if (alliesOnly && player.hand[handIndex].cardType == CardType.champion) {
+      return false;
+    }
+
+    final card = player.hand.removeAt(handIndex);
+    player.cardsUnderChampion.putIfAbsent(championId, () => []).add(card);
+    return true;
+  }
+
+  /// Tuck the top card of the CENTER (infinity) deck under [championId]
+  /// (gene_scavs ambush). Immediate variant of [TuckUnderChampionEffect] (source
+  /// centerDeck), called inline during effect resolution. Returns false (no
+  /// state change) if the player doesn't control the champion or the infinity
+  /// deck is empty.
+  bool _tuckTopOfCenterDeck(PlayerState player, String championId) {
+    final controls = player.championsInPlay.any((c) => c.id == championId);
+    if (!controls) return false;
+    if (infinityDeck.isEmpty) return false;
+    final card = infinityDeck.removeLast();
+    player.cardsUnderChampion.putIfAbsent(championId, () => []).add(card);
+    return true;
+  }
+
+  /// Re-resolve the `playEffects` of every card tucked under [championId] for
+  /// the current player, fulfilling a [CopyUnderCardsEffect]
+  /// (paradigm_the_archivist). Cards are copied in tuck order. The under-cards
+  /// themselves are NOT consumed — they stay under the champion.
+  ///
+  /// RE-ENTRANCY / SAFETY: among each under-card's effects, [InfinityShardEffect]
+  /// is skipped (no spurious mastery/win, mirroring [copyPlayedCard]), and
+  /// [TuckUnderChampionEffect] / [CopyUnderCardsEffect] are skipped to avoid
+  /// re-entrant tucking/copying.
+  ///
+  /// Returns false (no state change) if the game is over / the player can't act,
+  /// the player doesn't control the champion, or there are no cards under it.
+  bool copyUnderCards(String championId) {
+    if (!_currentPlayerCanAct) return false;
+    final player = currentPlayer;
+
+    final controls = player.championsInPlay.any((c) => c.id == championId);
+    if (!controls) return false;
+
+    final under = player.cardsUnderChampion[championId];
+    if (under == null || under.isEmpty) return false;
+
+    // Snapshot so re-resolution can't mutate the list mid-iteration.
+    for (final card in List<CardModel>.from(under)) {
+      final copyable = [
+        for (final e in card.playEffects)
+          if (e is! InfinityShardEffect &&
+              e is! TuckUnderChampionEffect &&
+              e is! CopyUnderCardsEffect)
+            e,
+      ];
+      _resolveEffects(copyable, player, sourceCard: card);
+    }
+    return true;
   }
 
   // -------------------------------------------------------------------------
@@ -512,6 +650,7 @@ class GameService {
     currentPlayer.powerPool -= shieldNeeded;
     target.championsInPlay.removeAt(champIndex);
     target.discardPile.add(champion);
+    _releaseUnderCards(target, champion.id);
 
     return true;
   }
@@ -642,6 +781,7 @@ class GameService {
 
     final champion = target.championsInPlay.removeAt(champIndex);
     target.discardPile.add(champion);
+    _releaseUnderCards(target, champion.id);
     return true;
   }
 
@@ -845,6 +985,9 @@ class GameService {
     for (final player in players) {
       if (player.id == source.id) continue;
       if (player.championsInPlay.isEmpty) continue;
+      for (final champion in player.championsInPlay) {
+        _releaseUnderCards(player, champion.id);
+      }
       player.discardPile.addAll(player.championsInPlay);
       player.championsInPlay.clear();
     }
@@ -1002,7 +1145,40 @@ class GameService {
           // Immediate: append the persistent modifier to the player's list. It
           // stays for the rest of the game (wave-5a lifetime). Consulted by
           // attackChampion / attackPlayer / buyCard / recruitFromCenter.
-          player.staticModifiers.add(effect.modifier);
+          // A shieldPerCardUnder modifier is SELF-scoped: stamp it with the
+          // in-flight champion's id so _effectiveShield only buffs that champion
+          // (carmine_eclipse). Other kinds are stored verbatim.
+          if (effect.modifier.kind ==
+                  StaticModifierKind.shieldPerCardUnder &&
+              effect.modifier.sourceChampionId == null &&
+              sourceCard != null) {
+            player.staticModifiers.add(StaticModifier(
+              kind: effect.modifier.kind,
+              amount: effect.modifier.amount,
+              faction: effect.modifier.faction,
+              cardType: effect.modifier.cardType,
+              sourceChampionId: sourceCard.id,
+            ));
+          } else {
+            player.staticModifiers.add(effect.modifier);
+          }
+        case TuckUnderChampionEffect():
+          // hand source: deferred-selection — the player calls
+          // tuckUnderChampion() after picking a champion + hand card.
+          // centerDeck source: immediate — tuck the top center-deck card under
+          // the in-flight champion (gene_scavs ambush).
+          if (effect.source == TuckSource.centerDeck && sourceCard != null) {
+            _tuckTopOfCenterDeck(player, sourceCard.id);
+          }
+        case CopyUnderCardsEffect():
+          // Re-resolve every under-card's effects for the in-flight champion
+          // (paradigm_the_archivist). When resolved via an activated ability the
+          // sourceCard IS the champion; otherwise the player calls
+          // copyUnderCards() with the champion id.
+          if (sourceCard != null &&
+              player.championsInPlay.any((c) => c.id == sourceCard.id)) {
+            copyUnderCards(sourceCard.id);
+          }
         case OpponentDrawsEffect():
           _eachOtherPlayerDraws(player, effect.count);
         case OpponentDiscardsEffect():
@@ -1594,5 +1770,11 @@ class GameService {
 
     removedFromGame.addAll(player.championsInPlay);
     player.championsInPlay.clear();
+
+    // Cards tucked under any of this player's champions also leave the game.
+    for (final under in player.cardsUnderChampion.values) {
+      removedFromGame.addAll(under);
+    }
+    player.cardsUnderChampion.clear();
   }
 }

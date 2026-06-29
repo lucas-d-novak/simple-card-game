@@ -189,6 +189,8 @@
             "opponentDiscards",
             "copyPlayedCard",
             "centerDeckScry",
+            "tuckUnderChampion",
+            "copyUnderCards",
             "infinityShard"
           ]
         },
@@ -196,8 +198,8 @@
         "count": { "type": "integer", "description": "For drawCards (cards to draw) and scry (top cards to reveal)." },
         "source": {
           "type": "string",
-          "enum": ["hand", "discard", "handOrDiscard"],
-          "description": "For banishCard."
+          "enum": ["hand", "discard", "handOrDiscard", "centerDeck"],
+          "description": "For banishCard (hand/discard/handOrDiscard). For tuckUnderChampion: hand=deferred-selection (player picks a hand card via GameService.tuckUnderChampion); centerDeck=immediate (top of the center deck, gene_scavs ambush)."
         },
         "all": {
           "type": "boolean",
@@ -221,7 +223,7 @@
         },
         "alliesOnly": {
           "type": "boolean",
-          "description": "For fastPlayFromCenter: if true, only allies (non-champion cards) may be chosen."
+          "description": "For fastPlayFromCenter / tuckUnderChampion (hand source): if true, only allies (non-champion cards) may be chosen."
         },
         "disposition": {
           "type": "string",
@@ -235,13 +237,17 @@
         },
         "kind": {
           "type": "string",
-          "enum": ["shieldBuff", "cardCostReduction", "cannotBeAttacked", "recruitToTopOfDeck"],
-          "description": "For addStaticModifier: which persistent board-wide modifier to add. shieldBuff/cardCostReduction use 'amount'; both plus recruitToTopOfDeck may use optional 'faction'/'cardType' filters; cannotBeAttacked ignores amount/filters."
+          "enum": ["shieldBuff", "cardCostReduction", "cannotBeAttacked", "recruitToTopOfDeck", "shieldPerCardUnder"],
+          "description": "For addStaticModifier: which persistent board-wide modifier to add. shieldBuff/cardCostReduction use 'amount'; both plus recruitToTopOfDeck may use optional 'faction'/'cardType' filters; cannotBeAttacked ignores amount/filters; shieldPerCardUnder is SELF-scoped to the source champion (carmine_eclipse), buffing it by 'amount' per card tucked under it."
         },
         "cardType": {
           "type": "string",
           "enum": ["regular", "champion", "mercenary"],
           "description": "For addStaticModifier: optional card-type filter restricting which cards/champions the modifier applies to."
+        },
+        "sourceChampionId": {
+          "type": "string",
+          "description": "For addStaticModifier with kind shieldPerCardUnder: the owning champion's id (normally stamped at runtime from the source card; rarely set in data)."
         },
         "faction": {
           "type": "string",
@@ -363,7 +369,7 @@
         },
         "character": {
           "type": "string",
-          "enum": ["decima", "tetra", "volos", "rez", "koSynWu"],
+          "enum": ["decima", "tetra", "volos", "rez", "koSynWu", "chroma"],
           "description": "For isCharacter: the required Character."
         }
       }
