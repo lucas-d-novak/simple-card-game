@@ -6,20 +6,22 @@ This repo is a small Flutter card-game prototype aimed at iOS, Android, and web.
 
 The current gameplay loop is:
 
-1. Start with a shuffled six-card money deck.
-2. Draw two cards into your hand.
+1. Game starts with multiple players, each with a shuffled six-card money deck.
+2. Draw cards into your hand automatically at start of your turn.
 3. Play cards from your hand to generate money or trigger card effects.
-4. Buy cards from the market row if you can afford them.
-5. Put purchased cards into the discard pile.
-6. Shuffle the discard pile back into the deck or reset the game.
+4. Buy cards from the shared market row if you can afford them.
+5. Put purchased cards into your discard pile.
+6. End your turn. Your played cards move to discard pile, your turn passes, and the next player draws.
+7. If your deck is empty when drawing, your discard pile is automatically shuffled into a new deck.
 
-Today, the whole game runs locally in memory. There is no backend, persistence, multiplayer, or package-based state management. Most of the game rules live in [`lib/services/deck_service.dart`](lib/services/deck_service.dart), and the UI is a thin Flutter layer over that service.
+Today, the whole game runs locally in memory. There is no backend, persistence, or package-based state management. It supports local multiplayer, orchestrated by a `GameService`. Specific deck and card rules live in `lib/services/deck_service.dart`, while global rules (market, turns) live in `lib/services/game_service.dart`, and the UI is a thin Flutter layer over those services.
 
 If you only need to get oriented quickly, read this section, then open:
 
-- [`lib/services/deck_service.dart`](lib/services/deck_service.dart)
-- [`lib/ui/screens/home_screen.dart`](lib/ui/screens/home_screen.dart)
-- [`test/services/deck_service_test.dart`](test/services/deck_service_test.dart)
+- `lib/services/game_service.dart`
+- `lib/services/deck_service.dart`
+- `lib/ui/screens/home_screen.dart`
+- `test/services/deck_service_test.dart`
 
 ## Quick Start
 
@@ -72,22 +74,25 @@ flutter devices
 
 ## What Is Implemented
 
+- Complete local multiplayer turn structure with alternating players
 - A starting deck of six money cards with values 1, 1, 2, 2, 3, and 4
-- A market row with five purchasable cards, including four treasure cards and `Scout`
-- A hand area for drawn cards
-- A played area for cards that contribute spendable money or trigger effects
-- A discard pile for purchased cards
+- A shared market row with five purchasable cards, including four treasure cards and `Scout`
+- Distinct hand, played area, and discard piles per player
+- Played cards automatically move to the discard pile on turn end
 - Manual reshuffling of discard cards into the deck
 - Automatic discard-to-deck reshuffle during draw when the deck is empty
-- Reset back to a fresh shuffled game state
+- Hand-size limits cap the number of cards a player can draw
+- Reset back to a fresh shuffled game state for all players
 - Card data modeled with separate `cost` and `playEffects` fields
 
 ## Repo Map
 
 ### Core app files
 
-- [`lib/main.dart`](lib/main.dart): app entry point, theme, and `DeckDrawApp`
-- [`lib/services/deck_service.dart`](lib/services/deck_service.dart): core game state and rules
+- `lib/main.dart`: app entry point, theme, and `DeckDrawApp`
+- `lib/models/player_state.dart`: models each player's individual state, deck, hand, and discard
+- `lib/services/game_service.dart`: orchestrates multiplayer turns and global market row
+- `lib/services/deck_service.dart`: local player rules for drawing, playing, and shuffling
 - [`lib/models/card_effect.dart`](lib/models/card_effect.dart): card effect types and display descriptions
 - [`lib/models/card_model.dart`](lib/models/card_model.dart): card data model
 - [`lib/ui/screens/home_screen.dart`](lib/ui/screens/home_screen.dart): main screen and user actions
@@ -108,19 +113,21 @@ The `android/`, `ios/`, and `web/` folders are the main product targets. The des
 
 ### State ownership
 
-- `HomeScreen` owns a single `DeckService` instance.
+- `HomeScreen` owns a single `GameService` instance.
+- `GameService` orchestrates multiple `PlayerState` instances, each holding its own `DeckService`.
 - User actions call service methods and then trigger `setState()`.
-- All game state is in memory inside `DeckService`.
+- All game state is in memory inside `GameService` and the nested `DeckService`s.
 
 ### Important rules and invariants
 
-- Drawing uses the deck first.
+- Drawing uses the active player's deck first.
 - If the deck is empty and the discard pile has cards, drawing reshuffles discard into deck automatically.
-- Drawn cards go to `hand`.
+- Drawn cards go to `hand`, capped by an optional `maxHandSize`.
 - Only money-gain effects on cards in `playedCards` contribute to `availableMoney`.
-- Buying a market card spends money and moves the bought card into `discardPile`.
+- Buying a market card spends money and moves the bought card into the active player's `discardPile`.
+- Ending a turn clears `playedCards` to `discardPile`, advances to the next player, and draws their starting hand.
 - The market row shrinks when cards are bought; it is not refilled yet.
-- Reset recreates the starting deck and market row and clears hand, played cards, discard pile, and spent money.
+- Reset recreates the starting deck for all players, rebuilds market row, and clears hand, played cards, discard pile, and spent money.
 
 ### Current card data
 
@@ -146,7 +153,7 @@ Market row:
 If you are new to the repo and want to get productive quickly:
 
 1. Read the Quick Summary above.
-2. Read [`lib/services/deck_service.dart`](lib/services/deck_service.dart) to understand the game rules.
+2. Read `lib/services/game_service.dart` and `lib/services/deck_service.dart` to understand the multi-player orchestration and core card mechanics respectively.
 3. Read [`test/services/deck_service_test.dart`](test/services/deck_service_test.dart) to see expected behavior in executable form.
 4. Read [`lib/ui/screens/home_screen.dart`](lib/ui/screens/home_screen.dart) to see how the service is wired into the UI.
 5. Run `flutter test`.
@@ -163,7 +170,7 @@ If you are new to the repo and want to get productive quickly:
 ### How to make changes safely
 
 - Put gameplay-rule changes in tests first.
-- Keep business logic in [`lib/services/deck_service.dart`](lib/services/deck_service.dart) rather than spreading it into widgets.
+- Keep business logic in `lib/services/game_service.dart` and `lib/services/deck_service.dart` rather than spreading it into widgets.
 - Keep UI changes small and wire them through existing keys and service methods where possible.
 - Use deterministic randomness in tests when you need stable expectations. The current tests seed `Random(7)`.
 - Run targeted tests after each small change, then run the broader relevant test set before stopping.
@@ -180,11 +187,10 @@ If you are new to the repo and want to get productive quickly:
 ### Good places to extend next
 
 - Add market refill rules
-- Add turn structure
 - Add more card effects
 - Add persistence for in-progress games
 - Introduce a state-management approach if the UI outgrows simple `setState()`
 
 ## Current Architecture In One Sentence
 
-This is a test-backed Flutter prototype where a single screen drives an in-memory `DeckService` that manages deck, hand, played cards, discard pile, market cards, and effect-based card resolution.
+This is a test-backed Flutter prototype where a single screen drives an in-memory `GameService` orchestrating multiplayer turn rotations, shared market cards, and discrete `PlayerState` structures that map to self-contained `DeckService`s managing localized hand/discard/play logic.

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:simple_card_game/services/deck_service.dart';
+import 'package:simple_card_game/services/game_service.dart';
+import 'package:simple_card_game/ui/screens/game_screen.dart';
 import 'package:simple_card_game/ui/screens/home_screen.dart';
 
 void main() {
@@ -8,9 +9,9 @@ void main() {
 
 /// Root widget for the deck drawing demo.
 class DeckDrawApp extends StatelessWidget {
-  const DeckDrawApp({super.key, this.deckService});
+  const DeckDrawApp({super.key, this.gameService});
 
-  final DeckService? deckService;
+  final GameService? gameService;
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +23,9 @@ class DeckDrawApp extends StatelessWidget {
         splashFactory: InkRipple.splashFactory,
         useMaterial3: true,
       ),
-      home: HomeScreen(deckService: deckService ?? DeckService()),
+      home: gameService != null
+          ? GameScreen(gameService: gameService!)
+          : const HomeScreen(),
     );
   }
 }
