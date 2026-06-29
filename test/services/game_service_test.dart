@@ -3110,6 +3110,7 @@ void main() {
       required int cost,
       List<CardEffect> playEffects = const [],
       CardType cardType = CardType.regular,
+      Faction faction = Faction.none,
       String id = 'warp_target',
     }) {
       final card = CardModel(
@@ -3118,6 +3119,7 @@ void main() {
         cost: cost,
         playEffects: playEffects,
         cardType: cardType,
+        faction: faction,
       );
       game.centerRow.clear();
       game.centerRow.add(card);
@@ -3148,13 +3150,71 @@ void main() {
 
       expect(game.fastPlayFromCenter('warp_target', maxCost: 4), true);
       expect(player.powerPool, 3); // play effects resolved
-      // Banished, not kept in any active zone.
+      // The physical card is banished and out of the discard/play-area zones.
       expect(player.playedThisTurn.any((c) => c.id == 'warp_target'), false);
-      expect(player.cardsPlayedThisTurn.any((c) => c.id == 'warp_target'),
-          false);
       expect(player.discardPile.any((c) => c.id == 'warp_target'), false);
       expect(game.removedFromGame.any((c) => c.id == 'warp_target'), true);
+      // But it STAYS recorded in cardsPlayedThisTurn — it was genuinely played,
+      // so later cards' play-history scaling should still count it.
+      expect(player.cardsPlayedThisTurn.any((c) => c.id == 'warp_target'), true,
+          reason: 'warped ally still counts as played this turn');
       expect(game.centerRow.length, 6); // refilled
+    });
+
+    test('warped ally counts toward a later card\'s play-history scaling', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      // Seed an Order ally in the center to warp.
+      seedCenter(game,
+          cost: 2, faction: Faction.order, playEffects: const []);
+      expect(game.fastPlayFromCenter('warp_target', maxCost: 4), true);
+
+      // Now play an Order card whose effect scales per Order ally played.
+      player.hand.add(const CardModel(
+        id: 'scaler',
+        name: 'Scaler',
+        cost: 0,
+        faction: Faction.order,
+        playEffects: [
+          ScalingResourceEffect(
+            resource: ScalingResource.power,
+            condition: ScalingCondition.perAllyPlayedThisTurn,
+          ),
+        ],
+      ));
+      game.playCard('scaler');
+      // The banished-but-played warp target counts -> 1 power.
+      expect(player.powerPool, 1,
+          reason: 'warped ally counted toward later scaling');
+    });
+
+    test('warped card is NOT pulled into discard after endTurn', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      seedCenter(game, cost: 2, playEffects: [const GainPowerEffect(3)]);
+      game.fastPlayFromCenter('warp_target', maxCost: 4);
+
+      game.endTurn();
+
+      expect(player.discardPile.any((c) => c.id == 'warp_target'), false,
+          reason: 'cleanup must not discard a banished warp card');
+      expect(game.removedFromGame.any((c) => c.id == 'warp_target'), true);
+    });
+
+    test('alliesOnly:false allows a champion to be warped (banished, not kept)',
+        () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      seedCenter(game,
+          cost: 2,
+          cardType: CardType.champion,
+          playEffects: [const GainPowerEffect(3)]);
+
+      expect(game.fastPlayFromCenter('warp_target'), true); // alliesOnly false
+      expect(player.powerPool, 3);
+      // Banished, did NOT persist as a champion.
+      expect(player.championsInPlay.any((c) => c.id == 'warp_target'), false);
+      expect(game.removedFromGame.any((c) => c.id == 'warp_target'), true);
     });
 
     test('rejected over maxCost (no state change)', () {
@@ -3267,6 +3327,62 @@ void main() {
     test('scryResolve rejects a card not in the draw pile', () {
       final game = GameService(playerCount: 2, random: Random(7));
       expect(game.scryResolve('absent', keep: true), false);
+    });
+
+    // Wave 3 recruit/scry-reviewer follow-ups.
+    test('toHand disposition: keep=true draws to hand', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.drawPile
+        ..clear()
+        ..addAll(
+            [const CardModel(id: 'top', name: 'top', cost: 0, playEffects: [])]);
+      player.hand.clear();
+
+      expect(
+        game.scryResolve('top',
+            keep: true, disposition: ScryDisposition.toHand),
+        true,
+      );
+      expect(player.hand.single.id, 'top');
+      expect(player.drawPile.any((c) => c.id == 'top'), false);
+    });
+
+    test('toHand disposition: keep=false leaves the card on top (no-op)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.drawPile
+        ..clear()
+        ..addAll(
+            [const CardModel(id: 'top', name: 'top', cost: 0, playEffects: [])]);
+      player.hand.clear();
+
+      expect(
+        game.scryResolve('top',
+            keep: false, disposition: ScryDisposition.toHand),
+        true,
+      );
+      // Left on top, not drawn or discarded.
+      expect(player.drawPile.last.id, 'top');
+      expect(player.hand.isEmpty, true);
+      expect(player.discardPile.any((c) => c.id == 'top'), false);
+    });
+
+    test('scryReveal(count: 2) returns the top two cards, top first', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.drawPile
+        ..clear()
+        ..addAll([
+          const CardModel(id: 'bottom', name: 'bottom', cost: 0, playEffects: []),
+          const CardModel(id: 'under', name: 'under', cost: 0, playEffects: []),
+          const CardModel(id: 'top', name: 'top', cost: 0, playEffects: []),
+        ]);
+
+      final revealed = game.scryReveal(count: 2);
+      expect(revealed.map((c) => c.id).toList(), ['top', 'under'],
+          reason: 'top of deck (end of list) first');
+      expect(player.drawPile.length, 3, reason: 'reveal does not remove');
     });
   });
 }

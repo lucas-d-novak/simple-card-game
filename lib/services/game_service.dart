@@ -538,11 +538,13 @@ class GameService {
     _resolvePlayOrMastery(card, player);
     _checkAllyAbility(card, player);
 
-    // Per warp rules: banish the card after it resolves rather than keeping it.
-    // Remove from the zones it was just added to so end-of-turn cleanup does
-    // not also handle it, then move it to removedFromGame.
+    // Per warp rules: banish the card after it resolves. Remove it from
+    // playedThisTurn so end-of-turn cleanup does not also move it to discard,
+    // then move it to removedFromGame. NOTE: it deliberately STAYS in
+    // cardsPlayedThisTurn — the ally was genuinely played this turn, so later
+    // cards' play-history scaling/conditions (perAllyPlayedThisTurn, etc.)
+    // should still count it even though the physical card is now banished.
     player.playedThisTurn.removeWhere((c) => identical(c, card));
-    player.cardsPlayedThisTurn.removeWhere((c) => identical(c, card));
     removedFromGame.add(card);
 
     _refillCenterRow();
