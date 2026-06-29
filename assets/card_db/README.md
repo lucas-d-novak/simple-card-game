@@ -109,9 +109,12 @@ See `schema.json` `definitions.effect` for the full list. Quick reference:
 | `opponentLosesHealth` | `amount` | direct health loss (bypasses Guard) |
 | `banishCard` | `source` (`hand`/`discard`/`handOrDiscard`) | banish |
 | `scrapFromCenterRow` | — | remove a center-row card |
+| `destroyChampion` | `all` (bool) | destroy a single chosen enemy champion (or all when `all: true`), no power cost |
+| `returnFromDiscard` | `filter` (`any`/`champion`/`mercenary`/`faction`), `faction` (when filter is `faction`) | return a discard-pile card to hand |
 | `chooseOne` | `choices` (array of effect groups) | player picks one group |
-| `conditionalPower` | `condition` (`perChampionControlled`) | scaling power |
+| `conditionalPower` | `condition` (`perChampionControlled`/`perAllyPlayedThisTurn`/`perFactionPlayedThisTurn`/`perCardInDiscard`) | scaling power |
 | `infinityShard` | — | the Infinity Shard's mastery scaling |
 
-> The current `cards.json` holds a few **example entries** to demonstrate the
-> format. Replace them with real data as you photograph cards.
+> `cards.json` currently holds **183 entries** (183 with art, 19 verified); the
+> rest are partially encoded. Continue verifying fields against the physical
+> cards and flipping `verified: true`.

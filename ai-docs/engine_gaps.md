@@ -15,7 +15,7 @@ Cross-references:
 
 ## Current vocabulary (baseline)
 
-`CardEffect` is a sealed hierarchy of 12 types
+`CardEffect` is a sealed hierarchy of 14 types
 ([`lib/models/card_effect.dart`](../lib/models/card_effect.dart)), resolved by
 `GameService._resolveEffects()`
 ([`lib/services/game_service.dart`](../lib/services/game_service.dart)) and
@@ -25,8 +25,17 @@ mirrored by `effect_codec.dart` + the `type` enum in
 `GainGemsEffect`, `GainPowerEffect`, `GainMasteryEffect`, `GainHealthEffect`,
 `GainMoneyEffect` (legacy), `DrawCardsEffect`, `OpponentLosesHealthEffect`,
 `BanishCardEffect` (`BanishSource` hand/discard/handOrDiscard),
-`ScrapFromCenterRowEffect`, `ChooseOneEffect`, `ConditionalPowerEffect`
-(`PowerCondition.perChampionControlled` only), `InfinityShardEffect`.
+`ScrapFromCenterRowEffect`, `DestroyChampionEffect` (single target / `all`),
+`ReturnFromDiscardEffect` (`ReturnFilter` any/champion/mercenary/faction),
+`ChooseOneEffect`, `ConditionalPowerEffect` (`PowerCondition`:
+perChampionControlled / perAllyPlayedThisTurn / perFactionPlayedThisTurn /
+perCardInDiscard), `InfinityShardEffect`.
+
+> **Status note:** `DestroyChampionEffect`, `ReturnFromDiscardEffect`, the three
+> per-turn `PowerCondition` values, and the `PlayerState.cardsPlayedThisTurn`
+> per-turn play history have since landed — several items the phased plan below
+> lists as Phase 1 / future work are now implemented. Treat the plan as the
+> original roadmap; cross-check against `card_effect.dart` for current reality.
 
 Three structural facts that shape every gap below:
 
