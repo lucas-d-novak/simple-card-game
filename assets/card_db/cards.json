@@ -2247,15 +2247,15 @@
       "chapter": 3
     },
     {
-      "id": "vector_field",
-      "name": "Vector Field",
+      "id": "vector_fiend",
+      "name": "Vector Fiend",
       "faction": "none",
       "copies": 2,
       "playEffects": [],
-      "art": "vector_field.jpg",
+      "art": "vector_fiend.jpg",
       "rawText": null,
       "verified": false,
-      "notes": "Faction group (non-player): Glitch. set/chapter/back pending â€” scaffolded from BGG Names/Amounts/Factions columns only BGG source row 141: name='Vector Field', faction='Glitch', amount=2. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched)",
+      "notes": "Faction group (non-player): Glitch (Shadow Champion). Renamed from 'Vector Field' (id vector_field) to match printed card name 'Vector Fiend' per art. BGG source row 141 had it as 'Vector Field' (transcription error). set unknown (grouped card); cost 4 / shield 4 per art, not yet encoded. art added from Complete-Saga sheet (visually matched).",
       "group": "Glitch",
       "set": "unknown",
       "chapter": 3
