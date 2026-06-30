@@ -232,7 +232,7 @@
         "disposition": {
           "type": "string",
           "enum": ["drawOrDiscard", "drawOrBanish", "toHand", "acquire", "toHandLosePowerEqualToCost"],
-          "description": "For scry: drawOrDiscard=keep draws to hand else discards; drawOrBanish=keep draws to hand else banishes; toHand=keep takes to hand else leaves on top. For centerDeckScry: acquire=take revealed center-deck card to discard; toHandLosePowerEqualToCost=take it to hand and lose power equal to its gem cost (ignores Guard)."
+          "description": "For scry (top of YOUR deck): drawOrDiscard=keep draws to hand else discards; drawOrBanish=keep draws to hand else banishes; toHand=keep takes to hand else leaves on top; toHandLosePowerEqualToCost=mandatorily take it to hand and lose power equal to its gem cost (ignores Guard; oblivion_gatekeeper). For centerDeckScry (top of the CENTER/infinity deck): acquire=take revealed card to discard; toHandLosePowerEqualToCost=take it to hand and lose power equal to its gem cost."
         },
         "filter": {
           "type": "string",

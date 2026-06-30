@@ -3549,7 +3549,7 @@
       "art": "oblivion_gatekeeper.jpg",
       "rawText": "Wraethe Champion. Exhaust: Reveal the top card of your deck. You lose (power) equal to its (gem) cost and put it into your hand. This cannot be prevented by (Guard). Mastery 20: All opponents lose (power) instead of you.",
       "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 159: name='Oblivion Gatekeeper', faction='Wraethe', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Champion shield 5. UNMODELED: Exhaust activated ability (reveal top card, lose power equal to its cost, put into hand) and mastery-20 redirect. verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false. | [encode-gap] Mastery-20 variant \"all opponents lose power instead\" has no centerDeckScry disposition for it.",
+      "notes": "Wraethe Champion. Exhaust: reveal top of YOUR deck, take to hand, lose power = its cost (ignores Guard). Base now faithful via own-deck scry toHandLosePowerEqualToCost. [encode-gap] Mastery20 'all opponents lose power instead' (replace path, opponents lose power) not modeled -> verified:false.",
       "set": "ioh",
       "cardType": "champion",
       "cost": 4,
@@ -3559,18 +3559,10 @@
       "activatedAbility": {
         "effects": [
           {
-            "type": "centerDeckScry",
+            "type": "scry",
             "disposition": "toHandLosePowerEqualToCost"
           }
-        ],
-        "masteryThreshold": 20,
-        "masteryBonusEffects": [
-          {
-            "type": "centerDeckScry",
-            "disposition": "toHandLosePowerEqualToCost"
-          }
-        ],
-        "masteryReplaces": true
+        ]
       }
     },
     {
@@ -4549,12 +4541,29 @@
       "playEffects": [],
       "art": "advanced_weapons.jpg",
       "rawText": "Advanced Weapons\nCost: 5\nExhaust: If you have played two or more odd [gem] (gem) cost cards this turn, gain [damage]3 (3 damage).",
-      "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 196: name='Advanced Weapons', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/advanced_weapons.jpg; conf=high | [encode-gap] \"If you played 2+ odd gem-cost cards this turn, gain 3 power\" — count-of-odd-cost-cards condition not modeled.",
+      "verified": true,
+      "notes": "Destiny Item. Exhaust: if 2+ odd-cost cards played this turn, gain 3 power. (oddCostCardsPlayed excludes source.)",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
-      "cardType": "regular"
+      "cardType": "regular",
+      "activatedAbility": {
+        "effects": [
+          {
+            "type": "conditional",
+            "condition": {
+              "kind": "oddCostCardsPlayed",
+              "threshold": 2
+            },
+            "then": [
+              {
+                "type": "gainPower",
+                "amount": 3
+              }
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "advanced_medicine",
@@ -4564,12 +4573,29 @@
       "playEffects": [],
       "art": "advanced_medicine.jpg",
       "rawText": "Advanced Medicine\nCost: 5\nExhaust: If you have played two or more even [gem] (gem) cost cards this turn, gain [health]4 (4 health).",
-      "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 197: name='Advanced Medicine', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/advanced_medicine.jpg; conf=high | [encode-gap] \"2+ even gem-cost cards this turn\" — count-of-even-cost-cards condition not modeled (gemParityCardsPlayed is parity of count).",
+      "verified": true,
+      "notes": "Destiny Item. Exhaust: if 2+ even-cost cards played this turn, gain 4 health.",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
-      "cardType": "regular"
+      "cardType": "regular",
+      "activatedAbility": {
+        "effects": [
+          {
+            "type": "conditional",
+            "condition": {
+              "kind": "evenCostCardsPlayed",
+              "threshold": 2
+            },
+            "then": [
+              {
+                "type": "gainHealth",
+                "amount": 4
+              }
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "healing_hands",

@@ -983,6 +983,14 @@ class GameService {
         final card = player.drawPile.removeAt(index);
         player.hand.add(card);
         return true;
+      case ScryDisposition.toHandLosePowerEqualToCost:
+        // Mandatory: the revealed card always goes to hand and the player loses
+        // power equal to its cost (floored at 0). `keep` is ignored.
+        final card = player.drawPile.removeAt(index);
+        player.hand.add(card);
+        player.powerPool -= card.cost;
+        if (player.powerPool < 0) player.powerPool = 0;
+        return true;
     }
   }
 

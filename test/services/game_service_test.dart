@@ -3368,6 +3368,54 @@ void main() {
       expect(player.discardPile.any((c) => c.id == 'top'), false);
     });
 
+    // Engine Phase 3 — oblivion_gatekeeper: own-deck reveal-to-hand, lose power
+    // equal to the revealed card's cost (mandatory; ignores Guard).
+    test('toHandLosePowerEqualToCost: takes card to hand and deducts its cost',
+        () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.drawPile
+        ..clear()
+        ..addAll([
+          const CardModel(id: 'top', name: 'top', cost: 3, playEffects: [])
+        ]);
+      player.hand.clear();
+      player.powerPool = 5;
+
+      expect(
+        game.scryResolve('top',
+            keep: true,
+            disposition: ScryDisposition.toHandLosePowerEqualToCost),
+        true,
+      );
+      expect(player.hand.single.id, 'top');
+      expect(player.drawPile.any((c) => c.id == 'top'), false);
+      expect(player.powerPool, 2); // 5 - cost 3
+    });
+
+    test('toHandLosePowerEqualToCost: power floored at 0 (cost exceeds pool)',
+        () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.drawPile
+        ..clear()
+        ..addAll([
+          const CardModel(id: 'pricey', name: 'pricey', cost: 8, playEffects: [])
+        ]);
+      player.hand.clear();
+      player.powerPool = 2;
+
+      // keep is ignored — the disposition is mandatory.
+      expect(
+        game.scryResolve('pricey',
+            keep: false,
+            disposition: ScryDisposition.toHandLosePowerEqualToCost),
+        true,
+      );
+      expect(player.hand.single.id, 'pricey');
+      expect(player.powerPool, 0); // floored, not negative
+    });
+
     test('scryReveal(count: 2) returns the top two cards, top first', () {
       final game = GameService(playerCount: 2, random: Random(7));
       final player = game.currentPlayer;

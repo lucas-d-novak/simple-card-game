@@ -564,6 +564,8 @@ ScryDisposition _scryDisposition(String? raw) {
       return ScryDisposition.drawOrBanish;
     case 'toHand':
       return ScryDisposition.toHand;
+    case 'toHandLosePowerEqualToCost':
+      return ScryDisposition.toHandLosePowerEqualToCost;
     default:
       throw FormatException('unknown scry disposition: $raw');
   }

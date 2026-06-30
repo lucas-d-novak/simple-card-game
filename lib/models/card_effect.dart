@@ -352,6 +352,14 @@ enum ScryDisposition {
 
   /// Keep → put into hand directly (no "draw"); let go → leave on top.
   toHand,
+
+  /// Reveal the top card of YOUR OWN deck, put it into your hand, and lose power
+  /// equal to its gem cost (power pool floored at 0). This is mandatory on
+  /// reveal (no keep/discard choice) and "ignores Guard" — it is a pure
+  /// resource interaction with no targeting. Used by oblivion_gatekeeper.
+  /// (Distinct from CenterScryDisposition.toHandLosePowerEqualToCost, which
+  /// pulls from the CENTER/infinity deck.)
+  toHandLosePowerEqualToCost,
 }
 
 /// "Look at the top [count] card(s) of your deck; you may act on them, then
@@ -379,6 +387,9 @@ final class ScryEffect extends CardEffect {
         return 'Look at the top $count of your deck; draw it or banish it';
       case ScryDisposition.toHand:
         return 'Look at the top $count of your deck; you may take it to hand';
+      case ScryDisposition.toHandLosePowerEqualToCost:
+        return 'Reveal the top of your deck, take it to hand, and lose power '
+            'equal to its cost';
     }
   }
 }
