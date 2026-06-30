@@ -15,19 +15,23 @@ import 'package:simple_card_game/ui/theme/game_theme.dart';
 
 /// Derive a default WebSocket server URL. An explicit `?server=` wins; otherwise
 /// reuse the host the web build was loaded from, matching the page's SCHEME:
-///   - https page → wss:// (secure; required, since browsers block ws:// from
-///     https, and a TLS-terminating tunnel/proxy exposes wss at the edge). When
-///     served over https we target the SAME host with NO explicit port, so the
-///     tunnel/proxy can route the upgrade (e.g. wss://play.example.com).
-///   - http page  → ws://<host>:8080 (plain LAN/dev).
+///   - https page → `wss://<host>/ws` (secure; required, since browsers block
+///     ws:// from https). The `/ws` PATH lets a single-hostname tunnel/proxy
+///     route the WebSocket upgrade to the game server while serving the static
+///     app at `/` — the recommended topology in ai-docs/deploy_cloudflare.md
+///     (the edge terminates TLS on 443, so no port is needed). A reverse proxy
+///     that forwards `/ws*` → the Dart server on :8080 makes the bare domain
+///     work with no `?server=` override.
+///   - http page  → `ws://<host>:8080` (plain LAN/dev — direct to the server port).
 /// localhost / empty host falls back to ws://localhost:8080.
 String _defaultServerUrl(String? explicit) {
   if (explicit != null && explicit.isNotEmpty) return explicit;
   final host = Uri.base.host;
   if (host.isEmpty || host == 'localhost') return 'ws://localhost:8080';
   final isHttps = Uri.base.scheme == 'https';
-  // Over https, omit the port so the edge proxy routes wss on 443.
-  return isHttps ? 'wss://$host' : 'ws://$host:8080';
+  // Over https, omit the port (edge serves wss on 443) and use the /ws path so a
+  // single-host proxy can split the static app from the WebSocket upgrade.
+  return isHttps ? 'wss://$host/ws' : 'ws://$host:8080';
 }
 
 void main() {

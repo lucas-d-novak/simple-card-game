@@ -4,6 +4,10 @@ import 'package:simple_card_game/services/token_storage.dart';
 import 'package:simple_card_game/ui/screens/game_setup_screen.dart';
 import 'package:simple_card_game/ui/screens/network_game_screen.dart';
 import 'package:simple_card_game/ui/theme/board_chrome.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
+
+/// Reachability of the game server, surfaced on the login screen.
+enum _ServerStatus { checking, online, offline }
 
 /// Live multiplayer lobby — wired to the authoritative server via [GameClient].
 ///
@@ -35,6 +39,11 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
   /// True once a remembered token is on file — drives the "forget" affordance.
   bool _hasRememberedToken = false;
 
+  /// Reachability of the game server, shown on the login screen so a player who
+  /// can't connect sees WHY (server down) rather than thinking the app is broken.
+  _ServerStatus _serverStatus = _ServerStatus.checking;
+  WebSocketChannel? _probe;
+
   @override
   void initState() {
     super.initState();
@@ -44,12 +53,38 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
     _nameController.text = store.playerName ?? '';
     _tokenController.text = store.accessToken ?? '';
     _hasRememberedToken = (store.accessToken ?? '').isNotEmpty;
+    _checkServer();
+  }
+
+  /// Probe the server's reachability by opening a short-lived WebSocket to the
+  /// configured URL — the exact transport a real connection uses, so it reflects
+  /// whether the game server is actually up (not just whether the web app loaded).
+  /// We don't `identify` (so no token needed): a socket that OPENS = online; a
+  /// connect error / timeout = offline.
+  Future<void> _checkServer() async {
+    setState(() => _serverStatus = _ServerStatus.checking);
+    final url = _urlController.text.trim();
+    _probe?.sink.close();
+    try {
+      final ch = WebSocketChannel.connect(Uri.parse(url));
+      _probe = ch;
+      // ready resolves when the handshake completes; a closed/failed server
+      // throws here (or the stream errors), which we treat as offline.
+      await ch.ready.timeout(const Duration(seconds: 3));
+      if (!mounted) return;
+      setState(() => _serverStatus = _ServerStatus.online);
+      ch.sink.close(); // we only needed to confirm it opens
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _serverStatus = _ServerStatus.offline);
+    }
   }
 
   @override
   void dispose() {
     _client?.removeListener(_onClientChanged);
     _client?.dispose();
+    _probe?.sink.close();
     _nameController.dispose();
     _urlController.dispose();
     _gameNameController.dispose();
@@ -173,7 +208,9 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 3)),
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
+            _ServerStatusChip(status: _serverStatus, onRetry: _checkServer),
+            const SizedBox(height: 16),
             TextField(
               controller: _nameController,
               style: const TextStyle(color: Colors.white),
@@ -350,4 +387,65 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
         focusedBorder: const OutlineInputBorder(
             borderSide: BorderSide(color: Color(0xFF5FD0E6))),
       );
+}
+
+/// A small "Server: online / offline / checking" pill on the login screen, so a
+/// player who cannot connect immediately sees WHY (the server is down) instead of
+/// assuming the app is broken. Tappable to re-check.
+class _ServerStatusChip extends StatelessWidget {
+  const _ServerStatusChip({required this.status, required this.onRetry});
+  final _ServerStatus status;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final (Color color, IconData icon, String label) = switch (status) {
+      _ServerStatus.checking => (
+          const Color(0xFF9E9E9E),
+          Icons.sync,
+          "checking…"
+        ),
+      _ServerStatus.online => (
+          const Color(0xFF4FC36A),
+          Icons.check_circle,
+          "online"
+        ),
+      _ServerStatus.offline => (
+          const Color(0xFFE5443B),
+          Icons.cancel,
+          "offline — the game server is unreachable"
+        ),
+    };
+    return InkWell(
+      onTap: status == _ServerStatus.checking ? null : onRetry,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withValues(alpha: 0.6)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 15, color: color),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                "Server: $label",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: color, fontSize: 12.5, fontWeight: FontWeight.w600),
+              ),
+            ),
+            if (status == _ServerStatus.offline) ...[
+              const SizedBox(width: 8),
+              Icon(Icons.refresh, size: 14, color: color.withValues(alpha: 0.8)),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 }
