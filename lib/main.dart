@@ -6,6 +6,7 @@ import 'package:simple_card_game/services/game_service.dart';
 import 'package:simple_card_game/ui/screens/game_screen.dart';
 import 'package:simple_card_game/ui/screens/game_setup_screen.dart';
 import 'package:simple_card_game/ui/screens/home_screen.dart';
+import 'package:simple_card_game/ui/screens/network_auto_screen.dart';
 import 'package:simple_card_game/ui/screens/network_lobby_screen.dart';
 import 'package:simple_card_game/ui/screens/online_lobby_screen.dart';
 import 'package:simple_card_game/ui/theme/animation_timing.dart';
@@ -47,6 +48,15 @@ class ShardsOfInfinityApp extends StatelessWidget {
     } else if (params.containsKey('online')) {
       // Live networked lobby (the real client net layer).
       home = NetworkLobbyScreen(defaultUrl: _defaultServerUrl(params['server']));
+    } else if (params.containsKey('netgame')) {
+      // Zero-click networked entry (demos / visual capture): connect + auto
+      // create/join, then render the polished NetworkGameScreen.
+      home = NetworkAutoScreen(
+        name: params['name'] ?? 'guest',
+        serverUrl: _defaultServerUrl(params['server']),
+        host: params['host'] == '1',
+        seats: int.tryParse(params['seats'] ?? '') ?? 2,
+      );
     } else {
       home = const GameSetupScreen();
     }
