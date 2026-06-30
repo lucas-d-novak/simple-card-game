@@ -60,8 +60,15 @@ class ShardsOfInfinityApp extends StatelessWidget {
       );
     } else if (params.containsKey('about')) {
       home = const AboutScreen();
-    } else {
+    } else if (params.containsKey('local') || params.containsKey('solo')) {
+      // Single-player / vs-AI setup (hotseat & AI). Kept behind a flag now that
+      // online multiplayer is the principal use case.
       home = const GameSetupScreen();
+    } else {
+      // DEFAULT: the live online lobby. Just opening the domain drops you
+      // straight into multiplayer — the server URL auto-fills from the page
+      // host (so visiting https://yourdomain targets that host's server).
+      home = NetworkLobbyScreen(defaultUrl: _defaultServerUrl(params['server']));
     }
 
     return AnimationSettings(

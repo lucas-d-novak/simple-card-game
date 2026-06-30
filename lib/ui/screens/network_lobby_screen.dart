@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:simple_card_game/services/game_client.dart';
+import 'package:simple_card_game/ui/screens/game_setup_screen.dart';
 import 'package:simple_card_game/ui/screens/network_game_screen.dart';
 import 'package:simple_card_game/ui/theme/board_chrome.dart';
 
@@ -161,6 +162,14 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
             FilledButton(
               onPressed: status == ClientStatus.connecting ? null : _connect,
               child: const Text('Connect'),
+            ),
+            const SizedBox(height: 4),
+            TextButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const GameSetupScreen()),
+              ),
+              child: const Text('Play vs AI / hotseat (offline)',
+                  style: TextStyle(color: Color(0xFF9E9E9E), fontSize: 13)),
             ),
           ],
         ),
