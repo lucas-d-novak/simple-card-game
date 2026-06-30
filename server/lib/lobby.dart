@@ -3,6 +3,7 @@
 // §6/§10. For the LAN/beta phase, in-memory is enough.)
 
 import 'package:shards_server/game_session.dart';
+import 'package:simple_card_game/data/database/game_state_codec.dart';
 import 'package:simple_card_game/data/market_deck.dart';
 import 'package:simple_card_game/models/card_model.dart';
 import 'package:simple_card_game/services/game_service.dart';
@@ -76,6 +77,62 @@ class Lobby {
     game.players.add(hostId);
     _games[game.id] = game;
     return game;
+  }
+
+  /// Reconstruct a game from a persisted snapshot map (see
+  /// GamePersistence.snapshotOf for the shape) and insert it into the lobby.
+  ///
+  /// Rebuilds the LobbyGame metadata + player roster, and — when the snapshot
+  /// carries a `game` payload — a GameSession by decoding the full engine state
+  /// (GameStateCodec.decode) with the saved seat<->id mapping and stateVersion.
+  /// The id counter is advanced past any restored `game_N` id so freshly
+  /// created games never collide with a restored one.
+  ///
+  /// Returns true on success, false if the snapshot is structurally invalid
+  /// (caller logs + skips). Never throws for ordinary bad data.
+  bool restoreGame(Map<String, dynamic> snapshot) {
+    final id = snapshot['id'];
+    final hostId = snapshot['hostId'];
+    if (id is! String || hostId is! String) return false;
+    final seats = snapshot['seats'];
+    if (seats is! int) return false;
+    final players = (snapshot['players'] as List?)?.cast<String>();
+    if (players == null) return false;
+
+    final g = LobbyGame(
+      id: id,
+      hostId: hostId,
+      seats: seats,
+      name: snapshot['name'] as String?,
+    );
+    g.players
+      ..clear()
+      ..addAll(players);
+    g.status = _statusFromName(snapshot['status'] as String?);
+
+    final gameJson = snapshot['game'];
+    if (gameJson is Map) {
+      final svc = GameStateCodec.decode(gameJson.cast<String, dynamic>());
+      g.session = GameSession.restored(
+        id: id,
+        game: svc,
+        playerIds: List.of(players),
+        stateVersion: (snapshot['stateVersion'] as int?) ?? 0,
+      );
+    }
+
+    _games[id] = g;
+    // Keep new ids ahead of every restored ordinal.
+    final ord = _idOrdinal(id);
+    if (ord >= _counter) _counter = ord + 1;
+    return true;
+  }
+
+  static GameStatus _statusFromName(String? name) {
+    for (final s in GameStatus.values) {
+      if (s.name == name) return s;
+    }
+    return GameStatus.waiting;
   }
 
   /// Join an existing waiting game. Returns null if it doesn't exist, is full,

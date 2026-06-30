@@ -3,3 +3,8 @@
 pubspec.lock
 build/
 *.exe
+
+# Persisted game snapshots (one JSON file per game). Runtime state — never
+# commit it. The server recreates the directory on startup.
+/data/
+

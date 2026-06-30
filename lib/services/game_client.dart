@@ -179,6 +179,45 @@ class GameClient extends ChangeNotifier {
       sendAction('useActivatedAbility', {'championId': championId});
   void focus() => sendAction('focus');
 
+  // ---- deferred-selection follow-ups --------------------------------------
+  // After playing a card whose effect resolves to a no-op at play time (banish a
+  // card / scrap from center / destroy an enemy champion / return from discard),
+  // the UI prompts for a target and sends the matching follow-up. The server
+  // validates legality (protocol.dart + turn gate), so the client only prompts
+  // and sends.
+
+  /// Banish a chosen card from hand/discard (after a BanishCardEffect). [source]
+  /// is the engine BanishSource name (e.g. 'handOrDiscard', 'hand', 'discard').
+  void banishCard(String cardId, String source) =>
+      sendAction('banishCard', {'cardId': cardId, 'source': source});
+
+  /// Scrap a chosen center-row card (after a ScrapFromCenterRowEffect).
+  void scrapFromCenterRow(String cardId) =>
+      sendAction('scrapFromCenterRow', {'cardId': cardId});
+
+  /// Destroy a chosen enemy champion (after a single-target DestroyChampionEffect).
+  void destroyChampion(String championId, String targetPlayerId) => sendAction(
+      'destroyChampion',
+      {'championId': championId, 'targetPlayerId': targetPlayerId});
+
+  /// Return a chosen card from your discard to hand (after a ReturnFromDiscardEffect).
+  void returnFromDiscard(String cardId) =>
+      sendAction('returnFromDiscard', {'cardId': cardId});
+
+  // ---- Destiny / Relic -----------------------------------------------------
+
+  /// Claim a face-up Destiny from the shared row (Mastery 5+, free, once).
+  void claimDestiny(String cardId) =>
+      sendAction('claimDestiny', {'cardId': cardId});
+
+  /// Use a claimed Destiny's per-turn ability.
+  void useDestinyAbility(String cardId) =>
+      sendAction('useDestinyAbility', {'cardId': cardId});
+
+  /// Recruit one of your two set-aside Relic options (Mastery 10, once).
+  void recruitRelic(String cardId) =>
+      sendAction('recruitRelic', {'cardId': cardId});
+
   // ---- internals ----
 
   void _send(Map<String, dynamic> msg) {

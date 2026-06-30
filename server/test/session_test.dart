@@ -1,5 +1,10 @@
+import 'dart:math';
+
+import 'package:shards_server/game_session.dart';
 import 'package:shards_server/lobby.dart';
 import 'package:shards_server/views.dart';
+import 'package:simple_card_game/models/card_effect.dart';
+import 'package:simple_card_game/models/card_model.dart';
 import 'package:simple_card_game/services/game_service.dart';
 import 'package:test/test.dart';
 
@@ -324,6 +329,170 @@ void main() {
 
       final blank = lobby.createGame(hostId: 'carol', seats: 2, name: '   ');
       expect(blank.name, "carol's game", reason: 'whitespace falls back');
+    });
+  });
+
+  group('GameSession — Destiny / Relic + deferred selection (PART A/B)', () {
+    // Build a 2-player session directly over a GameService injected with a
+    // single-card Destiny supply, so the row deterministically holds that card.
+    GameSession sessionWithDestiny(CardModel destiny) {
+      final game = GameService(
+        playerCount: 2,
+        random: Random(7),
+        destinySupply: [destiny],
+      );
+      return GameSession(
+        id: 'g',
+        game: game,
+        playerIds: const ['alice', 'bob'],
+      );
+    }
+
+    // A Destiny with no play effects (an activated-only style card) — claiming
+    // it never routes through deferred-selection effect resolution.
+    CardModel passiveDestiny() => const CardModel(
+          id: 'destiny_test',
+          name: 'Test Destiny',
+          cost: 0,
+          playEffects: [],
+        );
+
+    test('claimDestiny is ACCEPTED on your turn at Mastery 5 with a row card',
+        () {
+      final destiny = passiveDestiny();
+      final session = sessionWithDestiny(destiny);
+      // alice (seat 0) is the current player; raise her mastery to the threshold.
+      session.game.players[0].mastery = GameService.destinyClaimMastery;
+      expect(session.game.destinyRow.any((c) => c.id == destiny.id), isTrue);
+
+      final result =
+          session.apply('alice', {'type': 'claimDestiny', 'cardId': destiny.id});
+      expect(result.accepted, isTrue);
+      expect(session.game.players[0].claimedDestinies.map((c) => c.id),
+          contains(destiny.id));
+      // The row no longer offers it.
+      expect(session.game.destinyRow.any((c) => c.id == destiny.id), isFalse);
+    });
+
+    test('claimDestiny is REJECTED below the mastery threshold', () {
+      final destiny = passiveDestiny();
+      final session = sessionWithDestiny(destiny);
+      // alice is at Mastery 0 — under the threshold.
+      final result =
+          session.apply('alice', {'type': 'claimDestiny', 'cardId': destiny.id});
+      expect(result.accepted, isFalse);
+      expect(result.error, contains('illegal'));
+      expect(session.game.players[0].claimedDestinies, isEmpty);
+    });
+
+    test('claimDestiny is REJECTED for the off-turn player', () {
+      final destiny = passiveDestiny();
+      final session = sessionWithDestiny(destiny);
+      // bob (seat 1) is NOT the current player; even at mastery he is gated.
+      session.game.players[1].mastery = GameService.destinyClaimMastery;
+      final result =
+          session.apply('bob', {'type': 'claimDestiny', 'cardId': destiny.id});
+      expect(result.accepted, isFalse);
+      expect(result.error, contains('not your turn'));
+    });
+
+    test('redactFor exposes the face-up destinyRow (public) with its card '
+        'definition, and claim eligibility', () {
+      final destiny = passiveDestiny();
+      final session = sessionWithDestiny(destiny);
+      session.game.players[0].mastery = GameService.destinyClaimMastery;
+
+      final view = session.viewFor('alice');
+      expect((view['destinyRow'] as List), contains(destiny.id));
+      expect((view['cards'] as Map).containsKey(destiny.id), isTrue,
+          reason: 'a face-up Destiny must be dictionaried for rendering');
+      final me = (view['players'] as List)
+          .cast<Map>()
+          .firstWhere((p) => p['id'] == 'p0');
+      expect(me['canClaimAnotherDestiny'], isTrue);
+    });
+
+    test('recruitRelic is ACCEPTED at Mastery 10 with relic options; the chosen '
+        'relic is kept and the other banished', () {
+      final session = sessionWithDestiny(passiveDestiny());
+      final alice = session.game.players[0];
+      alice.mastery = 10;
+      // Set aside two relic options directly (the engine normally seeds these
+      // from the player's Character).
+      const relicA = CardModel(
+          id: 'relic_a', name: 'Relic A', cost: 0, playEffects: []);
+      const relicB = CardModel(
+          id: 'relic_b', name: 'Relic B', cost: 0, playEffects: []);
+      alice.relicOptions.addAll([relicA, relicB]);
+
+      final result =
+          session.apply('alice', {'type': 'recruitRelic', 'cardId': 'relic_a'});
+      expect(result.accepted, isTrue);
+      expect(alice.relicRecruited, isTrue);
+      expect(alice.relicOptions, isEmpty);
+      // The unchosen relic is banished.
+      expect(session.game.removedFromGame.map((c) => c.id), contains('relic_b'));
+    });
+
+    test('recruitRelic is REJECTED below Mastery 10', () {
+      final session = sessionWithDestiny(passiveDestiny());
+      final alice = session.game.players[0];
+      alice.mastery = 9;
+      alice.relicOptions.add(const CardModel(
+          id: 'relic_a', name: 'Relic A', cost: 0, playEffects: []));
+      final result =
+          session.apply('alice', {'type': 'recruitRelic', 'cardId': 'relic_a'});
+      expect(result.accepted, isFalse);
+      expect(alice.relicRecruited, isFalse);
+    });
+
+    test("relicOptions appear ONLY in the owner's redacted view (private)", () {
+      final session = sessionWithDestiny(passiveDestiny());
+      session.game.players[0].relicOptions.add(const CardModel(
+          id: 'relic_a', name: 'Relic A', cost: 0, playEffects: []));
+
+      // alice (seat p0) sees her own relic options + the card definition.
+      final mine = session.viewFor('alice');
+      final aliceView = (mine['players'] as List)
+          .cast<Map>()
+          .firstWhere((p) => p['id'] == 'p0');
+      expect((aliceView['relicOptions'] as List), contains('relic_a'));
+      expect((mine['cards'] as Map).containsKey('relic_a'), isTrue);
+
+      // bob must NOT see alice's relic options, nor a dictionary entry for them.
+      final theirs = session.viewFor('bob');
+      final aliceFromBob = (theirs['players'] as List)
+          .cast<Map>()
+          .firstWhere((p) => p['id'] == 'p0');
+      expect(aliceFromBob.containsKey('relicOptions'), isFalse,
+          reason: "an opponent's relic CHOICE is hidden info");
+      expect((theirs['cards'] as Map).containsKey('relic_a'), isFalse);
+    });
+
+    test('a deferred-selection action (banishCard) flows through apply()', () {
+      final session = sessionWithDestiny(passiveDestiny());
+      final alice = session.game.players[0];
+      // Target a card actually in alice's hand so the engine accepts the banish.
+      final target = alice.hand.first;
+      final result = session.apply('alice', {
+        'type': 'banishCard',
+        'cardId': target.id,
+        'source': BanishSource.handOrDiscard.name,
+      });
+      expect(result.accepted, isTrue);
+      expect(session.game.removedFromGame.map((c) => c.id), contains(target.id));
+      expect(alice.hand.map((c) => c.id), isNot(contains(target.id)));
+    });
+
+    test('banishCard with an unknown card id is rejected (illegal)', () {
+      final session = sessionWithDestiny(passiveDestiny());
+      final result = session.apply('alice', {
+        'type': 'banishCard',
+        'cardId': 'no_such_card',
+        'source': BanishSource.handOrDiscard.name,
+      });
+      expect(result.accepted, isFalse);
+      expect(result.error, contains('illegal'));
     });
   });
 }

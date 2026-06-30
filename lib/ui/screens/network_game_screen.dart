@@ -115,6 +115,256 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
     }
     widget.client.playCard(card.id);
     _flash('Played ${card.name}');
+    _handlePostPlayEffects(card);
+  }
+
+  // ---- deferred-selection target pickers ----------------------------------
+  // Several effects resolve to a no-op at play time and expose a follow-up the
+  // UI calls AFTER the player picks a target (mirrors the local board's
+  // game_screen.dart pickers). When a just-played card carries one of these, we
+  // prompt with a choice modal and send the matching action. Candidates are read
+  // from the LATEST redacted view at prompt time (own hand/discard, center row,
+  // opponent champions) — all hidden-info-safe, since the server still validates.
+
+  /// After a card is played, surface a target picker for the FIRST deferred
+  /// effect it carries (banish / scrap / destroy-champion / return-from-discard).
+  void _handlePostPlayEffects(CardModel card) {
+    for (final effect in card.playEffects) {
+      if (effect is BanishCardEffect) {
+        _promptBanish(effect.source);
+        return;
+      }
+      if (effect is ScrapFromCenterRowEffect) {
+        _promptScrap();
+        return;
+      }
+      if (effect is DestroyChampionEffect && !effect.all) {
+        _promptDestroyChampion();
+        return;
+      }
+      if (effect is ReturnFromDiscardEffect) {
+        _promptReturnFromDiscard();
+        return;
+      }
+    }
+  }
+
+  /// The latest typed view, or null when no state has arrived yet.
+  _GameView? get _view {
+    final st = widget.client.gameState;
+    if (st == null) return null;
+    return _GameView.parse(st, widget.client.playerId);
+  }
+
+  /// Mastery a player must reach to claim a Destiny (mirrors
+  /// GameService.destinyClaimMastery = 5).
+  static const int _destinyClaimMastery = 5;
+
+  /// Mastery a player must reach to recruit a Relic (mirrors the engine's
+  /// recruitRelic threshold = 10).
+  static const int _relicRecruitMastery = 10;
+
+  /// Whether [me] may claim a Destiny right now: it is their turn, they are at
+  /// the threshold, still under the per-game claim allowance, and the row is
+  /// non-empty. Mirrors the engine gate; the server re-validates on send.
+  bool _canClaimDestiny(_GameView view, _PlayerView me) =>
+      widget.client.isMyTurn &&
+      me.mastery >= _destinyClaimMastery &&
+      me.canClaimAnotherDestiny &&
+      view.destinyRow.isNotEmpty;
+
+  /// Whether [me] may recruit a Relic right now: it is their turn, they are at
+  /// Mastery 10, have not yet recruited, and their two relic options are present.
+  bool _canRecruitRelic(_PlayerView me) =>
+      widget.client.isMyTurn &&
+      me.mastery >= _relicRecruitMastery &&
+      !me.relicRecruited &&
+      me.relicOptions.isNotEmpty;
+
+  /// Prompt to banish one of the player's hand/discard cards, then send the
+  /// follow-up with the engine BanishSource name.
+  void _promptBanish(BanishSource source) {
+    final me = _view?.me;
+    if (me == null) return;
+    final candidates = <_TargetCandidate>[];
+    if (source == BanishSource.hand || source == BanishSource.handOrDiscard) {
+      for (final id in me.hand) {
+        candidates.add(_TargetCandidate(_card(id), 'Hand'));
+      }
+    }
+    if (source == BanishSource.discard ||
+        source == BanishSource.handOrDiscard) {
+      for (final id in me.discard) {
+        candidates.add(_TargetCandidate(_card(id), 'Discard'));
+      }
+    }
+    // playedThisTurn-sourced banishes target this turn's plays.
+    if (source == BanishSource.playedThisTurn) {
+      for (final id in me.playedThisTurn) {
+        candidates.add(_TargetCandidate(_card(id), 'Played'));
+      }
+    }
+    _promptTargets(
+      title: 'Banish a Card',
+      subtitle: 'Remove one from the game',
+      candidates: candidates,
+      emptyMsg: 'No cards to banish',
+      onPick: (c) {
+        widget.client.banishCard(c.id, source.name);
+        _flash('Banished ${c.name}');
+      },
+    );
+  }
+
+  /// Prompt to scrap one center-row card, then send the follow-up.
+  void _promptScrap() {
+    final view = _view;
+    if (view == null) return;
+    final candidates = [
+      for (final id in view.centerRow) _TargetCandidate(_card(id), 'Center row'),
+    ];
+    _promptTargets(
+      title: 'Scrap from Center Row',
+      subtitle: 'Remove one market card from the game',
+      candidates: candidates,
+      emptyMsg: 'No cards to scrap',
+      onPick: (c) {
+        widget.client.scrapFromCenterRow(c.id);
+        _flash('Scrapped ${c.name}');
+      },
+    );
+  }
+
+  /// Prompt to destroy one enemy champion, then send the follow-up (championId +
+  /// the owning opponent's id, as the engine requires).
+  void _promptDestroyChampion() {
+    final view = _view;
+    if (view == null) return;
+    final candidates = <_TargetCandidate>[];
+    final owners = <String, String>{}; // championId -> owner id
+    for (final p in view.players) {
+      if (p.id == view.meId || p.eliminated) continue;
+      for (final champ in p.champions) {
+        candidates.add(_TargetCandidate(_card(champ.id), p.name));
+        owners[champ.id] = p.id;
+      }
+    }
+    _promptTargets(
+      title: 'Destroy a Champion',
+      subtitle: 'Destroy a target enemy champion',
+      candidates: candidates,
+      emptyMsg: 'No enemy champions to destroy',
+      onPick: (c) {
+        widget.client.destroyChampion(c.id, owners[c.id] ?? '');
+        _flash('Destroyed ${c.name}');
+      },
+    );
+  }
+
+  /// Prompt to return one card from the player's own discard pile to hand, then
+  /// send the follow-up. The server validates the effect's filter.
+  void _promptReturnFromDiscard() {
+    final me = _view?.me;
+    if (me == null) return;
+    final candidates = [
+      for (final id in me.discard) _TargetCandidate(_card(id), 'Discard'),
+    ];
+    _promptTargets(
+      title: 'Return a Card',
+      subtitle: 'Return one from your discard pile to hand',
+      candidates: candidates,
+      emptyMsg: 'Your discard pile is empty',
+      onPick: (c) {
+        widget.client.returnFromDiscard(c.id);
+        _flash('Returned ${c.name}');
+      },
+    );
+  }
+
+  /// Shared target-picker: shows [candidates] as card previews in the choice
+  /// modal and invokes [onPick] with the chosen card. No-ops (with an info
+  /// flash) when there are no candidates.
+  void _promptTargets({
+    required String title,
+    required String subtitle,
+    required List<_TargetCandidate> candidates,
+    required String emptyMsg,
+    required void Function(CardModel card) onPick,
+  }) {
+    if (candidates.isEmpty) {
+      _flash(emptyMsg);
+      return;
+    }
+    showChoiceModal(
+      context,
+      title: title,
+      subtitle: subtitle,
+      options: [
+        for (final t in candidates)
+          ChoiceOption(
+            label: t.card.name.isEmpty ? t.card.id : t.card.name,
+            detail: t.zone,
+            cardPreview: GameCardWidget(card: t.card, width: 130),
+          ),
+      ],
+    ).then((index) {
+      if (index == null) return;
+      onPick(candidates[index].card);
+    });
+  }
+
+  // ---- Destiny / Relic ----------------------------------------------------
+
+  /// Open the shared choice modal over the face-up Destiny row; the chosen
+  /// Destiny is claimed via [GameClient.claimDestiny]. Eligibility is gated by
+  /// the caller ([_canClaimDestiny]); the server re-validates.
+  void _openDestinyModal(_GameView view) {
+    final rowIds = view.destinyRow;
+    if (rowIds.isEmpty) return;
+    final cards = [for (final id in rowIds) _card(id)];
+    showChoiceModal(
+      context,
+      title: 'Claim a Destiny',
+      subtitle: 'Mastery 5+ — claim one for free',
+      options: [
+        for (final c in cards)
+          ChoiceOption(
+            label: c.name.isEmpty ? c.id : c.name,
+            cardPreview: GameCardWidget(card: c, width: 150),
+          ),
+      ],
+    ).then((index) {
+      if (index == null) return;
+      final chosen = cards[index];
+      widget.client.claimDestiny(chosen.id);
+      _flash('Claimed ${chosen.name}');
+    });
+  }
+
+  /// Open the shared choice modal over the player's two set-aside Relic options;
+  /// the chosen Relic is recruited via [GameClient.recruitRelic] (the other is
+  /// banished server-side). Gated by [_canRecruitRelic].
+  void _openRelicModal(_PlayerView me) {
+    final optionIds = me.relicOptions;
+    if (optionIds.isEmpty) return;
+    final cards = [for (final id in optionIds) _card(id)];
+    showChoiceModal(
+      context,
+      title: 'Recruit a Relic',
+      subtitle: 'Mastery 10 — keep one, banish the other',
+      options: [
+        for (final c in cards)
+          ChoiceOption(
+            label: c.name.isEmpty ? c.id : c.name,
+            cardPreview: GameCardWidget(card: c, width: 150),
+          ),
+      ],
+    ).then((index) {
+      if (index == null) return;
+      final chosen = cards[index];
+      widget.client.recruitRelic(chosen.id);
+      _flash('Recruited ${chosen.name}');
+    });
   }
 
   /// A hand-card drag has begun (long-press) — hint where to drop it.
@@ -489,6 +739,12 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
           onFocus: (myTurn && !me.focusedThisTurn && me.gemPool >= 1)
               ? _onFocus
               : null,
+          // Destiny / Relic acquisition — only present when eligible (mirrors
+          // the local board). The server re-validates on send.
+          onClaimDestiny:
+              _canClaimDestiny(view, me) ? () => _openDestinyModal(view) : null,
+          onRecruitRelic:
+              _canRecruitRelic(me) ? () => _openRelicModal(me) : null,
         ),
       ],
     );
@@ -505,6 +761,7 @@ class _GameView {
     required this.players,
     required this.meId,
     required this.centerRow,
+    required this.destinyRow,
     required this.currentPlayerIndex,
     required this.turnNumber,
     required this.isGameOver,
@@ -514,6 +771,10 @@ class _GameView {
   final List<_PlayerView> players;
   final String meId;
   final List<String> centerRow;
+
+  /// Ids of the shared face-up Destiny row (claimable at Mastery 5+). Empty when
+  /// no Destiny supply is in play. The cards are in the state's `cards` dict.
+  final List<String> destinyRow;
   final int currentPlayerIndex;
   final int turnNumber;
   final bool isGameOver;
@@ -548,6 +809,7 @@ class _GameView {
       players: [for (final p in rawPlayers) _PlayerView.parse(p)],
       meId: meId,
       centerRow: (state['centerRow'] as List? ?? const []).cast<String>(),
+      destinyRow: (state['destinyRow'] as List? ?? const []).cast<String>(),
       currentPlayerIndex: (state['currentPlayerIndex'] as int?) ?? 0,
       turnNumber: (state['turnNumber'] as int?) ?? 1,
       isGameOver: state['isGameOver'] == true,
@@ -573,6 +835,10 @@ class _PlayerView {
     required this.discard,
     required this.champions,
     required this.playedThisTurn,
+    required this.claimedDestinies,
+    required this.canClaimAnotherDestiny,
+    required this.relicOptions,
+    required this.relicRecruited,
   });
 
   final String id;
@@ -585,6 +851,20 @@ class _PlayerView {
 
   /// Whether this player has used their once-per-turn Focus action.
   final bool focusedThisTurn;
+
+  /// Ids of Destinies this player has claimed (public, face-up beside them).
+  final List<String> claimedDestinies;
+
+  /// Server-computed: whether this player may still claim a Destiny this game
+  /// (under the per-game allowance). Combine with mastery + a non-empty row.
+  final bool canClaimAnotherDestiny;
+
+  /// This player's two set-aside Relic options — ONLY populated in the owner's
+  /// own redacted view (empty for opponents; relic choices are private).
+  final List<String> relicOptions;
+
+  /// Whether this player has already recruited (or forgone) their Relic.
+  final bool relicRecruited;
 
   /// Full ids ONLY for the recipient; empty for opponents (hidden info).
   final List<String> hand;
@@ -620,6 +900,12 @@ class _PlayerView {
       ],
       playedThisTurn:
           (p['playedThisTurn'] as List?)?.cast<String>() ?? const <String>[],
+      claimedDestinies:
+          (p['claimedDestinies'] as List?)?.cast<String>() ?? const <String>[],
+      canClaimAnotherDestiny: p['canClaimAnotherDestiny'] == true,
+      relicOptions:
+          (p['relicOptions'] as List?)?.cast<String>() ?? const <String>[],
+      relicRecruited: p['relicRecruited'] == true,
     );
   }
 }
@@ -644,6 +930,15 @@ class _ChampionView {
         activated: c['activated'] == true,
         underCount: (c['underCount'] as int?) ?? 0,
       );
+}
+
+/// One selectable target in a deferred-selection picker — a resolved card plus a
+/// short zone label (Hand / Discard / Center row / owner name).
+class _TargetCandidate {
+  _TargetCandidate(this.card, this.zone);
+  final CardModel card;
+  final String zone;
+  String get id => card.id;
 }
 
 // ===========================================================================
@@ -1225,6 +1520,8 @@ class _NetworkBottomZone extends StatelessWidget {
     required this.onTapDraw,
     required this.onTapDiscard,
     required this.onFocus,
+    required this.onClaimDestiny,
+    required this.onRecruitRelic,
   });
 
   final _PlayerView me;
@@ -1249,6 +1546,13 @@ class _NetworkBottomZone extends StatelessWidget {
 
   /// Character Focus (1 gem → 1 mastery). Null when unavailable this turn.
   final VoidCallback? onFocus;
+
+  /// Open the Destiny-claim modal (Mastery 5). Null when ineligible — then no
+  /// Destiny entry point shows.
+  final VoidCallback? onClaimDestiny;
+
+  /// Open the Relic-recruit modal (Mastery 10). Null when ineligible.
+  final VoidCallback? onRecruitRelic;
 
   @override
   Widget build(BuildContext context) {
@@ -1324,6 +1628,23 @@ class _NetworkBottomZone extends StatelessWidget {
               const SizedBox(height: 4),
               // Focus: spend 1 gem → +1 mastery, once per turn.
               _FocusButton(onPressed: onFocus),
+              // Destiny / Relic acquisition pills — only appear when eligible.
+              if (onClaimDestiny != null) ...[
+                const SizedBox(height: 4),
+                _AcquirePill(
+                  icon: Icons.auto_awesome,
+                  label: 'Destiny',
+                  onPressed: onClaimDestiny,
+                ),
+              ],
+              if (onRecruitRelic != null) ...[
+                const SizedBox(height: 4),
+                _AcquirePill(
+                  icon: Icons.diamond,
+                  label: 'Relic',
+                  onPressed: onRecruitRelic,
+                ),
+              ],
               const SizedBox(height: 4),
               _PileHex(
                 count: me.drawPileCount,
@@ -1440,6 +1761,62 @@ class _FocusButton extends StatelessWidget {
                       fontWeight: FontWeight.bold)),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A small gold acquisition pill (Destiny / Relic) shown beneath Focus when the
+/// player is eligible to claim/recruit. Opens the shared choice modal. Mirrors
+/// the local board's `_AcquireButton`.
+class _AcquirePill extends StatelessWidget {
+  const _AcquirePill({
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+  });
+  final String label;
+  final IconData icon;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFE8C45A), Color(0xFFB8902F)],
+          ),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+              color: BoardChrome.goldRim.withValues(alpha: 0.9), width: 1.2),
+          boxShadow: [
+            BoxShadow(
+              color: BoardChrome.goldText.withValues(alpha: 0.4),
+              blurRadius: 8,
+              spreadRadius: -2,
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: const Color(0xFF2A1C00)),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFF2A1C00),
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -1655,12 +1655,13 @@
       "art": "shard_cultist.jpg",
       "rawText": "Prism Ally\nBanish this and another card in your hand. Recruit a card of [gem] cost equal to or less than the total [gem] cost of both cards banished this way.\nIf you are Chroma, instead of banishing this, you may discard it instead.",
       "verified": false,
-      "notes": "Faction group (non-player): Prism. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 60: name='Shard Cultist', faction='Prism', amount=2. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/shard_cultist.jpg (Stone Blade Entertainment 2024); conf=high",
+      "notes": "Faction group (non-player): Prism. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 60: name='Shard Cultist', faction='Prism', amount=2. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/shard_cultist.jpg (Stone Blade Entertainment 2024); conf=high | [encode-gap] outOfScope: the recruit's maxCost is DYNAMIC (= total gem cost of this card plus a second hand card the player banishes). recruitFromCenter only supports a FIXED maxCost; no effect derives maxCost from the combined cost of banished cards. The Chroma branch ('discard instead of banishing this') is also character-conditional and unmodellable. Marked outOfScope rather than encoding a wrong fixed-cost recruit; was an empty-effect in-scope card before.",
       "group": "Prism",
       "set": "unknown",
       "chapter": 2,
       "cost": 4,
-      "cardType": "regular"
+      "cardType": "regular",
+      "outOfScope": true
     },
     {
       "id": "stricture",
@@ -1671,13 +1672,14 @@
       "art": "stricture.jpg",
       "rawText": "Prism Champion\nExhaust: Reveal the top card of your deck. You may play or banish the revealed card.\nIf you are Chroma, you may play and then banish the revealed card.",
       "verified": false,
-      "notes": "Faction group (non-player): Prism. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 61: name='Stricture', faction='Prism', amount=1. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/stricture.jpg (Stone Blade Entertainment 2024); conf=high",
+      "notes": "Faction group (non-player): Prism. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 61: name='Stricture', faction='Prism', amount=1. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/stricture.jpg (Stone Blade Entertainment 2024); conf=high | [encode-gap] outOfScope: Exhaust ability reveals the top of YOUR OWN deck and lets you PLAY (resolve in place) OR banish it. No scry disposition models 'play the revealed card' — scry only routes the card to hand/discard/banish (drawOrDiscard/drawOrBanish/toHand/toHandLosePowerEqualToCost). Encoding it as drawOrBanish would change 'play it now' into 'draw it to hand', a materially different effect. The Chroma 'play and then banish' branch is also character-conditional. Marked outOfScope rather than faking the play. activatedAbility left unencoded; was an empty-effect in-scope champion before.",
       "group": "Prism",
       "set": "unknown",
       "chapter": 2,
       "cost": 3,
       "cardType": "champion",
-      "shield": 5
+      "shield": 5,
+      "outOfScope": true
     },
     {
       "id": "chlorophyte_guardian",
@@ -1865,9 +1867,9 @@
         }
       ],
       "art": "warpquartz.jpg",
-      "rawText": "Aion Relic - Ally. Gain 3 (gems) and 3 (gems). Mastery 20: Banish up to three Allies in your hand and/or discard pile and gain their effects.",
+      "rawText": "Aion Relic - Ally. Gain 3 (gems) and 3 (power). Mastery 20: Banish up to three Allies in your hand and/or discard pile and gain their effects.",
       "verified": false,
-      "notes": "Faction group (non-player): Aion. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 67: name='Warpquartz', faction='Aion', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Aion Relic (Ally). Base gain 3 gems + 3 power encoded; masteryThreshold 20 set. UNMODELED: mastery-20 'Banish up to three Allies... and gain their effects'. verified:false. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. | EFFECTS PASS B: image read. CORRECTION: both base gains are GEMS (3 and 3), not '3 gems + 3 power'. masteryThreshold 20. UNMODELED: mastery-20 'Banish up to three Allies and gain their effects'. verified:false. | [encode-gap] Mastery20 \"banish up to 3 allies and gain their effects\" not modeled -> unverified.",
+      "notes": "Faction group (non-player): Aion. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 67: name='Warpquartz', faction='Aion', amount=1. | art added from TTS spritesheet crop. | Aion Relic (Ally). Base gain 3 gems + 3 power encoded; masteryThreshold 20 set. | set set to unknown pending confirmation (unreliable for grouped/co-op/Destiny/saved cards). | ADVERSARIAL VERIFY: re-read assets/cards/warpquartz.jpg at high zoom. Base 'Gain [blue gem 3] and [red power 3]' confirmed — first icon is a blue/white gem teardrop, second is a red power circle. The earlier 'CORRECTION: both base gains are GEMS' note was WRONG; the playEffects (gainGems 3 + gainPower 3) are correct and the rawText has been fixed to match. | [encode-gap] Mastery20 \"banish up to 3 allies in hand/discard and gain their effects\" (banish-N-and-copy) not modeled -> verified:false.",
       "group": "Aion",
       "set": "unknown",
       "cardType": "regular",
@@ -3461,9 +3463,9 @@
         }
       ],
       "art": "anomaly_cleric.jpg",
-      "rawText": "Order Ally. Gain 3 (gems) and 1 (gem). Mastery 10: Put the next card you recruit this turn into your hand.",
+      "rawText": "Order Ally. Gain 3 (gems) and 1 (mastery). Mastery 10: Put the next card you recruit this turn into your hand.",
       "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 152: name='Anomaly Cleric', faction='Order', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Base gains encoded as gems (3 and 1); second icon's resource is uncertain from the crop (read as gem). masteryThreshold 10 set. UNMODELED: mastery-10 'Put the next card you recruit this turn into your hand'. verified:false (icon uncertainty + unmodeled mastery). | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false. | [encode-gap] Mastery10 \"put next recruited card into hand\" recruit-redirect not modeled -> unverified.",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 152: name='Anomaly Cleric', faction='Order', amount=1. | art added from TTS spritesheet crop. | Base encoded gainGems 3 + gainMastery 1. masteryThreshold 10 set. | ADVERSARIAL VERIFY: re-read assets/cards/anomaly_cleric.jpg at high zoom — first 'Gain 3' icon is the blue/white GEM teardrop, second 'Gain 1' icon is the gold MASTERY starburst. The earlier 'second icon uncertain (read as gem)' caveat is RESOLVED: it is mastery, which matches the (correct) gainMastery encoding; rawText corrected to '1 (mastery)'. | [encode-gap] Mastery10 'put the next card you recruit this turn into your hand' (recruit-redirect-to-hand) not modeled -> verified:false.",
       "set": "ioh",
       "cardType": "regular",
       "cost": 5,
@@ -3482,9 +3484,9 @@
         }
       ],
       "art": "duplication_fabricator.jpg",
-      "rawText": "Order Ally. Gain 1 (gem). Each player reveals the top card of their deck. Copy the effect of an Ally revealed this way. This effect can't be copied.",
+      "rawText": "Order Ally. Gain 1 (mastery). Each player reveals the top card of their deck. Copy the effect of an Ally revealed this way. This effect can't be copied.",
       "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 153: name='Duplication Fabricator', faction='Order', amount=2. | art added from TTS spritesheet crop (effects pending verification). | Base gain 1 gem encoded. UNMODELED: 'each player reveals top card; copy the effect of an Ally revealed this way'. verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false. | [encode-gap] Multi-player top-of-deck reveal + copy-an-Ally not modeled -> unverified.",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 153: name='Duplication Fabricator', faction='Order', amount=2. | art added from TTS spritesheet crop. | Base gain 1 MASTERY encoded (gainMastery 1). | ADVERSARIAL VERIFY: re-read assets/cards/duplication_fabricator.jpg at high zoom — the 'Gain 1' icon is the gold MASTERY starburst, not a gem. rawText corrected from 'gem' to 'mastery' to match the (correct) gainMastery encoding. | [encode-gap] 'each player reveals top card of deck; copy the effect of an Ally revealed this way' (multi-player top-of-deck reveal + copy-an-Ally) not modeled -> verified:false.",
       "set": "ioh",
       "cardType": "regular",
       "cost": 1,
@@ -3502,9 +3504,9 @@
         }
       ],
       "art": "shard_seer.jpg",
-      "rawText": "Order Ally. Draw a card. You may reveal an Infinity Shard from your hand. If you do, gain 2 (gems).",
+      "rawText": "Order Ally. Draw a card. You may reveal an Infinity Shard from your hand. If you do, gain 2 (mastery).",
       "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 154: name='Shard Seer', faction='Order', amount=3. | art added from TTS spritesheet crop (effects pending verification). | Base draw 1 encoded. UNMODELED: conditional 'reveal an Infinity Shard from hand; if you do, gain 2 gems'. verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false.",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 154: name='Shard Seer', faction='Order', amount=3. | art added from TTS spritesheet crop. | Base draw 1 encoded. | ADVERSARIAL VERIFY: re-read assets/cards/shard_seer.jpg at high zoom — the 'If you do, gain 2' icon is the gold MASTERY starburst, not gems; rawText corrected from 'gems' to 'mastery'. The conditional itself is unencoded regardless. | [encode-gap] conditional 'reveal an Infinity Shard from hand; if you do, gain 2 mastery' (reveal-from-hand gate) has no GameConditionKind -> verified:false.",
       "set": "ioh",
       "cardType": "regular",
       "cost": 2,
@@ -3643,9 +3645,9 @@
       "copies": 1,
       "playEffects": [],
       "art": "oblivion_gatekeeper.jpg",
-      "rawText": "Wraethe Champion. Exhaust: Reveal the top card of your deck. You lose (power) equal to its (gem) cost and put it into your hand. This cannot be prevented by (Guard). Mastery 20: All opponents lose (power) instead of you.",
+      "rawText": "Wraethe Champion. Exhaust: Reveal the top card of your deck. You lose (health) equal to its (gem) cost and put it into your hand. This cannot be prevented by (Guard). Mastery 20: All opponents lose (health) instead of you.",
       "verified": false,
-      "notes": "Wraethe Champion. Exhaust: reveal top of YOUR deck, take to hand, lose power = its cost (ignores Guard). Base now faithful via own-deck scry toHandLosePowerEqualToCost. [encode-gap] Mastery20 'all opponents lose power instead' (replace path, opponents lose power) not modeled -> verified:false.",
+      "notes": "Wraethe Champion. Exhaust: reveal top of YOUR deck, take to hand, lose HEALTH = its gem cost (ignores Guard). | ADVERSARIAL VERIFY: re-read assets/cards/oblivion_gatekeeper.jpg at high zoom — the lost-resource icon is the GREEN HEALTH cross, NOT power. The earlier note 'Base now faithful via toHandLosePowerEqualToCost' was WRONG: the only own-deck scry disposition that loses-equal-to-cost is toHandLosePowerEqualToCost (loses POWER), and there is NO toHandLoseHealthEqualToCost disposition, so the encoded base loses the WRONG resource (power instead of health). rawText corrected to 'health'. [encode-gap] base 'lose health equal to cost' unmodellable (no health disposition); plus Mastery20 'all opponents lose health instead' (replace path) unmodeled -> verified:false.",
       "set": "ioh",
       "cardType": "champion",
       "cost": 4,
@@ -4534,11 +4536,12 @@
       "art": "power_struggle.jpg",
       "rawText": "Power Struggle\nCost: 5\nExhaust: Destroy a Champion you control to gain [damage]5 (5 damage).",
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 192: name='Power Struggle', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/power_struggle.jpg; conf=high | [encode-gap] Exhaust: \"Destroy a Champion you control to gain 5 power\" — self-champion-sacrifice cost not modeled; do not encode the 5 power unconditionally.",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 192: name='Power Struggle', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/power_struggle.jpg; conf=high | [encode-gap] outOfScope: Exhaust ability's COST is 'Destroy a Champion you control' to gain 5 power. ActivationCost only supports gems/mastery/health — there is no self-champion-sacrifice cost. DestroyChampionEffect targets ENEMY champions only (single or all), never one you control, so it cannot model the cost either; encoding the 5 power without the sacrifice cost would be free unconditional power. Marked outOfScope rather than encoding the power unconditionally; was an empty-effect in-scope card before.",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
-      "cardType": "regular"
+      "cardType": "regular",
+      "outOfScope": true
     },
     {
       "id": "unconditional_conscription",

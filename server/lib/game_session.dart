@@ -13,6 +13,19 @@ import 'package:simple_card_game/services/game_service.dart';
 class GameSession {
   GameSession({required this.id, required this.game, required this.playerIds});
 
+  /// Rebuild a session from a persisted snapshot: same as the default
+  /// constructor plus a restored [stateVersion] so reconnecting clients keep
+  /// monotonic versioning across a server restart. The per-turn undo stack is
+  /// intentionally NOT persisted (it's same-turn, transient state), so a
+  /// restored session starts with an empty undo history — a player can't undo
+  /// across a restart, which is the safe behaviour.
+  GameSession.restored({
+    required this.id,
+    required this.game,
+    required this.playerIds,
+    required int stateVersion,
+  }) : _stateVersion = stateVersion;
+
   final String id;
 
   /// The authoritative engine. NOT final: a server-authoritative UNDO swaps it

@@ -49,12 +49,22 @@ Map<String, dynamic> redactFor(
 
   registerAll(game.centerRow);
   registerAll(game.removedFromGame);
+  // Destiny supply: the face-up shared row is public (anyone may see what is
+  // claimable). The cascade `destinyDeck` is NOT registered — its order/contents
+  // are server-secret like any draw pile.
+  registerAll(game.destinyRow);
   for (final p in game.players) {
     // Own hand only — never an opponent's (hidden info). Draw piles: never.
     if (p.id == recipientId) registerAll(p.hand);
     registerAll(p.discardPile); // discards are public
     registerAll(p.championsInPlay); // champions are public
     registerAll(p.playedThisTurn); // played-this-turn is public
+    // Claimed Destinies are public (face-up beside their owner).
+    registerAll(p.claimedDestinies);
+    // Relic OPTIONS are private to their owner: the two set-aside relics are a
+    // hidden choice the recipient alone may make, so only dictionary them in the
+    // recipient's own view.
+    if (p.id == recipientId) registerAll(p.relicOptions);
   }
 
   return {
@@ -71,6 +81,10 @@ Map<String, dynamic> redactFor(
     // Order is secret; only the size leaks.
     'infinityDeckCount': game.infinityDeck.length,
     'removedFromGame': _ids(game.removedFromGame),
+    // Shared Destiny supply: the face-up row is public (its ids are dictionaried
+    // above); only the cascade DECK SIZE leaks (order is secret).
+    'destinyRow': _ids(game.destinyRow),
+    'destinyDeckCount': game.destinyDeck.length,
     'players': [
       for (final p in game.players) _redactPlayer(p, p.id == recipientId),
     ],
@@ -92,6 +106,19 @@ Map<String, dynamic> _redactPlayer(PlayerState p, bool isRecipient) {
     'ignoresShieldThisTurn': p.ignoresShieldThisTurn,
     'focusedThisTurn': p.focusedThisTurn,
     'eliminated': p.isEliminated,
+    // ---- Destiny / Relic ----------------------------------------------------
+    // Claimed Destinies sit face-up beside their owner — PUBLIC (ids; the cards
+    // are in the dictionary). Whether THIS player may still claim another is a
+    // function of public scalars (mastery + claim count), surfaced so the client
+    // can show/hide the Destiny entry point without re-deriving the rule.
+    'claimedDestinies': _ids(p.claimedDestinies),
+    'canClaimAnotherDestiny': p.canClaimAnotherDestiny,
+    // Relic OPTIONS are the recipient's own hidden choice — never an opponent's.
+    // We expose the chooser surface (the two relic ids + whether already
+    // recruited) ONLY in the owner's view; opponents see only that recruitment
+    // happened indirectly (a relic shuffled into a draw pile is hidden anyway).
+    if (isRecipient) 'relicOptions': _ids(p.relicOptions),
+    'relicRecruited': p.relicRecruited,
     // Hand: full ids for the recipient, COUNT ONLY for opponents.
     if (isRecipient) 'hand': _ids(p.hand),
     'handCount': p.hand.length,

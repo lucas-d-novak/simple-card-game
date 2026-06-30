@@ -23,6 +23,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:shards_server/lobby.dart';
+import 'package:shards_server/persistence.dart';
 import 'package:simple_card_game/data/database/card_database.dart';
 import 'package:simple_card_game/data/market_deck.dart';
 import 'package:simple_card_game/models/card_model.dart';
@@ -30,6 +31,17 @@ import 'package:simple_card_game/models/card_model.dart';
 /// The lobby is built in [main] once the authoritative card database has loaded
 /// from disk, so all games use the real market deck (per-card copy counts).
 late final Lobby _lobby;
+
+/// Disk snapshot store so in-progress games survive a restart. Built in [main];
+/// disabled (in-memory only) if the data directory is unwritable.
+late final GamePersistence _store;
+
+/// Persist a game by id (after any change that mutated it). Best-effort — the
+/// store no-ops when disabled and never throws.
+void _persist(String gameId) {
+  final g = _lobby.game(gameId);
+  if (g != null) _store.save(g);
+}
 
 /// Connected clients by lobby player id → their socket.
 final Map<String, WebSocket> _sockets = {};
@@ -56,6 +68,19 @@ void main(List<String> args) async {
         'falling back to the legacy hardcoded market.');
   }
   _lobby = Lobby(marketDeck: marketDeck, destinySupply: destinySupply);
+
+  // Persistence: snapshot games to disk so they survive a restart. The storage
+  // directory is configurable via SHARDS_DATA_DIR (default: server/data, which
+  // is gitignored). If it's unwritable the store disables itself and the server
+  // runs purely in-memory — never crashes.
+  final dataDir =
+      Platform.environment['SHARDS_DATA_DIR'] ?? GamePersistence.defaultDir;
+  _store = GamePersistence.open(dataDir);
+  final restored = _store.loadInto(_lobby);
+  if (_store.enabled) {
+    stdout.writeln('Persistence enabled at $dataDir '
+        '(${restored == 0 ? 'no games to restore' : '$restored restored'}).');
+  }
 
   final server = await HttpServer.bind(InternetAddress.anyIPv4, port);
   stdout.writeln('Shards server listening on ws://0.0.0.0:$port');
@@ -172,6 +197,7 @@ void _dispatch(
       }
       final name = msg['name'] as String?;
       final g = _lobby.createGame(hostId: playerId, seats: seats, name: name);
+      _persist(g.id);
       send({'type': 'created', 'gameId': g.id});
       _broadcastLobby();
 
@@ -186,11 +212,15 @@ void _dispatch(
         err('cannot join $gameId (missing, full, or already started)');
         return;
       }
+      _persist(g.id);
       _broadcastLobby();
       // Auto-start when full.
       if (g.isFull) {
         final session = _lobby.startGame(g.id);
-        if (session != null) _broadcastState(g.id);
+        if (session != null) {
+          _persist(g.id);
+          _broadcastState(g.id);
+        }
       }
 
     default:
@@ -213,6 +243,9 @@ void _dispatch(
       }
       // Win check → mark complete.
       if (session.game.isGameOver) g!.status = GameStatus.complete;
+      // Persist AFTER the accepted mutation (and any complete transition) so the
+      // on-disk snapshot reflects the new authoritative state + stateVersion.
+      _persist(gameId);
       _broadcastState(gameId);
   }
 }

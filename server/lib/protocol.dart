@@ -87,6 +87,16 @@ ActionResult applyAction(
     case 'tuckUnderChampion':
       // Engine signature is (championId, cardId).
       ok = game.tuckUnderChampion(s('championId'), s('cardId'));
+    // ---- Destiny / Relic (Into the Horizon / Relics of the Future) ----------
+    // The turn gate above already applies; the engine re-checks all eligibility
+    // (mastery thresholds, per-game claim allowance, relic-once, target present)
+    // and no-ops on any illegal call, which we surface as a rejection.
+    case 'claimDestiny':
+      ok = game.claimDestiny(s('cardId'));
+    case 'useDestinyAbility':
+      ok = game.useDestinyAbility(s('cardId'));
+    case 'recruitRelic':
+      ok = game.recruitRelic(s('cardId'));
     default:
       return ActionResult.reject('unknown action "$type"');
   }
