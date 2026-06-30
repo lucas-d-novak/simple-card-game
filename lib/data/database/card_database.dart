@@ -76,6 +76,7 @@ class CardRecord {
     required this.group,
     required this.chapter,
     required this.ksOnly,
+    required this.outOfScope,
     required this.model,
   });
 
@@ -93,6 +94,12 @@ class CardRecord {
 
   /// True if the card is Kickstarter-edition exclusive. Print metadata only.
   final bool ksOnly;
+
+  /// True for co-op/solo boss & Shadow-Champion cards whose mechanics the
+  /// competitive-multiplayer engine does not model (boss mastery pools, Ambush
+  /// timing, Fate decks, detonation, champion Attack stats). Kept for reference
+  /// (rawText + art) but excluded from the verification/coverage denominator.
+  final bool outOfScope;
 
   /// Optional source-list faction-like category for cards whose [model.faction]
   /// is [Faction.none] because they belong to a non-playable group (e.g. 'Aion',
@@ -118,6 +125,7 @@ class CardRecord {
       group: json['group'] as String?,
       chapter: json['chapter'] as int?,
       ksOnly: (json['ksOnly'] as bool?) ?? false,
+      outOfScope: (json['outOfScope'] as bool?) ?? false,
       model: CardModel(
         id: id,
         name: name,

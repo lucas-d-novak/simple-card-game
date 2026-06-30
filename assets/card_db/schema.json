@@ -31,6 +31,10 @@
       "type": "boolean",
       "description": "True if the card is Kickstarter-edition exclusive (not in the retail box). Print-availability metadata; does not affect gameplay."
     },
+    "outOfScope": {
+      "type": "boolean",
+      "description": "True for co-op/solo boss & Shadow-Champion cards (groups Crimson Thorn, Dominatus, Glitchmother, Mind Hacker, Moc Sai, Vox, Aberrant, Glitch, Necrotic, Talos, Ingeminex). These use a boss/co-op turn structure (boss mastery pools, Ambush timing, Fate decks, detonation, champion Attack stats) the competitive-multiplayer engine does not model. Excluded from the verification/coverage denominator; rawText + art are kept for reference but they are never encoded or verified."
+    },
     "faction": {
       "type": "string",
       "enum": ["homodeus", "wraethe", "order", "undergrowth", "none"],

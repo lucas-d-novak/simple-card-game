@@ -49,6 +49,9 @@ void main(List<String> args) {
   final setCopies = <String, int>{};
   var verifiedCount = 0;
   var withArt = 0;
+  var inScopeCount = 0;
+  var inScopeVerified = 0;
+  var outOfScopeCount = 0;
 
   for (final raw in cards) {
     if (raw is! Map<String, dynamic>) {
@@ -102,19 +105,32 @@ void main(List<String> args) {
       }
     }
 
+    // Out-of-scope co-op/boss cards are intentionally never encoded or verified;
+    // they keep rawText + art but are excluded from coverage gap reporting.
+    final outOfScope = raw['outOfScope'] == true;
+    if (outOfScope) {
+      outOfScopeCount++;
+    } else {
+      inScopeCount++;
+      if (raw['verified'] == true) inScopeVerified++;
+    }
+
     // Soft completeness checks.
     for (final key in const ['name', 'set', 'faction', 'cardType', 'cost']) {
       if (raw[key] == null) softWarnings.add('$label: missing "$key"');
     }
-    final hasAnyEffect = (raw['playEffects'] as List?)?.isNotEmpty ?? false;
-    if (!hasAnyEffect) {
-      softWarnings.add('$label: no playEffects (placeholder?)');
+    if (!outOfScope) {
+      final hasAnyEffect = (raw['playEffects'] as List?)?.isNotEmpty ?? false;
+      if (!hasAnyEffect) {
+        softWarnings.add('$label: no playEffects (placeholder?)');
+      }
+      if (raw['verified'] != true) {
+        softWarnings.add('$label: not verified');
+      }
     }
     if (raw['art'] == null) softWarnings.add('$label: no art');
     if (raw['verified'] == true) {
       verifiedCount++;
-    } else {
-      softWarnings.add('$label: not verified');
     }
     if (raw['art'] != null) withArt++;
 
@@ -127,7 +143,10 @@ void main(List<String> args) {
   final total = cards.length;
   stdout.writeln('Card database: $path');
   stdout.writeln('  Total entries:   $total');
-  stdout.writeln('  Verified:        $verifiedCount / $total');
+  stdout.writeln('  In-scope (MP):   $inScopeCount  '
+      '(out-of-scope co-op/boss: $outOfScopeCount)');
+  stdout.writeln('  Verified:        $inScopeVerified / $inScopeCount in-scope'
+      '  ($verifiedCount / $total overall)');
   stdout.writeln('  With art:        $withArt / $total');
   stdout.writeln('');
   stdout.writeln('Per-set (unique entries / total copies / known copies):');
