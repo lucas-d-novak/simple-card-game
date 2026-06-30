@@ -94,7 +94,45 @@ Map<String, dynamic> selfStateOf(PlayerState p) => {
       'relicRecruited': p.relicRecruited,
       // The actor's own hand is known to them — legal to record.
       'handCardIds': [for (final c in p.hand) c.id],
+      // SYNERGY: the player's full OWNED, NON-STARTER card pool at this decision
+      // (across hand + draw pile + discard + champions in play) — i.e. everything
+      // they have ACQUIRED, by base card id. Lets synergy be mined later
+      // (card-pair covariance / lift, faction synergy, win-conditioned pairs)
+      // without re-capturing. Own deck = own information, so this is leak-safe.
+      // Starter cards (Crystal/Blaster/Shard Reactor/Infinity Shard) are excluded
+      // — synergy is about the deck the player BUILT.
+      'ownedNonStarter': _ownedNonStarterIds(p),
     };
+
+/// Base card ids of every NON-STARTER card the player currently owns, across all
+/// of their zones (hand, draw pile, discard, champions in play). The per-instance
+/// market suffix (`_0`,`_1`) and the per-player starter prefix are stripped to a
+/// stable base id so the same card counts together for synergy mining.
+List<String> _ownedNonStarterIds(PlayerState p) {
+  final out = <String>[];
+  for (final c in [
+    ...p.hand,
+    ...p.drawPile,
+    ...p.discardPile,
+    ...p.championsInPlay,
+  ]) {
+    if (_isStarterCard(c.id)) continue;
+    out.add(_baseCardId(c.id));
+  }
+  out.sort(); // stable ordering; multiplicity preserved (a list, not a set)
+  return out;
+}
+
+/// Whether [instanceId] is one of the 10 starter-deck cards (excluded from
+/// synergy — they're in every deck and carry no build signal). Starter instance
+/// ids look like `p0_crystal_3`, `p1_blaster_0`, `p0_shard`, `p0_reactor`.
+bool _isStarterCard(String instanceId) =>
+    RegExp(r'_(crystal|blaster|shard|reactor)(_\d+)?$').hasMatch(instanceId);
+
+/// Strip a market instance suffix (`chaos_imp_1` -> `chaos_imp`) to a stable base
+/// id so duplicates of the same card aggregate. Leaves non-suffixed ids intact.
+String _baseCardId(String instanceId) =>
+    instanceId.replaceFirst(RegExp(r'_\d+$'), '');
 
 /// Per-opponent PUBLIC state (design §4b `opponents`). CRUCIAL: hand is a COUNT
 /// only (`handCount`) — never the opponent's hand card ids; deck/discard are

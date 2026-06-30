@@ -164,6 +164,9 @@ class StatsStore {
         json_extract(oppState, '$[0].health')  AS opp_health,
         json_extract(oppState, '$[0].mastery') AS opp_mastery,
         json_extract(board, '$.infinityDeckCount') AS infinityDeckCount,
+        -- SYNERGY: the actor's owned non-starter deck (JSON array of base card
+        -- ids) at decision time — feeds card-pair covariance / faction synergy.
+        json_extract(selfState, '$.ownedNonStarter') AS ownedNonStarter,
         options                                AS options,
         playerWon
       FROM decisions;

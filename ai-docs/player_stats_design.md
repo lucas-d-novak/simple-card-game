@@ -266,6 +266,43 @@ The raw record above is the substrate; these are the derived signals worth havin
   section). Leaderboards/balance read `events`; ML exports read `decisions`.
   `decisions` join to `gameEnd` for the `playerWon` label.
 
+## 4c. Card SYNERGY capture (implemented)
+
+A recruit's value depends on what the player ALREADY owns (deck + discard,
+excluding starters). To make synergy mineable later without re-capturing, every
+decision record stores the actor's full owned, non-starter card pool, and every
+option carries whether its own conditional fires.
+
+**Captured at decision time (leak-safe — it's the actor's OWN deck):**
+- `selfState.ownedNonStarter` — a list of base card ids the player owns across
+  hand + draw pile + discard + champions in play, starter cards excluded, market
+  instance suffixes stripped to a stable base id (so duplicates aggregate). It's
+  a list (multiplicity preserved), so you get counts.
+- `option.conditionsMet` (already captured) — per option, whether its
+  ConditionalEffect (Unify / Inspire / Echo / per-faction scaling, etc.) is
+  CURRENTLY satisfied given the deck/board. This is *mechanical* synergy (the
+  card actually triggers), distinct from *behavioural* synergy (players tend to
+  pair them).
+- Surfaced in the `decision_export` view as `ownedNonStarter`.
+
+**Derived synergy metrics (compute from the captured data — analysis layer):**
+- **Co-occurrence lift** — `P(recruit Y | own X) / P(recruit Y)` across all
+  recruit decisions → a card-pair lift matrix. >1 = players treat X→Y as
+  synergistic. (Your "covariance" idea, in odds-ratio form.)
+- **Faction synergy** — recruit rate of faction F vs the count of F already
+  owned (do players double down on a faction?).
+- **Win-conditioned pair synergy** — `P(win | own X and Y) vs P(win | own X)` →
+  the BALANCE-relevant version (which pairs actually perform, not just which get
+  picked). The `playerWon` label on each decision makes this a direct query.
+- **Trigger realisation** — how often a recruited card's `conditionsMet` was true
+  at recruit time → are players building the synergies the card rewards?
+- **(ML)** the owned-deck list + per-option conditionsMet are model features:
+  the policy can learn "given this deck, prefer cards whose conditional fires."
+
+Because the raw owned-deck is stored per decision, ANY synergy metric (lift,
+covariance, embeddings, a co-purchase graph) is computable later from one export
+query — no need to decide the exact synergy math now.
+
 ### Guardrails for honest numbers
 - **Min-sample thresholds** on every rate (a card recruited 3× tells you nothing).
 - **Confidence intervals / Wilson score** on win-rates for small N (so
