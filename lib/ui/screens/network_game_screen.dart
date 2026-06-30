@@ -15,6 +15,7 @@ import 'package:simple_card_game/ui/widgets/destiny_tray.dart';
 import 'package:simple_card_game/ui/widgets/game_card_widget.dart';
 import 'package:simple_card_game/ui/widgets/resource_icons.dart';
 import 'package:simple_card_game/ui/widgets/scrollable_board.dart';
+import 'package:simple_card_game/ui/widgets/shard_win_overlay.dart';
 
 /// Networked game view — renders the server's REDACTED state for this player
 /// with the SAME polished board chrome as the local [GameScreen], and sends
@@ -39,6 +40,10 @@ class NetworkGameScreen extends StatefulWidget {
 
 class _NetworkGameScreenState extends State<NetworkGameScreen> {
   String? _actionMessage;
+
+  /// True once the Infinity-Shard mastery-win flourish has been shown (or
+  /// skipped) this game, so the board advances to the networked game-over screen.
+  bool _shardWinShown = false;
 
   /// Rehydrated card models from the latest state's `cards` dictionary, by id.
   Map<String, CardModel> _cards = const {};
@@ -745,6 +750,17 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
                     builder: (context, constraints) {
                       final view = _GameView.parse(state, client.playerId);
                       if (view.isGameOver) {
+                        if (view.winType == 'mastery' && !_shardWinShown) {
+                          final winner = view.players
+                              .where((p) => p.id == view.winnerId)
+                              .firstOrNull;
+                          return ShardWinOverlay(
+                            winnerName: winner?.name ?? 'A player',
+                            isLocalWinner: view.winnerId == view.meId,
+                            onDone: () =>
+                                setState(() => _shardWinShown = true),
+                          );
+                        }
                         return _NetworkGameOver(view: view, client: client);
                       }
                       return Center(
@@ -937,6 +953,7 @@ class _GameView {
     required this.turnNumber,
     required this.isGameOver,
     required this.winnerId,
+    required this.winType,
     required this.actionLog,
   });
 
@@ -951,6 +968,9 @@ class _GameView {
   final int turnNumber;
   final bool isGameOver;
   final String? winnerId;
+
+  /// HOW the game was won: 'mastery' / 'elimination' / 'draw' (null in progress).
+  final String? winType;
 
   /// Public action log (recent tail), each entry {turn, playerId?, message}.
   final List<Map<String, dynamic>> actionLog;
@@ -989,6 +1009,7 @@ class _GameView {
       turnNumber: (state['turnNumber'] as int?) ?? 1,
       isGameOver: state['isGameOver'] == true,
       winnerId: state['winnerId'] as String?,
+      winType: state['winType'] as String?,
       actionLog: [
         for (final e in (state['actionLog'] as List? ?? const []))
           (e as Map).cast<String, dynamic>(),

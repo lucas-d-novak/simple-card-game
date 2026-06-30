@@ -19,6 +19,7 @@ import 'package:simple_card_game/ui/widgets/destiny_tray.dart';
 import 'package:simple_card_game/ui/widgets/game_card_widget.dart';
 import 'package:simple_card_game/ui/widgets/resource_icons.dart';
 import 'package:simple_card_game/ui/widgets/scrollable_board.dart';
+import 'package:simple_card_game/ui/widgets/shard_win_overlay.dart';
 
 /// The main game screen for Fragments of Boundlessness.
 /// Layout (top to bottom):
@@ -60,6 +61,11 @@ class _GameScreenState extends State<GameScreen>
   String? _actionMessage;
   bool _aiThinking = false;
   String? _lastPlayedCardId;
+
+  /// True once the Infinity-Shard mastery-win flourish has been shown (or
+  /// skipped) for this game, so the board advances to the game-over screen and
+  /// the overlay doesn't replay on rebuilds.
+  bool _shardWinShown = false;
 
   /// LIFO stack of full game-state snapshots. Each user-initiated mutating
   /// action pushes one BEFORE mutating, so Undo restores the prior state.
@@ -877,6 +883,18 @@ class _GameScreenState extends State<GameScreen>
   @override
   Widget build(BuildContext context) {
     if (_game.isGameOver) {
+      // Dramatic Infinity-Shard flourish on a mastery win, before the normal
+      // game-over screen. Plays once per game (skips on instant/reduced-motion).
+      if (_game.winType == 'mastery' && !_shardWinShown) {
+        final winner = _game.players
+            .where((p) => p.id == _game.winnerId)
+            .firstOrNull;
+        return ShardWinOverlay(
+          winnerName: winner?.name ?? 'A player',
+          isLocalWinner: true,
+          onDone: () => setState(() => _shardWinShown = true),
+        );
+      }
       return _GameOverScreen(
         game: _game,
         onRestart: () {
@@ -1965,11 +1983,13 @@ class _GameOverScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDraw = game.winType == 'draw';
     final winner = game.winnerId != null
         ? game.players.where((p) => p.id == game.winnerId).firstOrNull
         : game.players.where((p) => !p.isEliminated).firstOrNull;
     final winnerName = winner?.name ?? 'Unknown';
-    final isMasteryWin = winner != null && winner.mastery >= 30;
+    final isMasteryWin = game.winType == 'mastery' ||
+        (winner != null && winner.mastery >= 30);
 
     return Scaffold(
       backgroundColor: GameTheme.boardBackground,
@@ -1979,10 +1999,14 @@ class _GameOverScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.emoji_events, size: 64, color: GameTheme.gold),
+              Icon(
+                isDraw ? Icons.handshake : Icons.emoji_events,
+                size: 64,
+                color: GameTheme.gold,
+              ),
               const SizedBox(height: 16),
               Text(
-                '$winnerName Wins!',
+                isDraw ? 'Draw' : '$winnerName Wins!',
                 style: const TextStyle(
                   color: GameTheme.gold,
                   fontSize: 32,
@@ -1991,9 +2015,12 @@ class _GameOverScreen extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                isMasteryWin
-                    ? 'Infinity Shard victory at Mastery ${winner.mastery}'
-                    : 'Eliminated all opponents',
+                isDraw
+                    ? 'All players were eliminated at once'
+                    : isMasteryWin
+                        ? 'Infinity Shard victory'
+                            '${winner != null ? ' at Mastery ${winner.mastery}' : ''}'
+                        : 'Eliminated all opponents',
                 style: const TextStyle(
                   color: GameTheme.textSecondary,
                   fontSize: 14,

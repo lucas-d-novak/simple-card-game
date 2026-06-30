@@ -78,6 +78,10 @@ Map<String, dynamic> redactFor(
     'turnNumber': game.turnNumber,
     'isGameOver': game.isGameOver,
     if (game.winnerId != null) 'winnerId': game.winnerId,
+    // HOW the game was won — 'mastery' (Infinity Shard at 30) / 'elimination' /
+    // 'draw' (mutual knockout). Public (not hidden info); drives the win
+    // flourish + game-over copy on the networked board.
+    if (game.winType != null) 'winType': game.winType,
     // True only in the recipient's OWN view when they may undo right now.
     'canUndo': canUndo,
     // Market is public.
