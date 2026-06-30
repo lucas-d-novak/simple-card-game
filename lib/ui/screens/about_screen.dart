@@ -115,6 +115,28 @@ class AboutScreen extends StatelessWidget {
                           fontStyle: FontStyle.italic,
                         ),
                       ),
+                      const SizedBox(height: 18),
+                      // Maker credit footer.
+                      const Text(
+                        'Made with care by',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: GameTheme.textSecondary,
+                          fontSize: 12,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'slowfadegold.com',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: GameTheme.gold,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1,
+                        ),
+                      ),
                       const SizedBox(height: 20),
                       Center(
                         child: OutlinedButton.icon(

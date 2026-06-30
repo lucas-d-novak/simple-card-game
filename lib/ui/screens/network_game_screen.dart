@@ -544,16 +544,103 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
     );
   }
 
-  /// Show the draw pile. The server NEVER sends draw-pile order or contents
-  /// (a deliberate anti-scry/shuffle-exploit rule), so we can only show the
-  /// count and explain why the cards aren't listed.
+  /// Show the scrollable action log (newest first) so a player can review what
+  /// happened — e.g. remind themselves what they did last turn.
+  void _showLog(_GameView view) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF0E2236),
+      isScrollControlled: true,
+      builder: (ctx) {
+        final entries = view.actionLog.reversed.toList(); // newest first
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Game log',
+                    style: TextStyle(
+                        color: BoardChrome.goldText,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold)),
+                const SizedBox(height: 10),
+                if (entries.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Text('No actions yet.',
+                        style: TextStyle(color: Colors.white60)),
+                  )
+                else
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                        maxHeight: MediaQuery.of(ctx).size.height * 0.6),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: entries.length,
+                      itemBuilder: (_, i) {
+                        final e = entries[i];
+                        final turn = e['turn'] as int? ?? 0;
+                        final who = view.nameFor(e['playerId'] as String?);
+                        final msg = e['message'] as String? ?? '';
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 3),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(
+                                width: 34,
+                                child: Text('T$turn',
+                                    style: const TextStyle(
+                                        color: Colors.white38, fontSize: 11)),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  who.isEmpty ? msg : '$who $msg',
+                                  style: const TextStyle(
+                                      color: Color(0xFFE8EEF4),
+                                      fontSize: 13,
+                                      height: 1.3),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                const SizedBox(height: 6),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    child: const Text('CLOSE',
+                        style: TextStyle(color: Color(0xFF5FD0E6))),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Show what's left in YOUR draw pile — the CONTENTS, sorted alphabetically.
+  /// The server sends the contents already sorted (so no draw ORDER leaks; the
+  /// anti-scry/shuffle rule is preserved), and we present them A→Z so you can
+  /// quickly scan what you still might draw.
   void _showDrawPile(_PlayerView me) {
+    final cards = [for (final id in me.drawPileContents) _card(id)]
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
     _showPileSheet(
       title: 'Your draw pile (${me.drawPileCount})',
-      cards: const [],
-      emptyNote: 'Draw-pile order is hidden — even from you — so shuffles and '
-          'scry effects stay fair. ${me.drawPileCount} card'
-          '${me.drawPileCount == 1 ? '' : 's'} remaining.',
+      cards: cards,
+      emptyNote: me.drawPileCount == 0
+          ? 'Your draw pile is empty.'
+          : 'These ${me.drawPileCount} cards are still in your draw pile '
+              '(shown A→Z — the draw ORDER stays hidden).',
     );
   }
 
@@ -720,6 +807,7 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
           // switch to another of their games. The socket stays open; the lobby
           // listens to the same client and its Rejoin re-enters this game.
           onBackToLobby: () => Navigator.of(context).maybePop(),
+          onShowLog: () => _showLog(view),
         ),
 
         // ---- Helper / status line -----------------------------------------
@@ -849,6 +937,7 @@ class _GameView {
     required this.turnNumber,
     required this.isGameOver,
     required this.winnerId,
+    required this.actionLog,
   });
 
   final List<_PlayerView> players;
@@ -862,6 +951,9 @@ class _GameView {
   final int turnNumber;
   final bool isGameOver;
   final String? winnerId;
+
+  /// Public action log (recent tail), each entry {turn, playerId?, message}.
+  final List<Map<String, dynamic>> actionLog;
 
   _PlayerView get me =>
       players.firstWhere((p) => p.id == meId, orElse: () => players.first);
@@ -897,7 +989,20 @@ class _GameView {
       turnNumber: (state['turnNumber'] as int?) ?? 1,
       isGameOver: state['isGameOver'] == true,
       winnerId: state['winnerId'] as String?,
+      actionLog: [
+        for (final e in (state['actionLog'] as List? ?? const []))
+          (e as Map).cast<String, dynamic>(),
+      ],
     );
+  }
+
+  /// Display name for a player id, from this view's players (falls back to id).
+  String nameFor(String? playerId) {
+    if (playerId == null) return '';
+    for (final p in players) {
+      if (p.id == playerId) return p.name;
+    }
+    return playerId;
   }
 }
 
@@ -915,6 +1020,7 @@ class _PlayerView {
     required this.hand,
     required this.handCount,
     required this.drawPileCount,
+    required this.drawPileContents,
     required this.discard,
     required this.champions,
     required this.playedThisTurn,
@@ -966,6 +1072,10 @@ class _PlayerView {
   final int handCount;
   final int drawPileCount;
 
+  /// The recipient's OWN draw-pile card ids, server-sorted (contents visible,
+  /// order hidden). Empty for opponents.
+  final List<String> drawPileContents;
+
   /// Discard pile card ids — public info (discards are face-up).
   final List<String> discard;
   int get discardCount => discard.length;
@@ -987,6 +1097,8 @@ class _PlayerView {
       hand: hand,
       handCount: (p['handCount'] as int?) ?? hand.length,
       drawPileCount: (p['drawPileCount'] as int?) ?? 0,
+      drawPileContents:
+          (p['drawPileContents'] as List?)?.cast<String>() ?? const <String>[],
       discard: (p['discardPile'] as List?)?.cast<String>() ?? const <String>[],
       champions: [
         for (final c in (p['championsInPlay'] as List? ?? const []).cast<Map>())
@@ -1053,6 +1165,7 @@ class _NetworkTopBar extends StatelessWidget {
     required this.opponent,
     required this.myTurn,
     required this.onBackToLobby,
+    required this.onShowLog,
   });
 
   final _PlayerView? opponent;
@@ -1060,6 +1173,9 @@ class _NetworkTopBar extends StatelessWidget {
 
   /// Pop back to the lobby without tearing down the connection.
   final VoidCallback onBackToLobby;
+
+  /// Open the scrollable game log.
+  final VoidCallback onShowLog;
 
   @override
   Widget build(BuildContext context) {
@@ -1070,25 +1186,44 @@ class _NetworkTopBar extends StatelessWidget {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // Back-to-lobby control (left) — switch between your games.
+            // Left controls — back-to-lobby (switch games) + game log.
             Positioned(
               left: 0,
               top: 0,
               bottom: 0,
               child: Center(
-                child: TextButton.icon(
-                  onPressed: onBackToLobby,
-                  style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFFBFD8E8),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  icon: const Icon(Icons.meeting_room, size: 16),
-                  label: const Text('Lobby',
-                      style: TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.bold)),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextButton.icon(
+                      onPressed: onBackToLobby,
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFFBFD8E8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      icon: const Icon(Icons.meeting_room, size: 16),
+                      label: const Text('Lobby',
+                          style: TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.bold)),
+                    ),
+                    TextButton.icon(
+                      onPressed: onShowLog,
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFFBFD8E8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      icon: const Icon(Icons.receipt_long, size: 16),
+                      label: const Text('Log',
+                          style: TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
                 ),
               ),
             ),

@@ -45,6 +45,37 @@ void main() {
       expect(view['infinityDeckCount'], isA<int>());
     });
 
+    test('recipient gets their OWN draw-pile CONTENTS sorted (no order leak), '
+        'opponents do not', () {
+      final game = GameService(playerCount: 2);
+      final view = redactFor(game, 'p0', stateVersion: 1);
+      final players = (view['players'] as List).cast<Map>();
+      final p0 = players.firstWhere((p) => p['id'] == 'p0');
+      final p1 = players.firstWhere((p) => p['id'] == 'p1');
+
+      // p0 sees its own draw-pile contents, and they are SORTED (so the real
+      // shuffle ORDER is not recoverable).
+      final contents = (p0['drawPileContents'] as List).cast<String>();
+      expect(contents.length, game.players[0].drawPile.length);
+      final sorted = [...contents]..sort();
+      expect(contents, sorted, reason: 'contents must be sorted, hiding order');
+
+      // p0 does NOT receive p1's draw-pile contents.
+      expect(p1.containsKey('drawPileContents'), isFalse,
+          reason: "opponent draw-pile contents must never be in p0's view");
+    });
+
+    test('the action log is shipped (public) and ordered oldest-first', () {
+      final game = GameService(playerCount: 2);
+      game.playAllCards();
+      game.endTurn();
+      final view = redactFor(game, 'p0', stateVersion: 1);
+      final log = (view['actionLog'] as List).cast<Map>();
+      expect(log, isNotEmpty);
+      expect(log.first['turn'], isA<int>());
+      expect(log.last['message'], isA<String>());
+    });
+
     test('public zones (center row, discards) ARE visible', () {
       final game = GameService(playerCount: 2);
       final view = redactFor(game, 'p0', stateVersion: 1);

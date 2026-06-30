@@ -10,6 +10,33 @@ import 'package:simple_card_game/models/card_type.dart';
 import 'package:simple_card_game/models/faction.dart';
 import 'package:simple_card_game/models/player_state.dart';
 
+/// One human-readable entry in the [GameService.actionLog] — a public game event
+/// (which turn it happened on, who did it, and a short description). Carries no
+/// hidden information.
+class GameLogEntry {
+  const GameLogEntry({
+    required this.turn,
+    required this.playerId,
+    required this.message,
+  });
+
+  final int turn;
+  final String? playerId;
+  final String message;
+
+  Map<String, dynamic> toJson() => {
+        'turn': turn,
+        if (playerId != null) 'playerId': playerId,
+        'message': message,
+      };
+
+  factory GameLogEntry.fromJson(Map<String, dynamic> j) => GameLogEntry(
+        turn: (j['turn'] as int?) ?? 0,
+        playerId: j['playerId'] as String?,
+        message: (j['message'] as String?) ?? '',
+      );
+}
+
 /// Orchestrates a Shards of Infinity game: turn lifecycle, effect resolution,
 /// market management, and multi-player turn rotation.
 class GameService {
@@ -80,6 +107,26 @@ class GameService {
   final List<CardModel> centerRow = [];
   final List<CardModel> infinityDeck = [];
   final List<CardModel> removedFromGame = [];
+
+  /// Append-only, human-readable log of game actions (oldest first), so players
+  /// can review what happened — e.g. "remind themselves what they did last
+  /// turn". Public game events only (no hidden info). Bounded to keep memory and
+  /// the serialized payload flat in long games.
+  final List<GameLogEntry> actionLog = [];
+  static const int _maxLogEntries = 400;
+
+  /// Record a public game event. [playerId] is the actor (or null for system
+  /// events like turn changes).
+  void _log(String message, {String? playerId}) {
+    actionLog.add(GameLogEntry(
+      turn: turnNumber,
+      playerId: playerId,
+      message: message,
+    ));
+    if (actionLog.length > _maxLogEntries) {
+      actionLog.removeRange(0, actionLog.length - _maxLogEntries);
+    }
+  }
 
   /// Shared face-up supply of Destinies (Into the Horizon), up to
   /// [maxDestinyRow]. Empty unless a `destinySupply` was passed to the
@@ -420,6 +467,7 @@ class GameService {
     player.gemPool -= 1;
     player.addMastery(1);
     player.focusedThisTurn = true;
+    _log('focused (1 gem → 1 mastery)', playerId: player.id);
     return true;
   }
 
@@ -863,6 +911,7 @@ class GameService {
     // Step 9: check ally ability
     _checkAllyAbility(card, player);
 
+    _log('played ${card.name}', playerId: player.id);
     return true;
   }
 
@@ -893,17 +942,20 @@ class GameService {
     final price = _discountedCost(card, currentPlayer);
     if (currentPlayer.gemPool < price) return false;
 
-    currentPlayer.gemPool -= price;
+    final buyer = currentPlayer;
+    buyer.gemPool -= price;
     centerRow.removeAt(rowIndex);
-    currentPlayer.discardPile.add(card);
+    buyer.discardPile.add(card);
     _refillCenterRow();
 
+    _log('recruited ${card.name} for $price gems', playerId: buyer.id);
     return true;
   }
 
   /// End the current player's turn: cleanup, draw, advance.
   void endTurn() {
     final player = currentPlayer;
+    _log('ended their turn', playerId: player.id);
 
     // Discard remaining hand cards (unplayed cards go to discard)
     player.discardPile.addAll(player.hand);
@@ -968,6 +1020,8 @@ class GameService {
     target.discardPile.add(champion);
     _releaseUnderCards(target, champion.id);
 
+    _log('destroyed ${target.name}\'s ${champion.name}',
+        playerId: currentPlayer.id);
     return true;
   }
 
@@ -999,6 +1053,7 @@ class GameService {
 
     currentPlayer.powerPool -= amount;
     target.takeDamage(amount);
+    _log('dealt $amount damage to ${target.name}', playerId: currentPlayer.id);
 
     // Record unblocked damage dealt this turn (guard already ruled out above),
     // for GameConditionKind.unblockedDamageAtLeast (e.g. blood_for_blood).
@@ -2190,8 +2245,15 @@ class GameService {
 
     // Check if only one player remains
     _checkGameOver();
-    if (_gameOver) return;
+    if (_gameOver) {
+      if (winnerId != null) {
+        final w = players.firstWhere((p) => p.id == winnerId);
+        _log('${w.name} wins!');
+      }
+      return;
+    }
 
+    _log('— Turn $turnNumber: ${currentPlayer.name} —');
     startTurn();
   }
 

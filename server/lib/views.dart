@@ -54,8 +54,12 @@ Map<String, dynamic> redactFor(
   // are server-secret like any draw pile.
   registerAll(game.destinyRow);
   for (final p in game.players) {
-    // Own hand only — never an opponent's (hidden info). Draw piles: never.
-    if (p.id == recipientId) registerAll(p.hand);
+    // Own hand AND own draw-pile contents (the latter is shown sorted, so its
+    // ORDER stays hidden) — never an opponent's hand/draw pile.
+    if (p.id == recipientId) {
+      registerAll(p.hand);
+      registerAll(p.drawPile);
+    }
     registerAll(p.discardPile); // discards are public
     registerAll(p.championsInPlay); // champions are public
     registerAll(p.playedThisTurn); // played-this-turn is public
@@ -85,6 +89,14 @@ Map<String, dynamic> redactFor(
     // above); only the cascade DECK SIZE leaks (order is secret).
     'destinyRow': _ids(game.destinyRow),
     'destinyDeckCount': game.destinyDeck.length,
+    // Public action log (no hidden info) — the recent tail, so players can review
+    // what happened (e.g. "what did I do last turn"). Bounded for payload size.
+    'actionLog': [
+      for (final e in game.actionLog.length > 80
+          ? game.actionLog.sublist(game.actionLog.length - 80)
+          : game.actionLog)
+        e.toJson(),
+    ],
     'players': [
       for (final p in game.players) _redactPlayer(p, p.id == recipientId),
     ],
@@ -129,8 +141,13 @@ Map<String, dynamic> _redactPlayer(PlayerState p, bool isRecipient) {
     // Hand: full ids for the recipient, COUNT ONLY for opponents.
     if (isRecipient) 'hand': _ids(p.hand),
     'handCount': p.hand.length,
-    // Draw pile: COUNT ONLY for everyone — even the owner must not see order.
+    // Draw pile: COUNT ONLY for everyone — even the owner must not see ORDER.
     'drawPileCount': p.drawPile.length,
+    // The recipient may see the CONTENTS of their own draw pile (it's their own
+    // deck), but the list is SORTED so no draw ORDER leaks — preventing scry /
+    // shuffle exploits while letting a player review what's left to draw.
+    if (isRecipient)
+      'drawPileContents': (_ids(p.drawPile)..sort()),
     // Discards are public.
     'discardPile': _ids(p.discardPile),
     // Champions are public; expose tap/exhaust status + under-card COUNT.

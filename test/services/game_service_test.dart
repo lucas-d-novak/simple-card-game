@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:simple_card_game/data/database/game_state_codec.dart';
 import 'package:simple_card_game/models/card_effect.dart';
 import 'package:simple_card_game/models/card_model.dart';
 import 'package:simple_card_game/data/market_deck.dart';
@@ -4107,4 +4108,29 @@ void main() {
     });
   });
 
+  group('Action log', () {
+    test('records plays + turn changes with turn/actor metadata', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final before = game.actionLog.length;
+      game.playAllCards();
+      game.endTurn();
+      expect(game.actionLog.length, greaterThan(before));
+      expect(game.actionLog.any((e) => e.message.contains('played')), isTrue);
+      expect(game.actionLog.any((e) => e.message.contains('ended their turn')),
+          isTrue);
+      final play =
+          game.actionLog.firstWhere((e) => e.message.contains('played'));
+      expect(play.playerId, isNotNull);
+      expect(play.turn, greaterThanOrEqualTo(1));
+    });
+
+    test('log round-trips through GameStateCodec', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      game.playAllCards();
+      game.endTurn();
+      final restored = GameStateCodec.decode(GameStateCodec.encode(game));
+      expect(restored.actionLog.length, game.actionLog.length);
+      expect(restored.actionLog.last.message, game.actionLog.last.message);
+    });
+  });
 }
