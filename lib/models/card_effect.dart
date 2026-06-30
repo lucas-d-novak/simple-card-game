@@ -816,6 +816,31 @@ enum GameConditionKind {
   /// player's turn. Used by blood_for_blood ("if you dealt 5+ unblocked damage
   /// this turn").
   unblockedDamageAtLeast,
+
+  // --- Engine Phase 3 additions ---
+
+  /// Unify: at least `threshold` allies of `faction` (or the source card's
+  /// faction when null) have been played this turn, OR the player holds at
+  /// least one such card in hand they could reveal. The printed Unify clause is
+  /// "if you have played another <faction> Ally this turn or reveal one from
+  /// your hand" — the reveal is always optional and free, so a card in hand is
+  /// modelled as satisfying the predicate (a rational player reveals it).
+  /// Used by the Undergrowth Unify allies and the Homodeus/Order Dominion line.
+  factionAllyPlayedOrInHand,
+
+  /// Boolean presence: at least one card of `faction` (or the source card's
+  /// faction when null) is in the player's discard pile. Distinct from the
+  /// SCALING `perFactionCardInDiscard` ScalingResource — this is a yes/no gate.
+  /// Used by Echo cards ("if there is a Wraethe card in your discard pile…").
+  factionCardInDiscard,
+
+  /// At least `threshold` cards whose gem `cost` is ODD have been played this
+  /// turn (the source card is counted). Used by advanced_weapons.
+  oddCostCardsPlayed,
+
+  /// At least `threshold` cards whose gem `cost` is EVEN have been played this
+  /// turn (the source card is counted). Used by advanced_medicine.
+  evenCostCardsPlayed,
 }
 
 /// A board-state predicate evaluated by `GameService._evaluateGameCondition`.
@@ -893,6 +918,17 @@ class GameCondition {
         return 'if you are ${character?.name ?? 'a character'}';
       case GameConditionKind.unblockedDamageAtLeast:
         return 'if you dealt $threshold+ unblocked damage this turn';
+      case GameConditionKind.factionAllyPlayedOrInHand:
+        final f = faction?.name ?? 'same-faction';
+        return 'if you played another $f ally this turn or can reveal one '
+            'from your hand';
+      case GameConditionKind.factionCardInDiscard:
+        final f = faction?.name ?? 'same-faction';
+        return 'if there is a $f card in your discard pile';
+      case GameConditionKind.oddCostCardsPlayed:
+        return 'if you have played $threshold+ odd-cost cards this turn';
+      case GameConditionKind.evenCostCardsPlayed:
+        return 'if you have played $threshold+ even-cost cards this turn';
     }
   }
 }

@@ -1623,6 +1623,32 @@ class GameService {
         return player.character == c.character;
       case GameConditionKind.unblockedDamageAtLeast:
         return player.unblockedDamageThisTurn >= c.threshold;
+      case GameConditionKind.factionAllyPlayedOrInHand:
+        final f = c.faction ?? source?.faction;
+        if (f == null || f == Faction.none) return false;
+        bool matches(CardModel card) => _factionsMatch(
+            f, false, card.faction, card.countsAsAllFactions,
+            aliasPlayer: player);
+        // "played another <faction> ally this turn" (excludes the source via
+        // _countPlayedThisTurn) ...
+        final played = _countPlayedThisTurn(player, source, matches);
+        if (played >= c.threshold) return true;
+        // ... OR a matching card is in hand to reveal (always optional/free).
+        return player.hand.any(matches);
+      case GameConditionKind.factionCardInDiscard:
+        final f = c.faction ?? source?.faction;
+        if (f == null || f == Faction.none) return false;
+        return player.discardPile.any((card) => _factionsMatch(
+            f, false, card.faction, card.countsAsAllFactions,
+            aliasPlayer: player));
+      case GameConditionKind.oddCostCardsPlayed:
+        final count = _countPlayedThisTurn(
+            player, source, (card) => card.cost.isOdd);
+        return count >= c.threshold;
+      case GameConditionKind.evenCostCardsPlayed:
+        final count = _countPlayedThisTurn(
+            player, source, (card) => card.cost.isEven);
+        return count >= c.threshold;
     }
   }
 

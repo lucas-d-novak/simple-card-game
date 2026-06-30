@@ -336,7 +336,11 @@
             "masteryAtLeast",
             "sameFactionCountPlayed",
             "isCharacter",
-            "unblockedDamageAtLeast"
+            "unblockedDamageAtLeast",
+            "factionAllyPlayedOrInHand",
+            "factionCardInDiscard",
+            "oddCostCardsPlayed",
+            "evenCostCardsPlayed"
           ],
           "description": "Which predicate to evaluate."
         },

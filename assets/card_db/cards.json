@@ -947,21 +947,31 @@
       "name": "Additri, Gaiamancer",
       "faction": "undergrowth",
       "copies": 1,
-      "playEffects": [
-        {
-          "type": "gainGems",
-          "amount": 2
-        }
-      ],
+      "playEffects": [],
       "art": "additri_gaiamancer.jpg",
       "rawText": "Undergrowth Champion. Cost 5, shield 5. Exhaust: Gain 2 (gems) and an additional 2 (gems) for each Undergrowth Ally you have played this turn.",
-      "verified": false,
-      "notes": "Champion shield 5. Exhaust base: gain 2 gems -> playEffects. UNMODELED: 'an additional 2 (gems) for each Undergrowth Ally you have played this turn' (gems scaling per ally played; no engine type for per-ally gem scaling) not encoded. | [review-needed] Exhaust currently in playEffects; must relocate to activatedAbility (residual mastery clauses are real gaps). Pending art reconfirm.",
+      "verified": true,
+      "notes": "Undergrowth Champion. Exhaust: gain 2 gems + 2 per Undergrowth ally played this turn.",
       "set": "base",
       "cardType": "champion",
       "cost": 5,
       "shield": 5,
-      "chapter": 1
+      "chapter": 1,
+      "activatedAbility": {
+        "effects": [
+          {
+            "type": "gainGems",
+            "amount": 2
+          },
+          {
+            "type": "scalingResource",
+            "resource": "gems",
+            "condition": "perFactionCardPlayedThisTurn",
+            "perN": 2,
+            "faction": "undergrowth"
+          }
+        ]
+      }
     },
     {
       "id": "arach_devotees",
@@ -1039,43 +1049,49 @@
       "name": "Fa Cu Tul, The Formless",
       "faction": "wraethe",
       "copies": 1,
-      "playEffects": [
-        {
-          "type": "gainPower",
-          "amount": 2
-        }
-      ],
+      "playEffects": [],
       "art": "fa_cu_tul_the_formless.jpg",
       "rawText": "Wraethe Champion. Cost 4, shield 4. Exhaust: Gain 2 (power). Mastery 20: Double your (power). [Printed name: 'Fao Cu'tul, The Formless']",
       "verified": false,
-      "notes": "Card name printed as 'Fao Cu'tul, The Formless' (id fa_cu_tul_the_formless). Champion shield 4. Exhaust: gain 2 power -> playEffects. masteryThreshold 20. UNMODELED masteryBonus: 'Double your (power)' (multiply current power pool) has no engine type; masteryBonus empty. | [review-needed] Exhaust currently in playEffects; must relocate to activatedAbility (residual mastery clauses are real gaps). Pending art reconfirm.",
+      "notes": "Printed 'Fao Cu'tul, The Formless'. Wraethe Champion. Exhaust: gain 2 power. [encode-gap] Mastery-20 'Double your power' (pool multiply) not modeled.",
       "set": "base",
       "cardType": "champion",
       "cost": 4,
       "shield": 4,
       "masteryThreshold": 20,
-      "chapter": 1
+      "chapter": 1,
+      "activatedAbility": {
+        "effects": [
+          {
+            "type": "gainPower",
+            "amount": 2
+          }
+        ]
+      }
     },
     {
       "id": "li_hin_the_shattered",
       "name": "Li Hin, The Shattered",
       "faction": "wraethe",
       "copies": 1,
-      "playEffects": [
-        {
-          "type": "gainPower",
-          "amount": 1
-        }
-      ],
+      "playEffects": [],
       "art": "li_hin_the_shattered.jpg",
       "rawText": "Wraethe Champion. Cost 3, shield 1. This Champion can't be attacked with (power). Exhaust: Gain 1 (power).",
       "verified": false,
-      "notes": "Champion shield 1. Exhaust: gain 1 power -> playEffects. UNMODELED: \"This Champion can't be attacked with (power)\" (unattackable-by-power) has no engine type. | [review-needed] Exhaust currently in playEffects; must relocate to activatedAbility (residual mastery clauses are real gaps). Pending art reconfirm.",
+      "notes": "Wraethe Champion. Exhaust: gain 1 power. [encode-gap] 'This Champion can't be attacked with power' (per-champion immunity; cannotBeAttacked is player-scoped) not modeled.",
       "set": "base",
       "cardType": "champion",
       "cost": 3,
       "shield": 1,
-      "chapter": 1
+      "chapter": 1,
+      "activatedAbility": {
+        "effects": [
+          {
+            "type": "gainPower",
+            "amount": 1
+          }
+        ]
+      }
     },
     {
       "id": "nil_assassin",
@@ -1106,12 +1122,25 @@
         {
           "type": "drawCards",
           "count": 1
+        },
+        {
+          "type": "conditional",
+          "condition": {
+            "kind": "factionCardInDiscard",
+            "faction": "wraethe"
+          },
+          "then": [
+            {
+              "type": "gainPower",
+              "amount": 3
+            }
+          ]
         }
       ],
       "art": "pall_shades.jpg",
       "rawText": "Wraethe Ally. Cost 2. Echo - If there is a Wraethe card in your discard pile, gain 3 (power). Draw a card.",
-      "verified": false,
-      "notes": "Ally (regular). Draw a card -> playEffects. UNMODELED: Echo 'If there is a Wraethe card in your discard pile, gain 3 (power)' (Echo = discard-pile-conditional) has no engine type; the conditional 3 power not encoded.",
+      "verified": true,
+      "notes": "Wraethe Ally. Draw a card; Echo: +3 power if a Wraethe card is in your discard pile.",
       "set": "base",
       "cardType": "regular",
       "cost": 2,
@@ -1122,22 +1151,25 @@
       "name": "Rue Bo Vai, The Transcendent",
       "faction": "wraethe",
       "copies": 1,
-      "playEffects": [
-        {
-          "type": "gainPower",
-          "amount": 4
-        }
-      ],
+      "playEffects": [],
       "art": "rue_bo_vai_the_transcendent.jpg",
       "rawText": "Wraethe Champion. Cost 5, shield 4. Exhaust: Gain 4 (power). Mastery 10: You ignore (Guard) this turn. [Printed name: 'Ru Bo Vai, The Transcendant']",
       "verified": false,
-      "notes": "Card name printed as 'Ru Bo Vai, The Transcendant' (id rue_bo_vai_the_transcendent). Champion shield 4. Exhaust: gain 4 power -> playEffects. masteryThreshold 10. UNMODELED masteryBonus: 'You ignore (Guard) this turn' (ignore-guard) has no engine type; masteryBonus empty. | [review-needed] Exhaust currently in playEffects; must relocate to activatedAbility (residual mastery clauses are real gaps). Pending art reconfirm.",
+      "notes": "Printed 'Ru Bo Vai, The Transcendant'. Wraethe Champion. Exhaust: gain 4 power. [encode-gap] Mastery-10 'You ignore Guard this turn' (distinct from ignore-shield) not modeled.",
       "set": "base",
       "cardType": "champion",
       "cost": 5,
       "shield": 4,
       "masteryThreshold": 10,
-      "chapter": 1
+      "chapter": 1,
+      "activatedAbility": {
+        "effects": [
+          {
+            "type": "gainPower",
+            "amount": 4
+          }
+        ]
+      }
     },
     {
       "id": "scion_of_nothingness",
@@ -1247,12 +1279,25 @@
         {
           "type": "gainPower",
           "amount": 2
+        },
+        {
+          "type": "conditional",
+          "condition": {
+            "kind": "factionCardInDiscard",
+            "faction": "wraethe"
+          },
+          "then": [
+            {
+              "type": "gainPower",
+              "amount": 4
+            }
+          ]
         }
       ],
       "art": "wraethe_skirmisher.jpg",
       "rawText": "Wraethe Ally. Cost 1. Gain 2 (power). Echo - Gain 6 (power) instead if there is a Wraethe card in your discard pile.",
-      "verified": false,
-      "notes": "Ally (regular). Base: gain 2 power -> playEffects. UNMODELED: Echo 'Gain 6 (power) instead if there is a Wraethe card in your discard pile' (Echo replacement, discard-conditional) has no engine type; only base 2 power encoded.",
+      "verified": true,
+      "notes": "Wraethe Ally. Echo: gain 2 power, +4 more (=6 'instead') if a Wraethe card is in your discard pile.",
       "set": "base",
       "cardType": "regular",
       "cost": 1,
@@ -1458,12 +1503,25 @@
         {
           "type": "drawCards",
           "count": 1
+        },
+        {
+          "type": "conditional",
+          "condition": {
+            "kind": "isCharacter",
+            "character": "tetra"
+          },
+          "then": [
+            {
+              "type": "gainGems",
+              "amount": 1
+            }
+          ]
         }
       ],
       "art": "mainframe_abbot.jpg",
       "rawText": "Order Champion (Ally). Draw a card. If you are Tetra, gain 1 (gem).",
-      "verified": false,
-      "notes": "Typo fix: name was 'Mainfrane Abbot' in BGG source. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 58: name='Mainfrane Abbot', faction='Order', amount=2. | art added from TTS spritesheet crop (effects pending verification). | EFFECTS PASS B: image read. Cost 3, shield 3 -> Champion (type line says 'Order Ally' but shield badge '3' = champion, cf. command_seer). On-deploy: draw a card. UNMODELED: character-identity conditional 'If you are Tetra, gain 1 gem'. verified:false (identity conditional unmodeled).",
+      "verified": true,
+      "notes": "Order Champion (type line 'Order Ally' but shield 3 = champion). Draw a card; if Tetra, gain 1 gem.",
       "set": "rotf",
       "chapter": 2,
       "cardType": "champion",
@@ -1578,12 +1636,25 @@
         {
           "type": "gainGems",
           "amount": 5
+        },
+        {
+          "type": "conditional",
+          "condition": {
+            "kind": "isCharacter",
+            "character": "volos"
+          },
+          "then": [
+            {
+              "type": "gainPower",
+              "amount": 5
+            }
+          ]
         }
       ],
       "art": "hounds_of_volos.jpg",
       "rawText": "Undergrowth Mercenary - Ally. Gain 5 (gems). If you are Volos, gain 5 (gems).",
-      "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 63: name='Hounds of Volos', faction='Undergrowth', amount=2. | art added from TTS spritesheet crop (effects pending verification). | Mercenary. Base gain 5 gems encoded. UNMODELED: character-identity conditional 'If you are Volos, gain 5 power' (co-op/character mechanic). verified:false. | EFFECTS PASS B: image read. CORRECTION: the conditional 'If you are Volos' grants 5 GEMS (green icon), not power as a prior note stated. Base gain 5 gems encoded. UNMODELED: character-identity conditional. verified:false.",
+      "verified": true,
+      "notes": "Undergrowth Mercenary. Gain 5 gems; if Volos, gain 5 POWER (red icon, corrected from prior gems note).",
       "set": "rotf",
       "cardType": "mercenary",
       "cost": 3,
@@ -1634,12 +1705,25 @@
         {
           "type": "gainGems",
           "amount": 6
+        },
+        {
+          "type": "conditional",
+          "condition": {
+            "kind": "isCharacter",
+            "character": "koSynWu"
+          },
+          "then": [
+            {
+              "type": "banishCard",
+              "source": "handOrDiscard"
+            }
+          ]
         }
       ],
       "art": "the_lost.jpg",
       "rawText": "Wraethe Mercenary - Ally. Gain 6 (gems). If you are Ko Syn Wu, you may banish a card from your hand or discard pile.",
-      "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 65: name='The Lost', faction='Wraethe', amount=2. | art added from TTS spritesheet crop (effects pending verification). | Mercenary. Base gain 6 gems encoded. UNMODELED: character-identity conditional 'If you are Ko Syn Wu, you may banish...' (co-op/character mechanic). verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false.",
+      "verified": true,
+      "notes": "Wraethe Mercenary. Gain 6 gems; if Ko Syn Wu, may banish a hand/discard card (optionality approximated via deferred banish selection).",
       "set": "rotf",
       "cardType": "mercenary",
       "cost": 4,

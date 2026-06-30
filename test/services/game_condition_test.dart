@@ -766,4 +766,144 @@ void main() {
       expect(player.mastery, before + 3);
     });
   });
+
+  // -------------------------------------------------------------------------
+  // Engine Phase 3 — new GameConditionKind values.
+  // -------------------------------------------------------------------------
+  group('Phase 3 conditions', () {
+    List<CardEffect> thenPower10() => const [GainPowerEffect(10)];
+
+    group('factionAllyPlayedOrInHand (Unify)', () {
+      CardModel unifyCard(String id) => _card(
+            id: id,
+            faction: Faction.undergrowth,
+            playEffects: [
+              ConditionalEffect(
+                condition: const GameCondition(
+                    kind: GameConditionKind.factionAllyPlayedOrInHand),
+                then: thenPower10(),
+              ),
+            ],
+          );
+
+      test('not met: no matching ally played and none in hand', () {
+        final game = GameService(playerCount: 2, random: Random(7));
+        game.currentPlayer.hand
+            .removeWhere((c) => c.faction == Faction.undergrowth);
+        expect(_playAndReadPower(game, unifyCard('u_none')), 0);
+      });
+
+      test('met via PLAYED: another undergrowth ally already played this turn',
+          () {
+        final game = GameService(playerCount: 2, random: Random(7));
+        game.currentPlayer.hand
+            .removeWhere((c) => c.faction == Faction.undergrowth);
+        game.currentPlayer.hand
+            .add(_card(id: 'ug_pre', faction: Faction.undergrowth));
+        game.playCard('ug_pre');
+        expect(_playAndReadPower(game, unifyCard('u_played')), 10);
+      });
+
+      test('met via REVEAL: a matching ally is in hand (optional reveal)', () {
+        final game = GameService(playerCount: 2, random: Random(7));
+        game.currentPlayer.hand
+            .removeWhere((c) => c.faction == Faction.undergrowth);
+        game.currentPlayer.hand
+            .add(_card(id: 'ug_inhand', faction: Faction.undergrowth));
+        expect(_playAndReadPower(game, unifyCard('u_reveal')), 10);
+      });
+    });
+
+    group('factionCardInDiscard (Echo)', () {
+      CardModel echoCard(String id) => _card(
+            id: id,
+            faction: Faction.wraethe,
+            playEffects: [
+              ConditionalEffect(
+                condition: const GameCondition(
+                    kind: GameConditionKind.factionCardInDiscard,
+                    faction: Faction.wraethe),
+                then: thenPower10(),
+              ),
+            ],
+          );
+
+      test('not met: no wraethe card in discard', () {
+        final game = GameService(playerCount: 2, random: Random(7));
+        game.currentPlayer.discardPile
+            .removeWhere((c) => c.faction == Faction.wraethe);
+        expect(_playAndReadPower(game, echoCard('e_none')), 0);
+      });
+
+      test('met: a wraethe card is in the discard pile', () {
+        final game = GameService(playerCount: 2, random: Random(7));
+        game.currentPlayer.discardPile
+            .add(_card(id: 'wr_disc', faction: Faction.wraethe));
+        expect(_playAndReadPower(game, echoCard('e_yes')), 10);
+      });
+
+      test('boolean, not scaling: two wraethe cards still grant the flat bonus',
+          () {
+        final game = GameService(playerCount: 2, random: Random(7));
+        game.currentPlayer.discardPile
+            .add(_card(id: 'wr_d1', faction: Faction.wraethe));
+        game.currentPlayer.discardPile
+            .add(_card(id: 'wr_d2', faction: Faction.wraethe));
+        expect(_playAndReadPower(game, echoCard('e_two')), 10);
+      });
+    });
+
+    group('odd/even cost cards played', () {
+      CardModel costCond(String id, GameConditionKind kind, int threshold) =>
+          _card(
+            id: id,
+            cost: 0, // even source so it doesn't perturb an odd count
+            playEffects: [
+              ConditionalEffect(
+                condition: GameCondition(kind: kind, threshold: threshold),
+                then: thenPower10(),
+              ),
+            ],
+          );
+
+      test('oddCostCardsPlayed: counts odd-cost cards played (excl. source)',
+          () {
+        final game = GameService(playerCount: 2, random: Random(7));
+        game.currentPlayer.hand.add(_card(id: 'odd1', cost: 3));
+        game.currentPlayer.hand.add(_card(id: 'odd2', cost: 5));
+        game.currentPlayer.hand.add(_card(id: 'even1', cost: 4));
+        game.playCard('odd1');
+        game.playCard('odd2');
+        game.playCard('even1');
+        expect(
+            _playAndReadPower(game,
+                costCond('odd_src', GameConditionKind.oddCostCardsPlayed, 2)),
+            10);
+      });
+
+      test('oddCostCardsPlayed: one odd card is not enough for threshold 2', () {
+        final game = GameService(playerCount: 2, random: Random(7));
+        game.currentPlayer.hand.add(_card(id: 'odd_only', cost: 7));
+        game.playCard('odd_only');
+        expect(
+            _playAndReadPower(game,
+                costCond('odd_src2', GameConditionKind.oddCostCardsPlayed, 2)),
+            0);
+      });
+
+      test('evenCostCardsPlayed: counts even-cost cards played', () {
+        final game = GameService(playerCount: 2, random: Random(7));
+        game.currentPlayer.hand.add(_card(id: 'ev1', cost: 2));
+        game.currentPlayer.hand.add(_card(id: 'ev2', cost: 6));
+        game.currentPlayer.hand.add(_card(id: 'od1', cost: 3));
+        game.playCard('ev1');
+        game.playCard('ev2');
+        game.playCard('od1');
+        expect(
+            _playAndReadPower(game,
+                costCond('even_src', GameConditionKind.evenCostCardsPlayed, 2)),
+            10);
+      });
+    });
+  });
 }
