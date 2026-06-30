@@ -1,6 +1,6 @@
 # Cloudflare Tunnel deploy — hosted alpha runbook
 
-Stand up the **public alpha** of Shards of Infinity behind a custom domain with
+Stand up the **public alpha** of Fragments of Boundlessness behind a custom domain with
 TLS, on a low-budget always-on box (a Raspberry Pi or any spare machine) using a
 **Cloudflare Tunnel**. The end state: an invitee opens `https://play.example.com`,
 types a **name** + the **shared access code**, and plays — no app install, no

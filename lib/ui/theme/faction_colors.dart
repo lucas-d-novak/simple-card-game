@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:simple_card_game/models/faction.dart';
 
-/// Faction color palette aligned with Shards of Infinity factions.
+/// Faction color palette aligned with Fragments of Boundlessness factions.
 /// Homodeus = Gold, Wraethe = Purple, Order = Blue, Undergrowth = Green.
 class FactionColors {
   FactionColors._();

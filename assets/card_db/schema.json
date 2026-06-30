@@ -19,7 +19,7 @@
     "set": {
       "type": "string",
       "enum": ["base", "rotf", "sos", "ioh", "ingeminex", "promo", "saga", "starter", "unknown"],
-      "description": "Which set the card belongs to. base=Shards of Infinity (Core), rotf=Relics of the Future, sos=Shadow of Salvation, ioh=Into the Horizon, saga=Saga Collection."
+      "description": "Which set the card belongs to. base=the core set; rotf, sos, ioh, ingeminex, saga=later expansions of our favourite board game; promo/starter/unknown as named."
     },
     "chapter": {
       "type": ["integer", "null"],
@@ -121,7 +121,7 @@
       "type": "object",
       "required": ["effects"],
       "additionalProperties": false,
-      "description": "Champions only. An Exhaust-gated activated ability (Shards of Infinity's 'Exhaust: <effect>'). DISTINCT from playEffects: it is a separate action that taps (exhausts) the champion until the owner's next turn. Modelled structurally on the champion (lib/models/card_effect.dart ActivatedAbility), NOT as a new effect 'type'. The ability is a CONTAINER of ordinary effects.",
+      "description": "Champions only. An Exhaust-gated activated ability (Fragments of Boundlessness's 'Exhaust: <effect>'). DISTINCT from playEffects: it is a separate action that taps (exhausts) the champion until the owner's next turn. Modelled structurally on the champion (lib/models/card_effect.dart ActivatedAbility), NOT as a new effect 'type'. The ability is a CONTAINER of ordinary effects.",
       "properties": {
         "effects": {
           "type": "array",

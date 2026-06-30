@@ -4,7 +4,7 @@ Core game logic. Three service layers — GameService is the active engine, AiSe
 
 ## Files
 
-### game_service.dart (primary — all Shards of Infinity mechanics)
+### game_service.dart (primary — all Fragments of Boundlessness mechanics)
 
 `GameService` — orchestrates the full game: multiplayer turns, effect resolution, market, combat, win conditions.
 

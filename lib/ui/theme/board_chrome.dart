@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// Palette + reusable painted chrome (beveled teal buttons, board background,
-/// stat chips) extracted from the official Shards of Infinity client mockups.
+/// stat chips) extracted from the official Fragments of Boundlessness client mockups.
 ///
 /// See `ai-docs/design_reference/DESIGN_SPEC.md` for the source colours.
 class BoardChrome {

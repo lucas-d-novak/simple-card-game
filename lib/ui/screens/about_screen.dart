@@ -7,6 +7,9 @@ import 'package:simple_card_game/ui/theme/game_theme.dart';
 /// who own the physical board game and have supported its creators.
 ///
 /// Reachable from the setup screen's ABOUT button and via `?about=1`.
+/// Note: the page deliberately avoids naming the original board game or its
+/// publisher — it uses vague, affectionate euphemisms ("our favourite board
+/// game") instead.
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
 
@@ -46,7 +49,7 @@ class AboutScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 6),
                       const Text(
-                        'A fan tribute to Shards of Infinity',
+                        'A fan tribute to our favourite board game',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: GameTheme.textSecondary,
@@ -63,10 +66,10 @@ class AboutScreen extends StatelessWidget {
                         title: 'Made by huge fans',
                         body:
                             'This digital companion was built by people who '
-                            'love Shards of Infinity — purely out of admiration '
-                            'for a brilliant game. Every faction, champion, and '
-                            'mastery tier here exists because we could not stop '
-                            'playing the real thing.',
+                            'love our favourite board game — purely out of '
+                            'admiration for a brilliant design. Every faction, '
+                            'champion, and mastery tier here exists because we '
+                            'could not stop playing the real thing.',
                       ),
                       const _Card(
                         icon: Icons.volunteer_activism,
@@ -87,21 +90,20 @@ class AboutScreen extends StatelessWidget {
                             'board game and have supported its creators. This '
                             'companion is meant to extend the table you already '
                             'love — never to replace buying the game. If you '
-                            'have not yet, please buy Shards of Infinity (and '
-                            'its expansions) from Stone Blade Entertainment / '
-                            'Ultra PRO first.',
+                            'have not yet, please buy our favourite board game '
+                            '(and its expansions) from its original publisher '
+                            'first.',
                       ),
                       const _Card(
                         icon: Icons.copyright,
                         iconColor: GameTheme.textSecondary,
                         title: 'Credit where it is due',
                         body:
-                            'Shards of Infinity was designed by Gary Arant and '
-                            'Justin Gary and is published by Stone Blade '
-                            'Entertainment / Ultra PRO. All card names, art, and '
-                            'game mechanics are their intellectual property. We '
-                            'claim none of it — we are simply fans saying thank '
-                            'you.',
+                            'Our favourite board game was created by its '
+                            'original designers and is published by its original '
+                            'publisher. All card names, art, and game mechanics '
+                            'are their intellectual property. We claim none of '
+                            'it — we are simply fans saying thank you.',
                       ),
 
                       const SizedBox(height: 16),

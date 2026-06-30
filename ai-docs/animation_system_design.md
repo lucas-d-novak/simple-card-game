@@ -6,7 +6,7 @@
 
 ## Goal
 
-A unified animation system for the Shards of Infinity UI with **three global speed
+A unified animation system for the Fragments of Boundlessness UI with **three global speed
 settings**:
 
 - **Slow** — deliberate, readable; good for learning / spectators / accessibility.

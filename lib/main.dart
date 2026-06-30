@@ -35,12 +35,12 @@ String _defaultServerUrl(String? explicit) {
 }
 
 void main() {
-  runApp(const ShardsOfInfinityApp());
+  runApp(const FragmentsOfBoundlessnessApp());
 }
 
-/// Root widget — launches the Shards of Infinity game UI.
-class ShardsOfInfinityApp extends StatelessWidget {
-  const ShardsOfInfinityApp({super.key});
+/// Root widget — launches the Fragments of Boundlessness game UI.
+class FragmentsOfBoundlessnessApp extends StatelessWidget {
+  const FragmentsOfBoundlessnessApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -87,7 +87,7 @@ class ShardsOfInfinityApp extends StatelessWidget {
       // instant since they don't wrap the tree in AnimationSettings.
       initialSpeed: AnimationSpeed.fast,
       child: MaterialApp(
-        title: 'Shards of Infinity',
+        title: 'Fragments of Boundlessness',
         debugShowCheckedModeBanner: false,
         theme: GameTheme.darkTheme,
         home: home,

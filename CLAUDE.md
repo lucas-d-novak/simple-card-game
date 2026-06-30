@@ -1,10 +1,10 @@
-# Shards of Infinity — Digital Card Game
+# Fragments of Boundlessness — Digital Card Game
 
-A Flutter implementation of the Shards of Infinity deck-building card game. Targets Windows, iOS, Android, and web. The Flutter client runs the full game engine locally; an **authoritative Dart server** (`server/`) reuses that same engine for networked cross-device multiplayer (Phase 0/1 working — see [`ai-docs/multiplayer_architecture.md`](ai-docs/multiplayer_architecture.md)).
+A Flutter implementation of the Fragments of Boundlessness deck-building card game. Targets Windows, iOS, Android, and web. The Flutter client runs the full game engine locally; an **authoritative Dart server** (`server/`) reuses that same engine for networked cross-device multiplayer (Phase 0/1 working — see [`ai-docs/multiplayer_architecture.md`](ai-docs/multiplayer_architecture.md)).
 
 ## Project goal
 
-Build a playable digital version of Shards of Infinity with all core mechanics: 4 factions, mastery system, champions with guard, ally abilities, banish/scrap, Infinity Shard win condition, and a visually engaging card game UI.
+Build a playable digital version of Fragments of Boundlessness with all core mechanics: 4 factions, mastery system, champions with guard, ally abilities, banish/scrap, Infinity Shard win condition, and a visually engaging card game UI.
 
 ## Quick start
 
@@ -34,7 +34,7 @@ Pinned to **Flutter 3.41.5** (installed at `C:/Users/rldun/code/flutter/`). CI e
 ## Architecture
 
 - **DeckService** (legacy) — single-player deck demo, kept intact for backward compatibility
-- **GameService** (core engine) — full Shards of Infinity orchestrator with multiplayer turn structure. **Pure Dart** (no Flutter imports) so it runs identically in the Flutter client and the server. Now also drives Character Focus (gem→mastery), the Destiny system (claim / use / banish-to-cascade), and Relic recruitment.
+- **GameService** (core engine) — full Fragments of Boundlessness orchestrator with multiplayer turn structure. **Pure Dart** (no Flutter imports) so it runs identically in the Flutter client and the server. Now also drives Character Focus (gem→mastery), the Destiny system (claim / use / banish-to-cascade), and Relic recruitment.
 - **`server/`** (authoritative multiplayer) — a `dart:io` WebSocket server that depends on the engine package via `path: ../` and reuses the exact rules code. Clients send actions; the server validates + applies + broadcasts each player a redacted view (hidden-info filter). Gated by an optional shared **access token** (`SHARDS_ACCESS_TOKEN`) + origin allowlist; records hidden-info-safe **player-stats/ML telemetry** to a SQLite store (server-only, NOT in any redacted view). See [`ai-docs/multiplayer_architecture.md`](ai-docs/multiplayer_architecture.md).
 
 ```
@@ -151,8 +151,10 @@ server/                                  # Authoritative multiplayer (pure-Dart,
   (client-side mirror over the redacted state for the networked board);
   `GameCardWidget.conditionsMet`.
 - **About page** — [`lib/ui/screens/about_screen.dart`](lib/ui/screens/about_screen.dart):
-  fan-made / non-commercial / own-the-physical-game notice, credits Stone Blade /
-  Ultra PRO. Reachable via an ABOUT button on the setup screen and `?about=1`.
+  fan-made / non-commercial / own-the-physical-game notice, crediting the original
+  creators and publisher in vague terms (deliberately does NOT name the original
+  game or its publisher — uses euphemisms like "our favourite board game").
+  Reachable via an ABOUT button on the setup screen and `?about=1`.
 - **Player-stats / ML telemetry** — [`server/lib/stats_store.dart`](server/lib/stats_store.dart)
   + [`server/lib/stats_capture.dart`](server/lib/stats_capture.dart): a SQLite store
   (`sqlite3` dep) opened at `SHARDS_STATS_DB` (default `server/data/stats.db`,
@@ -187,7 +189,7 @@ server/                                  # Authoritative multiplayer (pure-Dart,
   (Cloudflare Tunnel + custom domain + TLS + env vars):
   [`ai-docs/deploy_cloudflare.md`](ai-docs/deploy_cloudflare.md).
 
-## Game loop (Shards of Infinity)
+## Game loop (Fragments of Boundlessness)
 
 1. Each player starts with 10 cards: 7 Crystals (1 gem), 1 Blaster (1 power), 1 Infinity Shard, 1 Shard Reactor
 2. Draw 5 cards into hand
@@ -313,7 +315,7 @@ See [`test/CLAUDE.md`](test/CLAUDE.md).
 
 Cross-referenced. The mechanics doc is source of truth for game rules.
 
-- [`ai-docs/shards_of_infinity_mechanics.md`](ai-docs/shards_of_infinity_mechanics.md) — **Source of truth for game rules.** Complete mechanics: rules, turn structure, factions, mastery, card list, edge cases.
+- [`ai-docs/fragments_of_boundlessness_mechanics.md`](ai-docs/fragments_of_boundlessness_mechanics.md) — **Source of truth for game rules.** Complete mechanics: rules, turn structure, factions, mastery, card list, edge cases.
 - [`ai-docs/frontend_assets_research.md`](ai-docs/frontend_assets_research.md) — Flutter packages, art sources, card design patterns, faction color palettes, animation approaches.
 - [`ai-docs/visual_iteration_system.md`](ai-docs/visual_iteration_system.md) — Playwright + Claude Code screenshot-driven visual QA workflow.
 - [`ai-docs/implementation_plan.md`](ai-docs/implementation_plan.md) — v6 implementation plan (17 steps). Steps 1-13b, 15 complete.

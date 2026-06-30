@@ -3,7 +3,7 @@ import 'package:simple_card_game/models/card_model.dart';
 import 'package:simple_card_game/models/card_type.dart';
 import 'package:simple_card_game/models/faction.dart';
 
-/// Full Shards of Infinity card catalog (~55 unique cards across all factions).
+/// Full Fragments of Boundlessness card catalog (~55 unique cards across all factions).
 ///
 /// Original 17 test fixture variable names are preserved for backward
 /// compatibility. New cards are added below each faction section.
@@ -622,7 +622,7 @@ const allTestFixtureCards = <CardModel>[
   universalSoldier,
 ];
 
-/// Full Shards of Infinity card catalog (~55 unique cards).
+/// Full Fragments of Boundlessness card catalog (~55 unique cards).
 const allInfinityDeckCards = <CardModel>[
   // Homodeus (14)
   reactorMonk,

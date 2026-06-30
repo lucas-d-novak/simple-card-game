@@ -1,11 +1,11 @@
 {
-    "name": "Shards of Infinity",
-    "short_name": "Shards",
+    "name": "Fragments of Boundlessness",
+    "short_name": "Fragments",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0A1B2A",
     "theme_color": "#0A1B2A",
-    "description": "Shards of Infinity — digital card game.",
+    "description": "Fragments of Boundlessness — digital card game.",
     "orientation": "any",
     "prefer_related_applications": false,
     "icons": [

@@ -3,7 +3,7 @@
 > Research document for the simple-card-game Flutter project.
 > Last updated: 2026-06-27
 >
-> **Cross-references**: Target aesthetic defined by faction colors/themes in `frontend_assets_research.md` Section 7. Game layout requirements derived from card anatomy in `shards_of_infinity_mechanics.md` Section 11.
+> **Cross-references**: Target aesthetic defined by faction colors/themes in `frontend_assets_research.md` Section 7. Game layout requirements derived from card anatomy in `fragments_of_boundlessness_mechanics.md` Section 11.
 
 ---
 
@@ -26,7 +26,7 @@
 
 ## 1. Executive Summary
 
-The goal is a loop where an AI agent can: build the Flutter web app, capture screenshots, visually evaluate them against the Shards of Infinity aesthetic (sci-fi/fantasy, dark backgrounds, glowing effects, faction colors), suggest and implement improvements, and repeat.
+The goal is a loop where an AI agent can: build the Flutter web app, capture screenshots, visually evaluate them against the Fragments of Boundlessness aesthetic (sci-fi/fantasy, dark backgrounds, glowing effects, faction colors), suggest and implement improvements, and repeat.
 
 **Recommended approach**: Playwright (via npm) for headless browser screenshot capture of the Flutter web build, combined with Claude Code's native image reading capability for visual evaluation. Flutter golden tests serve as a complementary regression safety net. The full loop is orchestrated by shell scripts that Claude Code can invoke.
 
@@ -350,7 +350,7 @@ This is the core of the visual iteration loop. See Section 7 for details.
 ### Hybrid: Pixel Diff + AI Evaluation
 
 Use pixel diff to quantify what changed between iterations. Feed both the screenshot and the diff image to Claude for evaluation:
-- "Here is the current screenshot and a diff showing what changed since the last iteration. Evaluate whether the changes improved the visual design toward our Shards of Infinity aesthetic goals."
+- "Here is the current screenshot and a diff showing what changed since the last iteration. Evaluate whether the changes improved the visual design toward our Fragments of Boundlessness aesthetic goals."
 
 ---
 
@@ -448,7 +448,7 @@ Claude Code's `Read` tool can read image files (PNG, JPG, etc.). When it reads a
 ```markdown
 ## Visual Design Goals
 
-Target aesthetic: Shards of Infinity card game
+Target aesthetic: Fragments of Boundlessness card game
 - Dark background (deep space / void theme): #0a0a1a to #1a1a2e
 - Glowing effects on cards and buttons (box shadows with faction colors)
 - Faction colors:
@@ -732,7 +732,7 @@ Step 14: Evaluate improvement. If satisfactory, stop. If not, loop to Phase 3.
 ### Workflow for Human Developer
 
 1. Run `flutter run -d chrome` for live preview.
-2. Ask Claude Code to evaluate specific screens: "Read `screenshots/current_state.png` and suggest visual improvements for the Shards of Infinity aesthetic."
+2. Ask Claude Code to evaluate specific screens: "Read `screenshots/current_state.png` and suggest visual improvements for the Fragments of Boundlessness aesthetic."
 3. Apply Claude's suggestions.
 4. Manually screenshot (or use Playwright script) and ask Claude to compare.
 
@@ -876,7 +876,7 @@ This is more complex to set up than Playwright but stays entirely within the Flu
 Create this file at `ai-docs/design_goals.md` to guide visual evaluation:
 
 ```markdown
-# Visual Design Goals: Shards of Infinity Digital Edition
+# Visual Design Goals: Fragments of Boundlessness Digital Edition
 
 ## Overall Aesthetic
 - Sci-fi/fantasy fusion: advanced technology meets cosmic mysticism

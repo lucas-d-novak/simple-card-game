@@ -19,7 +19,7 @@ Test suite covering game logic and UI behavior.
   appears in a recorded decision's option set / state JSON).
 
 The bulk of the engine coverage is `test/services/game_service_test.dart`
-(the Shards of Infinity engine spec). The legacy `DeckService` demo tests below
+(the Fragments of Boundlessness engine spec). The legacy `DeckService` demo tests below
 are a small subset.
 
 ## Files

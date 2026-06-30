@@ -39,11 +39,11 @@ final class GainMoneyEffect extends CardEffect {
 }
 
 // ---------------------------------------------------------------------------
-// Shards of Infinity resource effects
+// Fragments of Boundlessness resource effects
 // ---------------------------------------------------------------------------
 
 /// Gain gems (currency used to buy cards from the center row).
-/// This is the Shards of Infinity equivalent of GainMoneyEffect.
+/// This is the Fragments of Boundlessness equivalent of GainMoneyEffect.
 final class GainGemsEffect extends CardEffect {
   const GainGemsEffect(this.amount);
 
@@ -146,7 +146,7 @@ enum BanishSource {
 }
 
 /// Banish a card (permanently remove from the game). The [source] specifies
-/// which zone the player can pick from. Most cards in Shards of Infinity say
+/// which zone the player can pick from. Most cards in Fragments of Boundlessness say
 /// "banish a card from your hand or discard pile" (handOrDiscard).
 final class BanishCardEffect extends CardEffect {
   const BanishCardEffect(this.source);
@@ -1115,7 +1115,7 @@ final class ScalingResourceEffect extends CardEffect {
 
 /// The cost a player must pay to use an [ActivatedAbility].
 ///
-/// Activated abilities in Shards of Infinity sometimes cost resources on top of
+/// Activated abilities in Fragments of Boundlessness sometimes cost resources on top of
 /// the Exhaust (e.g. "Exhaust, pay 1 mastery: ..."). Each field is the amount
 /// deducted from the corresponding player pool when the ability is used; 0 means
 /// that resource is not part of the cost. All fields default to 0 so the common

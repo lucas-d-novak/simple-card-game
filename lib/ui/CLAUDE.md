@@ -1,6 +1,6 @@
 # lib/ui
 
-Flutter UI layer for the Shards of Infinity card game.
+Flutter UI layer for the Fragments of Boundlessness card game.
 
 ## Structure
 
@@ -147,7 +147,8 @@ use procedural glyphs (the old stock-photo placeholders were replaced).
 - **Attack target dialog** — choose opponent in 3-4 player games
 - **AI thinking overlay** — "AI is thinking..." indicator during AI turns
 - **About page** (`screens/about_screen.dart`) — fan-made / non-commercial /
-  own-the-physical-game notice, crediting Stone Blade Entertainment and Ultra PRO,
+  own-the-physical-game notice, crediting the original creators and publisher in
+  vague euphemisms (deliberately does NOT name the original game or its publisher),
   with a "Made with care by slowfadegold.com" footer. Reached via the **ABOUT**
   button on the setup screen (`ValueKey('aboutButton')`) or the `?about=1` URL.
 - **Destiny tray** (`widgets/destiny_tray.dart`, `showDestinyTray`) — the claimed

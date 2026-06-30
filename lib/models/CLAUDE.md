@@ -1,11 +1,11 @@
 # lib/models
 
-Immutable data classes and enums for the Shards of Infinity card game.
+Immutable data classes and enums for the Fragments of Boundlessness card game.
 
 ## Files
 
 ### card_model.dart
-`CardModel` — immutable card definition with all Shards of Infinity fields:
+`CardModel` — immutable card definition with all Fragments of Boundlessness fields:
 - `id`, `name`, `cost`, `playEffects` — core identity
 - `faction` (Faction enum) — which of the 4 factions (or none)
 - `cardType` (CardType enum) — regular, champion, or mercenary
@@ -33,7 +33,7 @@ All fields have defaults for backward compatibility with legacy DeckService.
 
 **Activated abilities (Exhaust) — implemented as value types, not effects:**
 `ActivatedAbility` and `ActivationCost` (also in `card_effect.dart`) model
-Shards of Infinity's "Exhaust: <effect>" champion abilities **structurally**, NOT
+Fragments of Boundlessness's "Exhaust: <effect>" champion abilities **structurally**, NOT
 as a `CardEffect` subtype. An `ActivatedAbility` is a *container* of ordinary
 `CardEffect`s plus an optional `ActivationCost` (`gems` / `mastery` / `health`,
 all default 0; `ActivationCost.none` = Exhaust-only). It is attached to a card

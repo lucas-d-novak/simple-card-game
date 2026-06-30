@@ -140,7 +140,7 @@ played card's effects via `GameService.copyPlayedCard`; copy-cards and
 `acquire`/`toHandLosePowerEqualToCost`; reveals the top of the CENTER deck via
 `GameService.centerDeckScryReveal`/`centerDeckScryResolve`),
 `infinityShard`, `chooseOne` (`choices`: array of effect groups). `gainMoney`
-is legacy and not part of the Shards of Infinity database.
+is legacy and not part of the Fragments of Boundlessness database.
 
 `scalingResource` generalises `conditionalPower` to any resource pool;
 `conditionalPower` is kept for back-compat (it still decodes to

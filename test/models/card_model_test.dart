@@ -29,7 +29,7 @@ void main() {
     });
   });
 
-  group('CardModel Shards of Infinity fields', () {
+  group('CardModel Fragments of Boundlessness fields', () {
     test('faction card with ally ability constructs correctly', () {
       const card = CardModel(
         id: 'h1',

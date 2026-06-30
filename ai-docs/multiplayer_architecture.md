@@ -1,7 +1,7 @@
 # Multiplayer Architecture
 
 **Status:** Phase 0/1 implemented (`server/`); Phases 2/3 design-ready.
-**Scope:** Online, turn-based, 2–4 player Shards of Infinity over the network.
+**Scope:** Online, turn-based, 2–4 player Fragments of Boundlessness over the network.
 **Model:** Authoritative server. The server runs the real game engine; clients
 are untrusted thin terminals that send *actions* and render *state*.
 
@@ -268,7 +268,7 @@ mutations — see deferred selection below.)
 
 > **Implemented (Destiny + Relics now wired).** `claimDestiny`,
 > `useDestinyAbility`, and `recruitRelic` (the Destiny and Relics subsystems —
-> see [`shards_of_infinity_mechanics.md`](shards_of_infinity_mechanics.md) §25)
+> see [`fragments_of_boundlessness_mechanics.md`](fragments_of_boundlessness_mechanics.md) §25)
 > are now exposed as wire actions in `server/lib/protocol.dart` (rows above),
 > guarded by the same identity/turn/legality gates. The only Destiny method still
 > not on the wire is `banishDestinyToCascade` (the rare "cascade past unwanted

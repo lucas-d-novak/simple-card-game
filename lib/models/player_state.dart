@@ -3,7 +3,7 @@ import 'package:simple_card_game/models/card_model.dart';
 import 'package:simple_card_game/models/card_type.dart';
 import 'package:simple_card_game/models/faction.dart';
 
-/// Mutable per-player state for a Shards of Infinity game.
+/// Mutable per-player state for a Fragments of Boundlessness game.
 class PlayerState {
   PlayerState({required this.id, required this.name, this.character});
 

@@ -1,5 +1,5 @@
 name: shards_server
-description: Authoritative WebSocket game server for the Shards of Infinity clone.
+description: Authoritative WebSocket game server for the Fragments of Boundlessness clone.
 publish_to: none
 
 environment:

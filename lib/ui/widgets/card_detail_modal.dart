@@ -19,7 +19,7 @@ class CardDetailAction {
   final bool enabled;
 }
 
-/// A full-screen card-detail modal matching the official Shards of Infinity
+/// A full-screen card-detail modal matching the official Fragments of Boundlessness
 /// client (reference 03/04): the tapped card scaled up and centered with a
 /// bright cyan glow, blue chevron nav arrows on each side to page through the
 /// row, and a large glowing circular action button bottom-left whose label is

@@ -1,4 +1,4 @@
-# Shards of Infinity - Implementation Plan
+# Fragments of Boundlessness - Implementation Plan
 
 > Branch: `rld-mvp-sprint`
 > Generated: 2026-06-27
@@ -13,7 +13,7 @@
 | v6 | 2026-06-27 | Revised to address all 17 issues from `implementation_plan_review.md`. Key changes: added Banish/Scrap step (review #1), added missing effect types (review #2-#5), split Steps 5 and 12 (review #6-#7), resolved DeckService strategy (review #8), added open PR decision (review #9), specified test fixture cards (review #12), clarified draw timing (review #14), added cleanupTurn() (review #15), addressed all remaining MEDIUM/LOW issues. Renumbered all steps sequentially. |
 
 This plan converts the current simple card game prototype into a faithful digital
-Shards of Infinity implementation. Each step is independently testable and leaves
+Fragments of Boundlessness implementation. Each step is independently testable and leaves
 the app in a runnable state. Steps are ordered by dependency -- no step references
 concepts introduced in a later step.
 
@@ -95,7 +95,7 @@ Step 2: CardModel Overhaul
 
 **Depends on:** Nothing (foundational)
 
-**What:** Introduce enums for factions and card types. Extend the `CardEffect` sealed hierarchy with all effect subclasses needed for Shards of Infinity, including effects identified in `shards_of_infinity_mechanics.md` Section 24.
+**What:** Introduce enums for factions and card types. Extend the `CardEffect` sealed hierarchy with all effect subclasses needed for Fragments of Boundlessness, including effects identified in `fragments_of_boundlessness_mechanics.md` Section 24.
 
 **Files to modify:**
 - `lib/models/card_effect.dart` -- add new effect subclasses
@@ -130,7 +130,7 @@ Step 2: CardModel Overhaul
 
 **Complexity:** S
 
-**Replaces/extends:** Extends `card_effect.dart`. `GainMoneyEffect` is left intact; `GainGemsEffect` is its Shards of Infinity equivalent.
+**Replaces/extends:** Extends `card_effect.dart`. `GainMoneyEffect` is left intact; `GainGemsEffect` is its Fragments of Boundlessness equivalent.
 
 ---
 
@@ -138,7 +138,7 @@ Step 2: CardModel Overhaul
 
 **Depends on:** Step 1 (needs Faction, CardType, new effects)
 
-**What:** Extend `CardModel` with all fields needed for Shards of Infinity cards. The model becomes the single source of truth for card identity.
+**What:** Extend `CardModel` with all fields needed for Fragments of Boundlessness cards. The model becomes the single source of truth for card identity.
 
 **Files to modify:**
 - `lib/models/card_model.dart`
@@ -222,7 +222,7 @@ List<CardModel> championsInPlay;
 
 **Depends on:** Steps 1-2 (needs Faction, CardType, new effects, updated CardModel)
 
-**What:** Define the Shards of Infinity starter deck (7 Crystals, 2 Blasters, 1 Infinity Shard) and a set of test fixture cards covering all mechanical variations needed by Steps 5-15. This step is data-only -- no game logic changes.
+**What:** Define the Fragments of Boundlessness starter deck (7 Crystals, 2 Blasters, 1 Infinity Shard) and a set of test fixture cards covering all mechanical variations needed by Steps 5-15. This step is data-only -- no game logic changes.
 
 **Files to create:**
 - `lib/data/card_definitions.dart` -- static card templates
@@ -819,7 +819,7 @@ final class InfinityShardEffect extends CardEffect {
 
 **Depends on:** Steps 5-15 (all game logic complete)
 
-**What:** Rewire the UI to use `GameService` instead of `DeckService`. Update the screen to show Shards of Infinity gameplay elements. This is where `DeckService` and `GainMoneyEffect` are finally retired (review issue #8).
+**What:** Rewire the UI to use `GameService` instead of `DeckService`. Update the screen to show Fragments of Boundlessness gameplay elements. This is where `DeckService` and `GainMoneyEffect` are finally retired (review issue #8).
 
 **Files to modify:**
 - `lib/ui/screens/home_screen.dart` -- rewire to GameService (or create new `game_screen.dart`)
@@ -919,7 +919,7 @@ The current codebase has 23 tests (13 service, 10 widget). Here is how they are 
 
 **Steps 6-15 (new mechanics, old code untouched):** All new mechanics are tested via `game_service_test.dart`. Old tests continue to pass because `DeckService` and its dependencies are never modified.
 
-**Step 16 (UI rewrite):** Old widget tests are replaced with new ones targeting the Shards of Infinity UI. `DeckService`, `GainMoneyEffect`, and old widget tests are removed. This is the single breaking-change step for old code.
+**Step 16 (UI rewrite):** Old widget tests are replaced with new ones targeting the Fragments of Boundlessness UI. `DeckService`, `GainMoneyEffect`, and old widget tests are removed. This is the single breaking-change step for old code.
 
 **Test file plan:**
 - `test/models/card_model_test.dart` -- new (Step 2)

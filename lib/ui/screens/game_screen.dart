@@ -20,7 +20,7 @@ import 'package:simple_card_game/ui/widgets/game_card_widget.dart';
 import 'package:simple_card_game/ui/widgets/resource_icons.dart';
 import 'package:simple_card_game/ui/widgets/scrollable_board.dart';
 
-/// The main game screen for Shards of Infinity.
+/// The main game screen for Fragments of Boundlessness.
 /// Layout (top to bottom):
 ///   1. Opponent resource bar
 ///   2. Opponent champions in play

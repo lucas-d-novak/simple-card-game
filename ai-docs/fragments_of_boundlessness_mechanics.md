@@ -1,4 +1,4 @@
-# Shards of Infinity - Complete Game Mechanics Reference
+# Fragments of Boundlessness - Complete Game Mechanics Reference
 
 > **Note**: This document was compiled from training-data knowledge (no live web access was available during creation). See "Research Confidence" at the bottom for accuracy ratings.
 >
@@ -8,14 +8,12 @@
 
 ## 1. Overview
 
-- **Designer**: Gary Arant, Justin Gary
-- **Publisher**: Stone Blade Entertainment (Ultra Pro)
-- **Year**: 2018
+- **Designer / Publisher**: the original creators and publisher of our favourite board game
 - **Players**: 2-4 (best at 2)
 - **Play Time**: ~30 minutes
 - **Genre**: Deck-building card game with direct combat
 
-Shards of Infinity is a competitive deck-building game where players acquire cards from a shared market, build up their decks, gain Mastery, and attempt to reduce opponents' health to zero -- or achieve an infinite-damage win via the Infinity Shard.
+Fragments of Boundlessness is a competitive deck-building game where players acquire cards from a shared market, build up their decks, gain Mastery, and attempt to reduce opponents' health to zero -- or achieve an infinite-damage win via the Infinity Shard.
 
 ---
 
@@ -198,7 +196,7 @@ There are **four factions** in the base game, each with a distinct color and mec
 
 ## 11. Card Anatomy
 
-Each card in Shards of Infinity has the following fields:
+Each card in Fragments of Boundlessness has the following fields:
 
 | Field | Description |
 |-------|-------------|
@@ -714,9 +712,9 @@ populated from the `Character → [offensive, defensive] relic ids` map in
 
 The base game has been expanded with:
 
-1. **Shards of Infinity: Relics of the Future** (2019) - Adds Relic cards (a new card type that provides persistent effects, similar to Champions but with different mechanics). **Implemented** — see §24b (Relics).
-2. **Shards of Infinity: Shadow of Salvation** (2020) - Adds new cards and mechanics including the Focus ability. Focus is **implemented** — see §24b (Character Focus).
-3. **Shards of Infinity: Into the Horizon** - Adds the Destiny supply. **Implemented** — see §24b (Destiny).
+1. **Fragments of Boundlessness: Relics of the Future** (2019) - Adds Relic cards (a new card type that provides persistent effects, similar to Champions but with different mechanics). **Implemented** — see §24b (Relics).
+2. **Fragments of Boundlessness: Shadow of Salvation** (2020) - Adds new cards and mechanics including the Focus ability. Focus is **implemented** — see §24b (Character Focus).
+3. **Fragments of Boundlessness: Into the Horizon** - Adds the Destiny supply. **Implemented** — see §24b (Destiny).
 
 > **Note for implementation**: Sections 1–24 describe the **base game**; the three
 > expansion mechanics this engine implements are documented in §24b above. Other
@@ -757,9 +755,9 @@ Understanding strategic archetypes helps ensure the game is implemented correctl
 
 ## 27. Differences from Similar Games (Star Realms)
 
-Since Shards of Infinity shares a designer (Justin Gary) and publisher lineage with Star Realms/Hero Realms, noting the key differences helps avoid conflating rules:
+Since Fragments of Boundlessness shares a designer and publisher lineage with Star Realms/Hero Realms, noting the key differences helps avoid conflating rules:
 
-| Feature | Shards of Infinity | Star Realms |
+| Feature | Fragments of Boundlessness | Star Realms |
 |---------|-------------------|-------------|
 | Health | 50 HP | 50 Authority |
 | Mastery system | Yes (unique) | No equivalent |
@@ -801,13 +799,13 @@ Since Shards of Infinity shares a designer (Justin Gary) and publisher lineage w
 4. **First player draw count**: Confirmed as reduced, but the exact count (3 vs 4) for different player counts needs verification.
 5. **Some special card effects**: Cards with unique/complex effects may exist that are not captured in the card list.
 6. **Official errata or FAQ**: No official FAQ was accessible; some rulings may have been updated by the publisher.
-7. **Digital app differences**: The official Shards of Infinity digital app (by Temple Gates Games) may have slight rule clarifications that differ from the physical rulebook.
+7. **Digital app differences**: The official Fragments of Boundlessness digital app (by Temple Gates Games) may have slight rule clarifications that differ from the physical rulebook.
 
 ### Recommendation for Developer
 
 For a faithful implementation, the developer should:
 1. **Acquire the physical game** or official digital app to verify the card list.
 2. **Cross-reference** the card list in Section 15 with the actual cards -- use this document as a structural template and fill in exact values.
-3. **Check the official rulebook PDF** (available from Stone Blade Entertainment's website) for any rules this document may have slightly wrong.
+3. **Check the official rulebook PDF** (available from the original publisher's website) for any rules this document may have slightly wrong.
 4. **Test edge cases** from Section 18 against the official app's behavior.
 5. **Start with the core engine** (turn flow, resources, card types) which is high-confidence, then layer in specific cards.

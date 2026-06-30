@@ -2,7 +2,7 @@
 
 > Reviewer: Senior Game Developer (automated review)
 > Date: 2026-06-27
-> Documents reviewed: `implementation_plan.md` (v5 final), `shards_of_infinity_mechanics.md`
+> Documents reviewed: `implementation_plan.md` (v5 final), `fragments_of_boundlessness_mechanics.md`
 > Codebase files reviewed: `deck_service.dart`, `card_model.dart`, `card_effect.dart`, `deck_service_test.dart`, `widget_test.dart`
 
 ---
@@ -22,7 +22,7 @@ The plan is well-structured with clear dependency ordering, sensible step sizing
 - Scrapping a card from the Center Row (market denial)
 - The UI for selecting which card to banish (a targeting/selection sub-system)
 
-This is not a minor feature -- deck thinning is a core strategic mechanic in Shards of Infinity. Without it, Crystal-heavy decks cannot be trimmed and the game's mid-to-late pacing breaks down.
+This is not a minor feature -- deck thinning is a core strategic mechanic in Fragments of Boundlessness. Without it, Crystal-heavy decks cannot be trimmed and the game's mid-to-late pacing breaks down.
 
 **Suggested fix:** Add a new Step 7.5 or renumber: "Banish & Scrap System" between mercenaries and ally abilities. This step needs:
 - `BanishFromHandEffect`, `BanishFromDiscardEffect`, `ScrapFromCenterRowEffect` subclasses (or a parameterized `BanishCardEffect(BanishSource source)`)
@@ -117,7 +117,7 @@ The plan says Step 5 will either keep `GainMoneyEffect` as a redirect to `GainGe
 
 ### 10. MEDIUM -- Effect resolution order: ally abilities should re-trigger earlier cards
 **Affects:** Step 8
-**Problem:** Step 8 states: "When a new card is played that creates an ally condition for already-played cards this turn, those earlier cards do NOT retroactively trigger." However, the mechanics doc Section 4a says ally abilities trigger "if you have played (or have in play) another card of the same faction during this turn" -- it does not explicitly say retroactive triggering is forbidden. The mechanics doc Section 18 FAQ says "playing a faction card first means subsequent cards of that faction will trigger their ally abilities" which matches the plan's interpretation. However, some implementations of Shards of Infinity (including the official digital app) DO allow retroactive ally triggers when a second faction card is played. The plan should at minimum acknowledge this ambiguity and make the choice explicit with a code comment.
+**Problem:** Step 8 states: "When a new card is played that creates an ally condition for already-played cards this turn, those earlier cards do NOT retroactively trigger." However, the mechanics doc Section 4a says ally abilities trigger "if you have played (or have in play) another card of the same faction during this turn" -- it does not explicitly say retroactive triggering is forbidden. The mechanics doc Section 18 FAQ says "playing a faction card first means subsequent cards of that faction will trigger their ally abilities" which matches the plan's interpretation. However, some implementations of Fragments of Boundlessness (including the official digital app) DO allow retroactive ally triggers when a second faction card is played. The plan should at minimum acknowledge this ambiguity and make the choice explicit with a code comment.
 
 **Suggested fix:** Add a note to Step 8 acceptance criteria: "Test: playing card A (Homodeus) then card B (Homodeus) -- verify whether A's ally ability triggers retroactively. Document the chosen behavior in a code comment citing the rule source."
 

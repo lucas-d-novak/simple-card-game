@@ -2,14 +2,14 @@
 
 ## Quick Summary
 
-This repo is a Flutter implementation of the **Shards of Infinity** deck-building
+This repo is a Flutter implementation of the **Fragments of Boundlessness** deck-building
 card game, targeting Windows, iOS, Android, and web. See
 [`CLAUDE.md`](CLAUDE.md) for the full architecture overview and
 [`ROADMAP.md`](ROADMAP.md) for deferred / future enhancements.
 
 The real game engine is `GameService`
 ([`lib/services/game_service.dart`](lib/services/game_service.dart)) — a pure-Dart
-Shards of Infinity orchestrator implementing multiplayer turns, all **31**
+Fragments of Boundlessness orchestrator implementing multiplayer turns, all **31**
 `CardEffect` types, champions/guard/ally abilities, mastery, banish/scrap, the
 Character Focus action (gem→mastery), the Destiny system, Relics, and the
 Infinity Shard win condition. Card identity comes from a JSON card database
@@ -122,7 +122,7 @@ flutter test test/screenshot_test.dart --update-goldens
 
 ## What Is Implemented
 
-### Shards of Infinity engine (`GameService`)
+### Fragments of Boundlessness engine (`GameService`)
 
 - Full multiplayer turn structure (play / buy / attack / end / Focus), 2-4 players
 - All **31** `CardEffect` types resolved via exhaustive switch
@@ -181,8 +181,9 @@ flutter test test/screenshot_test.dart --update-goldens
 - Landscape `ScrollableBoard` ([`scrollable_board.dart`](lib/ui/widgets/scrollable_board.dart))
   + web PWA meta ([`web/manifest.json`](web/manifest.json))
 - Fan-made **About page** ([`about_screen.dart`](lib/ui/screens/about_screen.dart)) —
-  non-commercial credits to Stone Blade / Ultra PRO; reachable via an ABOUT button on
-  the setup screen and `?about=1`
+  non-commercial credits to the original creators (in vague euphemisms — does not name
+  the original game or its publisher); reachable via an ABOUT button on the setup
+  screen and `?about=1`
 
 ### Legacy deck-draw demo (`DeckService`)
 
@@ -195,7 +196,7 @@ flutter test test/screenshot_test.dart --update-goldens
 ### Core app files
 
 - [`lib/main.dart`](lib/main.dart): app entry point, theme, routes to `GameSetupScreen`
-- [`lib/services/game_service.dart`](lib/services/game_service.dart): **the active engine** — all Shards of Infinity mechanics (incl. Focus, Destiny, Relics)
+- [`lib/services/game_service.dart`](lib/services/game_service.dart): **the active engine** — all Fragments of Boundlessness mechanics (incl. Focus, Destiny, Relics)
 - [`lib/services/ai_service.dart`](lib/services/ai_service.dart): heuristic AI opponent
 - [`lib/services/game_client.dart`](lib/services/game_client.dart): networked client (send actions, undo, apply redacted views)
 - [`lib/models/card_effect.dart`](lib/models/card_effect.dart): the 31 card effect types
@@ -281,7 +282,7 @@ desktop browsers and phones. Design notes:
 ## How The App Works (legacy deck-draw demo)
 
 > The sections below describe the legacy `DeckService` demo only. The active
-> Shards of Infinity engine is `GameService`; see [`CLAUDE.md`](CLAUDE.md) and
+> Fragments of Boundlessness engine is `GameService`; see [`CLAUDE.md`](CLAUDE.md) and
 > [`lib/services/CLAUDE.md`](lib/services/CLAUDE.md).
 
 ### State ownership
@@ -365,7 +366,7 @@ If you are new to the legacy demo and want to get productive quickly:
 
 ## Current Architecture In One Sentence
 
-This is a Flutter implementation of Shards of Infinity whose pure-Dart
+This is a Flutter implementation of Fragments of Boundlessness whose pure-Dart
 `GameService` engine (31 effect types, 183-card JSON database, Focus / Destiny /
 Relics, DB-built market) is reused both by the Flutter client and by an
 authoritative WebSocket server in [`server/`](server/) for networked multiplayer

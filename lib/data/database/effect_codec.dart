@@ -358,7 +358,7 @@ Map<String, dynamic> encodeEffect(CardEffect effect) {
         ],
       };
     case GainMoneyEffect():
-      // Legacy effect — not part of the Shards of Infinity database.
+      // Legacy effect — not part of the Fragments of Boundlessness database.
       return {'type': 'gainMoney', 'amount': effect.amount};
   }
 }

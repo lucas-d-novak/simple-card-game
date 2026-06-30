@@ -1,4 +1,4 @@
-/// The three card types in Shards of Infinity.
+/// The three card types in Fragments of Boundlessness.
 ///
 /// - [regular]: Standard cards that go to discard after being played.
 /// - [champion]: Persist in play across turns, providing effects each turn.

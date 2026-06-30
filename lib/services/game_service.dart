@@ -37,7 +37,7 @@ class GameLogEntry {
       );
 }
 
-/// Orchestrates a Shards of Infinity game: turn lifecycle, effect resolution,
+/// Orchestrates a Fragments of Boundlessness game: turn lifecycle, effect resolution,
 /// market management, and multi-player turn rotation.
 class GameService {
   GameService({
@@ -459,7 +459,7 @@ class GameService {
   }
 
   /// Character **Focus** — the universal once-per-turn base action: exhaust your
-  /// character card and pay 1 gem to gain 1 mastery (Shards of Infinity core
+  /// character card and pay 1 gem to gain 1 mastery (Fragments of Boundlessness core
   /// rules). Available to every player every turn, independent of any card.
   ///
   /// Returns false (no state change) if the player can't act, has already

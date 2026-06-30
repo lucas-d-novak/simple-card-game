@@ -8,7 +8,7 @@ class CardModel {
   final int cost;
   final List<CardEffect> playEffects;
 
-  // --- Shards of Infinity fields (all have defaults for backward compat) ---
+  // --- Fragments of Boundlessness fields (all have defaults for backward compat) ---
 
   /// Which faction this card belongs to. Factionless cards use [Faction.none].
   final Faction faction;

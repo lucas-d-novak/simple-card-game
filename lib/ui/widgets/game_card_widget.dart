@@ -10,7 +10,7 @@ import 'package:simple_card_game/ui/theme/faction_colors.dart';
 import 'package:simple_card_game/ui/widgets/card_art.dart';
 import 'package:simple_card_game/ui/widgets/resource_icons.dart';
 
-/// A styled card widget matching the official Shards of Infinity card frame:
+/// A styled card widget matching the official Fragments of Boundlessness card frame:
 /// faction-tinted title bar, blue teardrop recruit cost, painted art filling
 /// the upper portion, a faction "<Faction> <Type>" italic banner, a green
 /// value chevron, a shield badge (champions), and a MERCENARY tab.

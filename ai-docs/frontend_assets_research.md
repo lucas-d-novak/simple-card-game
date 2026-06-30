@@ -1,9 +1,9 @@
-# Frontend Assets & Design Research: Shards of Infinity Digital Card Game
+# Frontend Assets & Design Research: Fragments of Boundlessness Digital Card Game
 
 > Compiled for the simple-card-game Flutter project.
 > Last updated: 2026-06-27
 >
-> **Cross-references**: Game rules, faction identities, and card data are the source of truth in `shards_of_infinity_mechanics.md`. Visual iteration workflow is in `visual_iteration_system.md`. Colors and themes in this doc must match the faction definitions in the mechanics doc (Section 9).
+> **Cross-references**: Game rules, faction identities, and card data are the source of truth in `fragments_of_boundlessness_mechanics.md`. Visual iteration workflow is in `visual_iteration_system.md`. Colors and themes in this doc must match the faction definitions in the mechanics doc (Section 9).
 
 ---
 
@@ -41,7 +41,7 @@
 
 ### Recommendation
 
-For a deck-builder like Shards of Infinity, the best approach is:
+For a deck-builder like Fragments of Boundlessness, the best approach is:
 - **Use Flame** if you want a full game-engine approach with sprite-based rendering, custom draw calls, and a game loop. Best for complex board states, particle effects, and smooth 60fps animations.
 - **Use pure Flutter widgets + `flutter_animate`** if you want to stay in the widget tree for easier layout, accessibility, and responsive design. Card games are mostly static layout with occasional animation bursts, so this works well.
 - **Hybrid approach**: Use Flutter widgets for layout/UI chrome, and an embedded Flame widget for the play area where cards animate.
@@ -65,11 +65,11 @@ Flutter's built-in `Draggable` and `DragTarget` widgets are sufficient for card 
 - **What works**: Clear card costs visible even when fanned. Color-coded card types (red=attack, green=skill, blue=power). Hover/tap to enlarge.
 - **Takeaway for us**: Fan layout for hand, tap-to-zoom for detail, color-code by faction.
 
-#### Star Realms (Mobile App - closest to Shards of Infinity)
+#### Star Realms (Mobile App - closest to Fragments of Boundlessness)
 - **Layout**: Trade row (market) across center. Player areas top and bottom. Hand at very bottom fanned.
 - **Card design**: Landscape-ish small cards in trade row; portrait in hand. Faction colors on card borders (blue=Trade Federation, red=Machine Cult, green=Blob, yellow=Star Empire).
 - **What works**: Compact trade row showing 5 cards. Clear faction identification through border colors. Combat/trade values in distinct icon badges.
-- **Takeaway for us**: This is the closest reference. Copy the trade row + hand + player board layout. Use faction border colors heavily. Note: Shards of Infinity uses a **6-card** center row, not 5 (see `shards_of_infinity_mechanics.md` Section 10).
+- **Takeaway for us**: This is the closest reference. Copy the trade row + hand + player board layout. Use faction border colors heavily. Note: Fragments of Boundlessness uses a **6-card** center row, not 5 (see `fragments_of_boundlessness_mechanics.md` Section 10).
 
 #### Hearthstone (Mobile/PC)
 - **Layout**: Battlefield in center, hand fanned at bottom. Mana crystals bottom-right. Hero portrait bottom-center.
@@ -113,7 +113,7 @@ Flutter's built-in `Draggable` and `DragTarget` widgets are sufficient for card 
 
 ### AI-Generated Art Consideration
 
-For a Shards of Infinity adaptation, card art could be generated using AI image tools (Midjourney, DALL-E, Stable Diffusion) for prototyping. For a production game:
+For a Fragments of Boundlessness adaptation, card art could be generated using AI image tools (Midjourney, DALL-E, Stable Diffusion) for prototyping. For a production game:
 - Use AI art for placeholders/prototypes
 - Commission or use properly licensed art for release
 - Stable Diffusion (open source) models can run locally for unlimited generations
@@ -153,7 +153,7 @@ For immediate prototyping:
 | **`phosphor_flutter`** (pub.dev) | Phosphor icon set. Clean, modern. Has sword, shield, lightning, crown, diamond, etc. |
 | **`fluentui_system_icons`** (pub.dev) | Microsoft's Fluent icons. Large set, some game-relevant options. |
 
-### Custom Icon Strategy for Shards of Infinity
+### Custom Icon Strategy for Fragments of Boundlessness
 
 For faction symbols specifically, recommend:
 1. Download base shapes from game-icons.net (CC-BY 3.0, attribute "Lorc, Delapouite" etc.)
@@ -174,7 +174,7 @@ For faction symbols specifically, recommend:
 
 ## 5. Card Frame/Template Design
 
-### Card Anatomy for Shards of Infinity
+### Card Anatomy for Fragments of Boundlessness
 
 A typical deck-builder card needs these zones:
 
@@ -250,7 +250,7 @@ Card widget = Stack(
 
 ### Faction Border Design Suggestions
 
-Each faction should have a distinct border treatment (see `shards_of_infinity_mechanics.md` Section 9 for faction themes):
+Each faction should have a distinct border treatment (see `fragments_of_boundlessness_mechanics.md` Section 9 for faction themes):
 - **Homodeus (Blue)**: Clean geometric lines, circuit-board pattern, blue glow — tech/transcendence
 - **Wraethe (Purple)**: Sharp angular corners, dark purple/black with glow edges — destruction/chaos
 - **Order of the New Dawn (Gold)**: Ornate borders, radiant golden trim, shield motifs — healing/defense
@@ -310,9 +310,9 @@ Each faction should have a distinct border treatment (see `shards_of_infinity_me
 
 ### Faction Color Palettes
 
-Shards of Infinity has four factions. Here are suggested color palettes inspired by the original game's aesthetic, with hex codes ready for Flutter (`Color(0xFF______)`).
+Fragments of Boundlessness has four factions. Here are suggested color palettes inspired by the original game's aesthetic, with hex codes ready for Flutter (`Color(0xFF______)`).
 
-> **Cross-ref**: Faction identities, themes, and mechanics are defined in `shards_of_infinity_mechanics.md` Section 9. Colors below must match those definitions.
+> **Cross-ref**: Faction identities, themes, and mechanics are defined in `fragments_of_boundlessness_mechanics.md` Section 9. Colors below must match those definitions.
 
 #### Faction 1: Homodeus (Technology/Knowledge/Transcendence) - BLUE
 | Role | Hex | Swatch |
@@ -641,9 +641,9 @@ For a card game with complex state:
 | **Card UI design patterns** | **High** | Star Realms app is the closest reference. Slay the Spire and Hearthstone patterns well understood. Consider playing Star Realms mobile app for direct reference. |
 | **Free/open art assets** | **High** | Kenney.nl (CC0) and game-icons.net (CC-BY) are the strongest starting points. OpenGameArt has volume. For card art specifically, AI generation or commissioning will likely be needed. |
 | **Icon libraries** | **High** | game-icons.net covers nearly all game concepts. flutter_svg handles SVG rendering. Material and Phosphor icons fill gaps. |
-| **Card frame/template design** | **Medium** | Design approach is clear (widget composition vs CustomPainter vs pre-rendered). Gap: no specific free Shards-of-Infinity-style card frame templates exist. Will need custom design work. |
+| **Card frame/template design** | **Medium** | Design approach is clear (widget composition vs CustomPainter vs pre-rendered). Gap: no specific free Fragments-of-Boundlessness-style card frame templates exist. Will need custom design work. |
 | **Animation and polish** | **High** | flutter_animate + implicit animations cover most needs. Lottie/Rive for premium effects. Performance patterns well documented. |
-| **Color palettes** | **High** | Hex codes provided for all 4 factions plus UI chrome. Based on the actual Shards of Infinity faction identities. Fine-tune based on playtesting. |
+| **Color palettes** | **High** | Hex codes provided for all 4 factions plus UI chrome. Based on the actual Fragments of Boundlessness faction identities. Fine-tune based on playtesting. |
 | **Typography** | **High** | Google Fonts recommendations are concrete and tested. Orbitron + Inter is a strong combination for sci-fi card games. |
 | **Sound effects** | **High** | Multiple free sources identified with URLs. Kenney and Freesound are the strongest. Flutter audio packages are mature. |
 | **Responsive layout** | **High** | Breakpoints, layout strategies, and code patterns provided. Built-in Flutter responsive tools are sufficient. |

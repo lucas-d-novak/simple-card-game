@@ -1,20 +1,20 @@
 # Engine Gaps — Unmodeled Multiplayer Card Mechanics
 
-A catalogue of Shards of Infinity card mechanics that the current engine's
+A catalogue of Fragments of Boundlessness card mechanics that the current engine's
 `CardEffect` vocabulary **cannot express**, plus a proposed, phased plan to
 extend the engine. Scope is **competitive multiplayer only** — co-op content is
 out of scope (see the project's multiplayer-only memory note). **Update:** since
 this catalogue was written, Destiny is now **in scope and implemented**
 (Destiny supply + `claimDestiny`/`useDestinyAbility`/`banishDestinyToCascade`),
 along with Character **Focus** and **Relics**; see
-[`shards_of_infinity_mechanics.md`](shards_of_infinity_mechanics.md) §24b.
+[`fragments_of_boundlessness_mechanics.md`](fragments_of_boundlessness_mechanics.md) §24b.
 
 Cross-references:
 - Effect model & extension recipe: [`lib/models/CLAUDE.md`](../lib/models/CLAUDE.md)
 - Codec + JSON DB layer (must mirror any new effect):
   [`lib/data/CLAUDE.md`](../lib/data/CLAUDE.md)
 - Source of truth for rules:
-  [`ai-docs/shards_of_infinity_mechanics.md`](shards_of_infinity_mechanics.md)
+  [`ai-docs/fragments_of_boundlessness_mechanics.md`](fragments_of_boundlessness_mechanics.md)
 
 ## Current vocabulary (baseline)
 

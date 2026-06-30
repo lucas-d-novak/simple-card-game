@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fetch and crop Shards of Infinity card art from TTS spritesheet URLs.
+"""Fetch and crop Fragments of Boundlessness card art from TTS spritesheet URLs.
 
 Reads a card map (name, sheet URL, grid dims, row/col), downloads each unique
 sheet once, crops each card by its grid cell, and saves to assets/cards/<id>.jpg.

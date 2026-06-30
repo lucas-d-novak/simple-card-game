@@ -1,4 +1,4 @@
-# Frontend Design Spec — match the official Shards of Infinity client
+# Frontend Design Spec — match the official Fragments of Boundlessness client
 
 The five reference stills in this folder are the **canonical visual target** for
 the game board UI. Goal (per user decision 2026-06-29): **match the layout and
