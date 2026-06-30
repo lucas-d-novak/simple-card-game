@@ -41,6 +41,13 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
   /// Rehydrated card models from the latest state's `cards` dictionary, by id.
   Map<String, CardModel> _cards = const {};
 
+  /// A deferred target-selection prompt queued by a card we just played. It runs
+  /// on the NEXT server state (not synchronously after [GameClient.playCard],
+  /// which only sends a message) so the picker reads the POST-play state — e.g.
+  /// the just-played card is already out of hand, opponents' champions reflect
+  /// the play, etc. Cleared once fired.
+  VoidCallback? _pendingSelection;
+
   @override
   void initState() {
     super.initState();
@@ -56,6 +63,15 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
 
   void _onChanged() {
     _syncCards();
+    // Fire any deferred selection now that the post-play state has arrived.
+    final pending = _pendingSelection;
+    if (pending != null) {
+      _pendingSelection = null;
+      // Schedule after this frame so the modal opens over the updated board.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) pending();
+      });
+    }
     if (mounted) setState(() {});
   }
 
@@ -115,7 +131,9 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
     }
     widget.client.playCard(card.id);
     _flash('Played ${card.name}');
-    _handlePostPlayEffects(card);
+    // Queue any target picker to run on the NEXT server state (after the play
+    // is reflected), not synchronously — playCard only sent a message.
+    _queuePostPlayEffects(card);
   }
 
   // ---- deferred-selection target pickers ----------------------------------
@@ -126,24 +144,26 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
   // from the LATEST redacted view at prompt time (own hand/discard, center row,
   // opponent champions) — all hidden-info-safe, since the server still validates.
 
-  /// After a card is played, surface a target picker for the FIRST deferred
-  /// effect it carries (banish / scrap / destroy-champion / return-from-discard).
-  void _handlePostPlayEffects(CardModel card) {
+  /// Queue a target picker for the FIRST deferred effect a just-played card
+  /// carries (banish / scrap / destroy-champion / return-from-discard). The
+  /// picker runs on the next server state via [_pendingSelection] so it reads
+  /// the POST-play board (the played card already gone from hand, etc.).
+  void _queuePostPlayEffects(CardModel card) {
     for (final effect in card.playEffects) {
       if (effect is BanishCardEffect) {
-        _promptBanish(effect.source);
+        _pendingSelection = () => _promptBanish(effect.source);
         return;
       }
       if (effect is ScrapFromCenterRowEffect) {
-        _promptScrap();
+        _pendingSelection = _promptScrap;
         return;
       }
       if (effect is DestroyChampionEffect && !effect.all) {
-        _promptDestroyChampion();
+        _pendingSelection = _promptDestroyChampion;
         return;
       }
       if (effect is ReturnFromDiscardEffect) {
-        _promptReturnFromDiscard();
+        _pendingSelection = _promptReturnFromDiscard;
         return;
       }
     }
@@ -209,9 +229,9 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
       subtitle: 'Remove one from the game',
       candidates: candidates,
       emptyMsg: 'No cards to banish',
-      onPick: (c) {
-        widget.client.banishCard(c.id, source.name);
-        _flash('Banished ${c.name}');
+      onPick: (t) {
+        widget.client.banishCard(t.id, source.name);
+        _flash('Banished ${t.card.name}');
       },
     );
   }
@@ -228,9 +248,9 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
       subtitle: 'Remove one market card from the game',
       candidates: candidates,
       emptyMsg: 'No cards to scrap',
-      onPick: (c) {
-        widget.client.scrapFromCenterRow(c.id);
-        _flash('Scrapped ${c.name}');
+      onPick: (t) {
+        widget.client.scrapFromCenterRow(t.id);
+        _flash('Scrapped ${t.card.name}');
       },
     );
   }
@@ -241,12 +261,11 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
     final view = _view;
     if (view == null) return;
     final candidates = <_TargetCandidate>[];
-    final owners = <String, String>{}; // championId -> owner id
     for (final p in view.players) {
       if (p.id == view.meId || p.eliminated) continue;
       for (final champ in p.champions) {
-        candidates.add(_TargetCandidate(_card(champ.id), p.name));
-        owners[champ.id] = p.id;
+        // Owner carried on the candidate (ids repeat across opponents).
+        candidates.add(_TargetCandidate(_card(champ.id), p.name, ownerId: p.id));
       }
     }
     _promptTargets(
@@ -254,9 +273,9 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
       subtitle: 'Destroy a target enemy champion',
       candidates: candidates,
       emptyMsg: 'No enemy champions to destroy',
-      onPick: (c) {
-        widget.client.destroyChampion(c.id, owners[c.id] ?? '');
-        _flash('Destroyed ${c.name}');
+      onPick: (t) {
+        widget.client.destroyChampion(t.id, t.ownerId ?? '');
+        _flash('Destroyed ${t.card.name}');
       },
     );
   }
@@ -274,9 +293,9 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
       subtitle: 'Return one from your discard pile to hand',
       candidates: candidates,
       emptyMsg: 'Your discard pile is empty',
-      onPick: (c) {
-        widget.client.returnFromDiscard(c.id);
-        _flash('Returned ${c.name}');
+      onPick: (t) {
+        widget.client.returnFromDiscard(t.id);
+        _flash('Returned ${t.card.name}');
       },
     );
   }
@@ -289,7 +308,7 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
     required String subtitle,
     required List<_TargetCandidate> candidates,
     required String emptyMsg,
-    required void Function(CardModel card) onPick,
+    required void Function(_TargetCandidate candidate) onPick,
   }) {
     if (candidates.isEmpty) {
       _flash(emptyMsg);
@@ -309,7 +328,7 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
       ],
     ).then((index) {
       if (index == null) return;
-      onPick(candidates[index].card);
+      onPick(candidates[index]);
     });
   }
 
@@ -935,9 +954,14 @@ class _ChampionView {
 /// One selectable target in a deferred-selection picker — a resolved card plus a
 /// short zone label (Hand / Discard / Center row / owner name).
 class _TargetCandidate {
-  _TargetCandidate(this.card, this.zone);
+  _TargetCandidate(this.card, this.zone, {this.ownerId});
   final CardModel card;
   final String zone;
+
+  /// For enemy-champion targets: which opponent OWNS this champion. Carried on
+  /// the candidate (not an id-keyed map) because champion ids are card-TYPE ids
+  /// that can repeat across opponents in 3-4 player games.
+  final String? ownerId;
   String get id => card.id;
 }
 
