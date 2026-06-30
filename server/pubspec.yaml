@@ -11,6 +11,7 @@ dependencies:
   # ai-docs/multiplayer_architecture.md.
   simple_card_game:
     path: ../
+  sqlite3: ^3.3.3
 
 dev_dependencies:
   test: ^1.24.0
