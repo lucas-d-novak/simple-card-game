@@ -769,12 +769,25 @@
         {
           "type": "drawCards",
           "count": 1
+        },
+        {
+          "type": "conditional",
+          "condition": {
+            "kind": "factionAllyPlayedOrInHand",
+            "faction": "undergrowth"
+          },
+          "then": [
+            {
+              "type": "destroyChampion",
+              "all": false
+            }
+          ]
         }
       ],
       "art": "thorn_zealot.jpg",
       "rawText": "Undergrowth Ally. Cost 3. Draw a card. Unify - Destroy an enemy Champion if you have played another Undergrowth Ally this turn or reveal one from your hand.",
-      "verified": false,
-      "notes": "Ally (regular). Draw a card -> playEffects. UNMODELED: Unify 'Destroy an enemy Champion ...' (destroy-champion gated on Unify) has no engine type. (Type line: Undergrowth Ally; badge '3' is the power-cost icon, not a champion shield.)",
+      "verified": true,
+      "notes": "Undergrowth Ally. Draw a card; Unify: destroy an enemy Champion if you played another Undergrowth ally this turn or can reveal one from hand.",
       "set": "base",
       "cardType": "regular",
       "cost": 3,
@@ -2059,13 +2072,28 @@
       ],
       "art": "panconscious_crown.jpg",
       "rawText": "Undergrowth Relic - Ally. Gain 2 (power) and 2 (gems). Mastery 20: Unify - If you have played another Undergrowth Ally this turn or reveal one from your hand, gain 50 (power).",
-      "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 75: name='Panconscious Crown', faction='Undergrowth', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Relic (Ally). Base gain 2 power + 2 gems encoded; masteryThreshold 20 set. UNMODELED: mastery-20 'Unify' conditional 'gain 50 power'. verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false.",
+      "verified": true,
+      "notes": "Undergrowth Relic-Ally. Gain 2 power + 2 gems; Mastery20: Unify -> gain 50 power if Unify met. (masteryBonus additive, default.)",
       "set": "rotf",
       "cardType": "regular",
       "cost": 10,
       "masteryThreshold": 20,
-      "chapter": 2
+      "chapter": 2,
+      "masteryBonus": [
+        {
+          "type": "conditional",
+          "condition": {
+            "kind": "factionAllyPlayedOrInHand",
+            "faction": "undergrowth"
+          },
+          "then": [
+            {
+              "type": "gainPower",
+              "amount": 50
+            }
+          ]
+        }
+      ]
     },
     {
       "id": "the_heart_of_nothing",
