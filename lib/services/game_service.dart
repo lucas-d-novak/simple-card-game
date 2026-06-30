@@ -1110,8 +1110,18 @@ class GameService {
         case AllPlayersLoseHealthEffect():
           _applyAllPlayersHealthLoss(player, effect.amount);
         case ChooseOneEffect():
-          final idx = choiceIndex.clamp(0, effect.choices.length - 1);
-          _resolveEffects(effect.choices[idx], player, sourceCard: sourceCard);
+          if (effect.choices.isEmpty) break;
+          // Resolve `pick` DISTINCT choice groups. For pick==1 this is the
+          // classic single selection at choiceIndex. For pick>1 ("choose N
+          // distinct"), start at choiceIndex and take the next `pick` distinct
+          // groups, wrapping — deterministic for AI/tests; the UI may later
+          // pass an explicit selection.
+          final n = effect.pick.clamp(1, effect.choices.length);
+          final start = choiceIndex.clamp(0, effect.choices.length - 1);
+          for (var k = 0; k < n; k++) {
+            final idx = (start + k) % effect.choices.length;
+            _resolveEffects(effect.choices[idx], player, sourceCard: sourceCard);
+          }
         case ConditionalPowerEffect():
           player.powerPool +=
               _evaluateCondition(effect.condition, player, sourceCard);

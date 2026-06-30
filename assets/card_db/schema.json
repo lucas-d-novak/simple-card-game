@@ -313,6 +313,10 @@
             "items": { "$ref": "#/definitions/effect" }
           },
           "description": "For chooseOne: each entry is a group of effects applied together if chosen."
+        },
+        "pick": {
+          "type": "integer",
+          "description": "For chooseOne: how many DISTINCT choice groups to resolve (default 1). pick>1 = 'choose N instead (distinct)', e.g. red_fortune Mastery-15."
         }
       }
     },

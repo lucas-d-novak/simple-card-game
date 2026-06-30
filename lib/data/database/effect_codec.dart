@@ -216,9 +216,12 @@ CardEffect decodeEffect(Map<String, dynamic> json) {
       if (choices is! List) {
         throw const FormatException('chooseOne requires a "choices" array');
       }
-      return ChooseOneEffect([
-        for (final group in choices) decodeEffectList(group),
-      ]);
+      return ChooseOneEffect(
+        [
+          for (final group in choices) decodeEffectList(group),
+        ],
+        pick: json.containsKey('pick') ? _int(json, 'pick') : 1,
+      );
     default:
       throw FormatException('unknown effect type: $type');
   }
@@ -348,6 +351,7 @@ Map<String, dynamic> encodeEffect(CardEffect effect) {
     case ChooseOneEffect():
       return {
         'type': 'chooseOne',
+        if (effect.pick != 1) 'pick': effect.pick,
         'choices': [
           for (final group in effect.choices)
             [for (final e in group) encodeEffect(e)],

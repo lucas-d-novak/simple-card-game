@@ -258,6 +258,56 @@ void main() {
       expect(player.powerPool, 2);
     });
 
+    // Engine Phase 3 wave 5 — choose-N-distinct (red_fortune Mastery-15).
+    test('ChooseOneEffect pick:2 resolves two distinct choices', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      final gemsBefore = player.gemPool;
+      final powerBefore = player.powerPool;
+
+      const card = CardModel(
+        id: 'choose_two',
+        name: 'Choose Two',
+        cost: 0,
+        playEffects: [
+          ChooseOneEffect([
+            [GainGemsEffect(2)],
+            [GainPowerEffect(2)],
+            [GainMasteryEffect(1)],
+          ], pick: 2),
+        ],
+      );
+      player.hand.add(card);
+      // Start at index 0 -> resolves choices 0 and 1 (distinct): +2 gems, +2 power.
+      game.playCard('choose_two', choiceIndex: 0);
+      expect(player.gemPool, gemsBefore + 2);
+      expect(player.powerPool, powerBefore + 2);
+    });
+
+    test('ChooseOneEffect pick wraps and stays distinct at the end', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      final gemsBefore = player.gemPool;
+      final powerBefore = player.powerPool;
+
+      const card = CardModel(
+        id: 'choose_two_wrap',
+        name: 'Choose Two Wrap',
+        cost: 0,
+        playEffects: [
+          ChooseOneEffect([
+            [GainGemsEffect(2)],
+            [GainPowerEffect(2)],
+          ], pick: 2),
+        ],
+      );
+      player.hand.add(card);
+      // Start at last index -> resolves choice 1 then wraps to 0 (both distinct).
+      game.playCard('choose_two_wrap', choiceIndex: 1);
+      expect(player.gemPool, gemsBefore + 2);
+      expect(player.powerPool, powerBefore + 2);
+    });
+
     test('GainMasteryEffect increases player mastery', () {
       final game = GameService(playerCount: 2, random: Random(7));
       final player = game.currentPlayer;

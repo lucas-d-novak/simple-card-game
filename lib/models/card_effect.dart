@@ -765,17 +765,23 @@ final class CenterDeckScryEffect extends CardEffect {
 /// Player chooses one of several effect groups to resolve.
 /// Each choice is a list of effects that are applied together.
 final class ChooseOneEffect extends CardEffect {
-  const ChooseOneEffect(this.choices);
+  const ChooseOneEffect(this.choices, {this.pick = 1});
 
   /// Each entry is a group of effects applied together when chosen.
   final List<List<CardEffect>> choices;
+
+  /// How many DISTINCT choice groups the player resolves (default 1 =
+  /// classic "choose one"). `pick > 1` models "choose N instead (you may not
+  /// pick the same choice)" — e.g. red_fortune's Mastery-15 "Choose two
+  /// instead." Clamped to the number of available choices at resolution.
+  final int pick;
 
   @override
   String get description {
     final options = choices
         .map((group) => group.map((e) => e.description).join(' and '))
         .join(' OR ');
-    return options;
+    return pick > 1 ? 'Choose $pick (distinct): $options' : options;
   }
 }
 

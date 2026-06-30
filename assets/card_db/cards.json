@@ -2415,14 +2415,48 @@
       ],
       "art": "red_fortune.jpg",
       "rawText": "Red Fortune\nAion Ally\nChoose one:\n- Gain [gem][gem].\n- Gain [damage][damage].\n- Gain [mastery].\n- Draw a card.\n(Mastery 15) Choose two instead. (You may not pick the same choice.)",
-      "verified": false,
-      "notes": "Faction group (non-player): Aion. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 86: name='Red Fortune', faction='Aion', amount=1. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/red_fortune.jpg (Ally with no Champion/Mercenary type line -> regular; shield badge value 2; choices: gem 2, red damage 2, gold mastery 1, draw); conf=high | [encode-gap] Base chooseOne (pick one of gems/power/mastery/draw) encoded. Mastery 15 'Choose two instead (distinct)' is still unencodable: ChooseOneEffect always picks exactly one group, and there is no 'choose N distinct' variant nor a way to mastery-replace a chooseOne with a two-pick form.",
+      "verified": true,
+      "notes": "Aion Ally. Choose one of: 2 gems / 2 power / 1 mastery / draw. Mastery15 REPLACES with choose-two-distinct (pick:2).",
       "group": "Aion",
       "set": "unknown",
       "chapter": 3,
       "ksOnly": true,
       "cost": 2,
-      "cardType": "regular"
+      "cardType": "regular",
+      "masteryThreshold": 15,
+      "masteryReplaces": true,
+      "masteryBonus": [
+        {
+          "type": "chooseOne",
+          "pick": 2,
+          "choices": [
+            [
+              {
+                "type": "gainGems",
+                "amount": 2
+              }
+            ],
+            [
+              {
+                "type": "gainPower",
+                "amount": 2
+              }
+            ],
+            [
+              {
+                "type": "gainMastery",
+                "amount": 1
+              }
+            ],
+            [
+              {
+                "type": "drawCards",
+                "count": 1
+              }
+            ]
+          ]
+        }
+      ]
     },
     {
       "id": "scarlet_slayer",
