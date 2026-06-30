@@ -1571,7 +1571,8 @@
             "faction": "homodeus"
           }
         ]
-      }
+      },
+      "shield": 4
     },
     {
       "id": "mainframe_abbot",
@@ -1879,7 +1880,14 @@
       "cardType": "regular",
       "cost": 10,
       "masteryThreshold": 20,
-      "chapter": 2
+      "chapter": 2,
+      "masteryBonus": [
+        {
+          "type": "gainPower",
+          "amount": 12
+        }
+      ],
+      "masteryReplaces": true
     },
     {
       "id": "praetorian_02",
@@ -1929,7 +1937,14 @@
       "cardType": "regular",
       "cost": 10,
       "masteryThreshold": 20,
-      "chapter": 2
+      "chapter": 2,
+      "masteryBonus": [
+        {
+          "type": "drawCards",
+          "count": 2
+        }
+      ],
+      "masteryReplaces": true
     },
     {
       "id": "terminal_crescents",
@@ -3460,12 +3475,26 @@
         {
           "type": "gainPower",
           "amount": 3
+        },
+        {
+          "type": "scalingResource",
+          "resource": "gems",
+          "condition": "perFactionCardPlayedThisTurn",
+          "perN": 2,
+          "faction": "undergrowth"
+        },
+        {
+          "type": "scalingResource",
+          "resource": "power",
+          "condition": "perFactionCardPlayedThisTurn",
+          "perN": 2,
+          "faction": "undergrowth"
         }
       ],
       "art": "carnivorous_vine.jpg",
       "rawText": "Undergrowth Mercenary - Ally. Gain 3 (gems) and 3 (power). Gain an additional 2 (gems) and 2 (power) for each other Undergrowth Ally you have played this turn.",
-      "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 155: name='Carnivorous Vine', faction='Undergrowth', amount=2. | art added from TTS spritesheet crop (effects pending verification). | Mercenary. Base gain 3 gems + 3 power encoded. UNMODELED: scaling 'an additional 2 gems and 2 power for each other Undergrowth Ally played this turn'. verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false.",
+      "verified": true,
+      "notes": "Undergrowth Mercenary. Gain 3 gems + 3 power, plus 2 gems and 2 power per OTHER Undergrowth ally played this turn (scalingResource perFactionCardPlayedThisTurn skips source).",
       "set": "ioh",
       "cardType": "mercenary",
       "cost": 4,
