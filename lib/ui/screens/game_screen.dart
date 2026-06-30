@@ -11,6 +11,7 @@ import 'package:simple_card_game/ui/theme/faction_colors.dart';
 import 'package:simple_card_game/ui/theme/game_theme.dart';
 import 'package:simple_card_game/ui/theme/responsive.dart';
 import 'package:simple_card_game/ui/widgets/beveled_button.dart';
+import 'package:simple_card_game/ui/widgets/card_detail_modal.dart';
 import 'package:simple_card_game/ui/widgets/card_fan.dart';
 import 'package:simple_card_game/ui/widgets/game_card_widget.dart';
 import 'package:simple_card_game/ui/widgets/resource_icons.dart';
@@ -28,10 +29,16 @@ class GameScreen extends StatefulWidget {
     super.key,
     required this.gameService,
     this.aiService,
+    this.debugOpenModal,
   });
 
   final GameService gameService;
   final AiService? aiService;
+
+  /// Visual-iteration hook: when set ('recruit' / 'exhaust'), auto-opens the
+  /// matching card-detail modal after first frame so the capture pipeline can
+  /// screenshot it without a tap. Null in normal play.
+  final String? debugOpenModal;
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -45,6 +52,35 @@ class _GameScreenState extends State<GameScreen>
   String? _actionMessage;
   bool _aiThinking = false;
   String? _lastPlayedCardId;
+
+  @override
+  void initState() {
+    super.initState();
+    final which = widget.debugOpenModal;
+    if (which != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (which == 'recruit' && _game.centerRow.isNotEmpty) {
+          _openCenterRowDetail(_game.centerRow[(_game.centerRow.length / 2)
+              .floor()]);
+        } else if (which == 'exhaust') {
+          // Ensure a champion is on the board for the capture pipeline.
+          final champs = _game.currentPlayer.championsInPlay;
+          if (champs.isEmpty) {
+            final champ = _game.centerRow.firstWhere(
+              (c) => c.cardType == CardType.champion,
+              orElse: () => _game.centerRow.first,
+            );
+            _game.currentPlayer.championsInPlay.add(champ);
+          }
+          if (_game.currentPlayer.championsInPlay.isNotEmpty) {
+            _openChampionDetail(
+                _game.currentPlayer.championsInPlay.first);
+          }
+        }
+      });
+    }
+  }
 
   void _playCard(CardModel card) {
     if (_selectedHandCardId == card.id) {
@@ -427,6 +463,43 @@ class _GameScreenState extends State<GameScreen>
     );
   }
 
+  /// Opens the official-style card-detail modal for a center-row card, with a
+  /// circular "Recruit" action that buys the card if affordable. Arrows page
+  /// through the whole center row.
+  void _openCenterRowDetail(CardModel card) {
+    final row = _game.centerRow;
+    final start = row.indexWhere((c) => c.id == card.id);
+    if (start < 0) return;
+    showCardDetailModal(
+      context,
+      cards: row,
+      initialIndex: start,
+      actionFor: (c) => CardDetailAction(
+        label: 'Recruit',
+        enabled: _game.currentPlayer.gemPool >= c.cost,
+        onPressed: () => _buyCard(c),
+      ),
+    );
+  }
+
+  /// Opens the card-detail modal for one of the current player's champions,
+  /// with a circular "Exhaust" action that activates it (once per turn).
+  void _openChampionDetail(CardModel champion) {
+    final champs = _game.currentPlayer.championsInPlay;
+    final start = champs.indexWhere((c) => c.id == champion.id);
+    if (start < 0) return;
+    showCardDetailModal(
+      context,
+      cards: champs,
+      initialIndex: start,
+      actionFor: (c) => CardDetailAction(
+        label: 'Exhaust',
+        enabled: !_game.currentPlayer.activatedChampions.contains(c.id),
+        onPressed: () => _activateChampion(c),
+      ),
+    );
+  }
+
   void _playAllCards() {
     setState(() {
       final played = _game.playAllCards();
@@ -675,7 +748,7 @@ class _GameScreenState extends State<GameScreen>
                             cards: _game.centerRow,
                             canAfford: (card) =>
                                 currentPlayer.gemPool >= card.cost,
-                            onBuy: _buyCard,
+                            onTapCard: _openCenterRowDetail,
                             infinityDeckCount: _game.infinityDeck.length,
                             onLongPress: _showCardDetail,
                             screenWidth: screenWidth,
@@ -695,7 +768,7 @@ class _GameScreenState extends State<GameScreen>
                               champions: currentPlayer.championsInPlay,
                               activatedChampionIds:
                                   currentPlayer.activatedChampions,
-                              onActivateChampion: _activateChampion,
+                              onActivateChampion: _openChampionDetail,
                               lastPlayedCardId: _lastPlayedCardId,
                               actionMessage: _actionMessage,
                               screenWidth: screenWidth,
@@ -940,7 +1013,7 @@ class _CenterRow extends StatelessWidget {
   const _CenterRow({
     required this.cards,
     required this.canAfford,
-    required this.onBuy,
+    required this.onTapCard,
     required this.infinityDeckCount,
     required this.screenWidth,
     this.onLongPress,
@@ -948,7 +1021,7 @@ class _CenterRow extends StatelessWidget {
 
   final List<CardModel> cards;
   final bool Function(CardModel) canAfford;
-  final void Function(CardModel) onBuy;
+  final void Function(CardModel) onTapCard;
   final int infinityDeckCount;
   final void Function(CardModel)? onLongPress;
   final double screenWidth;
@@ -988,7 +1061,7 @@ class _CenterRow extends StatelessWidget {
                     final affordable = canAfford(card);
                     return GameCardWidget(
                       card: card,
-                      onTap: affordable ? () => onBuy(card) : null,
+                      onTap: () => onTapCard(card),
                       onLongPress: onLongPress != null
                           ? () => onLongPress!(card)
                           : null,
@@ -1090,8 +1163,7 @@ class _PlayField extends StatelessWidget {
                               width: cardWidth,
                               isHighlighted:
                                   !activatedChampionIds.contains(card.id),
-                              onTap: !activatedChampionIds.contains(card.id) &&
-                                      onActivateChampion != null
+                              onTap: onActivateChampion != null
                                   ? () => onActivateChampion!(card)
                                   : null,
                             ),

@@ -3,6 +3,7 @@ import 'package:simple_card_game/models/card_effect.dart';
 import 'package:simple_card_game/services/ai_service.dart';
 import 'package:simple_card_game/services/game_service.dart';
 import 'package:simple_card_game/ui/screens/game_screen.dart';
+import 'package:simple_card_game/ui/screens/online_lobby_screen.dart';
 import 'package:simple_card_game/ui/theme/animation_timing.dart';
 import 'package:simple_card_game/ui/theme/game_theme.dart';
 import 'package:simple_card_game/ui/theme/responsive.dart';
@@ -303,6 +304,36 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
                 'START GAME',
                 style: TextStyle(
                   fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 2,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Online lobby (static mockup — networking is in progress).
+            OutlinedButton.icon(
+              key: const ValueKey('onlineButton'),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const OnlineLobbyScreen(),
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: GameTheme.accent,
+                side: const BorderSide(color: GameTheme.accent),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 36, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: const Icon(Icons.public, size: 20),
+              label: const Text(
+                'ONLINE',
+                style: TextStyle(
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 2,
                 ),
