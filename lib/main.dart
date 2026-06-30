@@ -6,6 +6,7 @@ import 'package:simple_card_game/services/game_service.dart';
 import 'package:simple_card_game/ui/screens/game_screen.dart';
 import 'package:simple_card_game/ui/screens/game_setup_screen.dart';
 import 'package:simple_card_game/ui/screens/home_screen.dart';
+import 'package:simple_card_game/ui/screens/about_screen.dart';
 import 'package:simple_card_game/ui/screens/network_auto_screen.dart';
 import 'package:simple_card_game/ui/screens/network_lobby_screen.dart';
 import 'package:simple_card_game/ui/screens/online_lobby_screen.dart';
@@ -57,6 +58,8 @@ class ShardsOfInfinityApp extends StatelessWidget {
         host: params['host'] == '1',
         seats: int.tryParse(params['seats'] ?? '') ?? 2,
       );
+    } else if (params.containsKey('about')) {
+      home = const AboutScreen();
     } else {
       home = const GameSetupScreen();
     }

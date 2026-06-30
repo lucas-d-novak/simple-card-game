@@ -5,6 +5,7 @@ import 'package:simple_card_game/models/card_effect.dart';
 import 'package:simple_card_game/models/card_model.dart';
 import 'package:simple_card_game/services/ai_service.dart';
 import 'package:simple_card_game/services/game_service.dart';
+import 'package:simple_card_game/ui/screens/about_screen.dart';
 import 'package:simple_card_game/ui/screens/game_screen.dart';
 import 'package:simple_card_game/ui/screens/network_lobby_screen.dart';
 import 'package:simple_card_game/ui/theme/animation_timing.dart';
@@ -362,6 +363,28 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
+                  letterSpacing: 2,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // About — fan-made / non-commercial / own-the-physical-game notice.
+            TextButton.icon(
+              key: const ValueKey('aboutButton'),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AboutScreen()),
+              ),
+              style: TextButton.styleFrom(
+                foregroundColor: GameTheme.textSecondary,
+              ),
+              icon: const Icon(Icons.favorite_border, size: 16),
+              label: const Text(
+                'ABOUT',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
                   letterSpacing: 2,
                 ),
               ),
