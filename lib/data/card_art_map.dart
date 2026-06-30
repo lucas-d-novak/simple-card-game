@@ -40,11 +40,14 @@ String? getCardArtAsset(String cardName) {
 /// art assignments for the invented catalog cards (grouped by faction below).
 const _artMap = <String, String>{
   // --- Core / starter --------------------------------------------------------
-  'crystal': 'assets/cards/crystal.jpg',
-  'blaster': 'assets/cards/blaster.jpg',
-  'infinity-shard': 'assets/cards/infinity-shard.jpg',
-  'shard-reactor': 'assets/cards/shard-reactor.jpg',
-  'infinity-engine-fragment': 'assets/cards/infinity-shard.jpg',
+  // NOTE: The 4 starter cards (Crystal, Blaster, Infinity Shard, Shard Reactor)
+  // intentionally have NO art-map entry. The bundled `crystal.jpg` /
+  // `blaster.jpg` / `shard-reactor.jpg` / `infinity-shard.jpg` files are
+  // misleading stock photos (a rocky coastline, a garden path, etc.), so these
+  // factionless starters deliberately fall through to the procedural neutral
+  // [CardArt], which draws a recognizable themed glyph per card name (a faceted
+  // gem, an energy bolt, a reactor core, an infinity/shard motif).
+  'infinity-engine-fragment': 'assets/cards/infinity-engine.jpg',
 
   // --- Homodeus (gold) — exact + thematic ------------------------------------
   'reactor-monk': 'assets/cards/reactor-monk.jpg',
@@ -123,11 +126,11 @@ const _assetFiles = <String>{
   'radiant-protector.jpg',
   'reactor-monk.jpg',
   'shadow-fiend.jpg',
-  'shard-reactor.jpg',
   'shield-bearer.jpg',
   'universal-soldier.jpg',
   'vine-guardian.jpg',
-  'crystal.jpg',
-  'blaster.jpg',
-  'infinity-shard.jpg',
+  // The starter placeholders (crystal.jpg / blaster.jpg / shard-reactor.jpg /
+  // infinity-shard.jpg) are deliberately omitted here so the auto name-match
+  // does NOT resolve the factionless starters back to their misleading stock
+  // photos. They render via procedural neutral [CardArt] instead.
 };

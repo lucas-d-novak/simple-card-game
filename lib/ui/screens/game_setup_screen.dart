@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:simple_card_game/data/database/card_database_asset.dart';
 import 'package:simple_card_game/data/market_deck.dart';
 import 'package:simple_card_game/models/card_effect.dart';
+import 'package:simple_card_game/models/card_model.dart';
 import 'package:simple_card_game/services/ai_service.dart';
 import 'package:simple_card_game/services/game_service.dart';
 import 'package:simple_card_game/ui/screens/game_screen.dart';
@@ -27,12 +28,21 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
   /// legacy hardcoded catalog if loading fails.
   List<MarketCard>? _marketDeck;
 
+  /// The Destiny supply (Into the Horizon) — a SEPARATE deck from the market,
+  /// dealt into the shared face-up Destiny row. Null until loaded.
+  List<CardModel>? _destinySupply;
+
   @override
   void initState() {
     super.initState();
     CardDatabaseAsset.load().then((db) {
-      if (mounted) setState(() => _marketDeck = buildMarketDeckFromDatabase(db));
-    }).catchError((_) {/* fall back to legacy market */});
+      if (mounted) {
+        setState(() {
+          _marketDeck = buildMarketDeckFromDatabase(db);
+          _destinySupply = buildDestinySupplyFromDatabase(db);
+        });
+      }
+    }).catchError((_) {/* fall back to legacy market, no destinies */});
   }
 
   /// Per-player Character selection (null = "None"). Index = player index;
@@ -65,6 +75,7 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
       playerCount: _playerCount,
       characters: _characters.take(_playerCount).toList(),
       marketDeck: _marketDeck,
+      destinySupply: _destinySupply,
     );
     AiService? aiService;
     if (_vsAi && _playerCount == 2) {

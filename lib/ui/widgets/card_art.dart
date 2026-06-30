@@ -232,6 +232,28 @@ class _CardArtPainter extends CustomPainter {
 
   void _drawNeutralArt(
       Canvas canvas, Size size, math.Random rng, Color color) {
+    // The four factionless STARTER cards (Crystal, Blaster, Infinity Shard,
+    // Shard Reactor) get a recognizable themed glyph keyed by name so they no
+    // longer rely on the misleading stock-photo placeholders. Any other neutral
+    // card falls back to the generic abstract-gem motif.
+    switch (card.name) {
+      case 'Crystal':
+        _drawCrystalGlyph(canvas, size);
+        return;
+      case 'Blaster':
+        _drawBlasterGlyph(canvas, size);
+        return;
+      case 'Shard Reactor':
+        _drawReactorGlyph(canvas, size);
+        return;
+      case 'Infinity Shard':
+        _drawInfinityShardGlyph(canvas, size);
+        return;
+    }
+    _drawGenericNeutralArt(canvas, size, rng);
+  }
+
+  void _drawGenericNeutralArt(Canvas canvas, Size size, math.Random rng) {
     // Abstract geometric for neutral cards
     final paint = Paint()
       ..color = Colors.white.withValues(alpha: 0.15)
@@ -260,6 +282,250 @@ class _CardArtPainter extends CustomPainter {
     path.lineTo(cx - gemSize * 0.7, cy);
     path.close();
     canvas.drawPath(path, gemPaint);
+  }
+
+  /// Crystal — a faceted blue/cyan gem (gem currency). Matches the official
+  /// client, where Crystal is a blue/purple crystalline gem.
+  void _drawCrystalGlyph(Canvas canvas, Size size) {
+    final cx = size.width * 0.5;
+    final cy = size.height * 0.46;
+    final w = size.width * 0.34;
+    final h = size.height * 0.42;
+
+    // Soft radial glow behind the gem.
+    canvas.drawCircle(
+      Offset(cx, cy),
+      w * 1.2,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [
+            const Color(0xFF7FE9FF).withValues(alpha: 0.35),
+            const Color(0xFF7FE9FF).withValues(alpha: 0.0),
+          ],
+        ).createShader(Rect.fromCircle(center: Offset(cx, cy), radius: w * 1.2)),
+    );
+
+    // Gem outline: a tall hexagonal/diamond crystal.
+    final top = Offset(cx, cy - h * 0.55);
+    final upperL = Offset(cx - w * 0.55, cy - h * 0.18);
+    final upperR = Offset(cx + w * 0.55, cy - h * 0.18);
+    final lowerL = Offset(cx - w * 0.32, cy + h * 0.2);
+    final lowerR = Offset(cx + w * 0.32, cy + h * 0.2);
+    final bottom = Offset(cx, cy + h * 0.55);
+
+    final body = Path()
+      ..moveTo(top.dx, top.dy)
+      ..lineTo(upperR.dx, upperR.dy)
+      ..lineTo(lowerR.dx, lowerR.dy)
+      ..lineTo(bottom.dx, bottom.dy)
+      ..lineTo(lowerL.dx, lowerL.dy)
+      ..lineTo(upperL.dx, upperL.dy)
+      ..close();
+
+    canvas.drawPath(
+      body,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFBFF3FF), Color(0xFF3FA9D8), Color(0xFF5A5BD8)],
+        ).createShader(Rect.fromLTWH(cx - w, cy - h, w * 2, h * 2)),
+    );
+
+    // Facet lines for the crystalline look.
+    final facet = Paint()
+      ..color = Colors.white.withValues(alpha: 0.55)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+    canvas.drawLine(top, lowerL, facet);
+    canvas.drawLine(top, lowerR, facet);
+    canvas.drawLine(top, bottom, facet);
+    canvas.drawLine(upperL, lowerR, facet);
+    canvas.drawLine(upperR, lowerL, facet);
+    canvas.drawLine(lowerL, lowerR, facet);
+
+    canvas.drawPath(
+      body,
+      Paint()
+        ..color = Colors.white.withValues(alpha: 0.7)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5,
+    );
+  }
+
+  /// Blaster — an energy bolt / muzzle flash (1 power). Orange power-coloured.
+  void _drawBlasterGlyph(Canvas canvas, Size size) {
+    final cx = size.width * 0.5;
+    final cy = size.height * 0.46;
+    final s = size.width * 0.42;
+
+    // Glow.
+    canvas.drawCircle(
+      Offset(cx, cy),
+      s,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [
+            const Color(0xFFFFC14D).withValues(alpha: 0.40),
+            const Color(0xFFFF7A00).withValues(alpha: 0.0),
+          ],
+        ).createShader(Rect.fromCircle(center: Offset(cx, cy), radius: s)),
+    );
+
+    // Lightning/energy bolt zig-zag.
+    final bolt = Path()
+      ..moveTo(cx + s * 0.35, cy - s * 0.9)
+      ..lineTo(cx - s * 0.12, cy - s * 0.05)
+      ..lineTo(cx + s * 0.18, cy - s * 0.05)
+      ..lineTo(cx - s * 0.35, cy + s * 0.9)
+      ..lineTo(cx + s * 0.2, cy + s * 0.02)
+      ..lineTo(cx - s * 0.12, cy + s * 0.02)
+      ..close();
+
+    canvas.drawPath(
+      bolt,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFFFFE39A), Color(0xFFFF8A1E)],
+        ).createShader(Rect.fromLTWH(cx - s, cy - s, s * 2, s * 2)),
+    );
+    canvas.drawPath(
+      bolt,
+      Paint()
+        ..color = Colors.white.withValues(alpha: 0.8)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.4,
+    );
+
+    // A couple of radiating spark lines for the "blast".
+    final spark = Paint()
+      ..color = const Color(0xFFFFD27A).withValues(alpha: 0.5)
+      ..strokeWidth = 1.6
+      ..strokeCap = StrokeCap.round;
+    for (final a in [-0.5, 0.5, 2.6, -2.6]) {
+      canvas.drawLine(
+        Offset(cx + math.cos(a) * s * 0.55, cy + math.sin(a) * s * 0.55),
+        Offset(cx + math.cos(a) * s * 0.95, cy + math.sin(a) * s * 0.95),
+        spark,
+      );
+    }
+  }
+
+  /// Shard Reactor — a glowing golden reactor core (concentric rings + core).
+  /// Matches the official client's golden glowing reactor.
+  void _drawReactorGlyph(Canvas canvas, Size size) {
+    final cx = size.width * 0.5;
+    final cy = size.height * 0.46;
+    final r = size.width * 0.34;
+
+    // Radiant glow.
+    canvas.drawCircle(
+      Offset(cx, cy),
+      r * 1.5,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [
+            const Color(0xFFFFE08A).withValues(alpha: 0.45),
+            const Color(0xFFFFB100).withValues(alpha: 0.0),
+          ],
+        ).createShader(
+            Rect.fromCircle(center: Offset(cx, cy), radius: r * 1.5)),
+    );
+
+    // Containment rings.
+    final ring = Paint()
+      ..color = const Color(0xFFFFD45A).withValues(alpha: 0.85)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    canvas.drawCircle(Offset(cx, cy), r, ring);
+    canvas.drawCircle(Offset(cx, cy), r * 0.7, ring);
+
+    // Radial struts (reactor housing).
+    final strut = Paint()
+      ..color = const Color(0xFFFFC83A).withValues(alpha: 0.7)
+      ..strokeWidth = 2;
+    for (int i = 0; i < 6; i++) {
+      final a = i * math.pi / 3;
+      canvas.drawLine(
+        Offset(cx + math.cos(a) * r * 0.7, cy + math.sin(a) * r * 0.7),
+        Offset(cx + math.cos(a) * r, cy + math.sin(a) * r),
+        strut,
+      );
+    }
+
+    // Bright molten core.
+    canvas.drawCircle(
+      Offset(cx, cy),
+      r * 0.42,
+      Paint()
+        ..shader = const RadialGradient(
+          colors: [Color(0xFFFFFFFF), Color(0xFFFFC83A), Color(0xFFFF8A00)],
+        ).createShader(
+            Rect.fromCircle(center: Offset(cx, cy), radius: r * 0.42)),
+    );
+  }
+
+  /// Infinity Shard — a violet shard pierced by an infinity (∞) loop, the
+  /// game's win-condition motif.
+  void _drawInfinityShardGlyph(Canvas canvas, Size size) {
+    final cx = size.width * 0.5;
+    final cy = size.height * 0.46;
+    final w = size.width * 0.3;
+    final h = size.height * 0.46;
+
+    // Glow.
+    canvas.drawCircle(
+      Offset(cx, cy),
+      w * 1.6,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [
+            const Color(0xFFC79BFF).withValues(alpha: 0.40),
+            const Color(0xFF7A3FD8).withValues(alpha: 0.0),
+          ],
+        ).createShader(
+            Rect.fromCircle(center: Offset(cx, cy), radius: w * 1.6)),
+    );
+
+    // Upright shard (diamond).
+    final shard = Path()
+      ..moveTo(cx, cy - h * 0.55)
+      ..lineTo(cx + w * 0.5, cy)
+      ..lineTo(cx, cy + h * 0.55)
+      ..lineTo(cx - w * 0.5, cy)
+      ..close();
+    canvas.drawPath(
+      shard,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFFE4C9FF), Color(0xFF8A4BE0), Color(0xFF4A1F8F)],
+        ).createShader(Rect.fromLTWH(cx - w, cy - h, w * 2, h * 2)),
+    );
+    canvas.drawPath(
+      shard,
+      Paint()
+        ..color = Colors.white.withValues(alpha: 0.7)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.4,
+    );
+
+    // Infinity (∞) symbol overlaid across the shard.
+    final inf = Paint()
+      ..color = Colors.white.withValues(alpha: 0.85)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.2
+      ..strokeCap = StrokeCap.round;
+    final lobe = w * 0.42;
+    final loop = Path();
+    loop.addOval(Rect.fromCenter(
+        center: Offset(cx - lobe * 0.7, cy), width: lobe, height: lobe * 0.8));
+    loop.addOval(Rect.fromCenter(
+        center: Offset(cx + lobe * 0.7, cy), width: lobe, height: lobe * 0.8));
+    canvas.drawPath(loop, inf);
   }
 
   void _drawChampionOverlay(Canvas canvas, Size size, bool hasGuard) {

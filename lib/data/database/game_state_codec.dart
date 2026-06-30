@@ -51,6 +51,11 @@ class GameStateCodec {
       'centerRow': _refs(dict, game.centerRow),
       'infinityDeck': _refs(dict, game.infinityDeck),
       'removedFromGame': _refs(dict, game.removedFromGame),
+      // Destiny system (Into the Horizon) — only emitted when a supply exists.
+      if (game.destinyRow.isNotEmpty)
+        'destinyRow': _refs(dict, game.destinyRow),
+      if (game.destinyDeck.isNotEmpty)
+        'destinyDeck': _refs(dict, game.destinyDeck),
       'currentPlayerIndex': game.currentPlayerIndex,
       'turnNumber': game.turnNumber,
       'gameOver': game.isGameOver,
@@ -86,6 +91,8 @@ class GameStateCodec {
     game.centerRow.addAll(zone(json['centerRow']));
     game.infinityDeck.addAll(zone(json['infinityDeck']));
     game.removedFromGame.addAll(zone(json['removedFromGame']));
+    game.destinyRow.addAll(zone(json['destinyRow']));
+    game.destinyDeck.addAll(zone(json['destinyDeck']));
     game.currentPlayerIndex = (json['currentPlayerIndex'] as int?) ?? 0;
     game.turnNumber = (json['turnNumber'] as int?) ?? 1;
     game.restoreGameOver((json['gameOver'] as bool?) ?? false);
@@ -107,6 +114,7 @@ class GameStateCodec {
       'powerPool': p.powerPool,
       'unblockedDamageThisTurn': p.unblockedDamageThisTurn,
       'ignoresShieldThisTurn': p.ignoresShieldThisTurn,
+      'focusedThisTurn': p.focusedThisTurn,
       'factionAliasesThisTurn': [
         for (final a in p.factionAliasesThisTurn)
           {'from': a.from.name, 'to': a.to.name},
@@ -114,6 +122,8 @@ class GameStateCodec {
       'staticModifiers': [
         for (final m in p.staticModifiers) _encodeStaticModifier(m),
       ],
+      'relicOptions': _refs(dict, p.relicOptions),
+      'relicRecruited': p.relicRecruited,
       'hand': _refs(dict, p.hand),
       'drawPile': _refs(dict, p.drawPile),
       'discardPile': _refs(dict, p.discardPile),
@@ -126,6 +136,13 @@ class GameStateCodec {
       'activatedChampions': p.activatedChampions.toList(),
       'exhaustedChampions': p.exhaustedChampions.toList(),
       'cardsPlayedThisTurn': _refs(dict, p.cardsPlayedThisTurn),
+      // Destiny system (Into the Horizon) — persistent claimed zone + counters.
+      if (p.claimedDestinies.isNotEmpty)
+        'claimedDestinies': _refs(dict, p.claimedDestinies),
+      if (p.exhaustedDestinies.isNotEmpty)
+        'exhaustedDestinies': p.exhaustedDestinies.toList(),
+      if (p.destinyClaimCount != 0) 'destinyClaimCount': p.destinyClaimCount,
+      if (p.destinyClaimGrants != 0) 'destinyClaimGrants': p.destinyClaimGrants,
     };
   }
 
@@ -144,6 +161,7 @@ class GameStateCodec {
     p.powerPool = (json['powerPool'] as int?) ?? 0;
     p.unblockedDamageThisTurn = (json['unblockedDamageThisTurn'] as int?) ?? 0;
     p.ignoresShieldThisTurn = (json['ignoresShieldThisTurn'] as bool?) ?? false;
+    p.focusedThisTurn = (json['focusedThisTurn'] as bool?) ?? false;
 
     for (final a in (json['factionAliasesThisTurn'] as List? ?? const [])) {
       final m = (a as Map).cast<String, dynamic>();
@@ -157,6 +175,8 @@ class GameStateCodec {
           .add(_decodeStaticModifier((m as Map).cast<String, dynamic>()));
     }
 
+    p.relicOptions.addAll(zone(json['relicOptions']));
+    p.relicRecruited = (json['relicRecruited'] as bool?) ?? false;
     p.hand.addAll(zone(json['hand']));
     p.drawPile.addAll(zone(json['drawPile']));
     p.discardPile.addAll(zone(json['discardPile']));
@@ -172,6 +192,13 @@ class GameStateCodec {
     p.exhaustedChampions
         .addAll([for (final id in (json['exhaustedChampions'] as List? ?? const [])) id as String]);
     p.cardsPlayedThisTurn.addAll(zone(json['cardsPlayedThisTurn']));
+    p.claimedDestinies.addAll(zone(json['claimedDestinies']));
+    p.exhaustedDestinies.addAll([
+      for (final id in (json['exhaustedDestinies'] as List? ?? const []))
+        id as String
+    ]);
+    p.destinyClaimCount = (json['destinyClaimCount'] as int?) ?? 0;
+    p.destinyClaimGrants = (json['destinyClaimGrants'] as int?) ?? 0;
     return p;
   }
 

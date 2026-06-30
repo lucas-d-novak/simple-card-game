@@ -367,6 +367,9 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
             _zoom(hand, i < 0 ? 0 : i);
           },
           onEndTurn: myTurn ? client.endTurn : null,
+          // Undo is gated on the server-sent canUndo flag (your turn AND a
+          // same-turn snapshot exists); null disables the button.
+          onUndo: client.canUndo ? client.undo : null,
           onPlayAll: myTurn && me.hand.isNotEmpty ? client.playAllCards : null,
           onAttack: canAttackPlayer
               ? () => _onAttackPlayer(opponent, me.powerPool)
@@ -932,6 +935,7 @@ class _NetworkBottomZone extends StatelessWidget {
     required this.onCardTap,
     required this.onCardLongPress,
     required this.onEndTurn,
+    required this.onUndo,
     required this.onPlayAll,
     required this.onAttack,
     required this.hasGuards,
@@ -947,6 +951,9 @@ class _NetworkBottomZone extends StatelessWidget {
   final void Function(CardModel) onCardTap;
   final void Function(CardModel) onCardLongPress;
   final VoidCallback? onEndTurn;
+
+  /// Undo last action this turn. Null when unavailable (off-turn / no history).
+  final VoidCallback? onUndo;
   final VoidCallback? onPlayAll;
   final VoidCallback? onAttack;
   final bool hasGuards;
@@ -985,6 +992,14 @@ class _NetworkBottomZone extends StatelessWidget {
                 width: isMobile ? 120 : 150,
                 height: 40,
                 fontSize: isMobile ? 16 : 20,
+              ),
+              const SizedBox(height: 4),
+              BeveledButton(
+                label: 'Undo',
+                onPressed: onUndo,
+                width: isMobile ? 120 : 150,
+                height: 32,
+                fontSize: isMobile ? 14 : 16,
               ),
               const SizedBox(height: 4),
               Row(

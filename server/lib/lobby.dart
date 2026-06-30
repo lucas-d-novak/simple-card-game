@@ -4,6 +4,7 @@
 
 import 'package:shards_server/game_session.dart';
 import 'package:simple_card_game/data/market_deck.dart';
+import 'package:simple_card_game/models/card_model.dart';
 import 'package:simple_card_game/services/game_service.dart';
 
 enum GameStatus { waiting, started, complete }
@@ -40,12 +41,16 @@ class LobbyGame {
 }
 
 class Lobby {
-  /// Optional authoritative market deck (real cards + per-card copies), built
-  /// once at server startup from the card database. When null, games fall back
-  /// to the engine's legacy hardcoded catalog.
-  Lobby({List<MarketCard>? marketDeck}) : _marketDeck = marketDeck;
+  /// Optional authoritative market deck (real cards + per-card copies) and the
+  /// SEPARATE Destiny supply, both built once at server startup from the card
+  /// database. When null, games fall back to the engine's legacy hardcoded
+  /// catalog (and no Destinies).
+  Lobby({List<MarketCard>? marketDeck, List<CardModel>? destinySupply})
+      : _marketDeck = marketDeck,
+        _destinySupply = destinySupply;
 
   final List<MarketCard>? _marketDeck;
+  final List<CardModel>? _destinySupply;
   final Map<String, LobbyGame> _games = {};
   int _counter = 0;
 
@@ -80,6 +85,7 @@ class Lobby {
     final svc = GameService(
       playerCount: g.players.length,
       marketDeck: _marketDeck,
+      destinySupply: _destinySupply,
     );
     // The engine names seats p0..pN (both PlayerState.id and .name are final);
     // GameSession owns the lobby-player-id <-> seat-id mapping for both

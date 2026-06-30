@@ -16,11 +16,18 @@ class CardModel {
   /// Whether this is a regular card, champion, or mercenary.
   final CardType cardType;
 
-  /// Shield points (champions only). Damage must exceed this to destroy.
+  /// Champion HEALTH (champions only): the amount of power an attacker must
+  /// spend to destroy this champion. The destroy threshold is MEET-OR-EXCEED —
+  /// power >= shield destroys it (see GameService.attackChampion). This number
+  /// is NOT a buff to the owner's life total; it is purely the cost to remove
+  /// the champion. (Named `shield` for historical reasons.)
   final int shield;
 
-  /// Whether this champion has Guard (opponents must destroy it before
-  /// attacking the player directly).
+  /// Whether this champion has Guard. While a player controls ANY guard
+  /// champion, opponents cannot attack that player directly — every guard
+  /// champion must be destroyed first. A champion is an OPTIONAL attack target
+  /// otherwise (an attacker may ignore non-guard champions and hit the player).
+  /// Champions cannot be protected by cards in the owner's hand.
   final bool hasGuard;
 
   /// Bonus effects that trigger when another card of the same faction is

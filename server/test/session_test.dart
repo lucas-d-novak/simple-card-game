@@ -118,6 +118,99 @@ void main() {
       expect(session.stateVersion, greaterThan(v0));
     });
 
+    test('undo restores the pre-action state (gems + hand revert)', () {
+      final g = startedGame();
+      final session = g.session!;
+      final current = session.playerIds[session.game.currentPlayerIndex];
+      final seat = session.game.currentPlayerIndex;
+
+      final gemsBefore = session.game.players[seat].gemPool;
+      final handBefore = session.game.players[seat].hand.length;
+
+      // Play the whole hand: gems rise, hand empties.
+      session.apply(current, {'type': 'playAllCards'});
+      expect(session.game.players[seat].gemPool, greaterThan(gemsBefore));
+      expect(session.game.players[seat].hand.length, lessThan(handBefore));
+
+      // Undo: the snapshot taken BEFORE playAllCards is restored.
+      final undo = session.apply(current, {'type': 'undo'});
+      expect(undo.accepted, isTrue);
+      expect(session.game.players[seat].gemPool, gemsBefore,
+          reason: 'undo must revert the gem gain');
+      expect(session.game.players[seat].hand.length, handBefore,
+          reason: 'undo must return the played cards to hand');
+    });
+
+    test('undo is REJECTED for the off-turn player', () {
+      final g = startedGame();
+      final session = g.session!;
+      final current = session.playerIds[session.game.currentPlayerIndex];
+      final offTurn =
+          session.playerIds[(session.game.currentPlayerIndex + 1) % 2];
+
+      // Give the current player something to undo.
+      session.apply(current, {'type': 'playAllCards'});
+
+      final rejected = session.apply(offTurn, {'type': 'undo'});
+      expect(rejected.accepted, isFalse);
+      expect(rejected.error, contains('not your turn'));
+    });
+
+    test('undo is REJECTED at the start of a turn (empty stack)', () {
+      final g = startedGame();
+      final session = g.session!;
+      final current = session.playerIds[session.game.currentPlayerIndex];
+
+      final rejected = session.apply(current, {'type': 'undo'});
+      expect(rejected.accepted, isFalse);
+      expect(rejected.error, contains('nothing to undo'));
+    });
+
+    test('endTurn CLEARS the undo stack — you cannot undo after passing', () {
+      final g = startedGame();
+      final session = g.session!;
+      final p0 = session.playerIds[session.game.currentPlayerIndex];
+
+      // p0 acts, then ends their turn.
+      session.apply(p0, {'type': 'playAllCards'});
+      session.apply(p0, {'type': 'endTurn'});
+
+      // Now it's p1's turn; p1 cannot undo into p0's finished turn.
+      final p1 = session.playerIds[session.game.currentPlayerIndex];
+      final rejected = session.apply(p1, {'type': 'undo'});
+      expect(rejected.accepted, isFalse);
+      expect(rejected.error, contains('nothing to undo'));
+    });
+
+    test('a successful undo bumps the state version', () {
+      final g = startedGame();
+      final session = g.session!;
+      final current = session.playerIds[session.game.currentPlayerIndex];
+
+      session.apply(current, {'type': 'playAllCards'});
+      final vBefore = session.stateVersion;
+      final undo = session.apply(current, {'type': 'undo'});
+      expect(undo.accepted, isTrue);
+      expect(session.stateVersion, greaterThan(vBefore));
+    });
+
+    test('canUndo flag is false at turn start, true after an action, and only '
+        'on the actor\'s own view', () {
+      final g = startedGame();
+      final session = g.session!;
+      final seat = session.game.currentPlayerIndex;
+      final current = session.playerIds[seat];
+      final offTurn = session.playerIds[(seat + 1) % 2];
+
+      // Start of turn: nothing to undo.
+      expect(session.viewFor(current)['canUndo'], isFalse);
+
+      session.apply(current, {'type': 'playAllCards'});
+      // The current player now sees canUndo; the off-turn player never does.
+      expect(session.viewFor(current)['canUndo'], isTrue);
+      expect(session.viewFor(offTurn)['canUndo'], isFalse);
+    });
+
     test('lobby flow: create -> join -> auto-start full game', () {
       final lobby = Lobby();
       final g = lobby.createGame(hostId: 'alice', seats: 2);

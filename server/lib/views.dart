@@ -25,10 +25,15 @@ List<String> _ids(List<CardModel> cards) => [for (final c in cards) c.id];
 
 /// Build the redacted view of [game] for the player [recipientId].
 /// [stateVersion] is the monotonic broadcast counter for this game.
+/// [canUndo] is true when the recipient may currently issue an `undo` (it is
+/// their turn and the session holds a same-turn snapshot to roll back to); the
+/// client uses it to enable the Undo button. Defaults to false so callers that
+/// don't track an undo stack (e.g. plain redaction tests) are unaffected.
 Map<String, dynamic> redactFor(
   GameService game,
   String recipientId, {
   required int stateVersion,
+  bool canUndo = false,
 }) {
   // Card dictionary: every card the recipient may legitimately see, serialized
   // BY VALUE (name + effects + stats), keyed by id. The client renders directly
@@ -59,6 +64,8 @@ Map<String, dynamic> redactFor(
     'turnNumber': game.turnNumber,
     'isGameOver': game.isGameOver,
     if (game.winnerId != null) 'winnerId': game.winnerId,
+    // True only in the recipient's OWN view when they may undo right now.
+    'canUndo': canUndo,
     // Market is public.
     'centerRow': _ids(game.centerRow),
     // Order is secret; only the size leaks.

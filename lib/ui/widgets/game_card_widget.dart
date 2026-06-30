@@ -34,6 +34,10 @@ class GameCardWidget extends StatelessWidget {
   final bool compact;
   final double? width;
 
+  /// The ordered rules-text lines this card renders (play effects + Exhaust
+  /// activated ability + mastery bonus). Exposed for testing.
+  List<String> rulesLines() => _rulesLines(card, compact);
+
   @override
   Widget build(BuildContext context) {
     final factionColor = FactionColors.getPrimary(card.faction);
@@ -247,8 +251,49 @@ int? _primaryValue(CardModel card) {
   return best;
 }
 
+/// The ordered rules-text lines for a card's info area — covering every place a
+/// card's text can live, not just [CardModel.playEffects]:
+///   1. the normal play effects,
+///   2. an Exhaust-gated [CardModel.activatedAbility] (prefixed "Exhaust:",
+///      folding in any activation cost), and
+///   3. [CardModel.masteryBonus] effects (prefixed "Mastery N:").
+///
+/// Champions whose only text is an activated ability (e.g. Isa Tel Tor, the Axe,
+/// which has empty [CardModel.playEffects]) therefore still render their ability
+/// text instead of a blank info area. Compact cards show one line; full cards
+/// up to three.
 List<String> _rulesLines(CardModel card, bool compact) {
   final lines = [for (final e in card.playEffects) e.description];
+
+  final ability = card.activatedAbility;
+  if (ability != null) {
+    final cost = ability.cost;
+    String unit(int n, String singular) =>
+        '$n ${n == 1 ? singular : '${singular}s'}';
+    final costParts = <String>[
+      if (cost.gems > 0) unit(cost.gems, 'gem'),
+      if (cost.mastery > 0) '${cost.mastery} mastery',
+      if (cost.health > 0) unit(cost.health, 'health').replaceFirst(
+          'healths', 'health'),
+    ];
+    if (costParts.isEmpty) {
+      lines.add(ability.description);
+    } else {
+      // Splice the cost into the existing "Exhaust: ..." prefix so it reads
+      // "Exhaust, pay 1 gem: ...".
+      final paid = 'Exhaust, pay ${costParts.join(', ')}:';
+      lines.add(ability.description.replaceFirst('Exhaust:', paid));
+    }
+  }
+
+  if (card.masteryBonus.isNotEmpty) {
+    final tier = card.masteryThreshold;
+    final prefix = tier != null ? 'Mastery $tier:' : 'Mastery:';
+    for (final e in card.masteryBonus) {
+      lines.add('$prefix ${e.description}');
+    }
+  }
+
   return compact ? lines.take(1).toList() : lines.take(3).toList();
 }
 

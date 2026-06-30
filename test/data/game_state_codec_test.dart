@@ -24,6 +24,8 @@ Map<String, dynamic> _playerSig(PlayerState p) => {
       'powerPool': p.powerPool,
       'unblockedDamageThisTurn': p.unblockedDamageThisTurn,
       'ignoresShieldThisTurn': p.ignoresShieldThisTurn,
+      'relicOptions': p.relicOptions.map((c) => c.id).toList(),
+      'relicRecruited': p.relicRecruited,
       'hand': p.hand.map((c) => c.id).toList(),
       'drawPile': p.drawPile.map((c) => c.id).toList(),
       'discardPile': p.discardPile.map((c) => c.id).toList(),
@@ -36,6 +38,10 @@ Map<String, dynamic> _playerSig(PlayerState p) => {
       'activatedChampions': p.activatedChampions.toList()..sort(),
       'exhaustedChampions': p.exhaustedChampions.toList()..sort(),
       'cardsPlayedThisTurn': p.cardsPlayedThisTurn.map((c) => c.id).toList(),
+      'claimedDestinies': p.claimedDestinies.map((c) => c.id).toList(),
+      'exhaustedDestinies': p.exhaustedDestinies.toList()..sort(),
+      'destinyClaimCount': p.destinyClaimCount,
+      'destinyClaimGrants': p.destinyClaimGrants,
       'staticModifiers': p.staticModifiers
           .map((m) => '${m.kind.name}:${m.amount}:${m.faction?.name}:'
               '${m.cardType?.name}:${m.sourceChampionId}')
@@ -50,6 +56,8 @@ Map<String, dynamic> _gameSig(GameService g) => {
       'centerRow': g.centerRow.map((c) => c.id).toList(),
       'infinityDeck': g.infinityDeck.map((c) => c.id).toList(),
       'removedFromGame': g.removedFromGame.map((c) => c.id).toList(),
+      'destinyRow': g.destinyRow.map((c) => c.id).toList(),
+      'destinyDeck': g.destinyDeck.map((c) => c.id).toList(),
       'currentPlayerIndex': g.currentPlayerIndex,
       'turnNumber': g.turnNumber,
       'isGameOver': g.isGameOver,
@@ -166,6 +174,45 @@ void main() {
           StaticModifierKind.shieldBuff);
     });
 
+    test('relic options + recruited flag round-trip (set aside and recruited)',
+        () {
+      final relicCards = {
+        'praetorian_01': const CardModel(
+            id: 'praetorian_01', name: 'praetorian_01', cost: 0, playEffects: []),
+        'praetorian_02': const CardModel(
+            id: 'praetorian_02', name: 'praetorian_02', cost: 0, playEffects: []),
+        'datic_robes': const CardModel(
+            id: 'datic_robes', name: 'datic_robes', cost: 0, playEffects: []),
+        'terminal_crescents': const CardModel(
+            id: 'terminal_crescents',
+            name: 'terminal_crescents',
+            cost: 0,
+            playEffects: []),
+      };
+      final game = GameService(
+        playerCount: 2,
+        random: Random(7),
+        characters: [Character.decima, Character.tetra],
+        relicCards: relicCards,
+      );
+      // p0 still has both options set aside; p1 recruits one.
+      game.currentPlayerIndex = 1;
+      game.players[1].mastery = 12;
+      game.recruitRelic(game.players[1].relicOptions.first.id);
+      game.currentPlayerIndex = 0;
+
+      final before = _gameSig(game);
+      final restored = GameStateCodec.decode(
+          jsonDecode(jsonEncode(GameStateCodec.encode(game)))
+              as Map<String, dynamic>);
+
+      expect(_gameSig(restored), before);
+      expect(restored.players[0].relicOptions, hasLength(2));
+      expect(restored.players[0].relicRecruited, isFalse);
+      expect(restored.players[1].relicOptions, isEmpty);
+      expect(restored.players[1].relicRecruited, isTrue);
+    });
+
     test('restored game can continue playing (endTurn advances correctly)', () {
       final game = GameService(playerCount: 2, random: Random(7));
       game.playAllCards();
@@ -196,6 +243,71 @@ void main() {
         expect(dict.containsKey(id), true,
             reason: 'every referenced id must exist once in the card dict');
       }
+    });
+
+    test('destiny state (claimed zone, supply rows, counters) round-trips', () {
+      const passive = CardModel(
+        id: 'one_mind_one_army',
+        name: 'One Mind, One Army',
+        cost: 5,
+        playEffects: [
+          AddStaticModifierEffect(
+            StaticModifier(
+              kind: StaticModifierKind.shieldBuff,
+              amount: 2,
+              cardType: CardType.champion,
+            ),
+          ),
+        ],
+      );
+      const activated = CardModel(
+        id: 'war_bound',
+        name: 'War Bound',
+        cost: 5,
+        playEffects: [],
+        activatedAbility: ActivatedAbility(
+          effects: [GainPowerEffect(4)],
+        ),
+      );
+      const spare = CardModel(
+          id: 'spare_destiny', name: 'Spare', cost: 5, playEffects: []);
+
+      final game = GameService(
+        playerCount: 2,
+        random: Random(7),
+        destinySupply: [passive, activated, spare],
+      );
+      final p = game.currentPlayer;
+      p.mastery = 10;
+      // Claim the passive (applies a static modifier) and grant + use the
+      // activated one so every destiny field is exercised.
+      expect(game.claimDestiny('one_mind_one_army'), isTrue);
+      p.destinyClaimGrants += 1; // simulate a cascade grant
+      expect(game.claimDestiny('war_bound'), isTrue);
+      expect(game.useDestinyAbility('war_bound'), isTrue);
+
+      expect(p.claimedDestinies, hasLength(2));
+      expect(p.exhaustedDestinies, contains('war_bound'));
+      expect(game.destinyRow, hasLength(1)); // spare remains face-up
+
+      final json = jsonEncode(GameStateCodec.encode(game));
+      final restored =
+          GameStateCodec.decode(jsonDecode(json) as Map<String, dynamic>);
+
+      expect(_gameSig(restored), _gameSig(game));
+      // Spot-check the destiny-specific fields survived.
+      final rp = restored.currentPlayer;
+      expect(rp.claimedDestinies.map((c) => c.id),
+          ['one_mind_one_army', 'war_bound']);
+      expect(rp.exhaustedDestinies, contains('war_bound'));
+      expect(rp.destinyClaimCount, 2);
+      expect(rp.destinyClaimGrants, 1);
+      expect(restored.destinyRow.map((c) => c.id), ['spare_destiny']);
+      // The claimed activated destiny is still usable after restore (next turn).
+      restored.currentPlayer.exhaustedDestinies.clear();
+      restored.currentPlayer.powerPool = 0;
+      expect(restored.useDestinyAbility('war_bound'), isTrue);
+      expect(restored.currentPlayer.powerPool, 4);
     });
   });
 }

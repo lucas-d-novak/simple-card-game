@@ -49,6 +49,21 @@ class PlayerState {
   /// recruit-to-top placement).
   final List<StaticModifier> staticModifiers = [];
 
+  /// The two Relics set aside beside this player at setup (Relics of the Future
+  /// expansion). Populated by [GameService] only when the player has a Character
+  /// that is in the relic-pair table AND relic card templates were injected into
+  /// the constructor; otherwise empty. Upon reaching Mastery 10 the player
+  /// recruits ONE of these for free via [GameService.recruitRelic] (it is
+  /// SHUFFLED INTO [drawPile]); the other is banished to [GameService.removedFromGame].
+  /// Once recruited (see [relicRecruited]) this zone is emptied. NOT cleared by
+  /// [resetTurnResources] — relics persist beside the player until recruited.
+  final List<CardModel> relicOptions = [];
+
+  /// True once this player has recruited (or been forced to forgo) their Relic
+  /// via [GameService.recruitRelic]. Guards the once-per-game recruit. Game-long
+  /// lifetime — NOT cleared by [resetTurnResources].
+  bool relicRecruited = false;
+
   final List<CardModel> hand = [];
   final List<CardModel> drawPile = [];
   final List<CardModel> discardPile = [];
@@ -94,6 +109,43 @@ class PlayerState {
   /// "exhaust your character card"). Cleared each turn by [resetTurnResources].
   bool focusedThisTurn = false;
 
+  // --- Destiny system (Into the Horizon expansion) --------------------------
+
+  /// Destinies this player has CLAIMED. This is a NEW PERSISTENT zone that sits
+  /// beside the player's play area — it is distinct from the draw/discard deck:
+  /// claimed Destinies NEVER enter [drawPile] / [discardPile] / [hand]. A
+  /// Destiny is either a persistent passive (its [CardModel.playEffects] resolve
+  /// once at claim time — e.g. a [StaticModifier] standing buff) or grants an
+  /// extra activated ability (its [CardModel.activatedAbility], usable once per
+  /// turn via Exhaust — like a second Focus button). Populated by
+  /// [GameService.claimDestiny]. NOT cleared by [resetTurnResources] — Destinies
+  /// persist for the rest of the game (a cascade may banish one via
+  /// [GameService.banishDestinyToCascade]).
+  final List<CardModel> claimedDestinies = [];
+
+  /// Number of Destinies this player has claimed *for free via the base rule*
+  /// (reaching Mastery 5). Normally a player may claim only ONE Destiny this
+  /// way; a cascade Destiny (Mastery 10) can grant additional claims, tracked by
+  /// [destinyClaimGrants]. The base-rule limit is [destinyClaimCount] < 1 +
+  /// [destinyClaimGrants]. Persists for the whole game (NOT reset each turn).
+  int destinyClaimCount = 0;
+
+  /// Extra Destiny claims granted by cascade effects (e.g. stolen_future at
+  /// Mastery 10 banishes itself to grant 2 more claims). Adds to the base
+  /// one-per-game allowance. Persists for the whole game.
+  int destinyClaimGrants = 0;
+
+  /// Whether this player may still claim a Destiny under the per-game limit:
+  /// the base allowance is 1, plus any cascade [destinyClaimGrants].
+  bool get canClaimAnotherDestiny =>
+      destinyClaimCount < 1 + destinyClaimGrants;
+
+  /// Ids of claimed Destinies that have used their Exhaust-gated
+  /// [CardModel.activatedAbility] this turn (the Destiny is "tapped" until the
+  /// start of the owner's next turn). Independent of [exhaustedChampions].
+  /// Cleared each turn by [resetTurnResources].
+  final Set<String> exhaustedDestinies = {};
+
   bool get isEliminated => health <= 0;
 
   void addMastery(int amount) {
@@ -121,6 +173,10 @@ class PlayerState {
     exhaustedChampions.clear();
     cardsPlayedThisTurn.clear();
     focusedThisTurn = false;
+    // Destinies untap at the start of the owner's next turn. The persistent
+    // zone (claimedDestinies) and per-game claim counters are NOT reset — only
+    // the per-turn exhaustion state is.
+    exhaustedDestinies.clear();
   }
 
   /// Moves regular played cards to discard pile and returns mercenaries

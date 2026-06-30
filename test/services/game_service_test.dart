@@ -17,6 +17,17 @@ class ZeroRandom implements Random {
   int nextInt(int max) => 0;
 }
 
+/// Returns `max - 1`, which makes [List.shuffle]'s Fisher-Yates a no-op (each
+/// element swaps with itself), preserving the original order deterministically.
+class MaxRandom implements Random {
+  @override
+  bool nextBool() => true;
+  @override
+  double nextDouble() => 0;
+  @override
+  int nextInt(int max) => max - 1;
+}
+
 void main() {
   group('GameService initialization (Step 5a)', () {
     test('2-player game initializes with correct state', () {
@@ -3660,4 +3671,440 @@ void main() {
       expect(all.map((c) => c.id).toSet().length, all.length);
     });
   });
+
+  group('Relics (Relics of the Future)', () {
+    // Synthetic relic templates keyed by the real card ids, so tests don't
+    // depend on loading the asset DB. One identifiable play effect each lets us
+    // assert the right relic ended up in the deck.
+    CardModel relic(String id, int gems) => CardModel(
+          id: id,
+          name: id,
+          cost: 0,
+          playEffects: [GainGemsEffect(gems)],
+        );
+
+    Map<String, CardModel> relicCards() => {
+          'praetorian_01': relic('praetorian_01', 1),
+          'praetorian_02': relic('praetorian_02', 2),
+          'datic_robes': relic('datic_robes', 3),
+          'terminal_crescents': relic('terminal_crescents', 4),
+          'entropic_talons': relic('entropic_talons', 5),
+          'panconscious_crown': relic('panconscious_crown', 6),
+          'the_heart_of_nothing': relic('the_heart_of_nothing', 7),
+          'the_world_piercer': relic('the_world_piercer', 8),
+        };
+
+    GameService gameWithCharacters(List<Character?> chars) => GameService(
+          playerCount: chars.length,
+          random: Random(7),
+          characters: chars,
+          relicCards: relicCards(),
+        );
+
+    test('mapped character gets its two relics set aside at setup', () {
+      final game =
+          gameWithCharacters([Character.decima, Character.tetra]);
+      final p0 = game.players[0];
+      expect(p0.relicOptions.map((c) => c.name),
+          containsAll(['praetorian_01', 'praetorian_02']));
+      expect(p0.relicOptions, hasLength(2));
+      expect(p0.relicRecruited, isFalse);
+
+      final p1 = game.players[1];
+      expect(p1.relicOptions.map((c) => c.name),
+          containsAll(['datic_robes', 'terminal_crescents']));
+    });
+
+    test('per-player unique relic instance ids (no collision)', () {
+      final game =
+          gameWithCharacters([Character.decima, Character.decima]);
+      final ids = [
+        ...game.players[0].relicOptions.map((c) => c.id),
+        ...game.players[1].relicOptions.map((c) => c.id),
+      ];
+      expect(ids.toSet().length, ids.length);
+    });
+
+    test('no relicCards injected → no relic options (default unchanged)', () {
+      final game = GameService(
+        playerCount: 2,
+        random: Random(7),
+        characters: [Character.decima, Character.tetra],
+      );
+      for (final p in game.players) {
+        expect(p.relicOptions, isEmpty);
+        expect(p.relicRecruited, isFalse);
+      }
+    });
+
+    test('unmapped character (rez) and no character → no relic options', () {
+      final game = gameWithCharacters([Character.rez, null]);
+      expect(game.players[0].relicOptions, isEmpty);
+      expect(game.players[1].relicOptions, isEmpty);
+    });
+
+    test('setCharacter after construction re-derives relic options', () {
+      final game = GameService(
+        playerCount: 2,
+        random: Random(7),
+        relicCards: relicCards(),
+      );
+      expect(game.players[0].relicOptions, isEmpty);
+      game.setCharacter('p0', Character.volos);
+      expect(game.players[0].relicOptions.map((c) => c.name),
+          containsAll(['entropic_talons', 'panconscious_crown']));
+    });
+
+    test('recruitRelic is a no-op below mastery 10', () {
+      final game =
+          gameWithCharacters([Character.decima, Character.tetra]);
+      final p0 = game.players[0];
+      p0.mastery = 9;
+      final relicId = p0.relicOptions.first.id;
+      final drawBefore = p0.drawPile.length;
+
+      expect(game.recruitRelic(relicId), isFalse);
+      expect(p0.relicRecruited, isFalse);
+      expect(p0.relicOptions, hasLength(2));
+      expect(p0.drawPile.length, drawBefore);
+      expect(game.removedFromGame, isEmpty);
+    });
+
+    test('at mastery 10 recruiting shuffles chosen into deck, banishes other',
+        () {
+      final game =
+          gameWithCharacters([Character.decima, Character.tetra]);
+      final p0 = game.players[0];
+      p0.mastery = 10;
+
+      final chosen = p0.relicOptions
+          .firstWhere((c) => c.name == 'praetorian_01');
+      final other = p0.relicOptions
+          .firstWhere((c) => c.name == 'praetorian_02');
+      final drawBefore = p0.drawPile.length;
+
+      expect(game.recruitRelic(chosen.id), isTrue);
+
+      // Chosen relic shuffled into the draw pile (NOT discard, NOT beside play).
+      expect(p0.drawPile, contains(chosen));
+      expect(p0.drawPile.length, drawBefore + 1);
+      expect(p0.discardPile, isNot(contains(chosen)));
+      // Other relic banished.
+      expect(game.removedFromGame, contains(other));
+      // Options emptied, flag set.
+      expect(p0.relicOptions, isEmpty);
+      expect(p0.relicRecruited, isTrue);
+    });
+
+    test('recruitRelic is once-per-game', () {
+      final game =
+          gameWithCharacters([Character.decima, Character.tetra]);
+      final p0 = game.players[0];
+      p0.mastery = 30;
+      final first = p0.relicOptions.first.id;
+      expect(game.recruitRelic(first), isTrue);
+      // A second attempt (with any id) does nothing.
+      expect(game.recruitRelic(first), isFalse);
+      expect(game.recruitRelic('praetorian_02_relic_p0'), isFalse);
+    });
+
+    test('recruitRelic rejects a relic id not among the player options', () {
+      final game =
+          gameWithCharacters([Character.decima, Character.tetra]);
+      final p0 = game.players[0];
+      p0.mastery = 15;
+      // p1's relic id is not p0's.
+      final p1RelicId = game.players[1].relicOptions.first.id;
+      expect(game.recruitRelic(p1RelicId), isFalse);
+      expect(p0.relicRecruited, isFalse);
+      expect(p0.relicOptions, hasLength(2));
+    });
+
+    test('recruitRelic is a no-op for a player with no mapped character', () {
+      final game = gameWithCharacters([Character.rez, Character.chroma]);
+      final p0 = game.players[0];
+      p0.mastery = 30;
+      expect(game.recruitRelic('anything'), isFalse);
+      expect(p0.relicRecruited, isFalse);
+    });
+  });
+
+  group('Destiny system', () {
+    // Representative encoded Destinies (mirrors assets/card_db/cards.json):
+    //  - one_mind_one_army: PASSIVE — +2 shield to your champions (StaticModifier)
+    //  - war_bound: ACTIVATED — Exhaust: if you control 2+ champions gain 4 power
+    //  - stolen_future: CASCADE (Mastery 10) — banish to reveal/claim more
+    CardModel passiveDestiny() => const CardModel(
+          id: 'one_mind_one_army',
+          name: 'One Mind, One Army',
+          cost: 5,
+          playEffects: [
+            AddStaticModifierEffect(
+              StaticModifier(
+                kind: StaticModifierKind.shieldBuff,
+                amount: 2,
+                cardType: CardType.champion,
+              ),
+            ),
+          ],
+        );
+
+    CardModel activatedDestiny() => const CardModel(
+          id: 'war_bound',
+          name: 'War Bound',
+          cost: 5,
+          playEffects: [],
+          activatedAbility: ActivatedAbility(
+            effects: [
+              ConditionalEffect(
+                condition: GameCondition(
+                  kind: GameConditionKind.championsControlled,
+                  threshold: 2,
+                ),
+                then: [GainPowerEffect(4)],
+              ),
+            ],
+          ),
+        );
+
+    CardModel simpleActivatedDestiny() => const CardModel(
+          id: 'whatever_it_takes',
+          name: 'Whatever it Takes',
+          cost: 5,
+          playEffects: [],
+          activatedAbility: ActivatedAbility(
+            effects: [GainPowerEffect(9)],
+            cost: ActivationCost(gems: 6),
+          ),
+        );
+
+    CardModel cascadeDestiny() => const CardModel(
+          id: 'stolen_future',
+          name: 'Stolen Future',
+          cost: 5,
+          playEffects: [],
+          masteryThreshold: 10,
+          activatedAbility: ActivatedAbility(
+            effects: [SelfBanishEffect()],
+            masteryThreshold: 10,
+          ),
+        );
+
+    test('no destiny supply by default — rows empty, claim is a no-op', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      expect(game.destinyRow, isEmpty);
+      expect(game.destinyDeck, isEmpty);
+      game.currentPlayer.mastery = 30;
+      expect(game.claimDestiny('one_mind_one_army'), isFalse);
+      expect(game.currentPlayer.claimedDestinies, isEmpty);
+    });
+
+    test('supply deals up to 6 face-up, rest into the deck', () {
+      final supply = [
+        for (var i = 0; i < 8; i++)
+          CardModel(id: 'd$i', name: 'Destiny $i', cost: 5, playEffects: const []),
+      ];
+      final game = GameService(
+        playerCount: 2,
+        random: Random(7),
+        destinySupply: supply,
+      );
+      expect(game.destinyRow, hasLength(GameService.maxDestinyRow));
+      expect(game.destinyDeck, hasLength(2));
+      // Row + deck together are exactly the supply (no loss, no dupes).
+      final all = [...game.destinyRow, ...game.destinyDeck].map((c) => c.id).toSet();
+      expect(all, supply.map((c) => c.id).toSet());
+    });
+
+    test('claim is gated at mastery 5', () {
+      final game = GameService(
+        playerCount: 2,
+        random: Random(7),
+        destinySupply: [passiveDestiny()],
+      );
+      game.currentPlayer.mastery = 4;
+      expect(game.claimDestiny('one_mind_one_army'), isFalse,
+          reason: 'below mastery 5');
+      expect(game.currentPlayer.claimedDestinies, isEmpty);
+      expect(game.destinyRow, hasLength(1));
+
+      game.currentPlayer.mastery = 5;
+      expect(game.claimDestiny('one_mind_one_army'), isTrue);
+    });
+
+    test('claimed destiny enters the persistent zone, not the deck', () {
+      final game = GameService(
+        playerCount: 2,
+        random: Random(7),
+        destinySupply: [passiveDestiny()],
+      );
+      final p = game.currentPlayer;
+      p.mastery = 5;
+      final beforeDraw = [...p.drawPile];
+      final beforeDiscard = [...p.discardPile];
+
+      expect(game.claimDestiny('one_mind_one_army'), isTrue);
+
+      expect(p.claimedDestinies.map((c) => c.id), ['one_mind_one_army']);
+      expect(game.destinyRow, isEmpty, reason: 'row NOT auto-refilled');
+      // The claimed destiny never touches the player's deck zones.
+      expect(p.drawPile, beforeDraw);
+      expect(p.discardPile, beforeDiscard);
+      expect(p.hand.any((c) => c.id == 'one_mind_one_army'), isFalse);
+    });
+
+    test('passive destiny effect applies on claim (StaticModifier)', () {
+      final game = GameService(
+        playerCount: 2,
+        random: Random(7),
+        destinySupply: [passiveDestiny()],
+      );
+      final p = game.currentPlayer;
+      p.mastery = 5;
+      expect(p.staticModifiers, isEmpty);
+
+      expect(game.claimDestiny('one_mind_one_army'), isTrue);
+
+      expect(p.staticModifiers, hasLength(1));
+      expect(p.staticModifiers.single.kind, StaticModifierKind.shieldBuff);
+      expect(p.staticModifiers.single.amount, 2);
+    });
+
+    test('only one destiny per game (base allowance)', () {
+      final game = GameService(
+        playerCount: 2,
+        random: Random(7),
+        destinySupply: [
+          passiveDestiny(),
+          activatedDestiny(),
+        ],
+      );
+      final p = game.currentPlayer;
+      p.mastery = 10;
+      expect(game.claimDestiny('one_mind_one_army'), isTrue);
+      // Second claim refused — allowance exhausted.
+      expect(game.claimDestiny('war_bound'), isFalse);
+      expect(p.claimedDestinies.map((c) => c.id), ['one_mind_one_army']);
+      expect(p.canClaimAnotherDestiny, isFalse);
+    });
+
+    test('activated destiny is a second Focus-like button (Exhaust, once/turn)',
+        () {
+      final game = GameService(
+        playerCount: 2,
+        random: Random(7),
+        destinySupply: [activatedDestiny()],
+      );
+      final p = game.currentPlayer;
+      p.mastery = 5;
+      expect(game.claimDestiny('war_bound'), isTrue);
+
+      // Give the player 2 champions so the conditional grants power.
+      p.championsInPlay.add(const CardModel(
+          id: 'c1', name: 'C1', cost: 0, playEffects: [],
+          cardType: CardType.champion));
+      p.championsInPlay.add(const CardModel(
+          id: 'c2', name: 'C2', cost: 0, playEffects: [],
+          cardType: CardType.champion));
+
+      expect(p.powerPool, 0);
+      expect(game.useDestinyAbility('war_bound'), isTrue);
+      expect(p.powerPool, 4);
+      // Exhausted — cannot fire again this turn.
+      expect(game.useDestinyAbility('war_bound'), isFalse);
+      expect(p.powerPool, 4);
+      expect(p.exhaustedDestinies, contains('war_bound'));
+    });
+
+    test('destiny exhaustion clears at the start of the owner\'s next turn', () {
+      final game = GameService(
+        playerCount: 2,
+        random: Random(7),
+        destinySupply: [simpleActivatedDestiny()],
+      );
+      final p0 = game.currentPlayer;
+      p0.mastery = 5;
+      p0.gemPool = 12;
+      expect(game.claimDestiny('whatever_it_takes'), isTrue);
+      expect(game.useDestinyAbility('whatever_it_takes'), isTrue);
+      expect(p0.powerPool, 9);
+      expect(p0.exhaustedDestinies, contains('whatever_it_takes'));
+
+      game.endTurn(); // p0 -> p1
+      game.endTurn(); // p1 -> p0 again
+      expect(game.currentPlayer.id, p0.id);
+      expect(p0.exhaustedDestinies, isEmpty, reason: 'untapped next turn');
+      p0.gemPool = 12;
+      expect(game.useDestinyAbility('whatever_it_takes'), isTrue);
+      expect(p0.powerPool, 9);
+    });
+
+    test('useDestinyAbility refuses an unpayable cost (no state change)', () {
+      final game = GameService(
+        playerCount: 2,
+        random: Random(7),
+        destinySupply: [simpleActivatedDestiny()],
+      );
+      final p = game.currentPlayer;
+      p.mastery = 5;
+      p.gemPool = 3; // ability costs 6 gems
+      expect(game.claimDestiny('whatever_it_takes'), isTrue);
+      expect(game.useDestinyAbility('whatever_it_takes'), isFalse);
+      expect(p.powerPool, 0);
+      expect(p.gemPool, 3);
+      expect(p.exhaustedDestinies, isEmpty);
+    });
+
+    test('cascade (Mastery 10): banish to reveal 2 and grant extra claims', () {
+      // Enough cards so the deck (the cascade source) is non-empty after the
+      // top six are dealt face-up. ZeroRandom keeps the order stable.
+      final extra = [
+        for (var i = 0; i < 8; i++)
+          CardModel(
+              id: 'extra$i', name: 'Extra $i', cost: 5, playEffects: const []),
+      ];
+      final game = GameService(
+        playerCount: 2,
+        random: MaxRandom(),
+        destinySupply: [cascadeDestiny(), ...extra],
+      );
+      final p = game.currentPlayer;
+      p.mastery = 10;
+      // The cascade card must be in the face-up row to be claimed. MaxRandom's
+      // shuffle leaves element order intact, so stolen_future stays in the row.
+      expect(game.destinyDeck, isNotEmpty, reason: 'cascade has a deck to draw');
+      expect(game.claimDestiny('stolen_future'), isTrue);
+      expect(p.canClaimAnotherDestiny, isFalse,
+          reason: 'base allowance used by the cascade card itself');
+
+      final revealed = game.banishDestinyToCascade('stolen_future');
+      expect(revealed, hasLength(2));
+      // The cascade card is banished out of the persistent zone.
+      expect(p.claimedDestinies.any((c) => c.id == 'stolen_future'), isFalse);
+      expect(game.removedFromGame.any((c) => c.id == 'stolen_future'), isTrue);
+      // Two extra claims granted; the revealed Destinies are now claimable.
+      expect(p.canClaimAnotherDestiny, isTrue);
+      final firstId = revealed.first.id;
+      expect(game.claimDestiny(firstId), isTrue);
+      expect(game.claimDestiny(revealed[1].id), isTrue);
+      // Allowance now exhausted again (1 base + 2 grants = 3 total; 3 claimed).
+      expect(p.destinyClaimCount, 3);
+      expect(p.canClaimAnotherDestiny, isFalse);
+    });
+
+    test('cascade refused below the card mastery gate', () {
+      final game = GameService(
+        playerCount: 2,
+        random: Random(7),
+        destinySupply: [cascadeDestiny()],
+      );
+      final p = game.currentPlayer;
+      p.mastery = 5; // can claim (>=5) but below the cascade gate (10)
+      expect(game.claimDestiny('stolen_future'), isTrue);
+      p.mastery = 9;
+      expect(game.banishDestinyToCascade('stolen_future'), isEmpty);
+      expect(p.claimedDestinies.any((c) => c.id == 'stolen_future'), isTrue);
+    });
+  });
+
 }

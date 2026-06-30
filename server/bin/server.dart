@@ -25,6 +25,7 @@ import 'dart:io';
 import 'package:shards_server/lobby.dart';
 import 'package:simple_card_game/data/database/card_database.dart';
 import 'package:simple_card_game/data/market_deck.dart';
+import 'package:simple_card_game/models/card_model.dart';
 
 /// The lobby is built in [main] once the authoritative card database has loaded
 /// from disk, so all games use the real market deck (per-card copy counts).
@@ -42,16 +43,19 @@ void main(List<String> args) async {
   // from server/, so the DB sits one level up.
   final dbFile = File('../assets/card_db/cards.json');
   List<MarketCard>? marketDeck;
+  List<CardModel>? destinySupply;
   if (dbFile.existsSync()) {
     final db = CardDatabase.fromJsonString(dbFile.readAsStringSync());
     marketDeck = buildMarketDeckFromDatabase(db);
+    destinySupply = buildDestinySupplyFromDatabase(db);
     stdout.writeln('Loaded card DB: ${db.records.length} records, '
-        '${marketDeck.length} unique market cards.');
+        '${marketDeck.length} unique market cards, '
+        '${destinySupply.length} Destinies (separate supply).');
   } else {
     stdout.writeln('WARNING: ${dbFile.path} not found — '
         'falling back to the legacy hardcoded market.');
   }
-  _lobby = Lobby(marketDeck: marketDeck);
+  _lobby = Lobby(marketDeck: marketDeck, destinySupply: destinySupply);
 
   final server = await HttpServer.bind(InternetAddress.anyIPv4, port);
   stdout.writeln('Shards server listening on ws://0.0.0.0:$port');

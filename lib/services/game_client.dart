@@ -82,6 +82,11 @@ class GameClient extends ChangeNotifier {
     return (players[currentPlayerIndex] as Map)['id'] == me;
   }
 
+  /// Whether the server says this player may UNDO right now — it's their turn
+  /// AND a same-turn snapshot exists to roll back to. Server-authoritative; the
+  /// Undo button gates on it.
+  bool get canUndo => (gameState?['canUndo'] as bool?) ?? false;
+
   // ---- connection ----
 
   Future<void> connect(String url) async {
@@ -137,6 +142,10 @@ class GameClient extends ChangeNotifier {
   void playAllCards() => sendAction('playAllCards');
   void buyCard(String cardId) => sendAction('buyCard', {'cardId': cardId});
   void endTurn() => sendAction('endTurn');
+
+  /// Undo your most-recent action THIS turn (server-authoritative; legal only on
+  /// your turn with same-turn history — the server rejects otherwise).
+  void undo() => sendAction('undo');
   void attackPlayer(String targetId, int amount) =>
       sendAction('attackPlayer', {'targetId': targetId, 'amount': amount});
   void attackChampion(String championId, String targetPlayerId) => sendAction(

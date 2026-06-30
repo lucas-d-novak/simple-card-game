@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:simple_card_game/data/database/game_state_codec.dart';
 import 'package:simple_card_game/models/card_effect.dart';
 import 'package:simple_card_game/models/card_model.dart';
 import 'package:simple_card_game/models/card_type.dart';
@@ -46,16 +47,61 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen>
     with TickerProviderStateMixin {
-  GameService get _game => widget.gameService;
-  AiService? get _ai => widget.aiService;
+  // The engine + AI are held as swappable State fields (rather than read
+  // straight off the widget) so Undo can replace the live GameService with a
+  // decoded snapshot. The AiService is recreated to point at the new engine on
+  // every swap so a vs-AI game never desyncs against a stale GameService.
+  late GameService _game;
+  late AiService? _ai;
   String? _selectedHandCardId;
   String? _actionMessage;
   bool _aiThinking = false;
   String? _lastPlayedCardId;
 
+  /// LIFO stack of full game-state snapshots. Each user-initiated mutating
+  /// action pushes one BEFORE mutating, so Undo restores the prior state.
+  /// Bounded to keep memory flat in long games; cleared on endTurn so undo is
+  /// scoped to the current turn (you cannot undo across a turn boundary, which
+  /// would otherwise re-run the opponent/AI turn into a different state).
+  final List<Map<String, dynamic>> _undoStack = [];
+  static const int _maxUndoDepth = 50;
+
+  bool get _canUndo => _undoStack.isNotEmpty && !_aiThinking;
+
+  /// Capture a snapshot of the current engine state onto the undo stack. Call
+  /// this immediately BEFORE any user-initiated mutation of [_game].
+  void _pushUndo() {
+    _undoStack.add(GameStateCodec.encode(_game));
+    if (_undoStack.length > _maxUndoDepth) {
+      _undoStack.removeAt(0);
+    }
+  }
+
+  /// Pop the most recent snapshot and replace the live engine with it. The
+  /// AiService (if any) is rebuilt against the restored engine so it never
+  /// points at a discarded GameService.
+  void _undo() {
+    if (_undoStack.isEmpty) return;
+    final snapshot = _undoStack.removeLast();
+    final restored = GameStateCodec.decode(snapshot);
+    setState(() {
+      _game = restored;
+      final ai = _ai;
+      if (ai != null) {
+        _ai = AiService(game: restored, aiPlayerId: ai.aiPlayerId)
+          ..phaseDelay = ai.phaseDelay;
+      }
+      _selectedHandCardId = null;
+      _lastPlayedCardId = null;
+      _actionMessage = 'Undid last action';
+    });
+  }
+
   @override
   void initState() {
     super.initState();
+    _game = widget.gameService;
+    _ai = widget.aiService;
     final which = widget.debugOpenModal;
     if (which != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -92,6 +138,7 @@ class _GameScreenState extends State<GameScreen>
         _showChoiceDialog(card, chooseEffect);
         return;
       }
+      _pushUndo();
       final success = _game.playCard(card.id);
       setState(() {
         _selectedHandCardId = null;
@@ -299,6 +346,7 @@ class _GameScreenState extends State<GameScreen>
       ),
     ).then((choiceIndex) {
       if (choiceIndex != null) {
+        _pushUndo();
         final success = _game.playCard(card.id, choiceIndex: choiceIndex);
         setState(() {
           _selectedHandCardId = null;
@@ -501,6 +549,7 @@ class _GameScreenState extends State<GameScreen>
   }
 
   void _playAllCards() {
+    _pushUndo();
     setState(() {
       final played = _game.playAllCards();
       _actionMessage = 'Played $played cards';
@@ -523,6 +572,7 @@ class _GameScreenState extends State<GameScreen>
   }
 
   void _doAttackPlayer(String targetId) {
+    _pushUndo();
     setState(() {
       final power = _game.currentPlayer.powerPool;
       final target = _game.players.firstWhere((p) => p.id == targetId);
@@ -596,6 +646,7 @@ class _GameScreenState extends State<GameScreen>
 
   void _attackChampion(CardModel champion, String ownerId) {
     if (_game.currentPlayer.powerPool <= 0) return;
+    _pushUndo();
     setState(() {
       if (_game.attackChampion(champion.id, ownerId)) {
         _actionMessage =
@@ -608,6 +659,7 @@ class _GameScreenState extends State<GameScreen>
   }
 
   void _activateChampion(CardModel champion) {
+    _pushUndo();
     setState(() {
       if (_game.activateChampion(champion.id)) {
         _actionMessage = 'Activated ${champion.name}!';
@@ -618,6 +670,7 @@ class _GameScreenState extends State<GameScreen>
   }
 
   void _buyCard(CardModel card) {
+    _pushUndo();
     final success = _game.buyCard(card.id);
     setState(() {
       if (success) {
@@ -629,6 +682,7 @@ class _GameScreenState extends State<GameScreen>
   }
 
   void _focus() {
+    _pushUndo();
     setState(() {
       if (_game.focus()) {
         _actionMessage = 'Focus: spent 1 gem → +1 mastery';
@@ -636,7 +690,38 @@ class _GameScreenState extends State<GameScreen>
     });
   }
 
+  /// Minimal local UI hook for the Destiny system (Into the Horizon): when a
+  /// Destiny supply is enabled and the current player may claim/use a Destiny,
+  /// this returns the action to run; the board calls it from the (future)
+  /// Destiny-row widget. Returns null when no Destiny action is available, which
+  /// is always the case on the live single-player board today (no
+  /// `destinySupply` is wired into [GameService]). Keeping this as a small,
+  /// referenced helper makes the engine API discoverable from the UI without
+  /// introducing a half-built dialog or changing any visible behavior/goldens.
+  /// See [GameService.claimDestiny] / [GameService.useDestinyAbility].
+  VoidCallback? destinyActionFor(String destinyId) {
+    if (_game.destinyRow.isEmpty && _game.currentPlayer.claimedDestinies.isEmpty) {
+      return null;
+    }
+    final canClaim =
+        _game.destinyRow.any((c) => c.id == destinyId);
+    return () {
+      setState(() {
+        final ok = canClaim
+            ? _game.claimDestiny(destinyId)
+            : _game.useDestinyAbility(destinyId);
+        if (ok) {
+          _actionMessage = canClaim ? 'Claimed Destiny' : 'Used Destiny ability';
+        }
+      });
+    };
+  }
+
   void _endTurn() {
+    // Undo is scoped to the current turn: once the turn ends (and the AI/next
+    // player acts), the prior in-turn snapshots are no longer meaningful, so
+    // the stack is cleared.
+    _undoStack.clear();
     setState(() {
       // Auto-play remaining cards before ending turn
       if (_game.currentPlayer.hand.isNotEmpty) {
@@ -792,6 +877,7 @@ class _GameScreenState extends State<GameScreen>
                             onCardTap: _playCard,
                             onCardLongPress: _showCardDetail,
                             onEndTurn: _endTurn,
+                            onUndo: _canUndo ? _undo : null,
                             onPlayAll: currentPlayer.hand.isNotEmpty
                                 ? _playAllCards
                                 : null,
@@ -1262,6 +1348,7 @@ class _BottomZone extends StatelessWidget {
     required this.onCardTap,
     required this.onCardLongPress,
     required this.onEndTurn,
+    required this.onUndo,
     required this.onPlayAll,
     required this.onAttack,
     required this.hasGuards,
@@ -1275,6 +1362,10 @@ class _BottomZone extends StatelessWidget {
   final void Function(CardModel) onCardTap;
   final void Function(CardModel) onCardLongPress;
   final VoidCallback onEndTurn;
+
+  /// Undo the last action. Null (button disabled) when there is nothing to undo
+  /// or the AI is acting.
+  final VoidCallback? onUndo;
   final VoidCallback? onPlayAll;
   final VoidCallback? onAttack;
   final bool hasGuards;
@@ -1307,15 +1398,29 @@ class _BottomZone extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              BeveledButton(
-                label: 'End Turn',
-                onPressed: onEndTurn,
-                width: isMobile ? 120 : 150,
-                height: 40,
-                fontSize: isMobile ? 16 : 20,
+              // FittedBox lets the End Turn + Undo row shrink rather than
+              // overflow on the narrowest mobile widths.
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    BeveledButton(
+                      label: 'End Turn',
+                      onPressed: onEndTurn,
+                      width: isMobile ? 110 : 150,
+                      height: 40,
+                      fontSize: isMobile ? 15 : 20,
+                    ),
+                    const SizedBox(width: 6),
+                    _UndoButton(onPressed: onUndo),
+                  ],
+                ),
               ),
               const SizedBox(height: 4),
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
                     width: 22,
@@ -1432,6 +1537,57 @@ class _FocusButton extends StatelessWidget {
                       color: Colors.white,
                       fontSize: 12,
                       fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Compact "Undo" button shown next to End Turn. Greyed out and non-interactive
+/// when [onPressed] is null (nothing to undo, or the AI is acting).
+class _UndoButton extends StatelessWidget {
+  const _UndoButton({required this.onPressed});
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onPressed != null;
+    return Opacity(
+      opacity: enabled ? 1.0 : 0.4,
+      child: GestureDetector(
+        onTap: onPressed,
+        child: Container(
+          key: const ValueKey('undo_button'),
+          height: 40,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF3E6E8E), Color(0xFF1B3650)],
+            ),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: BoardChrome.tealHighlight.withValues(alpha: 0.7),
+              width: 1.2,
+            ),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.undo, size: 16, color: Colors.white),
+              SizedBox(width: 4),
+              Text(
+                'Undo',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
         ),

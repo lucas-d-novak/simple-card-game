@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:simple_card_game/data/card_definitions.dart';
+import 'package:simple_card_game/data/character_relics.dart';
 import 'package:simple_card_game/data/market_deck.dart';
 import 'package:simple_card_game/data/starter_deck.dart';
 import 'package:simple_card_game/models/card_effect.dart';
@@ -17,8 +18,11 @@ class GameService {
     Random? random,
     List<Character?>? characters,
     List<MarketCard>? marketDeck,
+    Map<String, CardModel>? relicCards,
+    List<CardModel>? destinySupply,
   })  : _random = random ?? Random(),
         _marketDeck = marketDeck,
+        _relicCards = relicCards,
         assert(playerCount >= 2 && playerCount <= 4),
         assert(characters == null || characters.length == playerCount,
             'characters, when provided, must have one entry per player') {
@@ -27,6 +31,20 @@ class GameService {
       for (var i = 0; i < playerCount; i++) {
         players[i].character = characters[i];
       }
+    }
+    // Relic options are set aside beside the player at setup. This runs AFTER
+    // character assignment so the constructor's `characters` path is covered.
+    for (final p in players) {
+      _populateRelicOptions(p);
+    }
+    // Destiny supply is OPT-IN (Into the Horizon). When omitted (the default),
+    // destinyRow / destinyDeck stay empty and the game behaves exactly as
+    // before — no Destinies are ever claimable. When a supply is provided, it is
+    // shuffled and the top six are dealt face-up into the shared destinyRow; the
+    // rest form the destinyDeck (cascade source). The row is NOT auto-refilled
+    // when a Destiny is claimed (Into the Horizon rule).
+    if (destinySupply != null) {
+      _initializeDestinySupply(destinySupply);
     }
   }
 
@@ -39,7 +57,8 @@ class GameService {
   /// snapshot and reseed the RNG for any future shuffle.
   GameService.restore({Random? random})
       : _random = random ?? Random(),
-        _marketDeck = null;
+        _marketDeck = null,
+        _relicCards = null;
 
   final Random _random;
 
@@ -48,10 +67,31 @@ class GameService {
   /// (keeps existing tests and the legacy demo unchanged).
   final List<MarketCard>? _marketDeck;
 
+  /// Relic card templates by id (Relics of the Future). When provided, each
+  /// player whose [Character] is in [characterRelicIds] gets that character's two
+  /// relics set aside in [PlayerState.relicOptions] at setup. When null (the
+  /// default — e.g. the legacy demo, most tests), NO relic options are created
+  /// and the game behaves exactly as before. The caller (Flutter app / server)
+  /// loads these from the card DB and injects them; the pure-Dart engine does
+  /// not load assets itself.
+  final Map<String, CardModel>? _relicCards;
+
   final List<PlayerState> players = [];
   final List<CardModel> centerRow = [];
   final List<CardModel> infinityDeck = [];
   final List<CardModel> removedFromGame = [];
+
+  /// Shared face-up supply of Destinies (Into the Horizon), up to
+  /// [maxDestinyRow]. Empty unless a `destinySupply` was passed to the
+  /// constructor. NOT auto-refilled when a Destiny is claimed.
+  final List<CardModel> destinyRow = [];
+
+  /// Face-down remainder of the Destiny supply (the cascade source, drawn from
+  /// by Mastery-10 cascade Destinies). Empty unless a supply was provided.
+  final List<CardModel> destinyDeck = [];
+
+  /// The maximum number of face-up Destinies in [destinyRow].
+  static const int maxDestinyRow = 6;
   int currentPlayerIndex = 0;
   int turnNumber = 1;
   bool _gameOver = false;
@@ -98,6 +138,131 @@ class GameService {
     }
   }
 
+  // -------------------------------------------------------------------------
+  // Destiny system (Into the Horizon expansion)
+  // -------------------------------------------------------------------------
+
+  /// Mastery a player must reach before they may claim a Destiny (for free).
+  static const int destinyClaimMastery = 5;
+
+  /// Deal the provided Destiny supply into the shared row + deck. The supply is
+  /// shuffled with the game RNG (deterministic under an injected [Random]); the
+  /// first [maxDestinyRow] go face-up into [destinyRow], the rest into
+  /// [destinyDeck]. Idempotent only at construction (called once).
+  void _initializeDestinySupply(List<CardModel> supply) {
+    final shuffled = List<CardModel>.of(supply)..shuffle(_random);
+    final faceUp = shuffled.length < maxDestinyRow ? shuffled.length : maxDestinyRow;
+    destinyRow.addAll(shuffled.take(faceUp));
+    destinyDeck.addAll(shuffled.skip(faceUp));
+  }
+
+  /// Claim a Destiny from the shared [destinyRow] for the current player, FREE.
+  ///
+  /// Legal only when: the current player can act, they have reached Mastery
+  /// [destinyClaimMastery] (5), they have not exhausted their per-game claim
+  /// allowance ([PlayerState.canClaimAnotherDestiny] — base 1, plus any cascade
+  /// grants), and [cardId] names a Destiny currently in the row. On success the
+  /// Destiny moves from the row into the player's persistent
+  /// [PlayerState.claimedDestinies] zone (it never enters the deck), the row is
+  /// NOT refilled, the player's claim count increments, and any persistent
+  /// PASSIVE effect on the Destiny (its [CardModel.playEffects] — e.g. a
+  /// [StaticModifier]) resolves ONCE now so the standing buff applies for the
+  /// rest of the game. Activated Destinies (those carrying an
+  /// [CardModel.activatedAbility]) have NO playEffects to resolve here; their
+  /// ability is used per-turn via [useDestinyAbility]. Returns false (no state
+  /// change) on any failure.
+  bool claimDestiny(String cardId) {
+    if (!_currentPlayerCanAct) return false;
+    final player = currentPlayer;
+    if (player.mastery < destinyClaimMastery) return false;
+    if (!player.canClaimAnotherDestiny) return false;
+
+    final index = destinyRow.indexWhere((c) => c.id == cardId);
+    if (index == -1) return false;
+
+    final destiny = destinyRow.removeAt(index);
+    player.claimedDestinies.add(destiny);
+    player.destinyClaimCount += 1;
+
+    // Resolve any persistent passive effect once on claim (StaticModifier /
+    // turn-scoped standing effects). Activated-only Destinies have empty
+    // playEffects, so this is a no-op for them. We deliberately do NOT route an
+    // InfinityShardEffect or deferred-selection effects through here — Destiny
+    // passives in the encoded set are StaticModifier / TreatFactionAs only.
+    if (destiny.playEffects.isNotEmpty) {
+      _resolveEffects(destiny.playEffects, player, sourceCard: destiny);
+    }
+    return true;
+  }
+
+  /// Use a claimed Destiny's Exhaust-gated activated ability (the "second Focus
+  /// button"). Mirrors [useActivatedAbility] but operates on the persistent
+  /// [PlayerState.claimedDestinies] zone and the per-turn
+  /// [PlayerState.exhaustedDestinies] set. Fails (returns false, no state
+  /// change) when: the player can't act, the Destiny is not claimed, it has no
+  /// activated ability, it is already exhausted this turn, or the cost is
+  /// unpayable. On success it pays the cost, marks the Destiny exhausted, and
+  /// resolves the ability (honouring its mastery tier).
+  bool useDestinyAbility(String cardId) {
+    if (!_currentPlayerCanAct) return false;
+    final player = currentPlayer;
+
+    final destiny =
+        player.claimedDestinies.where((c) => c.id == cardId).firstOrNull;
+    if (destiny == null) return false;
+
+    final ability = destiny.activatedAbility;
+    if (ability == null) return false;
+
+    if (player.exhaustedDestinies.contains(cardId)) return false;
+    if (!_canPayActivationCost(player, ability.cost)) return false;
+
+    _payActivationCost(player, ability.cost);
+    player.exhaustedDestinies.add(cardId);
+    _resolveActivatedAbility(ability, player, sourceCard: destiny);
+    return true;
+  }
+
+  /// Cascade (Mastery 10): banish a claimed Destiny [cardId] to reveal the top
+  /// [revealCount] (default 2) Destinies from the [destinyDeck] for the player
+  /// to choose from, granting [grant] (default 2) additional Destiny claims.
+  ///
+  /// The banished Destiny is removed from the player's [claimedDestinies] and
+  /// added to [removedFromGame]; the revealed Destinies are appended to
+  /// [destinyRow] (face-up) so the player can then [claimDestiny] them under the
+  /// extended allowance. Legal only when the current player can act, holds the
+  /// named claimed Destiny, and the Destiny's own mastery gate (if any) is met.
+  /// Returns the list of revealed Destinies on success, or an empty list on
+  /// failure / when the deck is empty.
+  List<CardModel> banishDestinyToCascade(
+    String cardId, {
+    int revealCount = 2,
+    int grant = 2,
+  }) {
+    if (!_currentPlayerCanAct) return const [];
+    final player = currentPlayer;
+
+    final index = player.claimedDestinies.indexWhere((c) => c.id == cardId);
+    if (index == -1) return const [];
+
+    final destiny = player.claimedDestinies[index];
+    // Respect a card-level mastery gate (stolen_future is Mastery 10).
+    final gate = destiny.masteryThreshold;
+    if (gate != null && player.mastery < gate) return const [];
+
+    player.claimedDestinies.removeAt(index);
+    player.exhaustedDestinies.remove(cardId);
+    removedFromGame.add(destiny);
+
+    final reveal = <CardModel>[];
+    for (var i = 0; i < revealCount && destinyDeck.isNotEmpty; i++) {
+      reveal.add(destinyDeck.removeLast());
+    }
+    destinyRow.addAll(reveal);
+    player.destinyClaimGrants += grant;
+    return reveal;
+  }
+
   /// Assign (or clear) the Character a player has chosen, by player id. Lets the
   /// setup flow pick characters after construction (the constructor's
   /// `characters` param is the other supported path). Returns false if no player
@@ -106,6 +271,87 @@ class GameService {
     final player = players.where((p) => p.id == playerId).firstOrNull;
     if (player == null) return false;
     player.character = character;
+    // Re-derive the set-aside relics from the new Character. Only before the
+    // player has recruited — once recruited the relic decision is locked in.
+    if (!player.relicRecruited) {
+      _populateRelicOptions(player);
+    }
+    return true;
+  }
+
+  // -------------------------------------------------------------------------
+  // Relics (Relics of the Future expansion)
+  // -------------------------------------------------------------------------
+
+  /// Populate [player]'s [PlayerState.relicOptions] from its Character, if any.
+  /// No-op unless relic card templates were injected AND the player's Character
+  /// is in [characterRelicIds] (rez / chroma and no-character players get none).
+  /// Each option is a unique per-player instance (`<relicId>_relic_<playerId>`)
+  /// so it never collides with a market copy of the same template.
+  void _populateRelicOptions(PlayerState player) {
+    player.relicOptions.clear();
+    final templates = _relicCards;
+    if (templates == null) return;
+    final ids = relicIdsFor(player.character);
+    if (ids == null) return;
+    for (final relicId in ids) {
+      final template = templates[relicId];
+      if (template == null) continue; // missing template → skip (documented).
+      player.relicOptions.add(_relicInstanceFor(template, player.id));
+    }
+  }
+
+  /// A concrete relic-card instance owned by [playerId], preserving every
+  /// gameplay field of [template] with a per-player unique id.
+  CardModel _relicInstanceFor(CardModel template, String playerId) {
+    return CardModel(
+      id: '${template.id}_relic_$playerId',
+      name: template.name,
+      cost: template.cost,
+      playEffects: template.playEffects,
+      faction: template.faction,
+      cardType: template.cardType,
+      shield: template.shield,
+      hasGuard: template.hasGuard,
+      allyAbility: template.allyAbility,
+      masteryThreshold: template.masteryThreshold,
+      masteryBonus: template.masteryBonus,
+      masteryReplaces: template.masteryReplaces,
+      countsAsAllFactions: template.countsAsAllFactions,
+      activatedAbility: template.activatedAbility,
+      art: template.art,
+    );
+  }
+
+  /// Recruit ONE of the current player's two set-aside Relics (Relics of the
+  /// Future). Legal only when the current player may act, has mastery >= 10, has
+  /// NOT already recruited, and [cardId] matches one of their two
+  /// [PlayerState.relicOptions]. On success the chosen relic is SHUFFLED INTO the
+  /// player's draw pile (unlike Destiny, which stays beside play), the OTHER
+  /// relic is banished to [removedFromGame], the options zone is emptied, and
+  /// [PlayerState.relicRecruited] is set. Returns true on success; false (no
+  /// state change) on any precondition failure — including a player with no
+  /// mapped character / no relic options, for whom this is always a no-op.
+  bool recruitRelic(String cardId) {
+    if (!_currentPlayerCanAct) return false;
+    final player = currentPlayer;
+    if (player.relicRecruited) return false;
+    if (player.mastery < 10) return false;
+
+    final index = player.relicOptions.indexWhere((c) => c.id == cardId);
+    if (index < 0) return false; // not one of this player's relics (or none).
+
+    final chosen = player.relicOptions[index];
+    // Banish every OTHER set-aside relic.
+    for (var i = 0; i < player.relicOptions.length; i++) {
+      if (i != index) removedFromGame.add(player.relicOptions[i]);
+    }
+    player.relicOptions.clear();
+    player.relicRecruited = true;
+
+    // Shuffle the chosen relic into the draw pile.
+    player.drawPile.add(chosen);
+    player.drawPile.shuffle(_random);
     return true;
   }
 
