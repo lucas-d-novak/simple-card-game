@@ -14,10 +14,17 @@ class LobbyGame {
     required this.id,
     required this.hostId,
     required this.seats,
-  });
+    String? name,
+  }) : name = (name != null && name.trim().isNotEmpty)
+            ? name.trim()
+            : "$hostId's game";
 
   final String id;
   final String hostId;
+
+  /// Human-readable display name for the lobby (host-chosen, or a default of
+  /// "<host>'s game"). Distinct from [id], which stays the stable routing key.
+  final String name;
 
   /// Desired player count (2-4). The game starts once this many have joined.
   final int seats;
@@ -32,6 +39,7 @@ class LobbyGame {
 
   Map<String, dynamic> toSummary() => {
         'id': id,
+        'name': name,
         'hostId': hostId,
         'seats': seats,
         'players': players,
@@ -58,8 +66,13 @@ class Lobby {
   /// reproducible and testable). Ids are unique within a process run.
   String _nextId(String prefix) => '${prefix}_${_counter++}';
 
-  LobbyGame createGame({required String hostId, required int seats}) {
-    final game = LobbyGame(id: _nextId('game'), hostId: hostId, seats: seats);
+  LobbyGame createGame({
+    required String hostId,
+    required int seats,
+    String? name,
+  }) {
+    final game =
+        LobbyGame(id: _nextId('game'), hostId: hostId, seats: seats, name: name);
     game.players.add(hostId);
     _games[game.id] = game;
     return game;

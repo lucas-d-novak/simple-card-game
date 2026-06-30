@@ -259,5 +259,18 @@ void main() {
       g.status = GameStatus.complete;
       expect(lobby.activeGameForPlayer('alice'), isNull);
     });
+
+    test('game name: custom name is used; blank falls back to default', () {
+      final lobby = Lobby();
+      final named = lobby.createGame(hostId: 'alice', seats: 2, name: 'Friday Night');
+      expect(named.name, 'Friday Night');
+      expect(named.toSummary()['name'], 'Friday Night');
+
+      final unnamed = lobby.createGame(hostId: 'bob', seats: 2);
+      expect(unnamed.name, "bob's game");
+
+      final blank = lobby.createGame(hostId: 'carol', seats: 2, name: '   ');
+      expect(blank.name, "carol's game", reason: 'whitespace falls back');
+    });
   });
 }

@@ -150,7 +150,8 @@ void _dispatch(
         err('seats must be 2-4');
         return;
       }
-      final g = _lobby.createGame(hostId: playerId, seats: seats);
+      final name = msg['name'] as String?;
+      final g = _lobby.createGame(hostId: playerId, seats: seats, name: name);
       send({'type': 'created', 'gameId': g.id});
       _broadcastLobby();
 

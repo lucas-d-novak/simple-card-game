@@ -25,6 +25,7 @@ class NetworkLobbyScreen extends StatefulWidget {
 class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
   final _nameController = TextEditingController();
   final _urlController = TextEditingController();
+  final _gameNameController = TextEditingController();
   GameClient? _client;
   bool _navigatedToGame = false;
 
@@ -40,6 +41,7 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
     _client?.dispose();
     _nameController.dispose();
     _urlController.dispose();
+    _gameNameController.dispose();
     super.dispose();
   }
 
@@ -53,6 +55,11 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
     client.addListener(_onClientChanged);
     setState(() => _client = client);
     client.connect(_urlController.text.trim());
+  }
+
+  void _createGame(GameClient client) {
+    client.createGame(seats: 2, name: _gameNameController.text);
+    _gameNameController.clear();
   }
 
   void _onClientChanged() {
@@ -165,26 +172,34 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Text('Lobby — ${client.playerId}',
+                style: const TextStyle(
+                    color: Color(0xFFE8C45A),
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            // Create row: optional game name + Create / Refresh.
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Lobby — ${client.playerId}',
-                    style: const TextStyle(
-                        color: Color(0xFFE8C45A),
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold)),
-                Row(children: [
-                  IconButton(
-                    tooltip: 'Refresh',
-                    onPressed: client.listGames,
-                    icon: const Icon(Icons.refresh, color: Colors.white70),
+                Expanded(
+                  child: TextField(
+                    controller: _gameNameController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: _dec('Game name (optional)'),
+                    onSubmitted: (_) => _createGame(client),
                   ),
-                  FilledButton.icon(
-                    onPressed: () => client.createGame(seats: 2),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Create (2p)'),
-                  ),
-                ]),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  tooltip: 'Refresh',
+                  onPressed: client.listGames,
+                  icon: const Icon(Icons.refresh, color: Colors.white70),
+                ),
+                FilledButton.icon(
+                  onPressed: () => _createGame(client),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Create (2p)'),
+                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -213,24 +228,34 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
 
   Widget _gameTile(GameClient client, LobbyGameSummary g) {
     final joined = g.players.contains(client.playerId);
-    final canJoin = g.status == 'waiting' && !g.players.contains(client.playerId);
+    final canJoin = g.status == 'waiting' && !joined;
+    // If you're a member of a game that has already started, you can re-enter
+    // it (the server resyncs your state on request).
+    final canRejoin = joined && g.status == 'started';
     return Card(
       color: const Color(0xFF1B3A57),
       child: ListTile(
-        title: Text('${g.id}  ·  ${g.status}',
-            style: const TextStyle(color: Colors.white)),
+        title: Text(g.name, style: const TextStyle(color: Colors.white)),
         subtitle: Text(
-            '${g.players.length}/${g.seats} players: ${g.players.join(", ")}',
+            '${g.status}  ·  ${g.players.length}/${g.seats}: '
+            '${g.players.join(", ")}',
             style: const TextStyle(color: Colors.white70)),
         trailing: canJoin
             ? FilledButton(
                 onPressed: () => client.joinGame(g.id),
                 child: const Text('Join'),
               )
-            : joined
-                ? const Text('joined',
-                    style: TextStyle(color: Color(0xFF80CBC4)))
-                : null,
+            : canRejoin
+                ? FilledButton(
+                    onPressed: () => client.requestResync(),
+                    style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF2E7D32)),
+                    child: const Text('Rejoin'),
+                  )
+                : joined
+                    ? const Text('joined',
+                        style: TextStyle(color: Color(0xFF80CBC4)))
+                    : null,
       ),
     );
   }

@@ -12,6 +12,7 @@ enum ClientStatus { disconnected, connecting, connected, error }
 class LobbyGameSummary {
   LobbyGameSummary({
     required this.id,
+    required this.name,
     required this.hostId,
     required this.seats,
     required this.players,
@@ -19,6 +20,9 @@ class LobbyGameSummary {
   });
 
   final String id;
+
+  /// Host-chosen display name (defaults to "<host>'s game" server-side).
+  final String name;
   final String hostId;
   final int seats;
   final List<String> players;
@@ -27,6 +31,7 @@ class LobbyGameSummary {
   factory LobbyGameSummary.fromJson(Map<String, dynamic> j) =>
       LobbyGameSummary(
         id: j['id'] as String,
+        name: (j['name'] as String?) ?? (j['id'] as String),
         hostId: (j['hostId'] as String?) ?? '',
         seats: (j['seats'] as int?) ?? 2,
         players: [for (final p in (j['players'] as List? ?? const [])) p as String],
@@ -123,8 +128,16 @@ class GameClient extends ChangeNotifier {
 
   void listGames() => _send({'type': 'listGames'});
 
-  void createGame({int seats = 2}) =>
-      _send({'type': 'createGame', 'seats': seats});
+  /// Ask the server to resend our current game state. The server's `identify`
+  /// handler resyncs a player who is seated in a live game — used to re-enter a
+  /// game from the lobby (a tab that lost its in-game view, or a reconnect).
+  void requestResync() => _send({'type': 'identify', 'playerId': playerId});
+
+  void createGame({int seats = 2, String? name}) => _send({
+        'type': 'createGame',
+        'seats': seats,
+        if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
+      });
 
   void joinGame(String gameId) =>
       _send({'type': 'joinGame', 'gameId': gameId});
