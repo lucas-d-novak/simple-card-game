@@ -1,0 +1,28 @@
+{
+  "name": "simple-card-game",
+  "version": "1.0.0",
+  "description": "This repo is a small Flutter card-game prototype aimed at iOS, Android, and web.",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lucas-d-novak/simple-card-game.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/lucas-d-novak/simple-card-game/issues"
+  },
+  "homepage": "https://github.com/lucas-d-novak/simple-card-game#readme",
+  "dependencies": {
+    "chrome-remote-interface": "^0.34.0"
+  }
+}

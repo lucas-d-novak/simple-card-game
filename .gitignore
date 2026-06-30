@@ -46,3 +46,5 @@ screenshots/
 node_modules/
 .server_pid
 test/failures/
+package-lock.json
+screenshots/live_*.png
