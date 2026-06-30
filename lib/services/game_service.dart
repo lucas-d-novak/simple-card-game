@@ -736,7 +736,16 @@ class GameService {
         final inChampions =
             !inPlayed && _banishFromZone(player.championsInPlay, cardId);
         if (!inPlayed && !inChampions) return false;
-        player.cardsPlayedThisTurn.removeWhere((c) => c.id == cardId);
+        // A banished champion must release its under-cards (mirrors every other
+        // champion-removal path; otherwise tucked cards + shieldPerCardUnder
+        // orphan).
+        if (inChampions) _releaseUnderCards(player, cardId);
+        // Remove a SINGLE history entry (ids are card-type ids, so duplicates
+        // legitimately recur this turn — removeWhere would over-purge and
+        // corrupt per-turn counts; we only banished one physical card).
+        final histIndex =
+            player.cardsPlayedThisTurn.indexWhere((c) => c.id == cardId);
+        if (histIndex != -1) player.cardsPlayedThisTurn.removeAt(histIndex);
         return true;
     }
   }

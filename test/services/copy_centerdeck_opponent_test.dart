@@ -336,5 +336,49 @@ void main() {
       final game = GameService(playerCount: 2, random: Random(7));
       expect(game.banishCard('never', BanishSource.playedThisTurn), false);
     });
+
+    test('banishing a champion played this turn releases its under-cards', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      const champ = CardModel(
+        id: 'host',
+        name: 'Host',
+        cost: 0,
+        cardType: CardType.champion,
+        shield: 3,
+        playEffects: [],
+      );
+      player.hand.add(champ);
+      game.playCard('host'); // deploys to championsInPlay + history
+      // Tuck a card under it.
+      const tucked = CardModel(id: 'under', name: 'Under', cost: 2, playEffects: []);
+      player.cardsUnderChampion['host'] = [tucked];
+
+      expect(game.banishCard('host', BanishSource.playedThisTurn), true);
+      expect(player.championsInPlay.any((c) => c.id == 'host'), false);
+      expect(game.removedFromGame.any((c) => c.id == 'host'), true);
+      // Under-card released to discard, not orphaned.
+      expect(player.cardsUnderChampion.containsKey('host'), false);
+      expect(player.discardPile.any((c) => c.id == 'under'), true);
+    });
+
+    test('duplicate-id history purge removes only one entry, not all', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      // Two copies of the same card id played this turn.
+      const dup = CardModel(id: 'dup', name: 'Dup', cost: 0, playEffects: []);
+      player.hand.addAll([dup, dup]);
+      game.playCard('dup');
+      game.playCard('dup');
+      expect(
+          player.cardsPlayedThisTurn.where((c) => c.id == 'dup').length, 2);
+
+      expect(game.banishCard('dup', BanishSource.playedThisTurn), true);
+      // Exactly one copy purged from history (not both) — counts stay accurate.
+      expect(
+          player.cardsPlayedThisTurn.where((c) => c.id == 'dup').length, 1);
+      // And exactly one removed from the played zone.
+      expect(player.playedThisTurn.where((c) => c.id == 'dup').length, 1);
+    });
   });
 }
