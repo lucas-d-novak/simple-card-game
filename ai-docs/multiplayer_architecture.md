@@ -1,9 +1,21 @@
 # Multiplayer Architecture
 
-**Status:** Design proposal (implementation-ready)
+**Status:** Phase 0/1 implemented (`server/`); Phases 2/3 design-ready.
 **Scope:** Online, turn-based, 2–4 player Shards of Infinity over the network.
 **Model:** Authoritative server. The server runs the real game engine; clients
 are untrusted thin terminals that send *actions* and render *state*.
+
+> **Implemented since this doc was first written.** The serialization dependency
+> below is **done** (`lib/data/database/game_state_codec.dart` +
+> `card_serialization.dart`), and the Phase 0/1 server is live in `server/`. On
+> top of the original design it also has: same-turn server-authoritative **undo**
+> (per-game undo stack, `canUndo` flag in the redacted view, `undo` action),
+> **reconnect/resync** (`Lobby.activeGameForPlayer` + per-player resync on
+> `identify`/`hello`), per-game **rejoin** (`resyncGame`), custom game **names**
+> (`LobbyGame.name`, `createGame(name:)`), multi-game membership
+> (`activeGamesForPlayer`), and a redacted **card dictionary** (`view.cards`,
+> id→full `CardModel` by value) so the client renders exact engine cards without
+> re-deriving them from a catalog. These are called out inline below.
 
 This doc designs to decisions already made — they are not relitigated here:
 
@@ -213,6 +225,8 @@ The full action set (each maps to the identically-named `GameService` method):
 | `playCard` | `cardId`, `choiceIndex?` | `playCard` |
 | `playAllCards` | — | `playAllCards` |
 | `buyCard` | `cardId` | `buyCard` |
+| `focus` | — | `focus` (spend 1 gem → 1 mastery, Character Focus) |
+| `undo` | — | session-level same-turn rollback (see [§7](#7-reconnect--disconnect)) |
 | `endTurn` | — | `endTurn` |
 | `attackPlayer` | `targetPlayerId`, `amount` | `attackPlayer` |
 | `attackChampion` | `championId`, `targetPlayerId` | `attackChampion` |
@@ -231,8 +245,16 @@ The full action set (each maps to the identically-named `GameService` method):
 | `recruitFromCenter` | `cardId`, `free`, `maxCost?`, `toHand?`, `toTopOfDeck?` | `recruitFromCenter` |
 | `fastPlayFromCenter` | `cardId`, `maxCost?`, `alliesOnly?` | `fastPlayFromCenter` |
 
-(`scryReveal`/`centerDeckScryReveal`/`scryReveal` are *read* helpers, not state
+(`scryReveal`/`centerDeckScryReveal` are *read* helpers, not state
 mutations — see deferred selection below.)
+
+> **Not yet wired to the protocol.** The engine has gained `claimDestiny`,
+> `useDestinyAbility`, `banishDestinyToCascade`, and `recruitRelic` (the Destiny
+> and Relics subsystems — see
+> [`shards_of_infinity_mechanics.md`](shards_of_infinity_mechanics.md) §25), but
+> `server/lib/protocol.dart` does not yet expose them as wire actions. They work
+> in the local Flutter client today; adding them is a localized addition to the
+> action `switch` plus the same auth gates.
 
 ### Authorization: the server's two gates
 
@@ -388,10 +410,29 @@ produces a per-recipient redacted view.** For recipient `p`, the filter is:
 | Scalars: `health`, `mastery`, `gemPool`, `powerPool`, `unblockedDamageThisTurn`, `staticModifiers`, `character`, `activatedChampions`, `exhaustedChampions` | **Full for all players** — these are public game state. |
 | `currentPlayerIndex`, `turnNumber`, `isGameOver`, `winnerId` | **Full** — public. |
 
-The filter is a pure function `redactFor(GameService game, String recipientId) →
-GameStateView`. It runs once per recipient per broadcast. Because it's the *only*
-path from engine to wire, hidden-info leakage is structurally impossible: there
-is no code path that ships an unredacted hand or deck order.
+The filter is the implemented pure function
+`redactFor(GameService game, String recipientId, {required int stateVersion, bool canUndo})`
+in [`server/lib/views.dart`](../server/lib/views.dart). It runs once per recipient
+per broadcast. Because it's the *only* path from engine to wire, hidden-info
+leakage is structurally impossible: there is no code path that ships an
+unredacted hand or deck order.
+
+> **Implemented additions to the wire view.** The shipped `redactFor` also
+> carries, beyond the table above:
+> - **`cards`** — a dictionary `id → full CardModel (by value)` for *every card
+>   the recipient may legitimately see* (own hand, all discards, center row,
+>   champions, played-this-turn, removed-from-game). The client renders straight
+>   from this rather than re-deriving cards from a catalog, so it shows the
+>   *exact* engine cards (the engine mints per-instance ids like `chaos_imp_1`
+>   that aren't in the authoritative `CardDatabase`). Hidden info is preserved:
+>   opponents' hands and **all** draw piles are deliberately excluded from the
+>   dictionary — those models are never serialized.
+> - **`canUndo`** — true only in the recipient's own view when they may issue an
+>   `undo` right now (their turn + the session holds a same-turn rollback
+>   snapshot); drives the client's Undo button. See [§7](#7-reconnect--disconnect).
+> - **`focusedThisTurn`** / **`ignoresShieldThisTurn`** per-player flags, and
+>   **`playedThisTurn`** (public card ids), surfacing the Focus action and the
+>   played-this-turn zone added to the engine.
 
 > **Anti-cheat note (expanded in [§8](#8-security--anti-cheat)):** redaction is
 > not a UI nicety, it is the primary anti-cheat. A modified client cannot reveal
@@ -570,10 +611,12 @@ so listing games is cheap (no engine deserialization to render the list).
 
 ### Lobby messages (`type: "lobby"`)
 
-Client→server: `createGame {playerCap, fillWithAi?, invitePolicy}`,
-`joinGame {gameId}`, `leaveGame {gameId}`, `listGames`, `deleteGame {gameId}`
-(the trash-can on an expired/finished game), `startGame {gameId}`,
-`addAi {gameId, count}`.
+Client→server: `createGame {playerCap, name?, fillWithAi?, invitePolicy}`
+(**implemented:** `name` is a host-chosen display name — `LobbyGame.name`,
+defaulted when blank), `joinGame {gameId}`, `leaveGame {gameId}`, `listGames`,
+`deleteGame {gameId}` (the trash-can on an expired/finished game),
+`startGame {gameId}`, `addAi {gameId, count}`, `resyncGame {gameId}` (rejoin a
+specific in-progress game, see [§7](#7-reconnect--disconnect)).
 
 Server→client: `gameList {yours:[...], more:[...]}`, `gameUpdated {summary}`,
 `gameStarted {gameId}`.
@@ -626,15 +669,33 @@ Turn-based is forgiving: nobody loses a reflex-timed moment when a phone sleeps.
 
 ### Reconnect = re-auth + resnapshot
 
-1. Client reopens the socket, sends `hello {deviceToken}`.
-2. Server authenticates, finds the player's active games.
+1. Client reopens the socket, sends `hello`/`identify {playerId}`.
+2. Server authenticates and finds the player's active games. **Implemented:**
+   `Lobby.activeGameForPlayer(playerId)` returns the player's most-recent live
+   game; `activeGamesForPlayer(playerId)` lists all of them (a player can be in
+   several at once). A completed game is **not** returned as active.
 3. For the game the client re-enters, the server sends the **current redacted
    snapshot** — the *same* `state` message a live client gets ([§4](#4-state-sync-server--client)).
    Because sync is snapshot-based, "resync" needs no special path: the latest
-   snapshot *is* the full truth.
+   snapshot *is* the full truth. **Implemented:** identify auto-resyncs the
+   most-recent game, and a member can re-request any specific game via
+   `resyncGame {gameId}` (a non-member is refused; a still-`waiting` game isn't
+   resyncable).
 
 The client throws away whatever it had and renders the snapshot. `stateVersion`
 guards against a late stale snapshot racing the fresh one.
+
+### Same-turn undo (implemented)
+
+The server supports an in-turn **undo**. Each `GameSession` keeps an `_undoStack`
+of pre-action `GameStateCodec` snapshots. Before applying a *mutating* action the
+session pushes the current full state; an `endTurn` **clears** the stack (you can
+never undo across a turn boundary, which would leak an opponent's hidden draw).
+The `undo` action pops the last snapshot and `GameStateCodec.decode`s it back into
+the live engine, then re-broadcasts. The redacted view's `canUndo` flag
+(`GameSession.canUndoFor`) tells the acting player's client whether the Undo
+button is live. Because undo restores a full authoritative snapshot, it cannot
+desync clients — the next broadcast is just another snapshot.
 
 ### Disconnect handling
 
@@ -902,7 +963,7 @@ broadcast **no** state (nothing changed).
 ## Appendix B — Why this is low-risk
 
 The risky part of a card game is the rules engine, and **it already exists, is
-tested (493 engine tests), is deterministic, and is pure Dart.** This architecture adds
+tested (550 engine tests + 21 server tests), is deterministic, and is pure Dart.** This architecture adds
 exactly three new responsibilities around that proven core: (1) a courier
 (WebSocket + envelope), (2) a redaction filter (the security boundary), and (3) a
 lobby + store. None of them re-implement a single game rule. That separation is

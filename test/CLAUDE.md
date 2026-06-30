@@ -4,11 +4,13 @@ Test suite covering game logic and UI behavior.
 
 ## Totals
 
-- **493 engine tests** — run with `flutter test --exclude-tags golden` (what CI runs).
+- **550 engine tests** — run with `flutter test --exclude-tags golden` (what CI runs).
 - **8 golden screenshot tests** — tagged `golden`, run locally with plain `flutter test`.
-- **8 server tests** — the separate `server/` Dart package; run with
-  `cd server && dart test`. Cover state redaction (hidden hands / deck order),
-  action authorization (on-turn vs off-turn), and lobby flow (create / join / start).
+- **21 server tests** — the separate `server/` Dart package; run with
+  `cd server && dart test`. Cover state redaction (hidden hands / deck order, plus
+  the `cards` dictionary shipped to clients), action authorization (on-turn vs
+  off-turn), same-turn server UNDO, reconnect / resync, custom game names, and
+  lobby flow (create / join / start).
 
 The bulk of the engine coverage is `test/services/game_service_test.dart`
 (the Shards of Infinity engine spec). The legacy `DeckService` demo tests below
@@ -18,7 +20,11 @@ are a small subset.
 
 ### data/
 - `card_database_test.dart`, `card_definitions_test.dart`, `effect_codec_test.dart`,
-  `starter_deck_test.dart` — card catalog + JSON database + codec coverage.
+  `starter_deck_test.dart`, `card_art_map_test.dart` — card catalog + JSON
+  database + codec + art-map coverage.
+- `market_deck_test.dart` — `buildMarketDeckFromDatabase` / `buildDestinySupplyFromDatabase`:
+  asserts the market excludes Destinies, starters, off-scope, and Aion-group cards,
+  and that copy counts come from the DB `copies` field.
 - `game_state_codec_test.dart` — round-trips a full `GameService`/`PlayerState`
   snapshot through `GameStateCodec` (the multiplayer serialization layer).
 
@@ -62,8 +68,8 @@ Widget/integration tests that pump the full `DeckDrawApp` and interact via tap. 
 flutter test                              # all tests (incl. goldens) — run locally
 flutter test test/services/               # just service tests
 flutter test test/widget_test.dart         # just widget tests
-flutter test --exclude-tags golden        # what CI runs (skips goldens) — 493 tests
-cd server && dart test                    # the 8 server tests (redaction / auth / lobby)
+flutter test --exclude-tags golden        # what CI runs (skips goldens) — 550 tests
+cd server && dart test                    # the 21 server tests (redaction / auth / undo / reconnect / lobby)
 ```
 
 ## Golden screenshot tests (the `golden` tag)
@@ -72,7 +78,8 @@ Golden / screenshot tests are platform-sensitive — fonts and anti-aliasing
 differ between Windows dev machines and the Linux CI runner, so the same render
 produces slightly different pixels. They are therefore **tagged `golden`** (tag
 declared in [`dart_test.yaml`](../dart_test.yaml)) and **excluded in CI** via
-`flutter test --exclude-tags golden`.
+`flutter test --exclude-tags golden`. There are **8 golden test cases** in
+`test/screenshot_test.dart`.
 
 - **Locally:** plain `flutter test` runs them along with everything else.
 - **Regenerate goldens** after an intentional visual change:

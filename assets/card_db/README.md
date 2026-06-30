@@ -21,11 +21,17 @@ still need effect-info hunting.
 ```
 cards.json  ──(CardDatabase.load)──►  CardRecord  ──.model──►  CardModel  ──►  GameService
                                           │
-                                          └── set / copies / art / verified  (catalog tooling)
+                                          └── set / copies / art / verified / group  (catalog tooling)
 ```
+
+The DB is now the **live content source**: `lib/data/market_deck.dart` builds the
+in-game market (96 in-scope cards, real per-card `copies`) and the SEPARATE
+Destiny supply (~30 cards) directly from these records and injects them into
+`GameService`.
 
 - `lib/data/database/card_database.dart` — loads & parses `cards.json`.
 - `lib/data/database/effect_codec.dart` — JSON ⇄ `CardEffect`.
+- `lib/data/market_deck.dart` — `buildMarketDeckFromDatabase` / `buildDestinySupplyFromDatabase`.
 - `tool/validate_card_db.dart` — completeness + correctness checker.
 
 ## Data-entry workflow (phone photos + OCR)
@@ -117,8 +123,20 @@ See `schema.json` `definitions.effect` for the full list. Quick reference:
 | `destroyChampion` | `all` (bool) | destroy a single chosen enemy champion (or all when `all: true`), no power cost |
 | `returnFromDiscard` | `filter` (`any`/`champion`/`mercenary`/`faction`), `faction` (when filter is `faction`) | return a discard-pile card to hand |
 | `chooseOne` | `choices` (array of effect groups) | player picks one group |
-| `conditionalPower` | `condition` (`perChampionControlled`/`perAllyPlayedThisTurn`/`perFactionPlayedThisTurn`/`perCardInDiscard`) | scaling power |
+| `conditionalPower` | `condition` (`perChampionControlled`/`perAllyPlayedThisTurn`/`perFactionPlayedThisTurn`/`perCardInDiscard`) | scaling power (legacy) |
+| `scalingResource` | `resource`, `condition`, optional `perN`/`faction` | generalises `conditionalPower` to any pool |
+| `conditional` | `condition` (a `GameCondition` object), `then` | resolve effects only when a board predicate holds |
+| `addStaticModifier` | `kind`, optional `amount`/`faction`/`cardType` | add a rest-of-game board modifier |
+| `selfBanish` | — | the source card banishes itself (list LAST) |
+| `recruitFromCenter` / `fastPlayFromCenter` | filters | recruit / fast-play a center-row card |
+| `centerDeckScry` / `scry` | `disposition` | reveal & dispose top center / draw-pile cards |
+| `opponentDraws` / `opponentDiscards` | `count` | each OTHER player draws / discards N |
 | `infinityShard` | — | the Infinity Shard's mastery scaling |
+
+> The list above is a subset. There are **31 `CardEffect` subtypes** in total —
+> see `schema.json` `definitions.effect` and
+> [`lib/data/CLAUDE.md`](../../lib/data/CLAUDE.md) for the complete `type`
+> vocabulary and parameters, plus the Exhaust `activatedAbility` encoding.
 
 > `cards.json` currently holds **183 entries**. **101 of the 145 in-scope cards
 > are verified** (`verified: true`); the remaining **38** entries are

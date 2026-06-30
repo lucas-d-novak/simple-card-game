@@ -16,12 +16,26 @@ JSON by `GameStateCodec`
 so a snapshot can be sent over the wire. See
 [`ai-docs/multiplayer_architecture.md`](../../ai-docs/multiplayer_architecture.md).
 
-**Constructor:** `GameService({required int playerCount, Random? random})`
+**Constructor:** `GameService({required int playerCount, Random? random,
+List<Character?>? characters, List<MarketCard>? marketDeck,
+Map<String, CardModel>? relicCards, List<CardModel>? destinySupply})`
+
+- `marketDeck` — the authoritative center-deck supply (built from the card DB by
+  `buildMarketDeckFromDatabase` in [`lib/data/market_deck.dart`](../data/market_deck.dart),
+  carrying each card's real printed `copies` count). When omitted, `GameService`
+  falls back to the legacy cost-bucket deck over the hardcoded catalog.
+- `destinySupply` — OPT-IN Destiny supply (Into the Horizon). When provided, six
+  cards are dealt face-up into `destinyRow` and the rest into the cascade
+  `destinyDeck`; when omitted, no Destinies are claimable.
+- `relicCards` — relic card-id → `CardModel` lookup used to populate each
+  player's `relicOptions` from their `Character`.
 
 **State:**
 - `players` — list of PlayerState instances
 - `centerRow` — 6 visible market cards
 - `infinityDeck` — remaining market cards
+- `destinyRow` / `destinyDeck` — the shared Destiny supply (face-up row + cascade
+  draw pile); empty unless a `destinySupply` was injected
 - `removedFromGame` — banished/scrapped/mercenary cards
 - `currentPlayerIndex`, `turnNumber`, `isGameOver`, `winnerId`
 
@@ -42,6 +56,11 @@ so a snapshot can be sent over the wire. See
 | `startTurn()` | Empty — champions require manual activation via `activateChampion()`. |
 | `activateChampion(championId)` | Use a champion's FREE once-per-turn play-effect activation — resolves its `playEffects`, mastery bonus, ally ability. Tracked by `PlayerState.activatedChampions`. |
 | `useActivatedAbility(championId)` | Use a champion's Exhaust-gated `activatedAbility` (a SEPARATE action from `activateChampion`). Validates the champion is in play, has an ability, is not already exhausted, and the cost is payable; then pays the cost, resolves the ability effects, and marks it exhausted (`PlayerState.exhaustedChampions`). Returns false (no state change) on any failure. Exhaust clears at the owner's next turn (cleared in `resetTurnResources`). |
+| `focus()` | **Character Focus** action — spend 1 gem to gain 1 mastery, once per turn (`PlayerState.focusedThisTurn`). Returns false if already focused this turn or short on gems. |
+| `claimDestiny(cardId)` | Claim a face-up Destiny from the shared `destinyRow` for the current player (FREE, at Mastery 5+). Moves it into `PlayerState.claimedDestinies`. The row is NOT auto-refilled. |
+| `useDestinyAbility(cardId)` | Use a claimed Destiny's per-turn ability. |
+| `banishDestinyToCascade(...)` | Banish a claimed Destiny to reveal `revealCount` (default 2) cascade Destinies from `destinyDeck` face-up into `destinyRow`. |
+| `recruitRelic(cardId)` | At Mastery 10, recruit ONE of the Character's two set-aside `relicOptions`; the other is banished and the chosen relic is shuffled into the draw pile. |
 
 **Effect resolution:** `_resolveEffects()` handles all 31 CardEffect subtypes (the full Engine Phase 2 vocabulary) via exhaustive switch. Scaling/conditional effects (`ScalingResourceEffect`, the `ConditionalEffect` wrapper, and the legacy `ConditionalPowerEffect`) read per-turn state from `PlayerState.cardsPlayedThisTurn` — a list of cards played this turn, appended in `playCard()` (and `fastPlayFromCenter()`) and cleared each turn. Deferred-selection effects (banish/destroy/return/recruit/fastPlay/scry/copy/tuck/reset) resolve to a no-op here and expose a public `GameService` method the UI/AI calls after the player selects a target.
 
@@ -51,7 +70,11 @@ so a snapshot can be sent over the wire. See
 
 **Infinity Shard scaling:** +1 mastery always, then power by tier: 0-4: 0, 5-9: 3, 10-14: 6, 15-19: 10, 20-24: 15, 25-29: 20, 30+: instant win.
 
-**Infinity deck composition:** Variable copies per card cost (1-2: 4x, 3-4: 3x, 5-6: 2x, 7-8: 1x, neutral: 3x).
+**Infinity deck composition:** When a `marketDeck` is injected (the live game),
+each card is expanded by its REAL printed `copies` count from the card DB. The
+legacy fallback (no injected deck — used by the demo / older tests) approximates
+copies per card cost (1-2: 4x, 3-4: 3x, 5-6: 2x, 7-8: 1x, neutral: 3x). Built in
+`_buildInfinityDeck()`.
 
 ### ai_service.dart (AI opponent)
 

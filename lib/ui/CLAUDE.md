@@ -8,12 +8,18 @@ Flutter UI layer for the Shards of Infinity card game.
 ui/
 ├── screens/
 │   ├── game_setup_screen.dart      # Player count picker → starts game
-│   ├── game_screen.dart            # Main game board (active)
+│   ├── game_screen.dart            # Main game board (active, local + AI)
+│   ├── network_game_screen.dart    # Networked board (server-authoritative)
+│   ├── network_lobby_screen.dart   # Create/join multiplayer game
+│   ├── online_lobby_screen.dart    # Multi-game lobby (auto-enter recent, back-to-lobby)
+│   ├── network_auto_screen.dart    # Auto-connect/reconnect entry
 │   └── home_screen.dart            # Legacy demo screen
 ├── widgets/
 │   ├── game_card_widget.dart       # Styled card with faction colors, art, badges
+│   ├── card_detail_modal.dart      # Zoom modal w/ context action (Recruit/Play/Activate/Exhaust)
 │   ├── card_fan.dart               # Fan-of-cards hand display
-│   ├── card_art.dart               # Procedural canvas art (faction patterns)
+│   ├── card_art.dart               # Procedural canvas art (faction patterns) fallback
+│   ├── scrollable_board.dart       # Landscape scrollable board container
 │   ├── resource_bar.dart           # Health/mastery/gems/power bar
 │   ├── resource_icons.dart         # Custom-painted gem/power/mastery/health/shield icons
 │   ├── beveled_button.dart         # Beveled action button (official-client styling)
@@ -44,28 +50,61 @@ and `board_chrome.dart` were added as part of that pass.
 
 ## Key interactions
 
+The gesture model is **tap-to-act, long-press-to-zoom**: a tap performs the
+card's primary action directly, a long-press opens the zoom modal
+(`card_detail_modal.dart`) where the same context action is also available
+alongside full text.
+
 - **Tap card in hand** → selects (raises it up, shows "TAP TO PLAY" label). **Tap again** → plays it.
-- **Long-press any card** → shows card detail popup with full effect descriptions
+- **Long-press any card** → opens the **zoom modal** with full effect text and a
+  context action button (Recruit / Play / Activate / Exhaust — depends on where
+  the card lives). Swipe/page between cards in the same zone.
 - **PLAY ALL** → plays all hand cards left to right (does NOT auto-attack)
-- **ATTACK** → spends all power attacking opponent (shows target picker in multiplayer)
+- **ATTACK** → spends all power attacking opponent (shows target picker in
+  multiplayer); the button shows the damage it will deal
 - **Tap opponent champion** → attacks that champion (costs shield value in power)
-- **Tap your champion** → activates it (once per turn, shows green checkmark when done)
+- **Tap your champion** → activates it (free, once per turn, shows green checkmark
+  when done); a champion with an Exhaust ability also exposes an "Exhaust" action
+  in its zoom modal
+- **UNDO** → reverts the last in-turn action; the undo stack snapshots engine
+  state via `GameStateCodec` and is cleared on END TURN (no cross-turn undo)
 - **END TURN** → ends turn (unspent power is lost per rules)
-- **Tap center row card** → buys if affordable (highlighted with gold glow)
+- **Tap center row card** → recruits if affordable (highlighted with gold glow)
 - **Banish/Scrap effects** → after playing a card with these effects, a selection dialog appears
+
+Opponent plays are visible on the networked board. The board is wrapped in a
+landscape `ScrollableBoard` (`widgets/scrollable_board.dart`) so wide layouts
+scroll rather than overflow.
 
 ## Card widget features
 
 - Faction-colored header bar with card name and cost badge
-- Asset image art with faction-tinted overlay (falls back to procedural art)
-- Effect descriptions in info area
+- Asset image art with faction-tinted overlay (see card-art pipeline below)
+- **Minimal on-card text** — when a card has real art, the widget suppresses its
+  printed effect text (full text lives in the zoom modal) for a cleaner board;
+  cards without art still show effect descriptions in the info area
 - Badges: shield value, GUARD, MERC, faction abbreviation
 - Gold glow highlight when selected or affordable
-- Long-press for full card detail popup
+- Long-press opens the full zoom modal (`card_detail_modal.dart`)
 - AnimatedScale on just-played cards in play area
+
+### Card-art pipeline
+
+Art is resolved in priority order:
+
+1. **`CardModel.art`** (the DB `art` filename) → loads `assets/cards/<art>`.
+2. **`card_art_map.dart`** — a card-name → asset-path fallback map.
+3. **`card_art.dart`** — procedural canvas art (faction patterns) as the last
+   resort.
+
+Starter cards (Crystal / Blaster / Shard Reactor / Infinity Shard) deliberately
+use procedural glyphs (the old stock-photo placeholders were replaced).
 
 ## Additional screens/overlays
 
+- **Card zoom modal** (`card_detail_modal.dart`) — full-size card with full effect
+  text and a context action (Recruit / Play / Activate / Exhaust); pages between
+  cards in the same zone. Replaces the old read-only long-press popup.
 - **Game over screen** — winner name, win condition (elimination vs mastery), final standings table (HP + mastery per player), Rematch and New Game buttons
 - **ChooseOneEffect dialog** — buttons for each choice option (e.g., "2 gems" vs "2 power")
 - **Banish dialog** — list of hand/discard cards to permanently remove
@@ -132,7 +171,9 @@ resizable desktop browser, not just by device). Design notes:
   / center-row and champion / played cards per class.
 
 `game_screen.dart` uses these to size cards, cap content width, and toggle
-`compact` card layouts on mobile.
+`compact` card layouts on mobile. The web build ships PWA metadata
+(`web/manifest.json`, `web/index.html`) so the browser client can be installed /
+launched standalone.
 
 ## Legacy widgets
 

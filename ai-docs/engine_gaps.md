@@ -2,9 +2,12 @@
 
 A catalogue of Shards of Infinity card mechanics that the current engine's
 `CardEffect` vocabulary **cannot express**, plus a proposed, phased plan to
-extend the engine. Scope is **competitive multiplayer only** — co-op / Destiny /
-Ingeminex content is explicitly out of scope (see the project's
-multiplayer-only memory note).
+extend the engine. Scope is **competitive multiplayer only** — co-op content is
+out of scope (see the project's multiplayer-only memory note). **Update:** since
+this catalogue was written, Destiny is now **in scope and implemented**
+(Destiny supply + `claimDestiny`/`useDestinyAbility`/`banishDestinyToCascade`),
+along with Character **Focus** and **Relics**; see
+[`shards_of_infinity_mechanics.md`](shards_of_infinity_mechanics.md) §24b.
 
 Cross-references:
 - Effect model & extension recipe: [`lib/models/CLAUDE.md`](../lib/models/CLAUDE.md)
@@ -31,11 +34,17 @@ mirrored by `effect_codec.dart` + the `type` enum in
 perChampionControlled / perAllyPlayedThisTurn / perFactionPlayedThisTurn /
 perCardInDiscard), `InfinityShardEffect`.
 
-> **Status note:** `DestroyChampionEffect`, `ReturnFromDiscardEffect`, the three
-> per-turn `PowerCondition` values, and the `PlayerState.cardsPlayedThisTurn`
-> per-turn play history have since landed — several items the phased plan below
-> lists as Phase 1 / future work are now implemented. Treat the plan as the
-> original roadmap; cross-check against `card_effect.dart` for current reality.
+> **Status note:** this "14 types" figure is the **original baseline** when this
+> catalogue was written. The sealed hierarchy has since grown to **31
+> `CardEffect` types** (Phase 2 + Phase 3 — see
+> [`engine_phase2_plan.md`](engine_phase2_plan.md) /
+> [`engine_phase3_plan.md`](engine_phase3_plan.md)). `DestroyChampionEffect`,
+> `ReturnFromDiscardEffect`, the per-turn `PowerCondition` values, the
+> `PlayerState.cardsPlayedThisTurn` per-turn play history, plus Scry / static
+> modifiers / under-card tucking / recruit / fast-play / center-deck scry have all
+> landed — most items the phased plan below lists as future work are now
+> implemented. Treat the plan as the original roadmap; cross-check against
+> `card_effect.dart` for current reality.
 
 Three structural facts that shape every gap below:
 

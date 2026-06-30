@@ -9,8 +9,10 @@ database.
 ```
 data/
 ├── card_definitions.dart   # Legacy hardcoded catalog (55 unique cards)
-├── card_art_map.dart       # Card name → asset image path mapping
+├── card_art_map.dart       # Card name → asset image path mapping (fallback art)
 ├── starter_deck.dart       # 10-card starter deck builder
+├── market_deck.dart        # Build the live market + Destiny supply from the DB
+├── character_relics.dart   # Character → set-aside relic options mapping
 └── database/
     ├── card_database.dart        # CardDatabase + CardRecord (PURE DART — server-reusable)
     ├── card_database_asset.dart  # CardDatabaseAsset — Flutter-only rootBundle loader
@@ -62,6 +64,33 @@ cards.json ──(CardDatabase.load)──► CardRecord ──.model──► C
     split out so the core stays server-reusable. Use inside the running app.
   - Accessors: `allModels` (every `CardModel`), `verifiedCards` (records where
     `verified == true`), `byId(id)`.
+
+### market_deck.dart
+
+Builds the game's live supplies **from the authoritative database**, not the
+cost-bucket formula and not the legacy hardcoded catalog:
+
+- `buildMarketDeckFromDatabase(db)` → `List<MarketCard>` — the center-deck
+  (market) supply. **96 unique in-scope cards** (163 total copies), each carrying
+  its REAL printed `copies` count from `cards.json`. Excludes starters,
+  out-of-scope cards, cards with no modellable effect, and the separate Destiny /
+  Aion-group supplies. Injected into `GameService` (constructor `marketDeck:`),
+  which expands one card instance per copy in `_buildInfinityDeck()`.
+- `buildDestinySupplyFromDatabase(db)` → `List<CardModel>` — the SEPARATE Destiny
+  supply (~30 cards, the `Destiny` / `DestinyDeck` groups). One copy each (unique).
+  Injected via `GameService` constructor `destinySupply:`; the engine deals six
+  face-up into `destinyRow` and the rest into the cascade `destinyDeck`. Never
+  part of the market.
+
+### character_relics.dart
+
+Pure-Dart `Character → [offensive, defensive] relic ids` map
+(`characterRelicIds`, `relicIdsFor(character)`) for the Relics-of-the-Future
+mechanic. At Mastery 10 a player recruits ONE of their Character's two relics for
+free (the other is banished); the chosen relic is shuffled into the draw pile.
+Drives `PlayerState.relicOptions` / `GameService.recruitRelic`. `decima`, `tetra`,
+`volos`, `koSynWu` are mapped; `rez` / `chroma` are intentionally unmapped
+(no confirmed pair) and recruit to a no-op.
 
 ### effect_codec.dart
 
@@ -172,6 +201,9 @@ mentions "exhaust" are the encoding targets.
 
 ## Legacy catalog
 
-`card_definitions.dart` and `starter_deck.dart` still drive the current game and
-tests. The JSON database is being populated incrementally; until cards are
-verified there, treat the hardcoded catalog as the live content.
+The live `GameService` market is now built from the authoritative database via
+`market_deck.dart` (`buildMarketDeckFromDatabase`). `card_definitions.dart` still
+backs the legacy `DeckService` demo (`home_screen.dart`) and provides the
+cost-bucket fallback deck `GameService` uses when no `marketDeck` is injected (the
+legacy/test path). `starter_deck.dart` still builds every player's 10-card starting
+deck. The JSON database continues to be populated incrementally.

@@ -10,13 +10,13 @@ Build a playable digital version of Shards of Infinity with all core mechanics: 
 
 ```bash
 flutter pub get              # install dependencies
-flutter test                 # run all tests (493 + 8 goldens)
+flutter test                 # run all tests (550 + 8 goldens)
 flutter run -d windows       # run on Windows
 flutter run -d chrome        # run in browser
 flutter analyze              # static analysis
 
 # Multiplayer server (pure Dart, reuses the engine):
-cd server && dart pub get && dart test       # 8 server tests
+cd server && dart pub get && dart test       # 21 server tests
 cd server && dart run bin/server.dart 8080   # run the WebSocket server
 ```
 
@@ -32,7 +32,7 @@ Pinned to **Flutter 3.41.5** (installed at `C:/Users/rldun/code/flutter/`). CI e
 ## Architecture
 
 - **DeckService** (legacy) — single-player deck demo, kept intact for backward compatibility
-- **GameService** (core engine) — full Shards of Infinity orchestrator with multiplayer turn structure. **Pure Dart** (no Flutter imports) so it runs identically in the Flutter client and the server.
+- **GameService** (core engine) — full Shards of Infinity orchestrator with multiplayer turn structure. **Pure Dart** (no Flutter imports) so it runs identically in the Flutter client and the server. Now also drives Character Focus (gem→mastery), the Destiny system (claim / use / banish-to-cascade), and Relic recruitment.
 - **`server/`** (authoritative multiplayer) — a `dart:io` WebSocket server that depends on the engine package via `path: ../` and reuses the exact rules code. Clients send actions; the server validates + applies + broadcasts each player a redacted view (hidden-info filter). See [`ai-docs/multiplayer_architecture.md`](ai-docs/multiplayer_architecture.md).
 
 ```
@@ -40,7 +40,9 @@ lib/
 ├── main.dart                           # App entry, routes to GameSetupScreen
 ├── data/
 │   ├── card_definitions.dart           # Legacy hardcoded catalog (55 unique cards)
-│   ├── card_art_map.dart               # Card name → asset image path mapping
+│   ├── card_art_map.dart               # Card name → asset image path mapping (fallback when CardModel.art is unset)
+│   ├── market_deck.dart                # buildMarketDeckFromDatabase (96 in-scope market cards) + buildDestinySupplyFromDatabase (30 destinies)
+│   ├── character_relics.dart           # Character/relic recruitment options (recruitRelic supply)
 │   ├── starter_deck.dart               # 10-card starter deck builder
 │   └── database/                       # JSON-backed authoritative card DB
 │       ├── card_database.dart          # CardDatabase + CardRecord (PURE DART — server-reusable)
@@ -49,22 +51,29 @@ lib/
 │       ├── card_serialization.dart     # CardModel ⇄ JSON (multiplayer)
 │       └── game_state_codec.dart       # GameStateCodec: full GameService/PlayerState snapshot ⇄ JSON
 ├── models/
-│   ├── card_model.dart                 # CardModel with faction, type, shield, guard, etc.
+│   ├── card_model.dart                 # CardModel with faction, type, shield, guard, art, etc.
 │   ├── card_effect.dart                # Sealed class hierarchy (31 effect types)
 │   ├── card_type.dart                  # regular | champion | mercenary
 │   ├── faction.dart                    # homodeus | wraethe | order | undergrowth | none
-│   └── player_state.dart              # Per-player mutable state (HP, mastery, zones)
+│   └── player_state.dart              # Per-player mutable state (HP, mastery, zones, claimedDestinies, relicOptions, focusedThisTurn)
 ├── services/
-│   ├── game_service.dart              # ** Core game engine ** — all mechanics
+│   ├── game_service.dart              # ** Core game engine ** — all mechanics (incl. Focus, Destiny, Relics)
 │   ├── ai_service.dart                # AI opponent (heuristic-based)
+│   ├── game_client.dart              # Networked client (sendAction/undo, applies redacted views)
 │   └── deck_service.dart              # Legacy single-player demo
 └── ui/
     ├── screens/
     │   ├── game_setup_screen.dart      # Player count selection, start game
-    │   ├── game_screen.dart            # Main game board (market, hand, play area)
+    │   ├── game_screen.dart            # Main game board (market, hand, play area, local undo)
+    │   ├── network_auto_screen.dart    # Auto-enter most-recent game / back-to-lobby flow
+    │   ├── network_game_screen.dart    # Networked board (opponent plays visible, server undo)
+    │   ├── network_lobby_screen.dart   # Multi-game lobby (create/join, custom names, rejoin)
+    │   ├── online_lobby_screen.dart    # Online lobby entry
     │   └── home_screen.dart            # Legacy demo screen
     ├── widgets/
-    │   ├── game_card_widget.dart        # Faction-framed card (official-client anatomy)
+    │   ├── game_card_widget.dart        # Faction-framed card (on-card text suppressed when real art present)
+    │   ├── scrollable_board.dart        # Landscape scrollable board layout
+    │   ├── card_detail_modal.dart       # Tap-to-zoom modal w/ context actions (Recruit/Play/Activate/Exhaust)
     │   ├── card_fan.dart                # Hand row display
     │   ├── card_art.dart                # Procedural card art (faction patterns) fallback
     │   ├── resource_icons.dart          # Custom-painted gem/power/mastery/health/shield icons
@@ -80,10 +89,10 @@ lib/
 
 server/                                  # Authoritative multiplayer (pure-Dart, reuses lib/)
 ├── bin/server.dart                      # dart:io WebSocket entrypoint
-├── lib/views.dart                       # redactFor() — per-player hidden-info filter
+├── lib/views.dart                       # redactFor() — per-player hidden-info filter (+ id→CardModel `cards` dict, focusedThisTurn/canUndo)
 ├── lib/protocol.dart                    # applyAction() — actions → GameService + auth gates
-├── lib/game_session.dart               # one GameService + lobby↔seat id mapping
-└── lib/lobby.dart                       # in-memory create/join/auto-start
+├── lib/game_session.dart               # one GameService + lobby↔seat id mapping + per-turn UNDO stack
+└── lib/lobby.dart                       # in-memory create/join/auto-start, custom game names, reconnect/resync
 ```
 
 ## Subsystems
@@ -95,6 +104,20 @@ server/                                  # Authoritative multiplayer (pure-Dart,
   `effect_codec`) and validated by
   [`tool/validate_card_db.dart`](tool/validate_card_db.dart)
   (`dart run tool/validate_card_db.dart`).
+- **Market & Destiny supplies** — [`lib/data/market_deck.dart`](lib/data/market_deck.dart):
+  the center deck is built from the authoritative DB via
+  `buildMarketDeckFromDatabase` (96 in-scope market cards, with real printed
+  per-card `copies` counts — NOT a cost-bucket formula, NOT only the legacy
+  `card_definitions.dart`). Destinies are a SEPARATE supply built by
+  `buildDestinySupplyFromDatabase` (30 cards), excluded from the market; the
+  engine deals six face-up into `GameService.destinyRow` and the rest into the
+  cascade `destinyDeck`.
+- **Card art pipeline** — precedence is `CardModel.art` (from the DB) → name→file
+  map ([`lib/data/card_art_map.dart`](lib/data/card_art_map.dart)) → procedural
+  fallback ([`lib/ui/widgets/card_art.dart`](lib/ui/widgets/card_art.dart)).
+  Starter cards (Crystal / Blaster / Shard Reactor / Infinity Shard) use
+  procedural glyphs. On-card text is suppressed when a card has real art (full
+  text lives in the zoom modal).
 - **Animation system** — [`lib/ui/theme/animation_timing.dart`](lib/ui/theme/animation_timing.dart):
   three speeds (slow / fast / instant), role-based durations, `AnimationSettings`
   inherited widget wired in `main.dart`; falls back to `instant` in tests. See
@@ -112,16 +135,17 @@ server/                                  # Authoritative multiplayer (pure-Dart,
 3. Play cards to generate gems (currency) and power (damage)
 4. Buy cards from the 6-card center row using gems
 5. Spend power to attack opponent or destroy their champions
-6. Champions persist across turns; mercenaries are removed after use
-7. End turn: discard remaining hand, draw 5 new cards
-8. Win by eliminating all opponents (reduce health to 0) or playing Infinity Shard at mastery 30+
+6. Optionally **Focus** once per turn: spend 1 gem to gain 1 mastery (`GameService.focus()`)
+7. Champions persist across turns; mercenaries are removed after use
+8. End turn: discard remaining hand, draw 5 new cards
+9. Win by eliminating all opponents (reduce health to 0) or playing Infinity Shard at mastery 30+
 
 ## Core mechanics implemented
 
 | Mechanic | Status | File |
 |----------|--------|------|
 | Turn lifecycle (play/buy/end) | Done | `game_service.dart` |
-| All 14 card effect types | Done | `card_effect.dart` |
+| All 31 card effect types | Done | `card_effect.dart` |
 | Center row / market (6 cards, auto-refill) | Done | `game_service.dart` |
 | Champion deployment & persistence | Done | `game_service.dart` |
 | Champion manual activation (tap to activate) | Done | `game_service.dart` |
@@ -137,13 +161,23 @@ server/                                  # Authoritative multiplayer (pure-Dart,
 | Multi-player turn cycling | Done | `game_service.dart` |
 | Elimination & game over detection | Done | `game_service.dart` |
 | Mercenary cleanup (removed from game) | Done | `game_service.dart` |
+| Character Focus (once-per-turn gem→mastery, `GameService.focus()`) | Done | `game_service.dart` |
+| Destiny system (claim / use ability / banish-to-cascade, `destinyRow`/`destinyDeck`) | Done | `game_service.dart` |
+| Relics (recruit from `relicOptions`, `GameService.recruitRelic`) | Done | `game_service.dart`, `character_relics.dart` |
+| DB-driven market + separate Destiny supply (96 + 30) | Done | `market_deck.dart` |
 | ChooseOneEffect (player choice) | Done | `game_service.dart` |
 | ConditionalPowerEffect (per champion / per ally / per faction / per discard) | Done | `game_service.dart` |
 | DestroyChampionEffect (single target / all enemy champions) | Done | `game_service.dart` |
 | ReturnFromDiscardEffect (any / champion / mercenary / faction filter) | Done | `game_service.dart` |
 | Banish/Scrap UI (target selection dialogs) | Done | `game_screen.dart` |
 | AI opponent (heuristic, solo play) | Done | `ai_service.dart` |
-| Card detail popup (long-press) | Done | `game_screen.dart` |
+| Tap-to-zoom card modal w/ context actions (Recruit/Play/Activate/Exhaust) | Done | `card_detail_modal.dart` |
+| Drag-to-play (long-press) gesture model | Done | `game_screen.dart` |
+| Local UNDO (per-turn, via `GameStateCodec`) | Done | `game_screen.dart` |
+| Networked server-authoritative UNDO (same turn) | Done | `game_session.dart`, `game_client.dart` |
+| Reconnect / resync + custom game names + per-game rejoin | Done | `lobby.dart`, `network_lobby_screen.dart` |
+| Opponent plays visible on networked board | Done | `network_game_screen.dart` |
+| Landscape scrollable board + web PWA meta | Done | `scrollable_board.dart`, `web/manifest.json` |
 | Multiplayer target selection | Done | `game_screen.dart` |
 | Mastery progress indicator (bar to 30) | Done | `resource_bar.dart` |
 | Rematch flow (game over → replay) | Done | `game_screen.dart` |
@@ -166,21 +200,21 @@ server/                                  # Authoritative multiplayer (pure-Dart,
 ## Testing
 
 ```bash
-flutter test                              # all tests (493 + 8 goldens)
-flutter test --exclude-tags golden        # what CI runs (493)
+flutter test                              # all tests (550 + 8 goldens)
+flutter test --exclude-tags golden        # what CI runs (550)
 flutter test test/services/               # game service + deck service + AI tests
 flutter test test/data/                   # card db, codecs, serialization, starter deck
 flutter test test/models/                 # model-level tests
 flutter test test/widget_test.dart        # legacy widget tests
 flutter test test/screenshot_test.dart --update-goldens  # regenerate screenshots
 bash scripts/generate_report.sh           # generate visual QA report (HTML)
-cd server && dart test                    # 8 server tests (redaction + auth + lobby)
+cd server && dart test                    # 21 server tests (redaction + auth + lobby + undo + reconnect)
 ```
 
-- **493 engine tests** (+ 8 goldens, + 8 server tests) across game mechanics,
+- **550 engine tests** (+ 8 goldens, + 21 server tests) across game mechanics,
   models, data, codecs/serialization, AI, widgets, and the multiplayer server
 - Tests use deterministic `Random` injection (`Random(7)`, `ZeroRandom`)
-- Game service tests cover: initialization, all 31 effect types, buying, turn cycling, champions, guard, ally abilities, mastery thresholds (additive + replace), banish/scrap, infinity shard scaling, combat, win conditions, Phase 2/3 board conditions, and integration scenarios. Serialization tests round-trip a full mid-game snapshot. Server tests assert hidden-info redaction + action authorization.
+- Game service tests cover: initialization, all 31 effect types, buying, turn cycling, champions, guard, ally abilities, mastery thresholds (additive + replace), banish/scrap, infinity shard scaling, combat, win conditions, Character Focus, Destiny (claim/use/cascade) and Relics, Phase 2/3 board conditions, and integration scenarios. Serialization tests round-trip a full mid-game snapshot. Server tests assert hidden-info redaction, action authorization, per-turn undo, and reconnect/resync/multi-game lobby flow.
 
 ## CI
 

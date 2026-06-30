@@ -56,6 +56,7 @@ A player's turn consists of the following phases:
 - **Ally abilities** trigger if you have played (or have in play) another card of the same faction during this turn.
 - Cards with **Mastery thresholds** grant bonus effects if your Mastery level meets or exceeds the threshold printed on the card.
 - You may use accumulated Gems to **buy cards** from the Center Row at any time during this phase.
+- You may **Focus** — spend 1 Gem to gain 1 Mastery (Character Focus; see §24b) — at any time during this phase.
 - You may use accumulated Power to **attack opponents** or their Champions at any time during this phase.
 
 ### 4b. Buy Cards (part of Play Phase)
@@ -657,15 +658,69 @@ Some cards have effects beyond simple resource generation. Here are the types of
 
 ---
 
+## 24b. Expansion Mechanics (Implemented in This Engine)
+
+> Scope note: per the project's multiplayer-only scope, **competitive** expansion
+> content (including Destiny) is in scope; only co-op content is excluded. The
+> following three mechanics are implemented in `GameService` and are part of the
+> live rules, not just the base game.
+
+### Character Focus (gem → mastery)
+
+Each player has a **Character** (a chosen identity, e.g. `convergence`,
+`fervor`). The **Focus** action lets the active player convert economy into
+Mastery: spend **1 Gem to gain 1 Mastery**. In the engine this is
+`GameService.focus()` — it requires 1 gem in the pool, deducts it, adds 1
+mastery, and sets a per-turn `focusedThisTurn` flag (surfaced over the network in
+the redacted view). Focus is a deliberate Mastery-acceleration lever: a player
+sitting on spare gems can pivot them toward the 30-Mastery Infinity-Shard clock
+instead of buying cards.
+
+### Destiny (Into the Horizon)
+
+Destinies are a **separate supply**, not part of the center-row market. At setup
+the engine shuffles the Destiny cards and deals six face-up into a shared
+**Destiny row** (`GameService.destinyRow`); the rest form the **Destiny deck**
+(`destinyDeck`, the cascade source). The row is **not** auto-refilled on claim.
+
+- **Claim** (`claimDestiny`): the active player takes a face-up Destiny from the
+  shared row **for free** into their personal `PlayerState.claimedDestinies` zone
+  (it never enters their draw pile). Typically gated behind a Mastery threshold
+  (claimed at Mastery 5 in the physical game).
+- **Use** (`useDestinyAbility`): a claimed Destiny's ability is used **per turn**
+  (like an activated/Exhaust ability) rather than being shuffled into the deck.
+- **Cascade** (`banishDestinyToCascade`): a Destiny can be banished to advance /
+  cascade through the Destiny deck.
+
+The Destiny supply is built from the authoritative card DB via
+`buildDestinySupplyFromDatabase` (the `Destiny` / `DestinyDeck` groups, ~30 cards,
+one copy each — Destinies are unique) and is explicitly excluded from the market
+deck.
+
+### Relics (Relics of the Future)
+
+Relics are character-specific permanent cards set aside at game start. At a
+Mastery milestone (Mastery 10 in the physical game) a player **recruits ONE of
+their Character's two relics for free** (`GameService.recruitRelic`); the other is
+banished. The chosen relic is **shuffled into the player's draw pile** so it comes
+up like any other card. The two candidates live in `PlayerState.relicOptions`,
+populated from the `Character → [offensive, defensive] relic ids` map in
+`lib/data/character_relics.dart`. Characters without a confirmed relic pair
+(`rez` / `chroma`) recruit to a no-op.
+
+---
+
 ## 25. Expansions (For Reference)
 
 The base game has been expanded with:
 
-1. **Shards of Infinity: Relics of the Future** (2019) - Adds Relic cards (a new card type that provides persistent effects, similar to Champions but with different mechanics).
-2. **Shards of Infinity: Shadow of Salvation** (2020) - Adds new cards and mechanics including the Focus ability.
-3. **Shards of Infinity: Into the Horizon** - Additional expansion content.
+1. **Shards of Infinity: Relics of the Future** (2019) - Adds Relic cards (a new card type that provides persistent effects, similar to Champions but with different mechanics). **Implemented** — see §24b (Relics).
+2. **Shards of Infinity: Shadow of Salvation** (2020) - Adds new cards and mechanics including the Focus ability. Focus is **implemented** — see §24b (Character Focus).
+3. **Shards of Infinity: Into the Horizon** - Adds the Destiny supply. **Implemented** — see §24b (Destiny).
 
-> **Note for implementation**: This document covers the **base game only**. Expansions add new card types and mechanics that are not covered here.
+> **Note for implementation**: Sections 1–24 describe the **base game**; the three
+> expansion mechanics this engine implements are documented in §24b above. Other
+> expansion content (co-op / boss / Ingeminex group cards) remains out of scope.
 
 ---
 
