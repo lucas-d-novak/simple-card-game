@@ -1,12 +1,12 @@
 {
-    "name": "simple_card_game",
-    "short_name": "simple_card_game",
+    "name": "Shards of Infinity",
+    "short_name": "Shards",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "background_color": "#0A1B2A",
+    "theme_color": "#0A1B2A",
+    "description": "Shards of Infinity — digital card game.",
+    "orientation": "any",
     "prefer_related_applications": false,
     "icons": [
         {

@@ -122,4 +122,29 @@ void main() {
       expect(lines, ['Gain 2 gems']);
     });
   });
+
+  group('GameCardWidget on-card text width gating', () {
+    const card = CardModel(
+      id: 'gemcard',
+      name: 'Gem Card',
+      cost: 2,
+      playEffects: [GainGemsEffect(2)],
+    );
+
+    testWidgets('small board card suppresses on-card rules text',
+        (tester) async {
+      // Below GameCardWidget.rulesTextMinWidth — the cramped board size.
+      await pumpCard(tester, card, width: 90);
+      expect(find.textContaining('Gain 2 gems', findRichText: true),
+          findsNothing);
+    });
+
+    testWidgets('large (zoom) card shows the full rules text', (tester) async {
+      // At/above the threshold — the size the zoom modal renders at.
+      await pumpCard(tester, card,
+          width: GameCardWidget.rulesTextMinWidth + 20);
+      expect(find.textContaining('Gain 2 gems', findRichText: true),
+          findsOneWidget);
+    });
+  });
 }

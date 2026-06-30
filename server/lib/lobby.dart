@@ -117,15 +117,48 @@ class Lobby {
 
   /// The in-progress (started, not complete) game [playerId] is seated in, or
   /// null. Used to resync a reconnecting client back into their live game.
+  ///
+  /// When a player is in MULTIPLE active games this returns their MOST RECENT
+  /// one (highest id ordinal — ids are `game_0`, `game_1`, ... incrementing), so
+  /// an auto-resync drops them into the latest game rather than an arbitrary one.
   LobbyGame? activeGameForPlayer(String playerId) {
-    for (final g in _games.values) {
-      if (g.status == GameStatus.started &&
-          g.session != null &&
-          g.players.contains(playerId)) {
-        return g;
-      }
+    final active = activeGamesForPlayer(playerId);
+    return active.isEmpty ? null : active.last;
+  }
+
+  /// ALL in-progress games [playerId] is seated in, ordered by creation (id
+  /// ordinal ascending), so the last entry is the most recently created game.
+  List<LobbyGame> activeGamesForPlayer(String playerId) {
+    final out = [
+      for (final g in _games.values)
+        if (g.status == GameStatus.started &&
+            g.session != null &&
+            g.players.contains(playerId))
+          g,
+    ];
+    out.sort((a, b) => _idOrdinal(a.id).compareTo(_idOrdinal(b.id)));
+    return out;
+  }
+
+  /// A specific game [playerId] may resync — it must exist, be started, have a
+  /// live session, and have [playerId] as a member. Returns null otherwise (so
+  /// a non-member can never pull another game's state).
+  LobbyGame? resyncableGameForPlayer(String gameId, String playerId) {
+    final g = _games[gameId];
+    if (g == null ||
+        g.status != GameStatus.started ||
+        g.session == null ||
+        !g.players.contains(playerId)) {
+      return null;
     }
-    return null;
+    return g;
+  }
+
+  /// Numeric suffix of a `prefix_N` id (e.g. `game_3` → 3); -1 if unparseable.
+  static int _idOrdinal(String id) {
+    final i = id.lastIndexOf('_');
+    if (i < 0) return -1;
+    return int.tryParse(id.substring(i + 1)) ?? -1;
   }
 
   List<Map<String, dynamic>> summaries() =>

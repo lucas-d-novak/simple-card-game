@@ -16,6 +16,7 @@ import 'package:simple_card_game/ui/widgets/card_detail_modal.dart';
 import 'package:simple_card_game/ui/widgets/card_fan.dart';
 import 'package:simple_card_game/ui/widgets/game_card_widget.dart';
 import 'package:simple_card_game/ui/widgets/resource_icons.dart';
+import 'package:simple_card_game/ui/widgets/scrollable_board.dart';
 
 /// The main game screen for Shards of Infinity.
 /// Layout (top to bottom):
@@ -128,41 +129,63 @@ class _GameScreenState extends State<GameScreen>
     }
   }
 
+  /// Called when a hand card begins being dragged (long-press). Surface a brief
+  /// hint so the player knows where to drop it.
+  void _onHandDragStarted(CardModel card) {
+    setState(() => _actionMessage = 'Drop ${card.name} on the play area');
+  }
+
+  /// Plays a hand card. Reached by dropping the card onto the play-area
+  /// DragTarget (drag-to-play) or via the zoom modal's "Play" action. Cards with
+  /// a [ChooseOneEffect] first open the choice dialog; post-play banish/scrap
+  /// dialogs are still handled.
   void _playCard(CardModel card) {
-    if (_selectedHandCardId == card.id) {
-      // Check if card has a ChooseOneEffect — show picker dialog
-      final chooseEffect = card.playEffects
-          .whereType<ChooseOneEffect>()
-          .firstOrNull;
-      if (chooseEffect != null) {
-        _showChoiceDialog(card, chooseEffect);
-        return;
+    // Check if card has a ChooseOneEffect — show picker dialog first.
+    final chooseEffect =
+        card.playEffects.whereType<ChooseOneEffect>().firstOrNull;
+    if (chooseEffect != null) {
+      _showChoiceDialog(card, chooseEffect);
+      return;
+    }
+    _pushUndo();
+    final success = _game.playCard(card.id);
+    setState(() {
+      _selectedHandCardId = null;
+      if (success) {
+        _actionMessage = 'Played ${card.name}';
+        _lastPlayedCardId = card.id;
       }
-      _pushUndo();
-      final success = _game.playCard(card.id);
-      setState(() {
-        _selectedHandCardId = null;
-        if (success) {
-          _actionMessage = 'Played ${card.name}';
-          _lastPlayedCardId = card.id;
+    });
+    if (success) {
+      // Clear the played highlight after a brief delay (scaled by speed;
+      // zero under instant / reduced motion).
+      final highlightDelay = AnimationTiming.of(context).phaseDelay;
+      Future.delayed(highlightDelay, () {
+        if (mounted) {
+          setState(() => _lastPlayedCardId = null);
         }
       });
-      if (success) {
-        // Clear the played highlight after a brief delay (scaled by speed;
-        // zero under instant / reduced motion).
-        final highlightDelay = AnimationTiming.of(context).phaseDelay;
-        Future.delayed(highlightDelay, () {
-          if (mounted) {
-            setState(() => _lastPlayedCardId = null);
-          }
-        });
-        _handlePostPlayEffects(card);
-      }
-    } else {
-      setState(() {
-        _selectedHandCardId = card.id;
-      });
+      _handlePostPlayEffects(card);
     }
+  }
+
+  /// Opens the official-style zoom modal for a HAND card, paging through the
+  /// whole hand, with a circular "Play" action that plays the focused card (and
+  /// closes the modal — the modal pops before invoking the action). This is the
+  /// single-tap gesture on a hand card: tap = zoom, with a Play button.
+  void _openHandDetail(CardModel card) {
+    final hand = _game.currentPlayer.hand;
+    final start = hand.indexWhere((c) => c.id == card.id);
+    if (start < 0) return;
+    showCardDetailModal(
+      context,
+      cards: hand,
+      initialIndex: start,
+      actionFor: (c) => CardDetailAction(
+        label: 'Play',
+        onPressed: () => _playCard(c),
+      ),
+    );
   }
 
   /// After a card is played, check for effects that require player selection.
@@ -530,8 +553,13 @@ class _GameScreenState extends State<GameScreen>
     );
   }
 
-  /// Opens the card-detail modal for one of the current player's champions,
-  /// with a circular "Exhaust" action that activates it (once per turn).
+  /// Opens the card-detail modal for one of the current player's champions.
+  /// Champions have TWO distinct actions:
+  ///   * "Activate" — the free, once-per-turn re-resolution of the champion's
+  ///     play effects ([GameService.activateChampion]).
+  ///   * "Exhaust" — the separate Exhaust-gated [CardModel.activatedAbility]
+  ///     ([GameService.useActivatedAbility]); only shown when the card has an
+  ///     activated ability, and disabled once the champion is exhausted.
   void _openChampionDetail(CardModel champion) {
     final champs = _game.currentPlayer.championsInPlay;
     final start = champs.indexWhere((c) => c.id == champion.id);
@@ -541,10 +569,17 @@ class _GameScreenState extends State<GameScreen>
       cards: champs,
       initialIndex: start,
       actionFor: (c) => CardDetailAction(
-        label: 'Exhaust',
+        label: 'Activate',
         enabled: !_game.currentPlayer.activatedChampions.contains(c.id),
         onPressed: () => _activateChampion(c),
       ),
+      secondaryActionFor: (c) => c.activatedAbility == null
+          ? null
+          : CardDetailAction(
+              label: 'Exhaust',
+              enabled: !_game.currentPlayer.exhaustedChampions.contains(c.id),
+              onPressed: () => _useActivatedAbility(c),
+            ),
     );
   }
 
@@ -665,6 +700,19 @@ class _GameScreenState extends State<GameScreen>
         _actionMessage = 'Activated ${champion.name}!';
       } else {
         _actionMessage = '${champion.name} already activated this turn';
+      }
+    });
+  }
+
+  /// Use a champion's Exhaust-gated [CardModel.activatedAbility] — distinct from
+  /// the free [_activateChampion] re-resolution.
+  void _useActivatedAbility(CardModel champion) {
+    _pushUndo();
+    setState(() {
+      if (_game.useActivatedAbility(champion.id)) {
+        _actionMessage = 'Exhausted ${champion.name}!';
+      } else {
+        _actionMessage = '${champion.name} cannot be exhausted now';
       }
     });
   }
@@ -813,8 +861,8 @@ class _GameScreenState extends State<GameScreen>
                       constraints: const BoxConstraints(
                         maxWidth: Responsive.maxContentWidth,
                       ),
-                      child: Column(
-                        children: [
+                      child: ScrollableBoard(
+                        header: [
                           // ---- Top bar: opponent pill + hamburger ----------
                           _TopBar(
                             opponent: opponent,
@@ -846,15 +894,19 @@ class _GameScreenState extends State<GameScreen>
                             onLongPress: _showCardDetail,
                             screenWidth: screenWidth,
                           ),
+                        ],
 
-                          // ---- Play area (opponent champs + played) -------
-                          Expanded(
-                            child: _PlayField(
+                        // ---- Play area (opponent champs + played) -------
+                        // Drop a hand card here (drag-to-play) to play it.
+                        field: DragTarget<CardModel>(
+                          onAcceptWithDetails: (details) =>
+                              _playCard(details.data),
+                          builder: (context, candidate, rejected) {
+                            return _PlayField(
                               opponentChampions:
                                   opponent?.championsInPlay ?? const [],
                               opponentId: opponent?.id,
-                              canAttackChampions:
-                                  currentPlayer.powerPool > 0,
+                              canAttackChampions: currentPlayer.powerPool > 0,
                               onAttackChampion: (champ, ownerId) =>
                                   _attackChampion(champ, ownerId),
                               playedCards: currentPlayer.playedThisTurn,
@@ -865,17 +917,25 @@ class _GameScreenState extends State<GameScreen>
                               lastPlayedCardId: _lastPlayedCardId,
                               actionMessage: _actionMessage,
                               screenWidth: screenWidth,
-                            ),
-                          ),
+                              // Highlight the drop zone while a card hovers.
+                              isDropTarget: candidate.isNotEmpty,
+                            );
+                          },
+                        ),
 
+                        footer: [
                           // ---- Bottom zone: chrome + hand -----------------
+                          // Hand gestures: tap = zoom (card detail, with Play
+                          // action), long-press = begin drag-to-play (drop on
+                          // the play field above).
                           _BottomZone(
                             player: currentPlayer,
                             screenWidth: screenWidth,
                             hand: currentPlayer.hand,
                             selectedCardId: _selectedHandCardId,
-                            onCardTap: _playCard,
-                            onCardLongPress: _showCardDetail,
+                            onCardTap: _openHandDetail,
+                            onCardLongPress: _openHandDetail,
+                            onDragPlayStarted: _onHandDragStarted,
                             onEndTurn: _endTurn,
                             onUndo: _canUndo ? _undo : null,
                             onPlayAll: currentPlayer.hand.isNotEmpty
@@ -1194,6 +1254,7 @@ class _PlayField extends StatelessWidget {
     required this.lastPlayedCardId,
     required this.actionMessage,
     required this.screenWidth,
+    this.isDropTarget = false,
   });
 
   final List<dynamic> opponentChampions;
@@ -1208,11 +1269,31 @@ class _PlayField extends StatelessWidget {
   final String? actionMessage;
   final double screenWidth;
 
+  /// True while a hand card is being dragged over this play field (drag-to-play
+  /// hover) — paints a subtle drop-zone highlight.
+  final bool isDropTarget;
+
   @override
   Widget build(BuildContext context) {
     final cardWidth = Responsive.compactCardWidth(screenWidth);
     return Stack(
       children: [
+        // Drop-zone highlight while a card hovers over the play area.
+        if (isDropTarget)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: BoardChrome.tealHighlight.withValues(alpha: 0.8),
+                    width: 2,
+                  ),
+                  color: BoardChrome.tealHighlight.withValues(alpha: 0.08),
+                ),
+              ),
+            ),
+          ),
         Column(
           children: [
             // Opponent champions row (just under the center row).
@@ -1347,6 +1428,7 @@ class _BottomZone extends StatelessWidget {
     required this.selectedCardId,
     required this.onCardTap,
     required this.onCardLongPress,
+    required this.onDragPlayStarted,
     required this.onEndTurn,
     required this.onUndo,
     required this.onPlayAll,
@@ -1361,6 +1443,10 @@ class _BottomZone extends StatelessWidget {
   final String? selectedCardId;
   final void Function(CardModel) onCardTap;
   final void Function(CardModel) onCardLongPress;
+
+  /// Fired when a hand card starts being dragged out (long-press) toward the
+  /// play area.
+  final void Function(CardModel) onDragPlayStarted;
   final VoidCallback onEndTurn;
 
   /// Undo the last action. Null (button disabled) when there is nothing to undo
@@ -1462,12 +1548,13 @@ class _BottomZone extends StatelessWidget {
           // Power diamond (gems/power available for the turn).
           _ValueDiamond(value: power),
           const SizedBox(width: 4),
-          // Center: hand fan.
+          // Center: hand fan. Tap = zoom, long-press = begin drag-to-play.
           Expanded(
             child: CardFan(
               cards: hand,
               onCardTap: onCardTap,
               onCardLongPress: onCardLongPress,
+              onDragStarted: onDragPlayStarted,
               selectedCardId: selectedCardId,
             ),
           ),

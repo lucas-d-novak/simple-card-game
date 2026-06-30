@@ -131,7 +131,16 @@ class GameClient extends ChangeNotifier {
   /// Ask the server to resend our current game state. The server's `identify`
   /// handler resyncs a player who is seated in a live game — used to re-enter a
   /// game from the lobby (a tab that lost its in-game view, or a reconnect).
+  ///
+  /// When a player is in MULTIPLE games this targets the server's most-recent
+  /// active game. To re-enter a SPECIFIC game, use [rejoinGame].
   void requestResync() => _send({'type': 'identify', 'playerId': playerId});
+
+  /// Ask the server to push a SPECIFIC game's redacted state (so a player in
+  /// several active games can pick which one to re-enter). The server only
+  /// honours this for a member of that live game (hidden-info safe).
+  void rejoinGame(String gameId) =>
+      _send({'type': 'resyncGame', 'gameId': gameId});
 
   void createGame({int seats = 2, String? name}) => _send({
         'type': 'createGame',

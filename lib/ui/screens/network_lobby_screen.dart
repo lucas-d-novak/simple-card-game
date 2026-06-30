@@ -65,7 +65,12 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
   void _onClientChanged() {
     final client = _client;
     if (client == null) return;
-    // When a game state arrives, jump into the networked game view once.
+    // AUTO-ENTER: when game state arrives, jump into the networked game view
+    // once. On connect the server resyncs the player's MOST-RECENT active game
+    // (Lobby.activeGameForPlayer returns the highest-ordinal game id), so a
+    // player in several games lands in the latest one. Re-entering a specific
+    // game from the lobby (tile Rejoin → client.rejoinGame) pushes that game's
+    // state and re-triggers this guard after the previous push popped.
     if (client.inGame && !_navigatedToGame && mounted) {
       _navigatedToGame = true;
       Navigator.of(context)
@@ -247,7 +252,9 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
               )
             : canRejoin
                 ? FilledButton(
-                    onPressed: () => client.requestResync(),
+                    // Rejoin THIS tile's game specifically — a player can be in
+                    // several active games, so we target this one by id.
+                    onPressed: () => client.rejoinGame(g.id),
                     style: FilledButton.styleFrom(
                         backgroundColor: const Color(0xFF2E7D32)),
                     child: const Text('Rejoin'),

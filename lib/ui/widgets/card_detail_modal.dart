@@ -32,6 +32,7 @@ class CardDetailModal extends StatefulWidget {
     required this.cards,
     required this.initialIndex,
     this.actionFor,
+    this.secondaryActionFor,
   });
 
   /// The set of cards the arrows page through (e.g. the whole center row).
@@ -40,9 +41,14 @@ class CardDetailModal extends StatefulWidget {
   /// Index into [cards] of the card to show first.
   final int initialIndex;
 
-  /// Builds the context action for the card at a given index, or null if the
-  /// card has no action (then no button is shown).
+  /// Builds the primary context action for the card (e.g. Recruit / Activate),
+  /// or null if the card has no primary action (then no button is shown).
   final CardDetailAction? Function(CardModel card)? actionFor;
+
+  /// Builds an OPTIONAL second context action shown beside the primary one
+  /// (e.g. a champion's Exhaust-gated ability alongside its free Activate), or
+  /// null when the card has no secondary action.
+  final CardDetailAction? Function(CardModel card)? secondaryActionFor;
 
   @override
   State<CardDetailModal> createState() => _CardDetailModalState();
@@ -68,6 +74,7 @@ class _CardDetailModalState extends State<CardDetailModal> {
     final card = widget.cards[_index];
     final glow = FactionColors.getPrimary(card.faction);
     final action = widget.actionFor?.call(card);
+    final secondaryAction = widget.secondaryActionFor?.call(card);
     final size = MediaQuery.of(context).size;
     // Scale the card to a comfortable fraction of the viewport, capped so it
     // never collides with the side arrows on wide screens.
@@ -139,7 +146,7 @@ class _CardDetailModalState extends State<CardDetailModal> {
             ),
           ),
 
-          // Context action — large glowing circular button, bottom-left.
+          // Primary context action — large glowing circular button, bottom-left.
           if (action != null)
             Align(
               alignment: const Alignment(-0.55, 0.74),
@@ -150,6 +157,23 @@ class _CardDetailModalState extends State<CardDetailModal> {
                     ? () {
                         Navigator.of(context).maybePop();
                         action.onPressed();
+                      }
+                    : null,
+              ),
+            ),
+
+          // Secondary context action — mirrored on the bottom-right (e.g. a
+          // champion's Exhaust ability beside its free Activate).
+          if (secondaryAction != null)
+            Align(
+              alignment: const Alignment(0.55, 0.74),
+              child: _CircularActionButton(
+                label: secondaryAction.label,
+                enabled: secondaryAction.enabled,
+                onPressed: secondaryAction.enabled
+                    ? () {
+                        Navigator.of(context).maybePop();
+                        secondaryAction.onPressed();
                       }
                     : null,
               ),
@@ -166,6 +190,7 @@ Future<void> showCardDetailModal(
   required List<CardModel> cards,
   required int initialIndex,
   CardDetailAction? Function(CardModel card)? actionFor,
+  CardDetailAction? Function(CardModel card)? secondaryActionFor,
 }) {
   return showGeneralDialog<void>(
     context: context,
@@ -177,6 +202,7 @@ Future<void> showCardDetailModal(
       cards: cards,
       initialIndex: initialIndex,
       actionFor: actionFor,
+      secondaryActionFor: secondaryActionFor,
     ),
     transitionBuilder: (_, anim, __, child) {
       return FadeTransition(

@@ -141,6 +141,26 @@ void _dispatch(
       send({'type': 'welcome', 'playerId': playerId});
       _resyncPlayer(playerId, send);
 
+    case 'resyncGame':
+      // Resync a SPECIFIC game (used when a player is in multiple games and
+      // picks one from the lobby). Only a MEMBER of a live game gets its state.
+      final gameId = msg['gameId'] as String?;
+      if (gameId == null) {
+        err('resyncGame needs gameId');
+        return;
+      }
+      final g = _lobby.resyncableGameForPlayer(gameId, playerId);
+      final session = g?.session;
+      if (g == null || session == null) {
+        err('cannot resync $gameId (missing, not started, or not a member)');
+        return;
+      }
+      send({
+        'type': 'state',
+        'gameId': g.id,
+        'state': session.viewFor(playerId),
+      });
+
     case 'listGames':
       send({'type': 'lobby', 'games': _lobby.summaries()});
 

@@ -7,8 +7,13 @@ import 'package:simple_card_game/ui/theme/responsive.dart';
 import 'package:simple_card_game/ui/widgets/game_card_widget.dart';
 
 /// Displays a list of cards in a fan arrangement at the bottom of the screen.
-/// Cards are slightly rotated and overlap. Tapping a card selects it, tapping
-/// again (or a play button) plays it.
+/// Cards are slightly rotated and overlap.
+///
+/// Gestures:
+///  - SINGLE TAP on a card → [onCardTap] (the board wires this to the card
+///    ZOOM / detail modal).
+///  - LONG-PRESS on a card → begins a DRAG (via [LongPressDraggable]); drop it
+///    on the play area's [DragTarget<CardModel>] to play it.
 ///
 /// The fan adapts to the available width: card size and overlap scale down on
 /// narrow / mobile screens so the whole hand stays on screen and remains
@@ -20,12 +25,27 @@ class CardFan extends StatefulWidget {
     required this.onCardTap,
     this.onCardLongPress,
     this.selectedCardId,
+    this.draggable = true,
+    this.onDragStarted,
   });
 
   final List<CardModel> cards;
   final void Function(CardModel card) onCardTap;
+
+  /// Legacy long-press hook. Long-press now BEGINS a drag (see [draggable]), so
+  /// this only fires when [draggable] is false (e.g. off-turn networked hands).
   final void Function(CardModel card)? onCardLongPress;
   final String? selectedCardId;
+
+  /// When true (the default) a long-press on a hand card begins a drag onto the
+  /// play-area [DragTarget<CardModel>] to play it. Set false to suppress
+  /// dragging (e.g. when it is not this player's turn on the networked board);
+  /// tap and long-press then fall back to [onCardTap] / [onCardLongPress].
+  final bool draggable;
+
+  /// Called when a hand-card drag begins (long-press). The board uses this to
+  /// kick a small play animation / haptic.
+  final void Function(CardModel card)? onDragStarted;
 
   @override
   State<CardFan> createState() => _CardFanState();
@@ -130,15 +150,20 @@ class _CardFanState extends State<CardFan> {
                             ),
                           ),
                         ),
-                      GameCardWidget(
+                      _DraggableHandCard(
                         card: card,
+                        cardWidth: cardWidth,
+                        draggable: widget.draggable,
+                        isHighlighted: isSelected,
                         onTap: () => widget.onCardTap(card),
+                        // Long-press only acts as a plain callback when drag is
+                        // disabled; otherwise the long-press initiates the drag.
                         onLongPress: widget.onCardLongPress != null
                             ? () => widget.onCardLongPress!(card)
                             : null,
-                        isHighlighted: isSelected,
-                        showCost: false,
-                        width: cardWidth,
+                        onDragStarted: widget.onDragStarted != null
+                            ? () => widget.onDragStarted!(card)
+                            : null,
                       ),
                     ],
                   ),
@@ -148,6 +173,78 @@ class _CardFanState extends State<CardFan> {
           ),
         );
       },
+    );
+  }
+}
+
+/// One hand card wired for the tap-to-zoom / long-press-to-drag mapping:
+///  - a SINGLE TAP fires [onTap] (the board opens the card zoom), and
+///  - a LONG-PRESS begins a drag whose [LongPressDraggable.data] is the [card],
+///    so the play-area [DragTarget<CardModel>] can play it on drop.
+///
+/// While dragging, the in-fan slot dims ([childWhenDragging]) and a slightly
+/// enlarged copy follows the pointer ([feedback]). When [draggable] is false
+/// the card is rendered plainly (tap/long-press callbacks only) so off-turn
+/// hands can't be dragged.
+class _DraggableHandCard extends StatelessWidget {
+  const _DraggableHandCard({
+    required this.card,
+    required this.cardWidth,
+    required this.draggable,
+    required this.isHighlighted,
+    required this.onTap,
+    required this.onLongPress,
+    required this.onDragStarted,
+  });
+
+  final CardModel card;
+  final double cardWidth;
+  final bool draggable;
+  final bool isHighlighted;
+  final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+  final VoidCallback? onDragStarted;
+
+  @override
+  Widget build(BuildContext context) {
+    // The resting card. When draggable, the long-press is consumed by the
+    // LongPressDraggable below (to begin the drag), so we don't also wire the
+    // card's own onLongPress in that case.
+    final resting = GameCardWidget(
+      card: card,
+      onTap: onTap,
+      onLongPress: draggable ? null : onLongPress,
+      isHighlighted: isHighlighted,
+      showCost: false,
+      width: cardWidth,
+    );
+
+    if (!draggable) return resting;
+
+    // The card that follows the pointer — a touch larger, lifted off the board,
+    // and non-interactive (purely visual). Wrapped in Material so the card's
+    // own shadows/gradients render correctly above everything else.
+    final feedback = Material(
+      color: Colors.transparent,
+      child: Transform.scale(
+        scale: 1.1,
+        child: GameCardWidget(
+          card: card,
+          isHighlighted: true,
+          showCost: false,
+          width: cardWidth,
+        ),
+      ),
+    );
+
+    return LongPressDraggable<CardModel>(
+      data: card,
+      dragAnchorStrategy: childDragAnchorStrategy,
+      onDragStarted: onDragStarted,
+      feedback: feedback,
+      // Dim the in-hand slot while the card is being dragged out.
+      childWhenDragging: Opacity(opacity: 0.3, child: resting),
+      child: resting,
     );
   }
 }

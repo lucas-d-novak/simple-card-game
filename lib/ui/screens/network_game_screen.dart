@@ -10,6 +10,7 @@ import 'package:simple_card_game/ui/widgets/card_detail_modal.dart';
 import 'package:simple_card_game/ui/widgets/card_fan.dart';
 import 'package:simple_card_game/ui/widgets/game_card_widget.dart';
 import 'package:simple_card_game/ui/widgets/resource_icons.dart';
+import 'package:simple_card_game/ui/widgets/scrollable_board.dart';
 
 /// Networked game view — renders the server's REDACTED state for this player
 /// with the SAME polished board chrome as the local [GameScreen], and sends
@@ -84,9 +85,16 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
 
   // ---- actions ------------------------------------------------------------
 
-  void _onHandTap(CardModel card) {
+  /// Play a hand card (reached by dropping it on the play-area DragTarget, or
+  /// via the zoom modal's "Play" action).
+  void _playHandCard(CardModel card) {
     widget.client.playCard(card.id);
     _flash('Played ${card.name}');
+  }
+
+  /// A hand-card drag has begun (long-press) — hint where to drop it.
+  void _onHandDragStarted(CardModel card) {
+    _flash('Drop ${card.name} on the play area');
   }
 
   void _onCenterTap(CardModel card) {
@@ -97,6 +105,44 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
   void _onMyChampionTap(CardModel champ) {
     widget.client.activateChampion(champ.id);
     _flash('Activated ${champ.name}');
+  }
+
+  void _onExhaustChampion(CardModel champ) {
+    widget.client.useActivatedAbility(champ.id);
+    _flash('Exhausted ${champ.name}');
+  }
+
+  /// Open the zoom modal for one of MY champions, offering its two distinct
+  /// actions: "Activate" (free, re-resolves play effects, once/turn) and —
+  /// only when the card has an Exhaust-gated [CardModel.activatedAbility] —
+  /// "Exhaust" (disabled once the champion is exhausted). Only enabled on your
+  /// turn.
+  void _zoomMyChampion(List<_ChampionView> champs, _ChampionView champ) {
+    final cards = [for (final c in champs) _card(c.id)];
+    final byId = {for (final c in champs) c.id: c};
+    final index = champs.indexWhere((c) => c.id == champ.id);
+    final myTurn = widget.client.isMyTurn;
+    _zoom(
+      cards,
+      index < 0 ? 0 : index,
+      actionFor: (card) {
+        final view = byId[card.id];
+        return CardDetailAction(
+          label: 'Activate',
+          enabled: myTurn && (view == null || !view.activated),
+          onPressed: () => _onMyChampionTap(card),
+        );
+      },
+      secondaryActionFor: (card) {
+        if (card.activatedAbility == null) return null;
+        final view = byId[card.id];
+        return CardDetailAction(
+          label: 'Exhaust',
+          enabled: myTurn && (view == null || !view.exhausted),
+          onPressed: () => _onExhaustChampion(card),
+        );
+      },
+    );
   }
 
   void _onOpponentChampionTap(CardModel champ, String ownerId) {
@@ -123,6 +169,7 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
     List<CardModel> cards,
     int index, {
     CardDetailAction? Function(CardModel card)? actionFor,
+    CardDetailAction? Function(CardModel card)? secondaryActionFor,
   }) {
     if (cards.isEmpty) return;
     showCardDetailModal(
@@ -130,6 +177,7 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
       cards: cards,
       initialIndex: index.clamp(0, cards.length - 1),
       actionFor: actionFor,
+      secondaryActionFor: secondaryActionFor,
     );
   }
 
@@ -291,10 +339,35 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
     final canAttackPlayer =
         myTurn && me.powerPool > 0 && opponent != null && !opponentHasGuard;
 
-    return Column(
-      children: [
-        // ---- Top bar: opponent pill + turn banner -------------------------
-        _NetworkTopBar(opponent: opponent, myTurn: myTurn),
+    // Hand gestures: tap = zoom (card detail, with a Play action so cards can
+    // be played in a deliberate order from the zoomed view); long-press =
+    // begin drag-to-play (drop on the play field). Off-turn, Play is hidden.
+    void zoomHand(CardModel c) {
+      final hand = [for (final id in me.hand) _card(id)];
+      final i = hand.indexWhere((x) => x.id == c.id);
+      _zoom(
+        hand,
+        i < 0 ? 0 : i,
+        actionFor: myTurn
+            ? (card) => CardDetailAction(
+                  label: 'Play',
+                  onPressed: () => _playHandCard(card),
+                )
+            : null,
+      );
+    }
+
+    return ScrollableBoard(
+      header: [
+        // ---- Top bar: Lobby button + opponent pill + turn banner ----------
+        _NetworkTopBar(
+          opponent: opponent,
+          myTurn: myTurn,
+          // Pop back to the lobby WITHOUT disconnecting, so the player can
+          // switch to another of their games. The socket stays open; the lobby
+          // listens to the same client and its Rejoin re-enters this game.
+          onBackToLobby: () => Navigator.of(context).maybePop(),
+        ),
 
         // ---- Helper / status line -----------------------------------------
         Padding(
@@ -336,11 +409,19 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
             screenWidth: screenWidth,
           );
         }),
+      ],
 
-        // ---- Play field ----------------------------------------------------
-        Expanded(
-          child: _NetworkPlayField(
+      // ---- Play field ----------------------------------------------------
+      // Drop a dragged hand card here (drag-to-play) to play it. Only an
+      // active turn accepts drops.
+      field: DragTarget<CardModel>(
+        onWillAcceptWithDetails: (_) => myTurn,
+        onAcceptWithDetails: (details) => _playHandCard(details.data),
+        builder: (context, candidate, rejected) {
+          return _NetworkPlayField(
             opponentChampions: opponent?.champions ?? const [],
+            opponentPlayedThisTurn: opponent?.playedThisTurn ?? const [],
+            opponentName: opponent?.name,
             opponentId: opponent?.id,
             cardFor: _card,
             canAttackChampions: myTurn && me.powerPool > 0,
@@ -349,23 +430,26 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
             myChampions: me.champions,
             playedThisTurn: me.playedThisTurn,
             onActivateChampion: myTurn ? _onMyChampionTap : null,
+            onZoomMyChampion: (champ) => _zoomMyChampion(me.champions, champ),
             actionMessage: _actionMessage,
             screenWidth: screenWidth,
-          ),
-        ),
+            isDropTarget: candidate.isNotEmpty,
+          );
+        },
+      ),
 
+      footer: [
         // ---- Bottom zone: End Turn + chips + hand + Play All --------------
+        // Hand gestures: tap = zoom (card detail), long-press = begin
+        // drag-to-play (drop on the play field above).
         _NetworkBottomZone(
           me: me,
           screenWidth: screenWidth,
           hand: [for (final id in me.hand) _card(id)],
           enabled: myTurn,
-          onCardTap: _onHandTap,
-          onCardLongPress: (c) {
-            final hand = [for (final id in me.hand) _card(id)];
-            final i = hand.indexWhere((x) => x.id == c.id);
-            _zoom(hand, i < 0 ? 0 : i);
-          },
+          onCardTap: zoomHand,
+          onCardLongPress: zoomHand,
+          onDragPlayStarted: _onHandDragStarted,
           onEndTurn: myTurn ? client.endTurn : null,
           // Undo is gated on the server-sent canUndo flag (your turn AND a
           // same-turn snapshot exists); null disables the button.
@@ -543,10 +627,17 @@ class _ChampionView {
 
 /// Top bar — centered opponent pill (HP/mastery/gems) + a turn badge.
 class _NetworkTopBar extends StatelessWidget {
-  const _NetworkTopBar({required this.opponent, required this.myTurn});
+  const _NetworkTopBar({
+    required this.opponent,
+    required this.myTurn,
+    required this.onBackToLobby,
+  });
 
   final _PlayerView? opponent;
   final bool myTurn;
+
+  /// Pop back to the lobby without tearing down the connection.
+  final VoidCallback onBackToLobby;
 
   @override
   Widget build(BuildContext context) {
@@ -557,6 +648,28 @@ class _NetworkTopBar extends StatelessWidget {
         child: Stack(
           alignment: Alignment.center,
           children: [
+            // Back-to-lobby control (left) — switch between your games.
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: TextButton.icon(
+                  onPressed: onBackToLobby,
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFFBFD8E8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  icon: const Icon(Icons.meeting_room, size: 16),
+                  label: const Text('Lobby',
+                      style: TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ),
             if (opponent != null)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 96),
@@ -773,6 +886,8 @@ class _NetworkCenterRow extends StatelessWidget {
 class _NetworkPlayField extends StatelessWidget {
   const _NetworkPlayField({
     required this.opponentChampions,
+    required this.opponentPlayedThisTurn,
+    required this.opponentName,
     required this.opponentId,
     required this.cardFor,
     required this.canAttackChampions,
@@ -781,11 +896,18 @@ class _NetworkPlayField extends StatelessWidget {
     required this.myChampions,
     required this.playedThisTurn,
     required this.onActivateChampion,
+    required this.onZoomMyChampion,
     required this.actionMessage,
     required this.screenWidth,
+    this.isDropTarget = false,
   });
 
   final List<_ChampionView> opponentChampions;
+
+  /// Card ids the opponent has played THIS turn (public info) — rendered in an
+  /// opponent play area so you can follow their turn live.
+  final List<String> opponentPlayedThisTurn;
+  final String? opponentName;
   final String? opponentId;
   final CardModel Function(String id) cardFor;
   final bool canAttackChampions;
@@ -796,8 +918,16 @@ class _NetworkPlayField extends StatelessWidget {
   final List<_ChampionView> myChampions;
   final List<String> playedThisTurn;
   final void Function(CardModel)? onActivateChampion;
+
+  /// Long-press one of MY champions → open the champion zoom (Activate +
+  /// conditional Exhaust), carrying its exhausted/activated status.
+  final void Function(_ChampionView) onZoomMyChampion;
   final String? actionMessage;
   final double screenWidth;
+
+  /// True while a hand card is being dragged over this play field (drag-to-play
+  /// hover) — paints a subtle drop-zone highlight.
+  final bool isDropTarget;
 
   @override
   Widget build(BuildContext context) {
@@ -806,6 +936,22 @@ class _NetworkPlayField extends StatelessWidget {
 
     return Stack(
       children: [
+        // Drop-zone highlight while a card hovers over the play area.
+        if (isDropTarget)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: BoardChrome.tealHighlight.withValues(alpha: 0.8),
+                    width: 2,
+                  ),
+                  color: BoardChrome.tealHighlight.withValues(alpha: 0.08),
+                ),
+              ),
+            ),
+          ),
         Column(
           children: [
             // Opponent champions row (just under the center row).
@@ -820,9 +966,9 @@ class _NetworkPlayField extends StatelessWidget {
                       for (final champ in opponentChampions)
                         Padding(
                           padding: const EdgeInsets.only(right: 4),
-                          child: GameCardWidget(
+                          child: _ChampionTile(
                             card: cardFor(champ.id),
-                            compact: true,
+                            champ: champ,
                             width: cardWidth,
                             isHighlighted: canAttackChampions,
                             onTap: canAttackChampions
@@ -834,6 +980,49 @@ class _NetworkPlayField extends StatelessWidget {
                         ),
                     ],
                   ),
+                ),
+              ),
+            // Opponent play area — cards they've played this turn (public).
+            // Mirrors your own played-this-turn row, so you can follow their
+            // turn live as the server broadcasts each action.
+            if (opponentPlayedThisTurn.isNotEmpty && opponentId != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4, bottom: 2),
+                      child: Text(
+                        '${opponentName ?? 'Opponent'} played this turn',
+                        style: const TextStyle(
+                          color: Color(0xFFBFD8E8),
+                          fontSize: 10,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      height: champHeight,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        children: [
+                          for (final id in opponentPlayedThisTurn)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 4),
+                              child: GameCardWidget(
+                                card: cardFor(id),
+                                compact: true,
+                                showCost: false,
+                                width: cardWidth,
+                                onLongPress: () => onZoomCard(cardFor(id)),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
             const Spacer(),
@@ -858,7 +1047,7 @@ class _NetworkPlayField extends StatelessWidget {
                               onTap: onActivateChampion != null
                                   ? () => onActivateChampion!(cardFor(champ.id))
                                   : null,
-                              onLongPress: () => onZoomCard(cardFor(champ.id)),
+                              onLongPress: () => onZoomMyChampion(champ),
                             ),
                             if (champ.activated)
                               Positioned(
@@ -924,6 +1113,74 @@ class _NetworkPlayField extends StatelessWidget {
   }
 }
 
+/// An opponent champion tile — the card plus small status badges so you can see
+/// when the opponent taps a champion (exhausted) or fires its activated ability
+/// (activated). Mirrors the activated checkmark used on your own champions.
+class _ChampionTile extends StatelessWidget {
+  const _ChampionTile({
+    required this.card,
+    required this.champ,
+    required this.width,
+    required this.isHighlighted,
+    required this.onTap,
+    required this.onLongPress,
+  });
+
+  final CardModel card;
+  final _ChampionView champ;
+  final double width;
+  final bool isHighlighted;
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        // Exhausted (tapped) champions are dimmed, matching tabletop intuition.
+        Opacity(
+          opacity: champ.exhausted ? 0.55 : 1.0,
+          child: GameCardWidget(
+            card: card,
+            compact: true,
+            width: width,
+            isHighlighted: isHighlighted,
+            onTap: onTap,
+            onLongPress: onLongPress,
+          ),
+        ),
+        if (champ.activated)
+          Positioned(
+            top: 2,
+            right: 2,
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                color: GameTheme.endTurnGreen,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Icon(Icons.check, size: 10, color: Colors.white),
+            ),
+          ),
+        if (champ.exhausted)
+          Positioned(
+            bottom: 2,
+            right: 2,
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Icon(Icons.bedtime,
+                  size: 10, color: Color(0xFFE8C45A)),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 /// Bottom zone — End Turn + my resource chips + draw pile | hand fan |
 /// power diamond + Play All / Attack + discard pile.
 class _NetworkBottomZone extends StatelessWidget {
@@ -934,6 +1191,7 @@ class _NetworkBottomZone extends StatelessWidget {
     required this.enabled,
     required this.onCardTap,
     required this.onCardLongPress,
+    required this.onDragPlayStarted,
     required this.onEndTurn,
     required this.onUndo,
     required this.onPlayAll,
@@ -950,6 +1208,10 @@ class _NetworkBottomZone extends StatelessWidget {
   final bool enabled;
   final void Function(CardModel) onCardTap;
   final void Function(CardModel) onCardLongPress;
+
+  /// Fired when a hand card starts being dragged out (long-press) toward the
+  /// play area. Only relevant when [enabled] (your turn).
+  final void Function(CardModel) onDragPlayStarted;
   final VoidCallback? onEndTurn;
 
   /// Undo last action this turn. Null when unavailable (off-turn / no history).
@@ -1049,12 +1311,16 @@ class _NetworkBottomZone extends StatelessWidget {
           // Power diamond.
           _ValueDiamond(value: me.powerPool),
           const SizedBox(width: 4),
-          // Center: hand fan.
+          // Center: hand fan. Tap = zoom (always), long-press = begin
+          // drag-to-play (only on your turn — off-turn, drag is disabled and
+          // long-press falls back to zoom).
           Expanded(
             child: CardFan(
               cards: hand,
-              onCardTap: enabled ? onCardTap : (_) {},
+              onCardTap: onCardTap,
               onCardLongPress: onCardLongPress,
+              onDragStarted: onDragPlayStarted,
+              draggable: enabled,
               selectedCardId: null,
             ),
           ),
@@ -1068,7 +1334,7 @@ class _NetworkBottomZone extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 4),
                   child: BeveledButton(
-                    label: 'Attack',
+                    label: 'Attack (${me.powerPool})',
                     onPressed: onAttack,
                     width: isMobile ? 96 : 132,
                     height: 34,

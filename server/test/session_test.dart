@@ -251,6 +251,59 @@ void main() {
       expect(view['centerRow'], isA<List>());
     });
 
+    test('multi-game: activeGameForPlayer returns the MOST-RECENT game; '
+        'activeGamesForPlayer lists all in id order', () {
+      final lobby = Lobby();
+      // alice hosts game_0 with bob, then game_1 with carol — both start.
+      final g0 = lobby.createGame(hostId: 'alice', seats: 2);
+      lobby.joinGame(g0.id, 'bob');
+      lobby.startGame(g0.id);
+      final g1 = lobby.createGame(hostId: 'alice', seats: 2);
+      lobby.joinGame(g1.id, 'carol');
+      lobby.startGame(g1.id);
+
+      // alice is in BOTH; the auto-resync picks the most recent (g1).
+      expect(lobby.activeGameForPlayer('alice')?.id, g1.id);
+      expect(
+        lobby.activeGamesForPlayer('alice').map((g) => g.id).toList(),
+        [g0.id, g1.id],
+      );
+      // bob is only in g0; carol only in g1.
+      expect(lobby.activeGameForPlayer('bob')?.id, g0.id);
+      expect(lobby.activeGameForPlayer('carol')?.id, g1.id);
+    });
+
+    test('resyncGame: a MEMBER can resync a specific game; a NON-MEMBER cannot',
+        () {
+      final lobby = Lobby();
+      final g0 = lobby.createGame(hostId: 'alice', seats: 2);
+      lobby.joinGame(g0.id, 'bob');
+      lobby.startGame(g0.id);
+      final g1 = lobby.createGame(hostId: 'alice', seats: 2);
+      lobby.joinGame(g1.id, 'carol');
+      lobby.startGame(g1.id);
+
+      // alice (a member) can resync EITHER specific game by id.
+      expect(lobby.resyncableGameForPlayer(g0.id, 'alice')?.id, g0.id);
+      expect(lobby.resyncableGameForPlayer(g1.id, 'alice')?.id, g1.id);
+
+      // bob is NOT a member of g1 → cannot resync it (hidden-info safe).
+      expect(lobby.resyncableGameForPlayer(g1.id, 'bob'), isNull);
+      // carol is NOT a member of g0.
+      expect(lobby.resyncableGameForPlayer(g0.id, 'carol'), isNull);
+      // A stranger can resync nothing.
+      expect(lobby.resyncableGameForPlayer(g0.id, 'eve'), isNull);
+      // Unknown game id → null.
+      expect(lobby.resyncableGameForPlayer('game_999', 'alice'), isNull);
+    });
+
+    test('resyncGame: a NON-STARTED (waiting) game is not resyncable', () {
+      final lobby = Lobby();
+      final g = lobby.createGame(hostId: 'alice', seats: 2);
+      // Still waiting (no second player) — not resyncable even for a member.
+      expect(lobby.resyncableGameForPlayer(g.id, 'alice'), isNull);
+    });
+
     test('reconnect: a completed game is NOT returned as active', () {
       final lobby = Lobby();
       final g = lobby.createGame(hostId: 'alice', seats: 2);

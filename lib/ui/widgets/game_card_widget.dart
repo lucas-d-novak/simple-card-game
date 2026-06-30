@@ -34,8 +34,16 @@ class GameCardWidget extends StatelessWidget {
   final bool compact;
   final double? width;
 
+  /// At/above this rendered width a card shows its full multi-line rules text.
+  /// Below it (small board cards) the rules-text area is suppressed entirely so
+  /// text never overflows, cuts off, or wraps vertically — the zoom modal (which
+  /// renders a large-width [GameCardWidget]) is where the full text lives.
+  static const double rulesTextMinWidth = 150.0;
+
   /// The ordered rules-text lines this card renders (play effects + Exhaust
-  /// activated ability + mastery bonus). Exposed for testing.
+  /// activated ability + mastery bonus). Exposed for testing. This is the full
+  /// computed set; on-card rendering is additionally gated by card width (see
+  /// [rulesTextMinWidth]).
   List<String> rulesLines() => _rulesLines(card, compact);
 
   @override
@@ -163,33 +171,38 @@ class GameCardWidget extends StatelessWidget {
               ),
 
               // ---- Rules text (lower box) ------------------------------
-              Positioned(
-                left: 4 * scale,
-                right: (22 * scale).clamp(16.0, 30.0) + 4 * scale,
-                top: cardHeight * 0.56,
-                bottom: 3 * scale,
-                child: ClipRect(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      for (final line in _rulesLines(card, compact))
-                        Padding(
-                          padding: EdgeInsets.only(bottom: 1 * scale),
-                          child: Text(
-                            line,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: const Color(0xFFE8EEF4),
-                              fontSize: (7.5 * scale).clamp(6, 10.5),
-                              height: 1.15,
+              // Only large (zoomed) cards render the multi-line rules text. On
+              // small board cards the text was cramped / cut off / wrapped
+              // vertically, so it's suppressed here and shown only in the zoom
+              // modal (which renders this widget at a large width).
+              if (cardWidth >= rulesTextMinWidth)
+                Positioned(
+                  left: 4 * scale,
+                  right: (22 * scale).clamp(16.0, 30.0) + 4 * scale,
+                  top: cardHeight * 0.56,
+                  bottom: 3 * scale,
+                  child: ClipRect(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (final line in _rulesLines(card, compact))
+                          Padding(
+                            padding: EdgeInsets.only(bottom: 1 * scale),
+                            child: Text(
+                              line,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: const Color(0xFFE8EEF4),
+                                fontSize: (7.5 * scale).clamp(6, 10.5),
+                                height: 1.15,
+                              ),
                             ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
 
               // ---- Value chevron (bottom-right corner) -----------------
               if (_primaryValue(card) != null)
