@@ -342,6 +342,7 @@ class GameService {
   bool copyPlayedCard(
     String cardId, {
     CopyFilter filter = CopyFilter.nonChampion,
+    Faction? faction,
   }) {
     if (!_currentPlayerCanAct) return false;
     final player = currentPlayer;
@@ -352,6 +353,14 @@ class GameService {
 
     if (filter == CopyFilter.nonChampion &&
         card.cardType == CardType.champion) {
+      return false;
+    }
+
+    // Optional faction filter (taur_archpriest: Undergrowth allies only).
+    if (faction != null &&
+        faction != Faction.none &&
+        !_factionsMatch(faction, false, card.faction, card.countsAsAllFactions,
+            aliasPlayer: player)) {
       return false;
     }
 
@@ -717,6 +726,18 @@ class GameService {
         // Try hand first, then discard
         if (_banishFromZone(player.hand, cardId)) return true;
         return _banishFromZone(player.discardPile, cardId);
+      case BanishSource.playedThisTurn:
+        // blood_for_blood: banish a card you have played this turn. The card
+        // lives in playedThisTurn (regular/mercenary) or championsInPlay
+        // (champion); it is ALSO recorded in the cardsPlayedThisTurn history,
+        // which must be purged so scaling/conditional counts and end-of-turn
+        // cleanup do not still see it.
+        final inPlayed = _banishFromZone(player.playedThisTurn, cardId);
+        final inChampions =
+            !inPlayed && _banishFromZone(player.championsInPlay, cardId);
+        if (!inPlayed && !inChampions) return false;
+        player.cardsPlayedThisTurn.removeWhere((c) => c.id == cardId);
+        return true;
     }
   }
 

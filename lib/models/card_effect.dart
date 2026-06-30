@@ -139,6 +139,10 @@ enum BanishSource {
   hand,
   discard,
   handOrDiscard,
+
+  /// A card the player has played this turn (blood_for_blood: "you may banish a
+  /// card you have played this turn"). Resolved against `cardsPlayedThisTurn`.
+  playedThisTurn,
 }
 
 /// Banish a card (permanently remove from the game). The [source] specifies
@@ -158,6 +162,8 @@ final class BanishCardEffect extends CardEffect {
         return 'Banish a card from your discard pile';
       case BanishSource.handOrDiscard:
         return 'Banish a card from your hand or discard pile';
+      case BanishSource.playedThisTurn:
+        return 'Banish a card you have played this turn';
     }
   }
 }
@@ -652,17 +658,23 @@ enum CopyFilter {
 /// recursion), and an [InfinityShardEffect] is excluded from the re-resolved
 /// effects (so copying never causes a spurious mastery/win).
 final class CopyPlayedCardEffect extends CardEffect {
-  const CopyPlayedCardEffect({this.filter = CopyFilter.nonChampion});
+  const CopyPlayedCardEffect({this.filter = CopyFilter.nonChampion, this.faction});
 
   final CopyFilter filter;
 
+  /// When set, the copied card must also match this faction (taur_archpriest:
+  /// "copy the effect of an Undergrowth Ally played this turn"). Honours
+  /// `countsAsAllFactions` on the candidate card. null = any faction.
+  final Faction? faction;
+
   @override
   String get description {
+    final f = faction != null ? '${faction!.name} ' : '';
     switch (filter) {
       case CopyFilter.any:
-        return 'Copy the effect of a card you played this turn';
+        return 'Copy the effect of a ${f}card you played this turn';
       case CopyFilter.nonChampion:
-        return 'Copy the effect of a non-champion card you played this turn';
+        return 'Copy the effect of a ${f}non-champion card you played this turn';
     }
   }
 }

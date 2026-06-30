@@ -202,8 +202,8 @@
         "count": { "type": "integer", "description": "For drawCards (cards to draw) and scry (top cards to reveal)." },
         "source": {
           "type": "string",
-          "enum": ["hand", "discard", "handOrDiscard", "centerDeck"],
-          "description": "For banishCard (hand/discard/handOrDiscard). For tuckUnderChampion: hand=deferred-selection (player picks a hand card via GameService.tuckUnderChampion); centerDeck=immediate (top of the center deck, gene_scavs ambush)."
+          "enum": ["hand", "discard", "handOrDiscard", "playedThisTurn", "centerDeck"],
+          "description": "For banishCard (hand/discard/handOrDiscard/playedThisTurn — playedThisTurn banishes a card you've played this turn, blood_for_blood). For tuckUnderChampion: hand=deferred-selection (player picks a hand card via GameService.tuckUnderChampion); centerDeck=immediate (top of the center deck, gene_scavs ambush)."
         },
         "all": {
           "type": "boolean",

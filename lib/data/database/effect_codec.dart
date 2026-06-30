@@ -194,6 +194,9 @@ CardEffect decodeEffect(Map<String, dynamic> json) {
     case 'copyPlayedCard':
       return CopyPlayedCardEffect(
         filter: _copyFilter(json['filter'] as String?),
+        faction: json['faction'] != null
+            ? _faction(json['faction'] as String?)
+            : null,
       );
     case 'centerDeckScry':
       return CenterDeckScryEffect(
@@ -322,7 +325,11 @@ Map<String, dynamic> encodeEffect(CardEffect effect) {
         if (effect.count != 1) 'count': effect.count,
       };
     case CopyPlayedCardEffect():
-      return {'type': 'copyPlayedCard', 'filter': effect.filter.name};
+      return {
+        'type': 'copyPlayedCard',
+        'filter': effect.filter.name,
+        if (effect.faction != null) 'faction': effect.faction!.name,
+      };
     case CenterDeckScryEffect():
       return {
         'type': 'centerDeckScry',
@@ -386,6 +393,8 @@ BanishSource _banishSource(String? raw) {
     case 'handOrDiscard':
     case null:
       return BanishSource.handOrDiscard;
+    case 'playedThisTurn':
+      return BanishSource.playedThisTurn;
     default:
       throw FormatException('unknown banish source: $raw');
   }

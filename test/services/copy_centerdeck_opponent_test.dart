@@ -257,4 +257,84 @@ void main() {
       expect(opponent.discardPile.map((c) => c.id), contains('lone'));
     });
   });
+
+  // -------------------------------------------------------------------------
+  // Engine Phase 3 wave 4 — faction-filtered copy (taur_archpriest) and
+  // banish-a-card-played-this-turn (blood_for_blood).
+  // -------------------------------------------------------------------------
+  group('copyPlayedCard faction filter — taur_archpriest', () {
+    test('copies a matching-faction ally', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      const ugAlly = CardModel(
+        id: 'ug_ally',
+        name: 'UG Ally',
+        cost: 0,
+        faction: Faction.undergrowth,
+        playEffects: [GainGemsEffect(3)],
+      );
+      player.hand.add(ugAlly);
+      game.playCard('ug_ally');
+      expect(player.gemPool, 3);
+
+      // Copy with an undergrowth filter -> re-resolves +3 gems.
+      expect(
+        game.copyPlayedCard('ug_ally',
+            filter: CopyFilter.nonChampion, faction: Faction.undergrowth),
+        true,
+      );
+      expect(player.gemPool, 6);
+    });
+
+    test('refuses to copy a non-matching-faction card', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      const wrAlly = CardModel(
+        id: 'wr_ally',
+        name: 'WR Ally',
+        cost: 0,
+        faction: Faction.wraethe,
+        playEffects: [GainGemsEffect(3)],
+      );
+      player.hand.add(wrAlly);
+      game.playCard('wr_ally');
+      final gemsAfterPlay = player.gemPool;
+
+      // Undergrowth filter rejects the Wraethe card — no copy, no extra gems.
+      expect(
+        game.copyPlayedCard('wr_ally',
+            filter: CopyFilter.nonChampion, faction: Faction.undergrowth),
+        false,
+      );
+      expect(player.gemPool, gemsAfterPlay);
+    });
+  });
+
+  group('banishCard playedThisTurn — blood_for_blood', () {
+    test('banishes a card played this turn (removed from game + history)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      const ally = CardModel(
+        id: 'spent',
+        name: 'Spent',
+        cost: 0,
+        faction: Faction.wraethe,
+        playEffects: [GainPowerEffect(2)],
+      );
+      player.hand.add(ally);
+      game.playCard('spent');
+      expect(player.cardsPlayedThisTurn.any((c) => c.id == 'spent'), true);
+
+      expect(game.banishCard('spent', BanishSource.playedThisTurn), true);
+      expect(game.removedFromGame.any((c) => c.id == 'spent'), true);
+      expect(player.playedThisTurn.any((c) => c.id == 'spent'), false);
+      // Purged from history so scaling/conditional counts no longer see it.
+      expect(player.cardsPlayedThisTurn.any((c) => c.id == 'spent'), false);
+    });
+
+    test('returns false when the named card was not played this turn', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      expect(game.banishCard('never', BanishSource.playedThisTurn), false);
+    });
+  });
 }

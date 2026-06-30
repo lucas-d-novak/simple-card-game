@@ -1066,8 +1066,8 @@
       "playEffects": [],
       "art": "taur_archpriest.jpg",
       "rawText": "Undergrowth Champion. Cost 5, shield 4. Exhaust: Copy the effect of an Undergrowth Ally played this turn.",
-      "verified": false,
-      "notes": "Champion shield 4. UNMODELED: Exhaust 'Copy the effect of an Undergrowth Ally played this turn' (copy mechanic) has no engine type; playEffects empty. | [encode-gap] copyPlayedCard{nonChampion} captures 'copy a non-Champion (Ally) card you played this turn', but CopyFilter has no faction filter, so the 'Undergrowth' restriction on the copied Ally cannot be expressed (any non-champion played this turn is eligible).",
+      "verified": true,
+      "notes": "Undergrowth Champion. Exhaust: copy the effect of an Undergrowth Ally (non-champion) played this turn.",
       "set": "base",
       "cardType": "champion",
       "cost": 5,
@@ -1077,7 +1077,8 @@
         "effects": [
           {
             "type": "copyPlayedCard",
-            "filter": "nonChampion"
+            "filter": "nonChampion",
+            "faction": "undergrowth"
           }
         ]
       }
@@ -2633,7 +2634,7 @@
       "art": "isa_tel_tor_the_axe.jpg",
       "rawText": "Isa Tel Tor, The Axe\nWraethe Champion\n[health][health][health][health][health]\nExhaust: Gain [damage][damage] and an additional [damage] for each Wraethe card in your discard pile.\n(Mastery 20) You may treat an additional faction of your choice as Wraethe this turn.",
       "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 94: name='Isa Tel Tor, the Axe', faction='Wraethe', amount=1. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/isa_tel_tor_the_axe.jpg (shield shown as green health/cross icon value 5); conf=high | [encode-gap] Mastery-20 \"treat an additional faction of your choice as Wraethe\" needs a player-chosen from-faction; treatFactionAs takes a fixed pair.",
+      "notes": "Wraethe Champion. Exhaust: gain 2 power + 1 per Wraethe card in discard (base fully encoded). [encode-gap] Mastery20 'treat an additional faction OF YOUR CHOICE as Wraethe' needs a player-chosen from-faction; treatFactionAs takes a fixed pair -> verified:false.",
       "set": "saga",
       "chapter": 3,
       "ksOnly": true,
@@ -2651,16 +2652,6 @@
             "resource": "power",
             "condition": "perFactionCardInDiscard",
             "faction": "wraethe"
-          }
-        ],
-        "masteryThreshold": 20,
-        "masteryReplaces": false,
-        "masteryBonusEffects": [
-          {
-            "type": "treatFactionAs",
-            "from": "wraethe",
-            "to": "wraethe",
-            "bidirectional": false
           }
         ]
       }
@@ -3991,15 +3982,15 @@
           "then": [
             {
               "type": "banishCard",
-              "source": "handOrDiscard"
+              "source": "playedThisTurn"
             }
           ]
         }
       ],
       "art": "blood_for_blood.jpg",
       "rawText": "Blood for Blood\nCost: 5\nIf you deal 5 or more unblocked damage to an opponent, you may banish a card you have played this turn.",
-      "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 177: name='Blood for Blood', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/blood_for_blood.jpg; conf=high | [encode-gap] Banish target \"a card you played this turn\" has no matching BanishSource (only hand/discard).",
+      "verified": true,
+      "notes": "Destiny. If you deal 5+ unblocked damage to an opponent, may banish a card played this turn. (conditional evaluates at play-resolution; unblockedDamageThisTurn accumulates via attackPlayer.)",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
