@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:simple_card_game/services/game_client.dart';
+import 'package:simple_card_game/services/token_storage.dart';
 import 'package:simple_card_game/ui/screens/game_setup_screen.dart';
 import 'package:simple_card_game/ui/screens/network_game_screen.dart';
 import 'package:simple_card_game/ui/theme/board_chrome.dart';
@@ -27,13 +28,22 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
   final _nameController = TextEditingController();
   final _urlController = TextEditingController();
   final _gameNameController = TextEditingController();
+  final _tokenController = TextEditingController();
   GameClient? _client;
   bool _navigatedToGame = false;
+
+  /// True once a remembered token is on file — drives the "forget" affordance.
+  bool _hasRememberedToken = false;
 
   @override
   void initState() {
     super.initState();
     _urlController.text = widget.defaultUrl ?? 'ws://localhost:8080';
+    // Prefill from localStorage so an invited player logs in ONCE.
+    final store = TokenStorage.instance;
+    _nameController.text = store.playerName ?? '';
+    _tokenController.text = store.accessToken ?? '';
+    _hasRememberedToken = (store.accessToken ?? '').isNotEmpty;
   }
 
   @override
@@ -43,6 +53,7 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
     _nameController.dispose();
     _urlController.dispose();
     _gameNameController.dispose();
+    _tokenController.dispose();
     super.dispose();
   }
 
@@ -52,10 +63,26 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
       _toast('Enter a player name first');
       return;
     }
-    final client = GameClient(playerId: name);
+    final token = _tokenController.text.trim();
+    // Remember name + token now; if the token is wrong the server rejects and
+    // we forget it (in _onClientChanged) so the next attempt re-prompts.
+    final store = TokenStorage.instance;
+    store.playerName = name;
+    store.accessToken = token;
+    setState(() => _hasRememberedToken = token.isNotEmpty);
+
+    final client = GameClient(playerId: name, accessToken: token);
     client.addListener(_onClientChanged);
     setState(() => _client = client);
     client.connect(_urlController.text.trim());
+  }
+
+  /// Forget the remembered token (e.g. on a shared computer).
+  void _forgetToken() {
+    TokenStorage.instance.forgetToken();
+    _tokenController.clear();
+    setState(() => _hasRememberedToken = false);
+    _toast('Forgot the saved access token');
   }
 
   void _createGame(GameClient client) {
@@ -66,6 +93,21 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
   void _onClientChanged() {
     final client = _client;
     if (client == null) return;
+    // AUTH FAILURE: the server rejected our token — forget it so the next
+    // attempt re-prompts, and drop the client back to the connect panel.
+    if (client.authFailed) {
+      TokenStorage.instance.forgetToken();
+      if (mounted) {
+        setState(() {
+          _hasRememberedToken = false;
+          _client = null;
+        });
+        _toast('Invalid access token — ask for the current invite code.');
+      }
+      client.removeListener(_onClientChanged);
+      client.dispose();
+      return;
+    }
     // AUTO-ENTER: when game state arrives, jump into the networked game view
     // once. On connect the server resyncs the player's MOST-RECENT active game
     // (Lobby.activeGameForPlayer returns the highest-ordinal game id), so a
@@ -137,6 +179,30 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
               style: const TextStyle(color: Colors.white),
               decoration: _dec('Your name'),
             ),
+            const SizedBox(height: 12),
+            // Shared access token (the invite code). Remembered after the first
+            // successful connect so invitees don't re-enter it.
+            TextField(
+              controller: _tokenController,
+              style: const TextStyle(color: Colors.white),
+              obscureText: true,
+              decoration: _dec('Access code (from your invite)'),
+              onSubmitted: (_) => _connect(),
+            ),
+            if (_hasRememberedToken)
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: _forgetToken,
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text('Forget saved code',
+                      style: TextStyle(color: Color(0xFF9E9E9E), fontSize: 12)),
+                ),
+              ),
             const SizedBox(height: 12),
             TextField(
               controller: _urlController,

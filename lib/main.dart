@@ -14,13 +14,20 @@ import 'package:simple_card_game/ui/theme/animation_timing.dart';
 import 'package:simple_card_game/ui/theme/game_theme.dart';
 
 /// Derive a default WebSocket server URL. An explicit `?server=` wins; otherwise
-/// reuse the host the web build was loaded from (so a device that opened
-/// http://<lan-ip>:8123 targets ws://<lan-ip>:8080), falling back to localhost.
+/// reuse the host the web build was loaded from, matching the page's SCHEME:
+///   - https page → wss:// (secure; required, since browsers block ws:// from
+///     https, and a TLS-terminating tunnel/proxy exposes wss at the edge). When
+///     served over https we target the SAME host with NO explicit port, so the
+///     tunnel/proxy can route the upgrade (e.g. wss://play.example.com).
+///   - http page  → ws://<host>:8080 (plain LAN/dev).
+/// localhost / empty host falls back to ws://localhost:8080.
 String _defaultServerUrl(String? explicit) {
   if (explicit != null && explicit.isNotEmpty) return explicit;
   final host = Uri.base.host;
   if (host.isEmpty || host == 'localhost') return 'ws://localhost:8080';
-  return 'ws://$host:8080';
+  final isHttps = Uri.base.scheme == 'https';
+  // Over https, omit the port so the edge proxy routes wss on 443.
+  return isHttps ? 'wss://$host' : 'ws://$host:8080';
 }
 
 void main() {

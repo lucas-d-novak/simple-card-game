@@ -32,6 +32,34 @@ import 'package:simple_card_game/models/card_model.dart';
 /// from disk, so all games use the real market deck (per-card copy counts).
 late final Lobby _lobby;
 
+/// Shared access token gate. When set (via SHARDS_ACCESS_TOKEN), every client
+/// must present a matching `token` in its first `identify` message or the server
+/// closes the connection. When EMPTY/unset the server is OPEN (no token) — fine
+/// for local dev; set the env var for any exposed deployment. Invitees share the
+/// token; only token-holders can connect.
+String _accessToken = '';
+bool get _tokenRequired => _accessToken.isNotEmpty;
+
+/// Allowed browser origins (from SHARDS_ALLOWED_ORIGINS, comma-separated). Empty
+/// = allow any. Checked on the WebSocket upgrade to block cross-site hijacking.
+Set<String> _allowedOrigins = {};
+
+/// Hard cap on a single inbound WebSocket message (bytes). A frame larger than
+/// this is rejected without parsing, so a giant payload can't exhaust memory.
+const int _maxMessageBytes = 64 * 1024;
+
+/// Constant-time string comparison so a wrong token can't be discovered by
+/// timing how long the reject takes.
+bool _tokenMatches(String provided) {
+  final a = _accessToken;
+  // Always compare over the full expected length; never early-exit on mismatch.
+  var diff = a.length ^ provided.length;
+  for (var i = 0; i < a.length; i++) {
+    diff |= a.codeUnitAt(i) ^ (i < provided.length ? provided.codeUnitAt(i) : 0);
+  }
+  return diff == 0;
+}
+
 /// Disk snapshot store so in-progress games survive a restart. Built in [main];
 /// disabled (in-memory only) if the data directory is unwritable.
 late final GamePersistence _store;
@@ -49,6 +77,22 @@ final Map<String, WebSocket> _sockets = {};
 void main(List<String> args) async {
   final port =
       args.isNotEmpty ? int.tryParse(args.first) ?? 8080 : 8080;
+
+  // Access-token gate (shared secret). Set SHARDS_ACCESS_TOKEN to require it.
+  _accessToken = (Platform.environment['SHARDS_ACCESS_TOKEN'] ?? '').trim();
+  stdout.writeln(_tokenRequired
+      ? 'Access token REQUIRED (clients must present SHARDS_ACCESS_TOKEN).'
+      : 'WARNING: no access token set — server is OPEN. Set '
+          'SHARDS_ACCESS_TOKEN for any exposed deployment.');
+
+  _allowedOrigins = (Platform.environment['SHARDS_ALLOWED_ORIGINS'] ?? '')
+      .split(',')
+      .map((o) => o.trim())
+      .where((o) => o.isNotEmpty)
+      .toSet();
+  if (_allowedOrigins.isNotEmpty) {
+    stdout.writeln('Origin allowlist: ${_allowedOrigins.join(', ')}');
+  }
 
   // Load the authoritative card DB from disk (pure-Dart, no Flutter) and build
   // the market deck. The path is relative to the repo root; the server runs
@@ -94,6 +138,18 @@ void main(List<String> args) async {
       continue;
     }
     if (WebSocketTransformer.isUpgradeRequest(req)) {
+      // ORIGIN allowlist: when SHARDS_ALLOWED_ORIGINS is set (comma-separated),
+      // only browser pages from those origins may open a socket — blocks
+      // cross-site WebSocket hijacking from arbitrary websites. Unset = allow
+      // any origin (non-browser clients send no Origin header anyway).
+      if (_allowedOrigins.isNotEmpty) {
+        final origin = req.headers.value('origin');
+        if (origin != null && !_allowedOrigins.contains(origin)) {
+          req.response.statusCode = HttpStatus.forbidden;
+          await req.response.close();
+          continue;
+        }
+      }
       final socket = await WebSocketTransformer.upgrade(req);
       _handleSocket(socket);
     } else {
@@ -114,6 +170,11 @@ void _handleSocket(WebSocket socket) {
 
   socket.listen(
     (data) {
+      // Reject oversized frames BEFORE parsing so a huge payload can't OOM us.
+      if (data is String && data.length > _maxMessageBytes) {
+        err('message too large');
+        return;
+      }
       late final Map<String, dynamic> msg;
       try {
         msg = (jsonDecode(data as String) as Map).cast<String, dynamic>();
@@ -129,7 +190,32 @@ void _handleSocket(WebSocket socket) {
           err('first message must be {"type":"identify","playerId":...}');
           return;
         }
-        playerId = msg['playerId'] as String;
+        // ACCESS-TOKEN GATE: reject (and close) anyone without the shared token.
+        if (_tokenRequired) {
+          final provided = msg['token'];
+          if (provided is! String || !_tokenMatches(provided)) {
+            send({'type': 'error', 'error': 'invalid access token', 'code': 'auth'});
+            socket.close(4001, 'invalid access token');
+            return;
+          }
+        }
+        final rawId = msg['playerId'] as String;
+        final id = rawId.trim();
+        if (id.isEmpty || id.length > 40) {
+          err('player name must be 1-40 characters');
+          return;
+        }
+        playerId = id;
+        // Same-name (re)connect = takeover: close any prior socket for this name
+        // and bind to the new one. This is the reconnect path (reopened tab /
+        // returning device). Impersonation is already gated by the access token
+        // above — only token-holders reach here — so takeover is the right UX.
+        final existing = _sockets[playerId!];
+        if (existing != null && existing != socket) {
+          try {
+            existing.close(4003, 'reconnected elsewhere');
+          } catch (_) {/* old socket already gone */}
+        }
         _sockets[playerId!] = socket;
         send({'type': 'welcome', 'playerId': playerId});
         send({'type': 'lobby', 'games': _lobby.summaries()});
@@ -195,7 +281,8 @@ void _dispatch(
         err('seats must be 2-4');
         return;
       }
-      final name = msg['name'] as String?;
+      var name = msg['name'] as String?;
+      if (name != null && name.length > 60) name = name.substring(0, 60);
       final g = _lobby.createGame(hostId: playerId, seats: seats, name: name);
       _persist(g.id);
       send({'type': 'created', 'gameId': g.id});

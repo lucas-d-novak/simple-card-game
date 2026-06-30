@@ -76,7 +76,14 @@ class GamePersistence {
   factory GamePersistence.disabled() =>
       GamePersistence._(Directory('.'), false, (_) {});
 
-  File _fileFor(String gameId) => File('${directory.path}/$gameId.json');
+  /// Path of the snapshot file for [gameId]. The id is SANITIZED to a safe
+  /// filename (alphanumerics, `_`, `-` only) so it can never escape [directory]
+  /// via `../` or path separators — defense-in-depth even though ids are
+  /// server-generated (`game_N`) today.
+  File _fileFor(String gameId) {
+    final safe = gameId.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_');
+    return File('${directory.path}/$safe.json');
+  }
 
   /// Build the JSON snapshot map for [g] (metadata + the full encoded game when
   /// a session exists). Pure — no I/O — so it is unit-testable.

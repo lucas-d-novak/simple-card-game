@@ -47,17 +47,25 @@ class LobbyGameSummary {
 /// networked games — the server is the source of truth and pushes a redacted
 /// view per player (see ai-docs/multiplayer_architecture.md).
 class GameClient extends ChangeNotifier {
-  GameClient({required this.playerId});
+  GameClient({required this.playerId, this.accessToken});
 
   /// The id this client authenticates as (the server trusts the connection's
   /// identity, not action payloads).
   final String playerId;
+
+  /// Shared access token presented in `identify`. Null/empty when the server is
+  /// open. The server closes the socket with an `auth` error if it's wrong.
+  final String? accessToken;
 
   WebSocketChannel? _channel;
   StreamSubscription? _sub;
 
   ClientStatus status = ClientStatus.disconnected;
   String? lastError;
+
+  /// True once the server rejected our access token — the UI re-prompts and the
+  /// caller should forget the remembered token.
+  bool authFailed = false;
 
   /// Latest lobby snapshot from the server.
   List<LobbyGameSummary> lobby = const [];
@@ -108,8 +116,9 @@ class GameClient extends ChangeNotifier {
         onError: _onError,
         cancelOnError: true,
       );
-      // The server requires identify as the FIRST message.
-      _send({'type': 'identify', 'playerId': playerId});
+      // The server requires identify as the FIRST message (with the shared
+      // access token when the server is gated).
+      _send(_identifyMsg());
       // Optimistically connected; a `welcome` confirms.
     } catch (e) {
       lastError = '$e';
@@ -134,7 +143,14 @@ class GameClient extends ChangeNotifier {
   ///
   /// When a player is in MULTIPLE games this targets the server's most-recent
   /// active game. To re-enter a SPECIFIC game, use [rejoinGame].
-  void requestResync() => _send({'type': 'identify', 'playerId': playerId});
+  void requestResync() => _send(_identifyMsg());
+
+  /// The `identify` payload, including the access token when one is set.
+  Map<String, dynamic> _identifyMsg() => {
+        'type': 'identify',
+        'playerId': playerId,
+        if (accessToken != null && accessToken!.isNotEmpty) 'token': accessToken,
+      };
 
   /// Ask the server to push a SPECIFIC game's redacted state (so a player in
   /// several active games can pick which one to re-enter). The server only
@@ -251,6 +267,12 @@ class GameClient extends ChangeNotifier {
         notifyListeners();
       case 'error':
         lastError = msg['error'] as String?;
+        // The server tags auth failures so the UI can re-prompt for the token
+        // (and the caller can clear the remembered one).
+        if (msg['code'] == 'auth') {
+          authFailed = true;
+          _setStatus(ClientStatus.error);
+        }
         notifyListeners();
     }
   }
