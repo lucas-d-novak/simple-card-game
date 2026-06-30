@@ -154,8 +154,22 @@
       "id": "limiter_drones",
       "name": "Limiter Drones",
       "faction": "homodeus",
+      "cost": 2,
       "copies": 3,
       "playEffects": [
+        {
+          "type": "conditional",
+          "condition": {
+            "kind": "championsControlled",
+            "threshold": 1
+          },
+          "then": [
+            {
+              "type": "banishCard",
+              "source": "handOrDiscard"
+            }
+          ]
+        },
         {
           "type": "drawCards",
           "count": 1
@@ -164,7 +178,7 @@
       "art": "limiter_drones.jpg",
       "rawText": "Homodeus Ally. Cost 2. Inspire - If you control a Champion, you may banish a card from your hand or discard pile. Draw a card.",
       "verified": true,
-      "notes": "Ally (regular). Draw a card -> playEffects. UNMODELED: Inspire 'If you control a Champion, you may banish a card from your hand or discard pile' (Inspire = conditional-on-controlling-a-champion; the banish is gated behind the Inspire condition which has no engine type). Banish not encoded because it is conditional on Inspire.",
+      "notes": "Ally (regular). Inspire 'If you control a Champion' = conditional(championsControlled threshold 1); then 'you may banish a card from your hand or discard pile' (the 'may' is the player's option to Skip in the banish dialog). 'Draw a card' resolves unconditionally.",
       "set": "base",
       "cardType": "regular",
       "cost": 2,

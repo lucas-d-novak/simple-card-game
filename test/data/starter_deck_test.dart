@@ -47,13 +47,21 @@ void main() {
       expect(shard.playEffects.first, isA<InfinityShardEffect>());
     });
 
-    test('Shard Reactor has ChooseOneEffect', () {
+    test('Shard Reactor gains gems scaling with mastery (2 / 3 at 5 / 4 at 15)',
+        () {
       final deck = buildStarterDeck('p1');
       final reactor = deck.firstWhere((c) => c.name == 'Shard Reactor');
-      expect(reactor.playEffects, hasLength(1));
-      expect(reactor.playEffects.first, isA<ChooseOneEffect>());
-      final choose = reactor.playEffects.first as ChooseOneEffect;
-      expect(choose.choices, hasLength(2));
+      // Base gem gain + two mastery-threshold conditionals (no power option).
+      expect(reactor.playEffects.first, isA<GainGemsEffect>());
+      expect((reactor.playEffects.first as GainGemsEffect).amount, 2);
+      final conditionals =
+          reactor.playEffects.whereType<ConditionalEffect>().toList();
+      expect(conditionals, hasLength(2));
+      final thresholds =
+          conditionals.map((c) => c.condition.threshold).toSet();
+      expect(thresholds, {5, 15});
+      // No power option anymore (real card is gems-only).
+      expect(reactor.playEffects.whereType<ChooseOneEffect>(), isEmpty);
     });
 
     test('all card IDs are unique within a deck', () {

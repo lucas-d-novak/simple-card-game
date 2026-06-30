@@ -102,6 +102,19 @@ class Lobby {
 
   LobbyGame? game(String id) => _games[id];
 
+  /// The in-progress (started, not complete) game [playerId] is seated in, or
+  /// null. Used to resync a reconnecting client back into their live game.
+  LobbyGame? activeGameForPlayer(String playerId) {
+    for (final g in _games.values) {
+      if (g.status == GameStatus.started &&
+          g.session != null &&
+          g.players.contains(playerId)) {
+        return g;
+      }
+    }
+    return null;
+  }
+
   List<Map<String, dynamic>> summaries() =>
       [for (final g in _games.values) g.toSummary()];
 }

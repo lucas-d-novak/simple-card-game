@@ -228,5 +228,36 @@ void main() {
       // Joining a started game fails.
       expect(lobby.joinGame(g.id, 'carol'), isNull);
     });
+
+    test('reconnect: activeGameForPlayer finds a seated player\'s live game and '
+        'viewFor gives a complete resync', () {
+      final lobby = Lobby();
+      final g = lobby.createGame(hostId: 'alice', seats: 2);
+      lobby.joinGame(g.id, 'bob');
+      lobby.startGame(g.id);
+
+      // Both seated players resolve to the live game (the reconnect lookup).
+      expect(lobby.activeGameForPlayer('alice')?.id, g.id);
+      expect(lobby.activeGameForPlayer('bob')?.id, g.id);
+      // A non-player does not.
+      expect(lobby.activeGameForPlayer('carol'), isNull);
+
+      // The resync view a reconnecting client receives is a full redacted state
+      // (own hand present, turn info, undo flag) — not an empty/stale shell.
+      final view = g.session!.viewFor('alice');
+      expect(view['you'], isNotNull);
+      expect(view['players'], isA<List>());
+      expect(view.containsKey('canUndo'), isTrue);
+      expect(view['centerRow'], isA<List>());
+    });
+
+    test('reconnect: a completed game is NOT returned as active', () {
+      final lobby = Lobby();
+      final g = lobby.createGame(hostId: 'alice', seats: 2);
+      lobby.joinGame(g.id, 'bob');
+      lobby.startGame(g.id);
+      g.status = GameStatus.complete;
+      expect(lobby.activeGameForPlayer('alice'), isNull);
+    });
   });
 }

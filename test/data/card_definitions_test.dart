@@ -64,11 +64,16 @@ void main() {
       expect(universalSoldier.cardType, CardType.champion);
     });
 
-    test('Shard Reactor has ChooseOneEffect', () {
-      expect(shardReactor.playEffects, hasLength(1));
-      expect(shardReactor.playEffects.first, isA<ChooseOneEffect>());
-      final choose = shardReactor.playEffects.first as ChooseOneEffect;
-      expect(choose.choices, hasLength(2));
+    test('Shard Reactor gains gems scaling with mastery (2 / 3 / 4)', () {
+      // Base 2 gems + two mastery-threshold conditionals (+1 at 5, +1 at 15);
+      // the real card is gems-only with a Mastery Threshold Bonus.
+      expect(shardReactor.playEffects.first, isA<GainGemsEffect>());
+      expect((shardReactor.playEffects.first as GainGemsEffect).amount, 2);
+      final conditionals =
+          shardReactor.playEffects.whereType<ConditionalEffect>().toList();
+      expect(conditionals, hasLength(2));
+      expect(conditionals.map((c) => c.condition.threshold).toSet(), {5, 15});
+      expect(shardReactor.playEffects.whereType<ChooseOneEffect>(), isEmpty);
     });
 
     test('Blood Ritualist has OpponentLosesHealthEffect as mastery bonus', () {

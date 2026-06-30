@@ -564,11 +564,19 @@ const shardReactor = CardModel(
   id: 'shard_reactor',
   name: 'Shard Reactor',
   cost: 3,
+  // Gain 2 gems, scaling with Mastery: 3 at Mastery 5, 4 at Mastery 15.
   playEffects: [
-    ChooseOneEffect([
-      [GainGemsEffect(2)],
-      [GainPowerEffect(2)],
-    ]),
+    GainGemsEffect(2),
+    ConditionalEffect(
+      condition:
+          GameCondition(kind: GameConditionKind.masteryAtLeast, threshold: 5),
+      then: [GainGemsEffect(1)],
+    ),
+    ConditionalEffect(
+      condition:
+          GameCondition(kind: GameConditionKind.masteryAtLeast, threshold: 15),
+      then: [GainGemsEffect(1)],
+    ),
   ],
 );
 

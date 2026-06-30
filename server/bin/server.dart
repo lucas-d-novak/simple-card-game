@@ -108,6 +108,10 @@ void _handleSocket(WebSocket socket) {
         _sockets[playerId!] = socket;
         send({'type': 'welcome', 'playerId': playerId});
         send({'type': 'lobby', 'games': _lobby.summaries()});
+        // RECONNECT: if this player is already in a live game, immediately
+        // resend their current redacted state so a reopened tab / returning
+        // device drops straight back into the game instead of going stale.
+        _resyncPlayer(playerId!, send);
         return;
       }
 
@@ -132,8 +136,10 @@ void _dispatch(
   final type = msg['type'] as String?;
   switch (type) {
     case 'identify':
-      // Already identified; ignore re-identify.
+      // Already identified; re-confirm and resync any live game (idempotent —
+      // lets a client explicitly request a resync).
       send({'type': 'welcome', 'playerId': playerId});
+      _resyncPlayer(playerId, send);
 
     case 'listGames':
       send({'type': 'lobby', 'games': _lobby.summaries()});
@@ -188,6 +194,19 @@ void _dispatch(
       if (session.game.isGameOver) g!.status = GameStatus.complete;
       _broadcastState(gameId);
   }
+}
+
+/// If [playerId] is in a live game, send them their current redacted state so a
+/// reconnecting client resyncs immediately (without waiting for the next action).
+void _resyncPlayer(String playerId, void Function(Map<String, dynamic>) send) {
+  final g = _lobby.activeGameForPlayer(playerId);
+  final session = g?.session;
+  if (g == null || session == null) return;
+  send({
+    'type': 'state',
+    'gameId': g.id,
+    'state': session.viewFor(playerId),
+  });
 }
 
 void _broadcastLobby() {
