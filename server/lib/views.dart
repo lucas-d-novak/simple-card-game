@@ -16,6 +16,7 @@
 //  - under-cards: count only (face-down).
 //  - scalars (health/mastery/pools/flags/character/modifiers): public.
 
+import 'package:simple_card_game/data/database/card_serialization.dart';
 import 'package:simple_card_game/models/card_model.dart';
 import 'package:simple_card_game/models/player_state.dart';
 import 'package:simple_card_game/services/game_service.dart';
@@ -29,6 +30,28 @@ Map<String, dynamic> redactFor(
   String recipientId, {
   required int stateVersion,
 }) {
+  // Card dictionary: every card the recipient may legitimately see, serialized
+  // BY VALUE (name + effects + stats), keyed by id. The client renders directly
+  // from this — it does NOT re-look-up ids in any catalog, so the cards it shows
+  // are EXACTLY the ones the engine created (the engine builds the market from
+  // card_definitions.dart with per-instance id suffixes like `chaos_imp_1`,
+  // which are absent from the authoritative CardDatabase). Hidden info is
+  // preserved: only VISIBLE cards are dictionaried — opponents' hands and ALL
+  // draw piles are deliberately excluded (we never serialize those models).
+  final cards = <String, dynamic>{};
+  void register(CardModel c) => cards.putIfAbsent(c.id, () => cardModelToJson(c));
+  void registerAll(List<CardModel> cs) => cs.forEach(register);
+
+  registerAll(game.centerRow);
+  registerAll(game.removedFromGame);
+  for (final p in game.players) {
+    // Own hand only — never an opponent's (hidden info). Draw piles: never.
+    if (p.id == recipientId) registerAll(p.hand);
+    registerAll(p.discardPile); // discards are public
+    registerAll(p.championsInPlay); // champions are public
+    registerAll(p.playedThisTurn); // played-this-turn is public
+  }
+
   return {
     'stateVersion': stateVersion,
     'you': recipientId,
@@ -44,6 +67,8 @@ Map<String, dynamic> redactFor(
     'players': [
       for (final p in game.players) _redactPlayer(p, p.id == recipientId),
     ],
+    // Full card definitions for every visible card, by id.
+    'cards': cards,
   };
 }
 

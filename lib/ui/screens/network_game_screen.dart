@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:simple_card_game/data/database/card_database.dart';
-import 'package:simple_card_game/data/database/card_database_asset.dart';
-import 'package:simple_card_game/data/starter_deck.dart';
+import 'package:simple_card_game/data/database/card_serialization.dart';
 import 'package:simple_card_game/models/card_model.dart';
-import 'package:simple_card_game/models/faction.dart';
 import 'package:simple_card_game/services/game_client.dart';
 import 'package:simple_card_game/ui/theme/board_chrome.dart';
 import 'package:simple_card_game/ui/theme/game_theme.dart';
@@ -18,11 +15,13 @@ import 'package:simple_card_game/ui/widgets/resource_icons.dart';
 /// actions over the [GameClient].
 ///
 /// The engine never runs on the client for networked games: this widget is a
-/// presentation layer over the authoritative redacted view. Card ids are
-/// reconstructed into [CardModel]s via the [CardDatabase] purely for display.
-/// Hidden information is honoured structurally — the opponent's hand arrives as
-/// a COUNT only, so it is drawn as face-down backs; no opponent card identity is
-/// ever available to render.
+/// presentation layer over the authoritative redacted view. Each VISIBLE card
+/// arrives fully serialized (name + effects + stats) in the state's `cards`
+/// dictionary, so the board renders EXACTLY the cards the engine created — the
+/// same content the local [GameScreen] shows. There is no client-side catalog
+/// guessing. Hidden information is honoured structurally: opponents' hands and
+/// all draw piles are never dictionaried, so their card identities are simply
+/// not present to render.
 class NetworkGameScreen extends StatefulWidget {
   const NetworkGameScreen({super.key, required this.client});
 
@@ -33,19 +32,16 @@ class NetworkGameScreen extends StatefulWidget {
 }
 
 class _NetworkGameScreenState extends State<NetworkGameScreen> {
-  CardDatabase? _db;
-  // Synthetic starter cards (Crystal/Blaster/Shards/Reactor) by instance id,
-  // so p0_crystal_3 etc. resolve to a real CardModel for display.
-  final Map<String, CardModel> _starter = {};
   String? _actionMessage;
+
+  /// Rehydrated card models from the latest state's `cards` dictionary, by id.
+  Map<String, CardModel> _cards = const {};
 
   @override
   void initState() {
     super.initState();
     widget.client.addListener(_onChanged);
-    CardDatabaseAsset.load().then((db) {
-      if (mounted) setState(() => _db = db);
-    }).catchError((_) {/* names fall back to ids */});
+    _syncCards();
   }
 
   @override
@@ -55,7 +51,20 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
   }
 
   void _onChanged() {
+    _syncCards();
     if (mounted) setState(() {});
+  }
+
+  /// Rebuild the id → CardModel map from the latest redacted state.
+  void _syncCards() {
+    final dict = widget.client.gameState?['cards'];
+    if (dict is Map) {
+      _cards = {
+        for (final entry in dict.entries)
+          entry.key as String:
+              cardModelFromJson((entry.value as Map).cast<String, dynamic>()),
+      };
+    }
   }
 
   void _flash(String msg) {
@@ -64,63 +73,12 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
 
   // ---- card reconstruction ------------------------------------------------
 
-  /// Resolve a card id from the redacted state into a displayable [CardModel].
-  /// DB cards win; starter instance ids (p0_crystal_3) map to the canonical
-  /// starter template with the instance id preserved (so widget keys are
-  /// stable). Unknown ids become a bare placeholder so the board still renders.
+  /// Resolve a card id to its server-provided [CardModel]. Returns a minimal
+  /// placeholder only if the id is somehow absent from the dictionary (e.g. a
+  /// face-down / hidden card we should never be asked to render).
   CardModel _card(String id) {
-    final rec = _db?.byId(id);
-    if (rec != null) return rec.model;
-
-    final cached = _starter[id];
-    if (cached != null) return cached;
-
-    // Build a fresh per-instance CardModel so the widget key (card.id) stays
-    // unique even when a player holds several crystals.
-    final template = _starterTemplateFor(id);
-    final model = template != null
-        ? CardModel(
-            id: id,
-            name: template.name,
-            cost: template.cost,
-            playEffects: template.playEffects,
-            faction: template.faction,
-            cardType: template.cardType,
-          )
-        : CardModel(
-            id: id,
-            name: _humanizeId(id),
-            cost: 0,
-            playEffects: const [],
-            faction: Faction.none,
-          );
-    _starter[id] = model;
-    return model;
-  }
-
-  /// Match a starter instance id (p0_crystal_3, p1_blaster, …) to its template
-  /// drawn from the canonical 10-card starter deck.
-  CardModel? _starterTemplateFor(String id) {
-    final m = RegExp(r'(crystal|blaster|shard|reactor)').firstMatch(id);
-    if (m == null) return null;
-    final base = m.group(1)!;
-    final deck = buildStarterDeck('seed'); // template stats only
-    for (final c in deck) {
-      final n = c.name.toLowerCase();
-      if (base == 'crystal' && n.contains('crystal')) return c;
-      if (base == 'blaster' && n.contains('blaster')) return c;
-      if (base == 'reactor' && n.contains('reactor')) return c;
-      if (base == 'shard' && n.contains('shard') && !n.contains('reactor')) {
-        return c;
-      }
-    }
-    return null;
-  }
-
-  String _humanizeId(String id) {
-    final core = id.replaceFirst(RegExp(r'^p\d+_'), '').replaceAll('_', ' ');
-    if (core.isEmpty) return id;
-    return core[0].toUpperCase() + core.substring(1);
+    return _cards[id] ??
+        CardModel(id: id, name: '', cost: 0, playEffects: const []);
   }
 
   // ---- actions ------------------------------------------------------------

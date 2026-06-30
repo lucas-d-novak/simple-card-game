@@ -46,6 +46,36 @@ void main() {
       expect(view['centerRow'], isA<List>());
       expect((view['centerRow'] as List), hasLength(6));
     });
+
+    test('the cards dictionary defines every VISIBLE card by id, and NEVER an '
+        'opponent hand card', () {
+      final game = GameService(playerCount: 2);
+      final view = redactFor(game, 'p0', stateVersion: 1);
+      final cards = view['cards'] as Map;
+
+      // Every center-row card is defined (so the client renders real content).
+      for (final id in (view['centerRow'] as List)) {
+        expect(cards.containsKey(id), isTrue,
+            reason: 'center-row card $id must be in the dictionary');
+        expect((cards[id] as Map)['name'], isA<String>());
+      }
+
+      // p0's OWN hand cards are defined.
+      final players = (view['players'] as List).cast<Map>();
+      final p0 = players.firstWhere((p) => p['id'] == 'p0');
+      for (final id in (p0['hand'] as List)) {
+        expect(cards.containsKey(id), isTrue,
+            reason: 'own hand card $id must be in the dictionary');
+      }
+
+      // p1's hand card ids must NOT appear in the dictionary sent to p0 — the
+      // dictionary is a new engine->wire path and must not leak hidden cards.
+      final p1Hand = game.players[1].hand.map((c) => c.id).toSet();
+      for (final id in p1Hand) {
+        expect(cards.containsKey(id), isFalse,
+            reason: "opponent hand card $id must NOT be in p0's dictionary");
+      }
+    });
   });
 
   group('GameSession — action authorization', () {
