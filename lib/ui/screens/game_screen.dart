@@ -14,6 +14,7 @@ import 'package:simple_card_game/ui/theme/responsive.dart';
 import 'package:simple_card_game/ui/widgets/beveled_button.dart';
 import 'package:simple_card_game/ui/widgets/card_detail_modal.dart';
 import 'package:simple_card_game/ui/widgets/card_fan.dart';
+import 'package:simple_card_game/ui/widgets/choice_modal.dart';
 import 'package:simple_card_game/ui/widgets/game_card_widget.dart';
 import 'package:simple_card_game/ui/widgets/resource_icons.dart';
 import 'package:simple_card_game/ui/widgets/scrollable_board.dart';
@@ -325,48 +326,16 @@ class _GameScreenState extends State<GameScreen>
   }
 
   void _showChoiceDialog(CardModel card, ChooseOneEffect effect) {
-    showDialog<int>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: GameTheme.surfaceDark,
-        title: Text(
-          card.name,
-          style: const TextStyle(color: GameTheme.gold, fontSize: 16),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Choose an effect:',
-              style: TextStyle(color: GameTheme.textPrimary, fontSize: 13),
-            ),
-            const SizedBox(height: 12),
-            for (int i = 0; i < effect.choices.length; i++)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: ElevatedButton(
-                  onPressed: () => Navigator.of(ctx).pop(i),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: GameTheme.surfaceMid,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: Text(
-                    effect.choices[i]
-                        .map((e) => e.description)
-                        .join(', '),
-                    style: const TextStyle(fontSize: 13),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
+    showChoiceModal(
+      context,
+      title: card.name,
+      subtitle: 'Choose an effect',
+      options: [
+        for (final group in effect.choices)
+          ChoiceOption(
+            label: group.map((e) => e.description).join(' and '),
+          ),
+      ],
     ).then((choiceIndex) {
       if (choiceIndex != null) {
         _pushUndo();
@@ -375,6 +344,7 @@ class _GameScreenState extends State<GameScreen>
           _selectedHandCardId = null;
           if (success) {
             _actionMessage = 'Played ${card.name}';
+            _lastPlayedCardId = card.id;
           }
         });
       }
@@ -738,31 +708,95 @@ class _GameScreenState extends State<GameScreen>
     });
   }
 
-  /// Minimal local UI hook for the Destiny system (Into the Horizon): when a
-  /// Destiny supply is enabled and the current player may claim/use a Destiny,
-  /// this returns the action to run; the board calls it from the (future)
-  /// Destiny-row widget. Returns null when no Destiny action is available, which
-  /// is always the case on the live single-player board today (no
-  /// `destinySupply` is wired into [GameService]). Keeping this as a small,
-  /// referenced helper makes the engine API discoverable from the UI without
-  /// introducing a half-built dialog or changing any visible behavior/goldens.
-  /// See [GameService.claimDestiny] / [GameService.useDestinyAbility].
-  VoidCallback? destinyActionFor(String destinyId) {
-    if (_game.destinyRow.isEmpty && _game.currentPlayer.claimedDestinies.isEmpty) {
-      return null;
-    }
-    final canClaim =
-        _game.destinyRow.any((c) => c.id == destinyId);
-    return () {
+  /// Whether the current player may claim a Destiny right now (Into the Horizon,
+  /// Mastery [GameService.destinyClaimMastery] = 5). Mirrors the engine gate in
+  /// [GameService.claimDestiny]: at/above the mastery threshold, still under the
+  /// per-game claim allowance, and at least one Destiny face-up in the row. When
+  /// no Destiny supply is wired in (the row is empty), this is always false and
+  /// no entry point appears.
+  bool get _canClaimDestiny {
+    final p = _game.currentPlayer;
+    return p.mastery >= GameService.destinyClaimMastery &&
+        p.canClaimAnotherDestiny &&
+        _game.destinyRow.isNotEmpty;
+  }
+
+  /// Whether the current player may recruit a Relic right now (Relics of the
+  /// Future, Mastery 10). Mirrors the engine gate in
+  /// [GameService.recruitRelic]: at/above mastery 10, not yet recruited, and the
+  /// two set-aside relic options are present. Always false when no relic
+  /// templates were injected (options empty).
+  bool get _canRecruitRelic {
+    final p = _game.currentPlayer;
+    return p.mastery >= 10 &&
+        !p.relicRecruited &&
+        p.relicOptions.isNotEmpty;
+  }
+
+  /// Open the shared choice modal showing the face-up [GameService.destinyRow]
+  /// as card previews; the chosen Destiny is claimed via
+  /// [GameService.claimDestiny]. Opt-in / non-blocking.
+  void _openDestinyModal() {
+    final row = _game.destinyRow;
+    if (row.isEmpty) return;
+    showChoiceModal(
+      context,
+      title: 'Claim a Destiny',
+      subtitle: 'Mastery ${GameService.destinyClaimMastery}+ — claim one for free',
+      options: [
+        for (final c in row)
+          ChoiceOption(
+            label: c.name,
+            cardPreview: GameCardWidget(card: c, width: 150),
+          ),
+      ],
+    ).then((index) {
+      if (index == null) return;
+      final chosen = row[index];
+      _pushUndo();
       setState(() {
-        final ok = canClaim
-            ? _game.claimDestiny(destinyId)
-            : _game.useDestinyAbility(destinyId);
-        if (ok) {
-          _actionMessage = canClaim ? 'Claimed Destiny' : 'Used Destiny ability';
+        if (_game.claimDestiny(chosen.id)) {
+          _actionMessage = 'Claimed ${chosen.name}';
+        } else {
+          _actionMessage = 'Cannot claim ${chosen.name}';
         }
       });
-    };
+    });
+  }
+
+  /// Open the shared choice modal showing the current player's two set-aside
+  /// [PlayerState.relicOptions] as card previews; the chosen Relic is recruited
+  /// via [GameService.recruitRelic] (shuffled into the draw pile, the other
+  /// banished). Opt-in / non-blocking.
+  void _openRelicModal() {
+    final options = _game.currentPlayer.relicOptions;
+    if (options.isEmpty) return;
+    // Snapshot the options: recruitRelic clears relicOptions, so index into a
+    // stable copy when resolving the chosen card.
+    final snapshot = List<CardModel>.from(options);
+    showChoiceModal(
+      context,
+      title: 'Recruit a Relic',
+      subtitle: 'Mastery 10 — keep one, banish the other',
+      options: [
+        for (final c in snapshot)
+          ChoiceOption(
+            label: c.name,
+            cardPreview: GameCardWidget(card: c, width: 150),
+          ),
+      ],
+    ).then((index) {
+      if (index == null) return;
+      final chosen = snapshot[index];
+      _pushUndo();
+      setState(() {
+        if (_game.recruitRelic(chosen.id)) {
+          _actionMessage = 'Recruited ${chosen.name}';
+        } else {
+          _actionMessage = 'Cannot recruit ${chosen.name}';
+        }
+      });
+    });
   }
 
   void _endTurn() {
@@ -947,6 +981,10 @@ class _GameScreenState extends State<GameScreen>
                                     currentPlayer.gemPool >= 1)
                                 ? _focus
                                 : null,
+                            onClaimDestiny:
+                                _canClaimDestiny ? _openDestinyModal : null,
+                            onRecruitRelic:
+                                _canRecruitRelic ? _openRelicModal : null,
                           ),
                         ],
                       ),
@@ -1435,6 +1473,8 @@ class _BottomZone extends StatelessWidget {
     required this.onAttack,
     required this.hasGuards,
     required this.onFocus,
+    this.onClaimDestiny,
+    this.onRecruitRelic,
   });
 
   final dynamic player; // PlayerState
@@ -1458,6 +1498,13 @@ class _BottomZone extends StatelessWidget {
 
   /// Character Focus (1 gem → 1 mastery). Null when unavailable this turn.
   final VoidCallback? onFocus;
+
+  /// Opens the Destiny-claim modal (Mastery 5). Null when ineligible — then no
+  /// Destiny button shows.
+  final VoidCallback? onClaimDestiny;
+
+  /// Opens the Relic-recruit modal (Mastery 10). Null when ineligible.
+  final VoidCallback? onRecruitRelic;
 
   @override
   Widget build(BuildContext context) {
@@ -1537,6 +1584,24 @@ class _BottomZone extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               _FocusButton(onPressed: onFocus),
+              // Destiny / Relic acquisition entry points — only appear when the
+              // player is eligible (Mastery 5 / 10), so they stay non-blocking.
+              if (onClaimDestiny != null) ...[
+                const SizedBox(height: 4),
+                _AcquireButton(
+                  label: 'Destiny',
+                  icon: Icons.auto_awesome,
+                  onPressed: onClaimDestiny,
+                ),
+              ],
+              if (onRecruitRelic != null) ...[
+                const SizedBox(height: 4),
+                _AcquireButton(
+                  label: 'Relic',
+                  icon: Icons.diamond,
+                  onPressed: onRecruitRelic,
+                ),
+              ],
               const SizedBox(height: 4),
               _PileHex(
                 count: player.drawPile.length as int,
@@ -1626,6 +1691,61 @@ class _FocusButton extends StatelessWidget {
                       fontWeight: FontWeight.bold)),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A small gold acquisition pill (Destiny / Relic) shown beneath Focus when the
+/// player is eligible to claim/recruit. Opens the shared choice modal.
+class _AcquireButton extends StatelessWidget {
+  const _AcquireButton({
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+  });
+  final String label;
+  final IconData icon;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFE8C45A), Color(0xFFB8902F)],
+          ),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+              color: BoardChrome.goldRim.withValues(alpha: 0.9), width: 1.2),
+          boxShadow: [
+            BoxShadow(
+              color: BoardChrome.goldText.withValues(alpha: 0.4),
+              blurRadius: 8,
+              spreadRadius: -2,
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: const Color(0xFF2A1C00)),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFF2A1C00),
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
         ),
       ),
     );

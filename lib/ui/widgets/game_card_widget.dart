@@ -446,7 +446,9 @@ class _ShieldBadge extends StatelessWidget {
   }
 }
 
-/// Green chevron/hex value badge holding the card's main output number.
+/// A quiet value hint holding the card's main output number. Deliberately
+/// subtle: small, low-contrast translucent dark-green pill with a soft border,
+/// so it reads as a glanceable hint rather than a bold badge.
 class _ValueChevron extends StatelessWidget {
   const _ValueChevron({required this.value, required this.scale});
   final int value;
@@ -454,29 +456,32 @@ class _ValueChevron extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final size = (22 * scale).clamp(16.0, 30.0);
+    // Smaller than the old bold badge.
+    final size = (16 * scale).clamp(12.0, 22.0);
     return Container(
       width: size * 1.05,
       height: size,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF7BE08F), Color(0xFF2E9A48)],
-        ),
+        // Muted, translucent dark green — no bright gradient.
+        color: const Color(0xFF1F6B3A).withValues(alpha: 0.5),
         borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(size * 0.25),
-          bottomLeft: Radius.circular(size * 0.25),
+          topLeft: Radius.circular(size * 0.3),
+          bottomLeft: Radius.circular(size * 0.3),
         ),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.7)),
+        // Soft, low-contrast rim rather than a crisp white border.
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.18),
+          width: 0.8,
+        ),
       ),
       child: Text(
         '$value',
         style: TextStyle(
-          color: Colors.white,
-          fontSize: size * 0.55,
-          fontWeight: FontWeight.bold,
+          // Slightly translucent text so the number stays quiet.
+          color: Colors.white.withValues(alpha: 0.85),
+          fontSize: size * 0.6,
+          fontWeight: FontWeight.w600,
           shadows: const [Shadow(color: Colors.black54, blurRadius: 2)],
         ),
       ),

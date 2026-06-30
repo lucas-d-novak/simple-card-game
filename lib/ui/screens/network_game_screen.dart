@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:simple_card_game/data/database/card_serialization.dart';
+import 'package:simple_card_game/models/card_effect.dart';
 import 'package:simple_card_game/models/card_model.dart';
 import 'package:simple_card_game/services/game_client.dart';
 import 'package:simple_card_game/ui/theme/board_chrome.dart';
@@ -8,6 +9,7 @@ import 'package:simple_card_game/ui/theme/responsive.dart';
 import 'package:simple_card_game/ui/widgets/beveled_button.dart';
 import 'package:simple_card_game/ui/widgets/card_detail_modal.dart';
 import 'package:simple_card_game/ui/widgets/card_fan.dart';
+import 'package:simple_card_game/ui/widgets/choice_modal.dart';
 import 'package:simple_card_game/ui/widgets/game_card_widget.dart';
 import 'package:simple_card_game/ui/widgets/resource_icons.dart';
 import 'package:simple_card_game/ui/widgets/scrollable_board.dart';
@@ -87,7 +89,30 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
 
   /// Play a hand card (reached by dropping it on the play-area DragTarget, or
   /// via the zoom modal's "Play" action).
+  ///
+  /// Cards carrying a [ChooseOneEffect] in their (server-serialized) play
+  /// effects prompt the shared choice modal FIRST, then send the chosen index
+  /// to the server. Without this, an online X/Y card would silently resolve as
+  /// choiceIndex 0. The "Play All" path can't prompt per-card, so it always
+  /// uses the default — only this single-card path prompts.
   void _playHandCard(CardModel card) {
+    final choose = card.playEffects.whereType<ChooseOneEffect>().firstOrNull;
+    if (choose != null) {
+      showChoiceModal(
+        context,
+        title: card.name,
+        subtitle: 'Choose an effect',
+        options: [
+          for (final group in choose.choices)
+            ChoiceOption(label: group.map((e) => e.description).join(' and ')),
+        ],
+      ).then((index) {
+        if (index == null) return;
+        widget.client.playCard(card.id, choiceIndex: index);
+        _flash('Played ${card.name}');
+      });
+      return;
+    }
     widget.client.playCard(card.id);
     _flash('Played ${card.name}');
   }
