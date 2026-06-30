@@ -146,6 +146,13 @@ class GameService {
   /// The ID of the player who won, or null if the game is still in progress.
   String? winnerId;
 
+  /// HOW the game was won: 'mastery' (Infinity Shard at mastery 30) or
+  /// 'elimination' (all opponents reduced to 0 health), or null while in
+  /// progress. Set precisely at each win path so telemetry/analytics don't have
+  /// to guess from the winner's mastery (which can be >=30 even on an
+  /// elimination win in a long game).
+  String? winType;
+
   PlayerState get currentPlayer => players[currentPlayerIndex];
   bool get isGameOver => _gameOver;
 
@@ -1643,6 +1650,7 @@ class GameService {
     if (m >= 30) {
       _gameOver = true;
       winnerId = player.id;
+      winType = 'mastery';
       return;
     }
 
@@ -2264,6 +2272,10 @@ class GameService {
       if (alive.length == 1) {
         winnerId = alive.first.id;
       }
+      // This path is reached by reducing opponents to 0 health. The mastery
+      // (Infinity Shard) win sets winType earlier and returns before any
+      // elimination check, so only set 'elimination' if not already a mastery win.
+      winType ??= 'elimination';
     }
   }
 

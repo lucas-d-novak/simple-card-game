@@ -3,6 +3,7 @@
 // §6/§10. For the LAN/beta phase, in-memory is enough.)
 
 import 'package:shards_server/game_session.dart';
+import 'package:shards_server/stats_store.dart';
 import 'package:simple_card_game/data/database/game_state_codec.dart';
 import 'package:simple_card_game/data/market_deck.dart';
 import 'package:simple_card_game/models/card_model.dart';
@@ -54,12 +55,24 @@ class Lobby {
   /// SEPARATE Destiny supply, both built once at server startup from the card
   /// database. When null, games fall back to the engine's legacy hardcoded
   /// catalog (and no Destinies).
-  Lobby({List<MarketCard>? marketDeck, List<CardModel>? destinySupply})
-      : _marketDeck = marketDeck,
-        _destinySupply = destinySupply;
+  Lobby({
+    List<MarketCard>? marketDeck,
+    List<CardModel>? destinySupply,
+    StatsStore? stats,
+  })  : _marketDeck = marketDeck,
+        _destinySupply = destinySupply,
+        _stats = stats ?? StatsStore.disabled();
 
   final List<MarketCard>? _marketDeck;
   final List<CardModel>? _destinySupply;
+
+  /// Telemetry sink shared by every session this lobby starts. Defaults to a
+  /// DISABLED (no-op) store so an unconfigured Lobby behaves exactly as before.
+  final StatsStore _stats;
+
+  /// The shared telemetry store (so the server can record game-end on the win
+  /// check, joining the supervised `playerWon` label onto each decision).
+  StatsStore get stats => _stats;
   final Map<String, LobbyGame> _games = {};
   int _counter = 0;
 
@@ -118,6 +131,7 @@ class Lobby {
         game: svc,
         playerIds: List.of(players),
         stateVersion: (snapshot['stateVersion'] as int?) ?? 0,
+        stats: _stats,
       );
     }
 
@@ -164,9 +178,12 @@ class Lobby {
       id: g.id,
       game: svc,
       playerIds: List.of(g.players),
+      stats: _stats,
     );
     g.session = session;
     g.status = GameStatus.started;
+    // TELEMETRY: record the game start (seat<->id roster + server-stamped ts).
+    _stats.recordGameStart(gameId: g.id, players: List.of(g.players));
     return session;
   }
 

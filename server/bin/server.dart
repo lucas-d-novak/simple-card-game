@@ -22,8 +22,11 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:shards_server/game_session.dart';
 import 'package:shards_server/lobby.dart';
 import 'package:shards_server/persistence.dart';
+import 'package:shards_server/stats_capture.dart';
+import 'package:shards_server/stats_store.dart';
 import 'package:simple_card_game/data/database/card_database.dart';
 import 'package:simple_card_game/data/market_deck.dart';
 import 'package:simple_card_game/models/card_model.dart';
@@ -63,6 +66,10 @@ bool _tokenMatches(String provided) {
 /// Disk snapshot store so in-progress games survive a restart. Built in [main];
 /// disabled (in-memory only) if the data directory is unwritable.
 late final GamePersistence _store;
+
+/// Telemetry store (player-stats + ML training data). Built in [main]; disabled
+/// (no-op) if the stats database can't be opened.
+late final StatsStore _stats;
 
 /// Persist a game by id (after any change that mutated it). Best-effort — the
 /// store no-ops when disabled and never throws.
@@ -111,7 +118,19 @@ void main(List<String> args) async {
     stdout.writeln('WARNING: ${dbFile.path} not found — '
         'falling back to the legacy hardcoded market.');
   }
-  _lobby = Lobby(marketDeck: marketDeck, destinySupply: destinySupply);
+  // Player-stats + ML-training telemetry. Opens SQLite at SHARDS_STATS_DB (or
+  // server/data/stats.db, gitignored). GRACEFUL: if it can't open, it becomes a
+  // no-op store and the server runs with telemetry off — never crashes.
+  _stats = StatsStore.open();
+  stdout.writeln(_stats.enabled
+      ? 'Player-stats telemetry enabled.'
+      : 'Player-stats telemetry DISABLED (db unavailable) — running without it.');
+
+  _lobby = Lobby(
+    marketDeck: marketDeck,
+    destinySupply: destinySupply,
+    stats: _stats,
+  );
 
   // Persistence: snapshot games to disk so they survive a restart. The storage
   // directory is configurable via SHARDS_DATA_DIR (default: server/data, which
@@ -328,13 +347,34 @@ void _dispatch(
         err(result.error ?? 'action rejected');
         return;
       }
-      // Win check → mark complete.
-      if (session.game.isGameOver) g!.status = GameStatus.complete;
+      // Win check → mark complete. On the FIRST transition to complete, record
+      // game-end telemetry: stamp the games row + JOIN the supervised `playerWon`
+      // label onto every decision in this game. Guarded so it fires once.
+      if (session.game.isGameOver && g!.status != GameStatus.complete) {
+        g.status = GameStatus.complete;
+        _stats.recordGameEnd(
+          gameId: g.id,
+          winnerId: _winnerLobbyId(session),
+          winType: winTypeOf(session.game),
+          turns: session.game.turnNumber,
+        );
+      }
       // Persist AFTER the accepted mutation (and any complete transition) so the
       // on-disk snapshot reflects the new authoritative state + stateVersion.
       _persist(gameId);
       _broadcastState(gameId);
   }
+}
+
+/// The LOBBY player id of the winner (the engine's `winnerId` is a seat id like
+/// `p0`; decisions are keyed by lobby id, so the supervised-label join needs the
+/// lobby id). Null if there is no winner (drawn/abandoned).
+String? _winnerLobbyId(GameSession session) {
+  final seatId = session.game.winnerId;
+  if (seatId == null) return null;
+  final seat = session.game.players.indexWhere((p) => p.id == seatId);
+  final ids = session.playerIds;
+  return (seat >= 0 && seat < ids.length) ? ids[seat] : seatId;
 }
 
 /// If [playerId] is in a live game, send them their current redacted state so a
