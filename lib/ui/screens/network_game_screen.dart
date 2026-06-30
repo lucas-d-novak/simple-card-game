@@ -6,6 +6,7 @@ import 'package:simple_card_game/ui/theme/board_chrome.dart';
 import 'package:simple_card_game/ui/theme/game_theme.dart';
 import 'package:simple_card_game/ui/theme/responsive.dart';
 import 'package:simple_card_game/ui/widgets/beveled_button.dart';
+import 'package:simple_card_game/ui/widgets/card_detail_modal.dart';
 import 'package:simple_card_game/ui/widgets/card_fan.dart';
 import 'package:simple_card_game/ui/widgets/game_card_widget.dart';
 import 'package:simple_card_game/ui/widgets/resource_icons.dart';
@@ -113,6 +114,28 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
     _flash('Focus: spent 1 gem → +1 mastery');
   }
 
+  // ---- zoomed card detail -------------------------------------------------
+
+  /// Open the official-style zoomed card-detail modal over [cards], starting at
+  /// [index], paging through the list with the side arrows. [actionFor] supplies
+  /// an optional context action (e.g. Recruit for an affordable market card).
+  void _zoom(
+    List<CardModel> cards,
+    int index, {
+    CardDetailAction? Function(CardModel card)? actionFor,
+  }) {
+    if (cards.isEmpty) return;
+    showCardDetailModal(
+      context,
+      cards: cards,
+      initialIndex: index.clamp(0, cards.length - 1),
+      actionFor: actionFor,
+    );
+  }
+
+  /// Zoom a single card (no paging) — used from the pile viewers.
+  void _zoomOne(CardModel card) => _zoom([card], 0);
+
   // ---- pile viewers -------------------------------------------------------
 
   /// Show the recipient's discard pile — public info, so full card content.
@@ -183,11 +206,16 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
                         spacing: 8,
                         runSpacing: 8,
                         children: [
-                          for (final c in cards)
+                          for (int i = 0; i < cards.length; i++)
                             GameCardWidget(
-                              key: ValueKey('pile_${c.id}'),
-                              card: c,
+                              key: ValueKey('pile_${cards[i].id}'),
+                              card: cards[i],
                               width: 96,
+                              // Tap a pile card to zoom it (page the whole pile).
+                              onTap: () {
+                                Navigator.of(ctx).pop();
+                                _zoom(cards, i);
+                              },
                             ),
                         ],
                       ),
@@ -285,12 +313,29 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
         ),
 
         // ---- Center row (market) ------------------------------------------
-        _NetworkCenterRow(
-          cards: [for (final id in view.centerRow) _card(id)],
-          canAfford: (c) => myTurn && me.gemPool >= c.cost,
-          onTapCard: myTurn ? _onCenterTap : (_) {},
-          screenWidth: screenWidth,
-        ),
+        Builder(builder: (context) {
+          final centerCards = [for (final id in view.centerRow) _card(id)];
+          return _NetworkCenterRow(
+            cards: centerCards,
+            canAfford: (c) => myTurn && me.gemPool >= c.cost,
+            onTapCard: myTurn ? _onCenterTap : (_) {},
+            // Long-press a market card → zoom the whole row, with a Recruit
+            // action wired to buy when affordable on your turn.
+            onLongPressCard: (c) {
+              final i = centerCards.indexWhere((x) => x.id == c.id);
+              _zoom(
+                centerCards,
+                i < 0 ? 0 : i,
+                actionFor: (card) => CardDetailAction(
+                  label: 'Recruit',
+                  enabled: myTurn && me.gemPool >= card.cost,
+                  onPressed: () => _onCenterTap(card),
+                ),
+              );
+            },
+            screenWidth: screenWidth,
+          );
+        }),
 
         // ---- Play field ----------------------------------------------------
         Expanded(
@@ -300,6 +345,7 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
             cardFor: _card,
             canAttackChampions: myTurn && me.powerPool > 0,
             onAttackChampion: _onOpponentChampionTap,
+            onZoomCard: _zoomOne,
             myChampions: me.champions,
             playedThisTurn: me.playedThisTurn,
             onActivateChampion: myTurn ? _onMyChampionTap : null,
@@ -315,6 +361,11 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
           hand: [for (final id in me.hand) _card(id)],
           enabled: myTurn,
           onCardTap: _onHandTap,
+          onCardLongPress: (c) {
+            final hand = [for (final id in me.hand) _card(id)];
+            final i = hand.indexWhere((x) => x.id == c.id);
+            _zoom(hand, i < 0 ? 0 : i);
+          },
           onEndTurn: myTurn ? client.endTurn : null,
           onPlayAll: myTurn && me.hand.isNotEmpty ? client.playAllCards : null,
           onAttack: canAttackPlayer
@@ -674,12 +725,14 @@ class _NetworkCenterRow extends StatelessWidget {
     required this.cards,
     required this.canAfford,
     required this.onTapCard,
+    required this.onLongPressCard,
     required this.screenWidth,
   });
 
   final List<CardModel> cards;
   final bool Function(CardModel) canAfford;
   final void Function(CardModel) onTapCard;
+  final void Function(CardModel) onLongPressCard;
   final double screenWidth;
 
   @override
@@ -702,6 +755,7 @@ class _NetworkCenterRow extends StatelessWidget {
                 key: ValueKey(card.id),
                 card: card,
                 onTap: () => onTapCard(card),
+                onLongPress: () => onLongPressCard(card),
                 isHighlighted: canAfford(card),
                 width: cardWidth,
               ),
@@ -720,6 +774,7 @@ class _NetworkPlayField extends StatelessWidget {
     required this.cardFor,
     required this.canAttackChampions,
     required this.onAttackChampion,
+    required this.onZoomCard,
     required this.myChampions,
     required this.playedThisTurn,
     required this.onActivateChampion,
@@ -732,6 +787,9 @@ class _NetworkPlayField extends StatelessWidget {
   final CardModel Function(String id) cardFor;
   final bool canAttackChampions;
   final void Function(CardModel champ, String ownerId) onAttackChampion;
+
+  /// Long-press a champion / played card → zoom it.
+  final void Function(CardModel) onZoomCard;
   final List<_ChampionView> myChampions;
   final List<String> playedThisTurn;
   final void Function(CardModel)? onActivateChampion;
@@ -768,6 +826,7 @@ class _NetworkPlayField extends StatelessWidget {
                                 ? () => onAttackChampion(
                                     cardFor(champ.id), opponentId!)
                                 : null,
+                            onLongPress: () => onZoomCard(cardFor(champ.id)),
                           ),
                         ),
                     ],
@@ -796,6 +855,7 @@ class _NetworkPlayField extends StatelessWidget {
                               onTap: onActivateChampion != null
                                   ? () => onActivateChampion!(cardFor(champ.id))
                                   : null,
+                              onLongPress: () => onZoomCard(cardFor(champ.id)),
                             ),
                             if (champ.activated)
                               Positioned(
@@ -822,6 +882,7 @@ class _NetworkPlayField extends StatelessWidget {
                           compact: true,
                           showCost: false,
                           width: cardWidth,
+                          onLongPress: () => onZoomCard(cardFor(id)),
                         ),
                       ),
                   ],
@@ -869,6 +930,7 @@ class _NetworkBottomZone extends StatelessWidget {
     required this.hand,
     required this.enabled,
     required this.onCardTap,
+    required this.onCardLongPress,
     required this.onEndTurn,
     required this.onPlayAll,
     required this.onAttack,
@@ -883,6 +945,7 @@ class _NetworkBottomZone extends StatelessWidget {
   final List<CardModel> hand;
   final bool enabled;
   final void Function(CardModel) onCardTap;
+  final void Function(CardModel) onCardLongPress;
   final VoidCallback? onEndTurn;
   final VoidCallback? onPlayAll;
   final VoidCallback? onAttack;
@@ -976,6 +1039,7 @@ class _NetworkBottomZone extends StatelessWidget {
             child: CardFan(
               cards: hand,
               onCardTap: enabled ? onCardTap : (_) {},
+              onCardLongPress: onCardLongPress,
               selectedCardId: null,
             ),
           ),
