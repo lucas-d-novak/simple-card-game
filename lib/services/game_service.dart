@@ -27,6 +27,15 @@ class GameService {
     }
   }
 
+  /// Bare constructor for state restoration (multiplayer snapshot / reconnect).
+  /// Skips [_initializeGame] entirely — the caller (a serialization codec) is
+  /// responsible for populating [players], [centerRow], [infinityDeck], etc.
+  /// from a snapshot. A FRESH [Random] is used: in the authoritative-server
+  /// model the server is the only place shuffles happen, so it is correct to
+  /// resume from the already-shuffled concrete pile orders captured in the
+  /// snapshot and reseed the RNG for any future shuffle.
+  GameService.restore({Random? random}) : _random = random ?? Random();
+
   final Random _random;
   final List<PlayerState> players = [];
   final List<CardModel> centerRow = [];
@@ -41,6 +50,10 @@ class GameService {
 
   PlayerState get currentPlayer => players[currentPlayerIndex];
   bool get isGameOver => _gameOver;
+
+  /// Restore the game-over flag from a snapshot. Only the serialization codec
+  /// should call this; normal play sets it via [_checkGameOver].
+  void restoreGameOver(bool value) => _gameOver = value;
 
   /// Whether the current player may take an action. False once the game is over
   /// or the current player has been eliminated — the latter can happen mid-turn
