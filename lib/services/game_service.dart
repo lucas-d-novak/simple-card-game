@@ -223,6 +223,24 @@ class GameService {
     return true;
   }
 
+  /// Whether the current player could use claimed Destiny [cardId]'s activated
+  /// ability RIGHT NOW (UI gate for the Destiny tray's "Use" action). Mirrors
+  /// the guards in [useDestinyAbility] without mutating state: the player can
+  /// act, the Destiny is claimed and carries an [ActivatedAbility], it is not
+  /// already exhausted this turn, and its activation cost is payable. A
+  /// passive-only claimed Destiny (no activated ability) returns false.
+  bool canUseDestinyAbility(String cardId) {
+    if (!_currentPlayerCanAct) return false;
+    final player = currentPlayer;
+    final destiny =
+        player.claimedDestinies.where((c) => c.id == cardId).firstOrNull;
+    if (destiny == null) return false;
+    final ability = destiny.activatedAbility;
+    if (ability == null) return false;
+    if (player.exhaustedDestinies.contains(cardId)) return false;
+    return _canPayActivationCost(player, ability.cost);
+  }
+
   /// Cascade (Mastery 10): banish a claimed Destiny [cardId] to reveal the top
   /// [revealCount] (default 2) Destinies from the [destinyDeck] for the player
   /// to choose from, granting [grant] (default 2) additional Destiny claims.
@@ -1881,6 +1899,26 @@ class GameService {
   /// Evaluates a [GameCondition] predicate against current game state.
   /// [source] is the in-flight card (skipped via `identical` where the
   /// existing per-ally counting does, so a card doesn't count itself).
+  /// Whether [card] has at least one [ConditionalEffect] whose [GameCondition]
+  /// currently holds for the CURRENT player (the active perspective). Used by
+  /// the UI to paint a "bonus active now" glow on hand / market cards. Scans the
+  /// card's `playEffects` for any [ConditionalEffect] (the only place a per-card
+  /// board-state bonus lives) and evaluates its condition against live state via
+  /// the same [_evaluateGameCondition] the engine uses at play time, so the glow
+  /// and the actual bonus agree. Faction-less conditions resolve against the
+  /// card's own faction (the standard source-card rule). Returns false when the
+  /// card carries no conditional bonus or none of its conditions hold.
+  bool conditionsSatisfied(CardModel card) {
+    final player = currentPlayer;
+    for (final effect in card.playEffects) {
+      if (effect is ConditionalEffect &&
+          _evaluateGameCondition(effect.condition, player, card)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   bool _evaluateGameCondition(
     GameCondition c,
     PlayerState player,

@@ -412,6 +412,42 @@ void main() {
       expect(me['canClaimAnotherDestiny'], isTrue);
     });
 
+    test('redactFor ships exhaustedDestinies so the tray can grey used '
+        'abilities', () {
+      // A claimed Destiny carrying an activated ability.
+      const activated = CardModel(
+        id: 'destiny_active',
+        name: 'Active Destiny',
+        cost: 0,
+        playEffects: [],
+        activatedAbility:
+            ActivatedAbility(effects: [GainGemsEffect(1)]),
+      );
+      final session = sessionWithDestiny(activated);
+      final alice = session.game.players[0];
+      alice.mastery = GameService.destinyClaimMastery;
+      expect(
+          session.apply('alice',
+              {'type': 'claimDestiny', 'cardId': activated.id}).accepted,
+          isTrue);
+
+      // Before use: the id is NOT in exhaustedDestinies.
+      var me = (session.viewFor('alice')['players'] as List)
+          .cast<Map>()
+          .firstWhere((p) => p['id'] == 'p0');
+      expect((me['exhaustedDestinies'] as List), isNot(contains(activated.id)));
+
+      // Use the Destiny ability, then it IS reported exhausted this turn.
+      expect(
+          session.apply('alice',
+              {'type': 'useDestinyAbility', 'cardId': activated.id}).accepted,
+          isTrue);
+      me = (session.viewFor('alice')['players'] as List)
+          .cast<Map>()
+          .firstWhere((p) => p['id'] == 'p0');
+      expect((me['exhaustedDestinies'] as List), contains(activated.id));
+    });
+
     test('recruitRelic is ACCEPTED at Mastery 10 with relic options; the chosen '
         'relic is kept and the other banished', () {
       final session = sessionWithDestiny(passiveDestiny());

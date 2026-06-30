@@ -3,6 +3,7 @@ import 'package:simple_card_game/data/database/card_serialization.dart';
 import 'package:simple_card_game/models/card_effect.dart';
 import 'package:simple_card_game/models/card_model.dart';
 import 'package:simple_card_game/services/game_client.dart';
+import 'package:simple_card_game/services/redacted_condition_evaluator.dart';
 import 'package:simple_card_game/ui/theme/board_chrome.dart';
 import 'package:simple_card_game/ui/theme/game_theme.dart';
 import 'package:simple_card_game/ui/theme/responsive.dart';
@@ -10,6 +11,7 @@ import 'package:simple_card_game/ui/widgets/beveled_button.dart';
 import 'package:simple_card_game/ui/widgets/card_detail_modal.dart';
 import 'package:simple_card_game/ui/widgets/card_fan.dart';
 import 'package:simple_card_game/ui/widgets/choice_modal.dart';
+import 'package:simple_card_game/ui/widgets/destiny_tray.dart';
 import 'package:simple_card_game/ui/widgets/game_card_widget.dart';
 import 'package:simple_card_game/ui/widgets/resource_icons.dart';
 import 'package:simple_card_game/ui/widgets/scrollable_board.dart';
@@ -454,6 +456,58 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
     _flash('Focus: spent 1 gem → +1 mastery');
   }
 
+  /// Build the redacted condition context for [me] (the recipient's own slice),
+  /// so the client-side evaluator can compute the yellow "bonus active" glow.
+  RedactedConditionContext _conditionContext(_PlayerView me) {
+    return RedactedConditionContext(
+      cards: _cards,
+      handIds: me.hand,
+      playedThisTurnIds: me.playedThisTurn,
+      discardIds: me.discard,
+      championIds: [for (final c in me.champions) c.id],
+      mastery: me.mastery,
+      unblockedDamageThisTurn: me.unblockedDamageThisTurn,
+    );
+  }
+
+  // ---- Destinies tray -----------------------------------------------------
+
+  /// Open the Destinies tray over the recipient's claimed Destinies. Each row's
+  /// Use action sends `useDestinyAbility`; greying mirrors the redacted
+  /// exhausted set + whose turn it is + the ability's payable cost (we can only
+  /// fully validate server-side, but disable obvious non-uses here).
+  void _openDestinyTray(_PlayerView me) {
+    final myTurn = widget.client.isMyTurn;
+    final entries = <DestinyEntry>[];
+    for (final id in me.claimedDestinies) {
+      final card = _card(id);
+      final ability = card.activatedAbility;
+      final exhausted = me.exhaustedDestinies.contains(id);
+      // Cost-payability check from public scalars (gems / mastery / health).
+      var costOk = true;
+      if (ability != null) {
+        final cost = ability.cost;
+        if (me.gemPool < cost.gems) costOk = false;
+        if (me.mastery < cost.mastery) costOk = false;
+        if (cost.health > 0 && me.health <= cost.health) costOk = false;
+      }
+      entries.add(DestinyEntry(
+        card: card,
+        canUse: myTurn && ability != null && !exhausted && costOk,
+        exhausted: exhausted,
+      ));
+    }
+    if (entries.isEmpty) return;
+    showDestinyTray(
+      context,
+      entries: entries,
+      onUse: (destinyId) {
+        widget.client.useDestinyAbility(destinyId);
+        _flash('Used Destiny ability');
+      },
+    );
+  }
+
   // ---- zoomed card detail -------------------------------------------------
 
   /// Open the official-style zoomed card-detail modal over [cards], starting at
@@ -626,6 +680,11 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
     final me = view.me;
     final opponent = view.firstOpponent;
     final myTurn = client.isMyTurn;
+    // Client-side condition context for the "bonus active now" yellow glow.
+    // Only the recipient's own perspective glows (own hand / market cards).
+    final condCtx = _conditionContext(me);
+    bool conditionsMet(CardModel card) =>
+        redactedConditionsSatisfied(card, condCtx);
     // Guard status isn't in the redacted state per champion — resolve each
     // opponent champion id to its card and check the model's hasGuard flag.
     final opponentHasGuard =
@@ -700,6 +759,7 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
                 ),
               );
             },
+            conditionsMet: conditionsMet,
             screenWidth: screenWidth,
           );
         }),
@@ -764,6 +824,10 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
               _canClaimDestiny(view, me) ? () => _openDestinyModal(view) : null,
           onRecruitRelic:
               _canRecruitRelic(me) ? () => _openRelicModal(me) : null,
+          onOpenDestinyTray: me.claimedDestinies.isNotEmpty
+              ? () => _openDestinyTray(me)
+              : null,
+          conditionsMet: conditionsMet,
         ),
       ],
     );
@@ -855,9 +919,11 @@ class _PlayerView {
     required this.champions,
     required this.playedThisTurn,
     required this.claimedDestinies,
+    required this.exhaustedDestinies,
     required this.canClaimAnotherDestiny,
     required this.relicOptions,
     required this.relicRecruited,
+    required this.unblockedDamageThisTurn,
   });
 
   final String id;
@@ -871,8 +937,16 @@ class _PlayerView {
   /// Whether this player has used their once-per-turn Focus action.
   final bool focusedThisTurn;
 
+  /// Unblocked damage this player has dealt to opponents this turn (redacted
+  /// scalar). Used by the client-side `unblockedDamageAtLeast` condition.
+  final int unblockedDamageThisTurn;
+
   /// Ids of Destinies this player has claimed (public, face-up beside them).
   final List<String> claimedDestinies;
+
+  /// Ids of claimed Destinies whose ability was already used this turn (greys
+  /// the Destinies tray's Use action). Mirrors the per-champion exhausted flag.
+  final List<String> exhaustedDestinies;
 
   /// Server-computed: whether this player may still claim a Destiny this game
   /// (under the per-game allowance). Combine with mastery + a non-empty row.
@@ -909,6 +983,7 @@ class _PlayerView {
       powerPool: (p['powerPool'] as int?) ?? 0,
       eliminated: p['eliminated'] == true,
       focusedThisTurn: p['focusedThisTurn'] == true,
+      unblockedDamageThisTurn: (p['unblockedDamageThisTurn'] as int?) ?? 0,
       hand: hand,
       handCount: (p['handCount'] as int?) ?? hand.length,
       drawPileCount: (p['drawPileCount'] as int?) ?? 0,
@@ -921,6 +996,9 @@ class _PlayerView {
           (p['playedThisTurn'] as List?)?.cast<String>() ?? const <String>[],
       claimedDestinies:
           (p['claimedDestinies'] as List?)?.cast<String>() ?? const <String>[],
+      exhaustedDestinies:
+          (p['exhaustedDestinies'] as List?)?.cast<String>() ??
+              const <String>[],
       canClaimAnotherDestiny: p['canClaimAnotherDestiny'] == true,
       relicOptions:
           (p['relicOptions'] as List?)?.cast<String>() ?? const <String>[],
@@ -1187,6 +1265,7 @@ class _NetworkCenterRow extends StatelessWidget {
     required this.onTapCard,
     required this.onLongPressCard,
     required this.screenWidth,
+    this.conditionsMet,
   });
 
   final List<CardModel> cards;
@@ -1194,6 +1273,10 @@ class _NetworkCenterRow extends StatelessWidget {
   final void Function(CardModel) onTapCard;
   final void Function(CardModel) onLongPressCard;
   final double screenWidth;
+
+  /// Returns true for a market card whose conditional bonus is active now (paints
+  /// a yellow glow). Null = never glow.
+  final bool Function(CardModel)? conditionsMet;
 
   @override
   Widget build(BuildContext context) {
@@ -1217,6 +1300,7 @@ class _NetworkCenterRow extends StatelessWidget {
                 onTap: () => onTapCard(card),
                 onLongPress: () => onLongPressCard(card),
                 isHighlighted: canAfford(card),
+                conditionsMet: conditionsMet?.call(card) ?? false,
                 width: cardWidth,
               ),
           ],
@@ -1546,6 +1630,8 @@ class _NetworkBottomZone extends StatelessWidget {
     required this.onFocus,
     required this.onClaimDestiny,
     required this.onRecruitRelic,
+    required this.onOpenDestinyTray,
+    required this.conditionsMet,
   });
 
   final _PlayerView me;
@@ -1554,6 +1640,10 @@ class _NetworkBottomZone extends StatelessWidget {
   final bool enabled;
   final void Function(CardModel) onCardTap;
   final void Function(CardModel) onCardLongPress;
+
+  /// Returns true for a hand card whose conditional bonus is active now (yellow
+  /// glow). Null = never glow.
+  final bool Function(CardModel)? conditionsMet;
 
   /// Fired when a hand card starts being dragged out (long-press) toward the
   /// play area. Only relevant when [enabled] (your turn).
@@ -1577,6 +1667,10 @@ class _NetworkBottomZone extends StatelessWidget {
 
   /// Open the Relic-recruit modal (Mastery 10). Null when ineligible.
   final VoidCallback? onRecruitRelic;
+
+  /// Open the Destinies tray (claimed-Destiny abilities). Null when the player
+  /// has no claimed Destinies, so no Destinies button shows.
+  final VoidCallback? onOpenDestinyTray;
 
   @override
   Widget build(BuildContext context) {
@@ -1652,6 +1746,16 @@ class _NetworkBottomZone extends StatelessWidget {
               const SizedBox(height: 4),
               // Focus: spend 1 gem → +1 mastery, once per turn.
               _FocusButton(onPressed: onFocus),
+              // Destinies tray — the "second Focus button" for claimed Destiny
+              // abilities. Only shows when at least one Destiny is claimed.
+              if (onOpenDestinyTray != null) ...[
+                const SizedBox(height: 4),
+                _AcquirePill(
+                  icon: Icons.bolt,
+                  label: 'Destinies',
+                  onPressed: onOpenDestinyTray,
+                ),
+              ],
               // Destiny / Relic acquisition pills — only appear when eligible.
               if (onClaimDestiny != null) ...[
                 const SizedBox(height: 4),
@@ -1692,6 +1796,7 @@ class _NetworkBottomZone extends StatelessWidget {
               onDragStarted: onDragPlayStarted,
               draggable: enabled,
               selectedCardId: null,
+              conditionsMet: conditionsMet,
             ),
           ),
           const SizedBox(width: 4),

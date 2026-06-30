@@ -113,6 +113,13 @@ Map<String, dynamic> _redactPlayer(PlayerState p, bool isRecipient) {
     // can show/hide the Destiny entry point without re-deriving the rule.
     'claimedDestinies': _ids(p.claimedDestinies),
     'canClaimAnotherDestiny': p.canClaimAnotherDestiny,
+    // Ids of claimed Destinies whose per-turn ability was already used this turn
+    // (public — claimed Destinies sit face-up). Mirrors the per-champion
+    // `exhausted` flag so the client's Destinies tray can grey used abilities.
+    'exhaustedDestinies': [
+      for (final c in p.claimedDestinies)
+        if (p.exhaustedDestinies.contains(c.id)) c.id,
+    ],
     // Relic OPTIONS are the recipient's own hidden choice — never an opponent's.
     // We expose the chooser surface (the two relic ids + whether already
     // recruited) ONLY in the owner's view; opponents see only that recruitment

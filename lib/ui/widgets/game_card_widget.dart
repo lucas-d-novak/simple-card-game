@@ -21,6 +21,7 @@ class GameCardWidget extends StatelessWidget {
     this.onTap,
     this.onLongPress,
     this.isHighlighted = false,
+    this.conditionsMet = false,
     this.showCost = true,
     this.compact = false,
     this.width,
@@ -30,6 +31,13 @@ class GameCardWidget extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
   final bool isHighlighted;
+
+  /// When true the card paints a YELLOW/amber glow border signalling that at
+  /// least one of its [ConditionalEffect]s is currently SATISFIED ("this card's
+  /// bonus is active right now"). Distinct from the teal affordable [isHighlighted]
+  /// glow. The caller computes this (engine `conditionsSatisfied` locally, or a
+  /// client-side evaluator over the redacted state online). Defaults false.
+  final bool conditionsMet;
   final bool showCost;
   final bool compact;
   final double? width;
@@ -77,19 +85,34 @@ class GameCardWidget extends StatelessWidget {
             ],
           ),
           boxShadow: [
+            // Yellow/amber "conditions active right now" glow — additive, so a
+            // card can be both affordable (teal) AND have its bonus active
+            // (amber). Painted first so it sits under the teal/affordable glow.
+            if (conditionsMet)
+              BoxShadow(
+                color: const Color(0xFFFFC53D).withValues(alpha: 0.85),
+                blurRadius: 14 * scale,
+                spreadRadius: 1.5,
+              ),
             if (isHighlighted)
               BoxShadow(
                 color: BoardChrome.tealHighlight.withValues(alpha: 0.7),
                 blurRadius: 12 * scale,
                 spreadRadius: 1,
               )
-            else
+            else if (!conditionsMet)
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.45),
                 blurRadius: 5,
                 offset: const Offset(0, 3),
               ),
           ],
+          border: conditionsMet
+              ? Border.all(
+                  color: const Color(0xFFFFD666),
+                  width: 1.5 * scale.clamp(0.7, 1.4),
+                )
+              : null,
         ),
         padding: EdgeInsets.all(2.0 * scale.clamp(0.7, 1.3)),
         child: ClipRRect(

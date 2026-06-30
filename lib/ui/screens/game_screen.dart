@@ -15,6 +15,7 @@ import 'package:simple_card_game/ui/widgets/beveled_button.dart';
 import 'package:simple_card_game/ui/widgets/card_detail_modal.dart';
 import 'package:simple_card_game/ui/widgets/card_fan.dart';
 import 'package:simple_card_game/ui/widgets/choice_modal.dart';
+import 'package:simple_card_game/ui/widgets/destiny_tray.dart';
 import 'package:simple_card_game/ui/widgets/game_card_widget.dart';
 import 'package:simple_card_game/ui/widgets/resource_icons.dart';
 import 'package:simple_card_game/ui/widgets/scrollable_board.dart';
@@ -799,6 +800,35 @@ class _GameScreenState extends State<GameScreen>
     });
   }
 
+  /// Open the Destinies tray listing the current player's claimed Destinies and
+  /// their per-turn activated abilities (the "second Focus button"). Each row's
+  /// Use action calls [GameService.useDestinyAbility]; greying mirrors the
+  /// engine gate ([GameService.canUseDestinyAbility]).
+  void _openDestinyTray() {
+    final player = _game.currentPlayer;
+    final entries = [
+      for (final d in player.claimedDestinies)
+        DestinyEntry(
+          card: d,
+          canUse: _game.canUseDestinyAbility(d.id),
+          exhausted: player.exhaustedDestinies.contains(d.id),
+        ),
+    ];
+    if (entries.isEmpty) return;
+    showDestinyTray(context, entries: entries, onUse: _useDestinyAbility);
+  }
+
+  void _useDestinyAbility(String destinyId) {
+    _pushUndo();
+    setState(() {
+      if (_game.useDestinyAbility(destinyId)) {
+        _actionMessage = 'Used Destiny ability';
+      } else {
+        _actionMessage = 'Cannot use that Destiny now';
+      }
+    });
+  }
+
   void _endTurn() {
     // Undo is scoped to the current turn: once the turn ends (and the AI/next
     // player acts), the prior in-turn snapshots are no longer meaningful, so
@@ -926,6 +956,7 @@ class _GameScreenState extends State<GameScreen>
                             onTapCard: _openCenterRowDetail,
                             infinityDeckCount: _game.infinityDeck.length,
                             onLongPress: _showCardDetail,
+                            conditionsMet: _game.conditionsSatisfied,
                             screenWidth: screenWidth,
                           ),
                         ],
@@ -970,6 +1001,7 @@ class _GameScreenState extends State<GameScreen>
                             onCardTap: _openHandDetail,
                             onCardLongPress: _openHandDetail,
                             onDragPlayStarted: _onHandDragStarted,
+                            conditionsMet: _game.conditionsSatisfied,
                             onEndTurn: _endTurn,
                             onUndo: _canUndo ? _undo : null,
                             onPlayAll: currentPlayer.hand.isNotEmpty
@@ -985,6 +1017,10 @@ class _GameScreenState extends State<GameScreen>
                                 _canClaimDestiny ? _openDestinyModal : null,
                             onRecruitRelic:
                                 _canRecruitRelic ? _openRelicModal : null,
+                            onOpenDestinyTray:
+                                currentPlayer.claimedDestinies.isNotEmpty
+                                    ? _openDestinyTray
+                                    : null,
                           ),
                         ],
                       ),
@@ -1213,6 +1249,7 @@ class _CenterRow extends StatelessWidget {
     required this.infinityDeckCount,
     required this.screenWidth,
     this.onLongPress,
+    this.conditionsMet,
   });
 
   final List<CardModel> cards;
@@ -1221,6 +1258,10 @@ class _CenterRow extends StatelessWidget {
   final int infinityDeckCount;
   final void Function(CardModel)? onLongPress;
   final double screenWidth;
+
+  /// Returns true for a market card whose conditional bonus is active now (paints
+  /// a yellow glow). Null = never glow.
+  final bool Function(CardModel)? conditionsMet;
 
   @override
   Widget build(BuildContext context) {
@@ -1262,6 +1303,7 @@ class _CenterRow extends StatelessWidget {
                           ? () => onLongPress!(card)
                           : null,
                       isHighlighted: affordable,
+                      conditionsMet: conditionsMet?.call(card) ?? false,
                       compact: false,
                       width: cardWidth,
                     );
@@ -1475,6 +1517,8 @@ class _BottomZone extends StatelessWidget {
     required this.onFocus,
     this.onClaimDestiny,
     this.onRecruitRelic,
+    this.onOpenDestinyTray,
+    this.conditionsMet,
   });
 
   final dynamic player; // PlayerState
@@ -1483,6 +1527,10 @@ class _BottomZone extends StatelessWidget {
   final String? selectedCardId;
   final void Function(CardModel) onCardTap;
   final void Function(CardModel) onCardLongPress;
+
+  /// Returns true for a hand card whose conditional bonus is active now (yellow
+  /// glow). Null = never glow.
+  final bool Function(CardModel)? conditionsMet;
 
   /// Fired when a hand card starts being dragged out (long-press) toward the
   /// play area.
@@ -1505,6 +1553,10 @@ class _BottomZone extends StatelessWidget {
 
   /// Opens the Relic-recruit modal (Mastery 10). Null when ineligible.
   final VoidCallback? onRecruitRelic;
+
+  /// Opens the Destinies tray (claimed-Destiny abilities). Null when the player
+  /// has no claimed Destinies, so no Destinies button shows.
+  final VoidCallback? onOpenDestinyTray;
 
   @override
   Widget build(BuildContext context) {
@@ -1584,6 +1636,17 @@ class _BottomZone extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               _FocusButton(onPressed: onFocus),
+              // Destinies tray — a "second Focus button" listing claimed
+              // Destinies' activated abilities. Only shows when the player has
+              // claimed at least one Destiny.
+              if (onOpenDestinyTray != null) ...[
+                const SizedBox(height: 4),
+                _AcquireButton(
+                  label: 'Destinies',
+                  icon: Icons.bolt,
+                  onPressed: onOpenDestinyTray,
+                ),
+              ],
               // Destiny / Relic acquisition entry points — only appear when the
               // player is eligible (Mastery 5 / 10), so they stay non-blocking.
               if (onClaimDestiny != null) ...[
@@ -1621,6 +1684,7 @@ class _BottomZone extends StatelessWidget {
               onCardLongPress: onCardLongPress,
               onDragStarted: onDragPlayStarted,
               selectedCardId: selectedCardId,
+              conditionsMet: conditionsMet,
             ),
           ),
           const SizedBox(width: 4),

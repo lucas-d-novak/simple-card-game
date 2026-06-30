@@ -27,10 +27,16 @@ class CardFan extends StatefulWidget {
     this.selectedCardId,
     this.draggable = true,
     this.onDragStarted,
+    this.conditionsMet,
   });
 
   final List<CardModel> cards;
   final void Function(CardModel card) onCardTap;
+
+  /// Optional predicate: returns true for a hand card whose [ConditionalEffect]
+  /// is currently satisfied, so the card paints a yellow "bonus active" glow.
+  /// Null means never glow.
+  final bool Function(CardModel card)? conditionsMet;
 
   /// Legacy long-press hook. Long-press now BEGINS a drag (see [draggable]), so
   /// this only fires when [draggable] is false (e.g. off-turn networked hands).
@@ -155,6 +161,8 @@ class _CardFanState extends State<CardFan> {
                         cardWidth: cardWidth,
                         draggable: widget.draggable,
                         isHighlighted: isSelected,
+                        conditionsMet:
+                            widget.conditionsMet?.call(card) ?? false,
                         onTap: () => widget.onCardTap(card),
                         // Long-press only acts as a plain callback when drag is
                         // disabled; otherwise the long-press initiates the drag.
@@ -192,6 +200,7 @@ class _DraggableHandCard extends StatelessWidget {
     required this.cardWidth,
     required this.draggable,
     required this.isHighlighted,
+    required this.conditionsMet,
     required this.onTap,
     required this.onLongPress,
     required this.onDragStarted,
@@ -201,6 +210,7 @@ class _DraggableHandCard extends StatelessWidget {
   final double cardWidth;
   final bool draggable;
   final bool isHighlighted;
+  final bool conditionsMet;
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
   final VoidCallback? onDragStarted;
@@ -215,6 +225,7 @@ class _DraggableHandCard extends StatelessWidget {
       onTap: onTap,
       onLongPress: draggable ? null : onLongPress,
       isHighlighted: isHighlighted,
+      conditionsMet: conditionsMet,
       showCost: false,
       width: cardWidth,
     );
