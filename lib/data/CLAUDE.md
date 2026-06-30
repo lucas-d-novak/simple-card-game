@@ -44,10 +44,12 @@ cards.json ──(CardDatabase.load)──► CardRecord ──.model──► C
   metadata, no gameplay effect). Built from JSON via `CardRecord.fromJson`.
 - `CardDatabase` — holds the parsed `List<CardRecord>`.
   - `CardDatabase.assetPath` → `'assets/card_db/cards.json'`.
-  - `CardDatabase.load({path})` — async, loads the bundled asset via
-    `rootBundle` (use inside the running app).
   - `CardDatabase.fromJsonString(source)` — parse from a raw string (use in
-    tooling / tests).
+    tooling / tests / the server). The core `card_database.dart` is **pure Dart**
+    (no Flutter import) so the multiplayer server can reuse it.
+  - `CardDatabaseAsset.load({path})` (in `card_database_asset.dart`) — async,
+    loads the bundled asset via `rootBundle`; this is the Flutter-only loader,
+    split out so the core stays server-reusable. Use inside the running app.
   - Accessors: `allModels` (every `CardModel`), `verifiedCards` (records where
     `verified == true`), `byId(id)`.
 

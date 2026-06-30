@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter/services.dart' show rootBundle;
 import 'package:simple_card_game/data/database/effect_codec.dart';
 import 'package:simple_card_game/models/card_model.dart';
 import 'package:simple_card_game/models/card_type.dart';
@@ -167,11 +166,12 @@ class CardDatabase {
     return CardDatabase(cards);
   }
 
-  /// Load the database from the bundled asset (use inside the Flutter app).
-  static Future<CardDatabase> load({String path = assetPath}) async {
-    final source = await rootBundle.loadString(path);
-    return CardDatabase.fromJsonString(source);
-  }
+  // NOTE: the Flutter-asset loader `CardDatabase.load()` lives in
+  // `card_database_asset.dart` (imports package:flutter). This core file is
+  // intentionally PURE DART (dart:convert only) so the authoritative
+  // multiplayer server can reuse the engine — see
+  // ai-docs/multiplayer_architecture.md §1. Server code calls
+  // `CardDatabase.fromJsonString(File(...).readAsStringSync())`.
 
   /// All card models, regardless of verification status.
   List<CardModel> get allModels => [for (final r in records) r.model];
