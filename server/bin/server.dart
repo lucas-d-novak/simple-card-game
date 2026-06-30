@@ -1,7 +1,8 @@
 // Authoritative WebSocket game server entrypoint (Phase 1: LAN shared games).
 //
 // Run:   dart run bin/server.dart [port]   (default 8080)
-// Build: dart compile exe bin/server.dart -o shards-server
+// Note:  run with `dart run` + the Dart SDK; `dart compile exe` is NOT supported
+//        here (the sqlite3 dependency uses build hooks that compile-exe rejects).
 //
 // Protocol (JSON message envelope over WebSocket):
 //   client → server: {"type": <action>, ...payload}
