@@ -328,6 +328,61 @@ hostnames** to manage, and you still can't rely on the bare-host default — the
 
 ---
 
+### Option C — Cloudflare **Pages** app + apex tunnel for `/ws` *(worked example: `sharts.love`)*
+
+This is the recommended **split** topology from §1's "Where to host the web app"
+box: the 111 MB web app lives on **Cloudflare Pages** (CDN, off the Pi) and the Pi's
+tunnel handles **only** `/ws*`. It keeps Option A's bare-link UX while keeping the
+app off the box. Worked end-to-end for the real domain **`sharts.love`**:
+
+1. **Deploy the app to Pages.** Build `build/web` (anywhere with Flutter) and
+   upload it to a Pages project (dashboard *Upload assets*, or
+   `wrangler pages deploy build/web --project-name sharts`). In the project's
+   **Custom domains** tab, add the apex **`sharts.love`** — Pages provisions the
+   cert and the DNS for `/`.
+2. **Tunnel only `/ws` on the apex.** On the Pi, the ingress routes just the
+   WebSocket path to the game server; everything else is served by Pages:
+
+   ```yaml
+   # ~/.cloudflared/config.yml
+   tunnel: <TUNNEL_UUID>
+   credentials-file: /home/pi/.cloudflared/<TUNNEL_UUID>.json
+   ingress:
+     - hostname: sharts.love
+       path: /ws*
+       service: http://localhost:8080     # Dart game server
+     - service: http_status:404           # non-/ws that reaches the tunnel
+   ```
+
+   Route the apex to the tunnel: `cloudflared tunnel route dns sharts sharts.love`.
+3. **The apex coexistence rule.** Both Pages (custom domain `/`) and the tunnel
+   (`/ws*`) want to answer for `sharts.love`. Cloudflare resolves this by **path**:
+   requests to `/` are served by Pages, requests to `/ws*` go through the tunnel to
+   `:8080`. If Cloudflare's DNS UI refuses to let the tunnel `CNAME` coexist with
+   the Pages apex record, fall back to one of:
+   - **app on a subdomain** — put the app on `app.sharts.love` (Pages) and let the
+     tunnel own the apex `sharts.love` for the server; share
+     `https://app.sharts.love/?server=wss://sharts.love/ws` (needs the `?server=`
+     escape hatch since the app host ≠ the server host), **or**
+   - **all-on-the-box** — Option A above (app + server both tunneled from the Pi,
+     bare link works, but the Pi stores+serves the 111 MB app).
+4. **Server env for this domain:**
+
+   ```bash
+   SHARDS_ACCESS_TOKEN=<your-code> \
+   SHARDS_ALLOWED_ORIGINS=https://sharts.love \
+   dart run bin/server.dart 8080
+   ```
+
+   The allowlist is the **page** origin (`https://sharts.love`) — that's what the
+   browser sends as `Origin` even though the WS upgrade goes to `/ws`.
+
+**Invite link:** the bare **`https://sharts.love`** + the access code (the client
+derives `wss://sharts.love/ws` itself). Verify with
+`curl https://sharts.love/ws/health` → `ok`.
+
+---
+
 ### Why Option A is recommended
 
 **Option A ships a truly bare `https://play.example.com` link** — the client

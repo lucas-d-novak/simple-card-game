@@ -328,6 +328,7 @@ Cross-referenced. The mechanics doc is source of truth for game rules.
 - [`ai-docs/player_stats_design.md`](ai-docs/player_stats_design.md) — design of the hidden-info-safe player-stats / ML-decision telemetry SQLite store (`server/lib/stats_store.dart`).
 - [`ai-docs/deploy_cloudflare.md`](ai-docs/deploy_cloudflare.md) — hosted public-alpha runbook (Cloudflare Tunnel + custom domain + TLS + env vars; bare-link Option A, Cloudflare-Pages-vs-box web hosting, Pi `dart run` + `libsqlite3` setup).
 - [`ai-docs/discord_bug_pipeline.md`](ai-docs/discord_bug_pipeline.md) — design for the Discord bug-report → automated agent-fix pipeline (intake/triage → investigate → implement → verify → human-gated draft PR). Deferred; see [`ROADMAP.md`](ROADMAP.md) "Community / bug intake".
+- [`ai-docs/self_play_bots_design.md`](ai-docs/self_play_bots_design.md) — design for the dev-only self-play bot system: two bots play at scale for semantic bug detection (a differential oracle that checks each card did what its `CardEffect`/text says) + bot-tagged training telemetry kept separate from human data. Deferred; see [`ROADMAP.md`](ROADMAP.md) "AI".
 - [`ai-docs/design_reference/`](ai-docs/design_reference/DESIGN_SPEC.md) — official-client UI mockups + `DESIGN_SPEC.md`, the visual target for the board/modals/lobby.
 
 ## Open pull requests (temporary)

@@ -64,6 +64,12 @@ captured so they aren't lost. Grouped by area.
 
 - **AI awareness of new mechanics** — the heuristic AI doesn't use Focus,
   Destiny, or Relics yet; it plays the classic way.
+- **Self-play bots (dev-only) — training data + semantic bug detection** — two
+  bots play each other at scale to (a) find runtime/semantic bugs ("the card
+  didn't do what its text says") via a differential oracle and (b) emit
+  bot-tagged training telemetry kept separate from human data. Ad-hoc, run only
+  during development. Design: [`ai-docs/self_play_bots_design.md`](ai-docs/self_play_bots_design.md).
+  *Status: design drafted; not yet built.*
 
 ## UI
 
