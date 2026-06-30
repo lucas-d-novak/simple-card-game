@@ -69,7 +69,14 @@ captured so they aren't lost. Grouped by area.
   didn't do what its text says") via a differential oracle and (b) emit
   bot-tagged training telemetry kept separate from human data. Ad-hoc, run only
   during development. Design: [`ai-docs/self_play_bots_design.md`](ai-docs/self_play_bots_design.md).
-  *Status: design drafted; not yet built.*
+  *Status: **Phases 1–3 built** — the Tier A in-process bug-hunt harness
+  (`tool/selfplay/`: greedy + explorer bots, invariant + flat-resource oracle,
+  deduped replayable bug reports). Run with
+  `dart run tool/selfplay/runner_inproc.dart --games 500 --mode mix`. It already
+  caught a real engine bug (self-banishing claimed Destiny duplication, now fixed
+  + regression-tested). Phase 4 (Tier B over the real server, bot-tagged
+  telemetry, `SHARDS_BOT_ORACLE` hook) and Phase 5 (encoding lint / LLM judge)
+  remain.*
 
 ## UI
 

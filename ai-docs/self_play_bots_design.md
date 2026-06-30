@@ -312,25 +312,47 @@ tool/selfplay/                      # dev-only, not bundled into the app
 
 ## 7. Phased build plan
 
-1. **Phase 1 — Tier A loop + invariants.** Two `AiService` bots vs one
-   `GameService`, run N games, assert §3a invariants + no-crash. Immediately finds
-   crashes and illegal states at scale. Smallest possible first win; no server, no
-   oracle yet.
-2. **Phase 2 — the effect oracle.** Add `oracle.dart` (§3b) + bug reports (§5) with
-   dedup. This is the semantic-bug engine — the core deliverable. Run on Tier A
-   (full state).
-3. **Phase 3 — explorer bot.** Add randomized legal-move mode (§2) for coverage;
-   re-run Phase 2 to reach rare states. Expect the bug count to jump here.
-4. **Phase 4 — Tier B (real server).** Stand up `runner_ws.dart`: two `GameClient`
-   bots play over the real WebSocket server with **bot usernames**, generating
-   bot-tagged telemetry through the real funnel (§4). Add the server oracle hook
-   (§3d) for full-state checks over the wire. This satisfies "real games, real
-   server, real logs" and finds protocol/redaction bugs the in-process tier can't.
+1. **Phase 1 — Tier A loop + invariants.** ✅ **BUILT.** Two bots vs one
+   `GameService`, run N games, assert §3a invariants + no-crash. Lives in
+   `tool/selfplay/runner_inproc.dart` + `oracle.dart`.
+2. **Phase 2 — the effect oracle.** ✅ **BUILT.** `oracle.dart` (§3b, the flat
+   resource oracle) + replayable, deduped bug reports (`report.dart`, §5). This is
+   the semantic-bug engine — the core deliverable.
+3. **Phase 3 — explorer bot.** ✅ **BUILT.** `bot.dart` has greedy + randomized
+   explorer modes (`--mode mix` runs half-and-half); the runner snapshots the full
+   game around every action.
+4. **Phase 4 — Tier B (real server).** ⏳ **NOT BUILT (deferred).** `runner_ws.dart`:
+   two `GameClient` bots over the real WebSocket server with **bot usernames**,
+   generating bot-tagged telemetry through the real funnel (§4), plus the optional
+   `SHARDS_BOT_ORACLE=1` server hook (§3d). Build when the bot-tagged training
+   corpus is actually needed.
 5. **Phase 5 (optional) — encoding lint + LLM spot-judge.** §3c, run as an offline
    batch over the card DB / flagged cards. Feeds the `verified` workflow.
 
-Phases 1–2 alone deliver the primary goal (semantic bug-finding at scale). 3–4 add
-coverage and real-server fidelity. 5 is the cross-check against printed text.
+Phases 1–3 are built and deliver the primary goal (semantic bug-finding at scale).
+On the **first serious run they found a real engine bug**: a self-banishing claimed
+Destiny (`stolen_future`'s "Banish this" activated ability) was left in
+`claimedDestinies` AND copied into `removedFromGame` — a duplicated card — because
+`_selfBanish` only scrubbed the play zones. Fixed in `GameService._selfBanish` with
+a regression test (`test/services/game_service_test.dart`, "a self-banishing claimed
+Destiny leaves claimedDestinies"). Phase 4 adds real-server fidelity + the bot data
+corpus; Phase 5 is the cross-check against printed text.
+
+### Running it (dev-only)
+
+```bash
+# From the project root. Reuses the engine in lib/; ships in nothing.
+dart run tool/selfplay/runner_inproc.dart --games 500 --mode mix
+#   --games N        how many games (default 200)
+#   --mode greedy|explorer|mix   bot policy (default mix: half clean, half coverage)
+#   --players P      2–4 (default 2)
+#   --seed-base S    first game's seed; game g uses seed S+g (default 1)
+#   --out DIR        where deduped bug reports land (default tool/selfplay/bug_reports/)
+```
+
+Exit code is `2` when any bug was found (so a dev cron/CI step can detect it), `0`
+when clean. Each bug report is a self-contained JSON file carrying the seed + the
+full action sequence — a one-command repro. The output dir is gitignored.
 
 ---
 

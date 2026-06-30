@@ -1131,6 +1131,12 @@ class GameService {
     player.playedThisTurn.removeWhere((c) => identical(c, source));
     player.championsInPlay.removeWhere((c) => identical(c, source));
     player.cardsPlayedThisTurn.removeWhere((c) => identical(c, source));
+    // A self-banishing Destiny (e.g. stolen_future's "Banish this" activated
+    // ability) lives in claimedDestinies, NOT the play zones above — so it must
+    // be removed from there too, else it ends up in BOTH claimedDestinies and
+    // removedFromGame (card duplication). Also drop its per-turn exhaustion mark.
+    player.claimedDestinies.removeWhere((c) => identical(c, source));
+    player.exhaustedDestinies.remove(source.id);
     // If a champion self-banishes, release any cards tucked under it (to the
     // owner's discard) and drop its self-scoped shield modifier — otherwise the
     // under-cards orphan in the map and the modifier dangles. Mirrors every
@@ -2271,11 +2277,19 @@ class GameService {
       _gameOver = true;
       if (alive.length == 1) {
         winnerId = alive.first.id;
+        // This path is reached by reducing opponents to 0 health. The mastery
+        // (Infinity Shard) win sets winType earlier and returns before any
+        // elimination check, so only set 'elimination' if not already a mastery
+        // win.
+        winType ??= 'elimination';
+      } else {
+        // alive.length == 0 — every remaining player was eliminated at once
+        // (e.g. an AllPlayersLoseHealthEffect like bound_for_life that drops the
+        // last 2+ players simultaneously). The rules don't name a winner for a
+        // mutual knockout, so this is an explicit DRAW: no winnerId, a distinct
+        // terminal winType. (Found by the self-play oracle, tool/selfplay.)
+        winType ??= 'draw';
       }
-      // This path is reached by reducing opponents to 0 health. The mastery
-      // (Infinity Shard) win sets winType earlier and returns before any
-      // elimination check, so only set 'elimination' if not already a mastery win.
-      winType ??= 'elimination';
     }
   }
 

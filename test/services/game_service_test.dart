@@ -3037,6 +3037,33 @@ void main() {
       expect(game.isGameOver, true, reason: 'only p0 remains');
       expect(game.winnerId, 'p0');
     });
+
+    test('all players eliminated at once -> draw (no winner, winType=draw)', () {
+      // Regression (found by the self-play oracle, tool/selfplay): in a 3+
+      // player game an AllPlayersLoseHealthEffect can drop the LAST remaining
+      // players (incl. the actor) to 0 simultaneously. The rules name no winner
+      // for a mutual knockout, so the engine records an explicit DRAW rather than
+      // ending the game with a null winner + 'elimination' (which read as a bug).
+      final game = GameService(playerCount: 3, random: Random(7));
+      final p0 = game.currentPlayer;
+      // All three players at lethal range — a single wipe kills everyone at once.
+      p0.health = 5;
+      game.players[1].health = 5;
+      game.players[2].health = 5;
+      p0.hand.add(const CardModel(
+        id: 'mutual',
+        name: 'Bound For Life',
+        cost: 0,
+        playEffects: [AllPlayersLoseHealthEffect(5)],
+      ));
+
+      game.playCard('mutual');
+
+      expect(game.isGameOver, true, reason: 'everyone is at 0');
+      expect(game.players.every((p) => p.isEliminated), true);
+      expect(game.winnerId, isNull, reason: 'no winner in a mutual knockout');
+      expect(game.winType, 'draw');
+    });
   });
 
   group('Wave 2: unblockedDamageThisTurn counter + condition', () {
@@ -4054,6 +4081,36 @@ void main() {
       expect(p.powerPool, 0);
       expect(p.gemPool, 3);
       expect(p.exhaustedDestinies, isEmpty);
+    });
+
+    test('a self-banishing claimed Destiny leaves claimedDestinies (no '
+        'duplication)', () {
+      // Regression (found by the self-play oracle, tool/selfplay): a Destiny
+      // whose activated ability is SelfBanishEffect (e.g. stolen_future's
+      // "Banish this") lives in claimedDestinies, not the play zones. _selfBanish
+      // only scrubbed the play zones, so the Destiny ended up in BOTH
+      // claimedDestinies AND removedFromGame — a duplicated card.
+      final game = GameService(
+        playerCount: 2,
+        random: Random(7),
+        destinySupply: [cascadeDestiny()],
+      );
+      final p = game.currentPlayer;
+      p.mastery = 10; // meets stolen_future's Mastery-10 gate
+      expect(game.claimDestiny('stolen_future'), isTrue);
+      expect(p.claimedDestinies.map((c) => c.id), contains('stolen_future'));
+
+      expect(game.useDestinyAbility('stolen_future'), isTrue);
+
+      // The Destiny is GONE from claimedDestinies and is in removedFromGame
+      // exactly once — present in exactly one zone, not two.
+      expect(p.claimedDestinies.any((c) => c.id == 'stolen_future'), isFalse,
+          reason: 'self-banish must remove it from claimedDestinies');
+      expect(
+          game.removedFromGame.where((c) => c.id == 'stolen_future').length, 1,
+          reason: 'banished exactly once');
+      expect(p.exhaustedDestinies, isEmpty,
+          reason: 'exhaustion mark cleared on banish');
     });
 
     test('cascade (Mastery 10): banish to reveal 2 and grant extra claims', () {

@@ -48,3 +48,6 @@ node_modules/
 test/failures/
 package-lock.json
 screenshots/live_*.png
+
+# Self-play bot output (dev-only; replayable bug reports, not source)
+tool/selfplay/bug_reports/
