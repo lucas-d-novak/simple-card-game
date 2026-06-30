@@ -1422,8 +1422,15 @@ class GameService {
 
     if (card.masteryReplaces && thresholdMet) {
       // REPLACE: resolve the mastery bonus instead of the normal play effects,
-      // and do NOT additively check mastery again.
-      _resolveEffects(card.masteryBonus, player, sourceCard: card);
+      // and do NOT additively check mastery again. Forward choiceIndex so a
+      // ChooseOneEffect (incl. pick>1) in the bonus honours the player's
+      // selection (red_fortune Mastery-15 "choose two").
+      _resolveEffects(
+        card.masteryBonus,
+        player,
+        choiceIndex: choiceIndex,
+        sourceCard: card,
+      );
       return;
     }
 
@@ -1434,14 +1441,16 @@ class GameService {
       choiceIndex: choiceIndex,
       sourceCard: card,
     );
-    _checkMasteryBonus(card, player);
+    _checkMasteryBonus(card, player, choiceIndex: choiceIndex);
   }
 
-  void _checkMasteryBonus(CardModel card, PlayerState player) {
+  void _checkMasteryBonus(CardModel card, PlayerState player,
+      {int choiceIndex = 0}) {
     if (card.masteryThreshold == null) return;
     if (card.masteryBonus.isEmpty) return;
     if (player.mastery >= card.masteryThreshold!) {
-      _resolveEffects(card.masteryBonus, player, sourceCard: card);
+      _resolveEffects(card.masteryBonus, player,
+          choiceIndex: choiceIndex, sourceCard: card);
     }
   }
 

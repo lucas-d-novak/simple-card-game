@@ -874,5 +874,44 @@ void main() {
         );
       });
     });
+
+    group('chooseOne pick (Phase 3 wave 5)', () {
+      test('decodes default pick == 1 when absent', () {
+        final e = decodeEffect({
+          'type': 'chooseOne',
+          'choices': [
+            [
+              {'type': 'gainGems', 'amount': 2}
+            ],
+            [
+              {'type': 'gainPower', 'amount': 2}
+            ],
+          ],
+        }) as ChooseOneEffect;
+        expect(e.pick, 1);
+      });
+
+      test('round-trips pick:2', () {
+        const original = ChooseOneEffect([
+          [GainGemsEffect(2)],
+          [GainPowerEffect(2)],
+          [GainMasteryEffect(1)],
+        ], pick: 2);
+        final json = encodeEffect(original);
+        expect(json['pick'], 2);
+        final decoded = decodeEffect(json) as ChooseOneEffect;
+        expect(decoded.pick, 2);
+        expect(decoded.choices, hasLength(3));
+      });
+
+      test('omits pick on encode when it is the default 1', () {
+        const original = ChooseOneEffect([
+          [GainGemsEffect(2)],
+          [GainPowerEffect(2)],
+        ]);
+        final json = encodeEffect(original);
+        expect(json.containsKey('pick'), false);
+      });
+    });
   });
 }

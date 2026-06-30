@@ -308,6 +308,109 @@ void main() {
       expect(player.powerPool, powerBefore + 2);
     });
 
+    test('pick:2 starting mid-list wraps to {2,0}, never the same group twice',
+        () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      final gemsBefore = player.gemPool;
+      final masteryBefore = player.mastery;
+      final powerBefore = player.powerPool;
+
+      const card = CardModel(
+        id: 'three_choose_two',
+        name: 'Three Choose Two',
+        cost: 0,
+        playEffects: [
+          ChooseOneEffect([
+            [GainGemsEffect(2)], // 0
+            [GainPowerEffect(2)], // 1
+            [GainMasteryEffect(1)], // 2
+          ], pick: 2),
+        ],
+      );
+      player.hand.add(card);
+      // choiceIndex 2 -> resolves {2, 0}: +1 mastery, +2 gems; NOT power.
+      game.playCard('three_choose_two', choiceIndex: 2);
+      expect(player.mastery, masteryBefore + 1);
+      expect(player.gemPool, gemsBefore + 2);
+      expect(player.powerPool, powerBefore); // group 1 (power) not picked
+    });
+
+    test('pick >= choices.length resolves every group exactly once', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      final gemsBefore = player.gemPool;
+      final powerBefore = player.powerPool;
+
+      const card = CardModel(
+        id: 'pick_all',
+        name: 'Pick All',
+        cost: 0,
+        playEffects: [
+          // pick:5 clamps to 2 (the number of choices) -> both fire once.
+          ChooseOneEffect([
+            [GainGemsEffect(3)],
+            [GainPowerEffect(4)],
+          ], pick: 5),
+        ],
+      );
+      player.hand.add(card);
+      game.playCard('pick_all', choiceIndex: 0);
+      expect(player.gemPool, gemsBefore + 3);
+      expect(player.powerPool, powerBefore + 4);
+    });
+
+    test(
+        'masteryReplaces masteryBonus ChooseOneEffect honours choiceIndex '
+        '(red_fortune Mastery-15 path)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.mastery = 15;
+      final gemsBefore = player.gemPool;
+      final powerBefore = player.powerPool;
+      final masteryBefore = player.mastery;
+
+      const card = CardModel(
+        id: 'rf_like',
+        name: 'Red Fortune-like',
+        cost: 0,
+        playEffects: [
+          ChooseOneEffect([
+            [GainGemsEffect(2)],
+            [GainPowerEffect(2)],
+            [GainMasteryEffect(1)],
+            [DrawCardsEffect(1)],
+          ]),
+        ],
+        masteryThreshold: 15,
+        masteryReplaces: true,
+        masteryBonus: [
+          ChooseOneEffect([
+            [GainGemsEffect(2)],
+            [GainPowerEffect(2)],
+            [GainMasteryEffect(1)],
+            [DrawCardsEffect(1)],
+          ], pick: 2),
+        ],
+      );
+      // Give the player a known draw pile so the "draw a card" choice is
+      // observable, and isolate the hand to just the source card.
+      player.hand.clear();
+      player.hand.add(card);
+      player.drawPile.add(
+          const CardModel(id: 'drawn', name: 'Drawn', cost: 0, playEffects: []));
+
+      // choiceIndex 2 at mastery 15 -> mastery bonus pick:2 resolves {2,3}:
+      // +1 mastery and draw a card. Before the choiceIndex-forwarding fix this
+      // wrongly resolved {0,1} (gems+power) regardless of choiceIndex.
+      game.playCard('rf_like', choiceIndex: 2);
+      expect(player.mastery, masteryBefore + 1);
+      expect(player.gemPool, gemsBefore); // group 0 (gems) NOT picked
+      expect(player.powerPool, powerBefore); // group 1 (power) NOT picked
+      // The "draw a card" choice (group 3) fired: the drawn card is in hand.
+      expect(player.hand.any((c) => c.id == 'drawn'), true);
+    });
+
     test('GainMasteryEffect increases player mastery', () {
       final game = GameService(playerCount: 2, random: Random(7));
       final player = game.currentPlayer;
