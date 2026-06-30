@@ -835,11 +835,14 @@ enum GameConditionKind {
   factionCardInDiscard,
 
   /// At least `threshold` cards whose gem `cost` is ODD have been played this
-  /// turn (the source card is counted). Used by advanced_weapons.
+  /// turn. The resolving source card is EXCLUDED from the count (consistent with
+  /// the other "...Played" kinds) — encoders pick thresholds accordingly.
+  /// Used by advanced_weapons.
   oddCostCardsPlayed,
 
   /// At least `threshold` cards whose gem `cost` is EVEN have been played this
-  /// turn (the source card is counted). Used by advanced_medicine.
+  /// turn. The resolving source card is EXCLUDED from the count. Used by
+  /// advanced_medicine.
   evenCostCardsPlayed,
 }
 

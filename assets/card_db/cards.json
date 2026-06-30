@@ -709,12 +709,25 @@
         {
           "type": "gainPower",
           "amount": 3
+        },
+        {
+          "type": "conditional",
+          "condition": {
+            "kind": "factionAllyPlayedOrInHand",
+            "faction": "undergrowth"
+          },
+          "then": [
+            {
+              "type": "gainPower",
+              "amount": 3
+            }
+          ]
         }
       ],
       "art": "leshai_knight.jpg",
       "rawText": "Undergrowth Ally. MERCENARY. Cost 3. Gain 3 (power). Unify - Gain 6 (power) instead if you have played another Undergrowth Ally this turn or reveal one from your hand.",
-      "verified": false,
-      "notes": "Mercenary, Undergrowth Ally. Base: gain 3 power -> playEffects. UNMODELED: Unify 'Gain 6 (power) instead if you have played another Undergrowth Ally this turn or reveal one from your hand' (Unify = same-faction-ally-played-this-turn replacement) has no engine type; only base 3 power encoded.",
+      "verified": true,
+      "notes": "Undergrowth Mercenary. Gain 3 power; Unify: +3 more (=6 'instead') if you played another Undergrowth ally this turn or can reveal one from hand.",
       "set": "base",
       "cardType": "mercenary",
       "cost": 3,
@@ -776,12 +789,25 @@
         {
           "type": "gainGems",
           "amount": 10
+        },
+        {
+          "type": "conditional",
+          "condition": {
+            "kind": "factionAllyPlayedOrInHand",
+            "faction": "undergrowth"
+          },
+          "then": [
+            {
+              "type": "gainGems",
+              "amount": 10
+            }
+          ]
         }
       ],
       "art": "root_of_the_forest.jpg",
       "rawText": "Undergrowth Ally. MERCENARY. Cost 7. Gain 10 (gems). Unify - Gain 10 (gems) if you have played another Undergrowth Ally this turn or reveal one from your hand.",
-      "verified": false,
-      "notes": "Mercenary, Undergrowth Ally. Base: gain 10 gems -> playEffects. UNMODELED: Unify 'Gain 10 (gems) if you have played another Undergrowth Ally this turn or reveal one from your hand' (additional, Unify-gated) has no engine type; only base 10 gems encoded.",
+      "verified": true,
+      "notes": "Undergrowth Mercenary. Gain 10 gems; Unify: +10 gems (additive, no 'instead') if Unify met.",
       "set": "base",
       "cardType": "mercenary",
       "cost": 7,
@@ -800,12 +826,25 @@
         {
           "type": "drawCards",
           "count": 1
+        },
+        {
+          "type": "conditional",
+          "condition": {
+            "kind": "factionAllyPlayedOrInHand",
+            "faction": "undergrowth"
+          },
+          "then": [
+            {
+              "type": "gainPower",
+              "amount": 6
+            }
+          ]
         }
       ],
       "art": "shardwood_guardian.jpg",
       "rawText": "Undergrowth Ally. Cost 4. Gain 2 (power) and draw a card. Unify - Gain 6 (power) if you have played another Undergrowth Ally this turn or reveal one from your hand.",
-      "verified": false,
-      "notes": "Ally (regular). Base: gain 2 power and draw a card -> playEffects. UNMODELED: Unify 'Gain 6 (power) ...' (Unify-gated additional power) has no engine type; only base effects encoded.",
+      "verified": true,
+      "notes": "Undergrowth Ally. Gain 2 power, draw a card; Unify: +6 power (additive) if Unify met.",
       "set": "base",
       "cardType": "regular",
       "cost": 4,
@@ -871,12 +910,25 @@
         {
           "type": "gainGems",
           "amount": 3
+        },
+        {
+          "type": "conditional",
+          "condition": {
+            "kind": "factionAllyPlayedOrInHand",
+            "faction": "undergrowth"
+          },
+          "then": [
+            {
+              "type": "gainGems",
+              "amount": 5
+            }
+          ]
         }
       ],
       "art": "undergrowth_aspirant.jpg",
       "rawText": "Undergrowth Ally. Cost 1. Gain 3 (gems). Unify - Gain 5 (gems) if you have played another Undergrowth Ally this turn or reveal one from your hand.",
-      "verified": false,
-      "notes": "Ally (regular). Base: gain 3 gems -> playEffects. UNMODELED: Unify 'Gain 5 (gems) instead ...' (Unify-gated replacement) has no engine type; only base 3 gems encoded.",
+      "verified": true,
+      "notes": "Undergrowth Ally. Gain 3 gems; Unify: +5 gems (additive — printed art omits 'instead'; reviewer confirmed, rawText corrected).",
       "set": "base",
       "cardType": "regular",
       "cost": 1,
@@ -951,7 +1003,7 @@
       "art": "additri_gaiamancer.jpg",
       "rawText": "Undergrowth Champion. Cost 5, shield 5. Exhaust: Gain 2 (gems) and an additional 2 (gems) for each Undergrowth Ally you have played this turn.",
       "verified": true,
-      "notes": "Undergrowth Champion. Exhaust: gain 2 gems + 2 per Undergrowth ally played this turn.",
+      "notes": "Undergrowth Champion. Exhaust: gain 2 gems + 2 per Undergrowth ally played this turn. [approx] scaling uses perFactionCardPlayedThisTurn (counts ALL undergrowth cards played incl. champions); printed text says 'Ally' but engine has no Ally-keyword flag — slight over-count only if a non-Ally undergrowth champion is also played the same turn.",
       "set": "base",
       "cardType": "champion",
       "cost": 5,
@@ -982,12 +1034,25 @@
         {
           "type": "drawCards",
           "count": 1
+        },
+        {
+          "type": "conditional",
+          "condition": {
+            "kind": "factionAllyPlayedOrInHand",
+            "faction": "undergrowth"
+          },
+          "then": [
+            {
+              "type": "gainGems",
+              "amount": 3
+            }
+          ]
         }
       ],
       "art": "arach_devotees.jpg",
       "rawText": "Undergrowth Ally. Cost 2. Draw a card. Unify - If you have played another Undergrowth Ally this turn or reveal one from your hand, Gain 3 (gems).",
-      "verified": false,
-      "notes": "Ally (regular). Draw a card -> playEffects. UNMODELED: Unify 'If you have played another Undergrowth Ally this turn or reveal one from your hand, Gain 3 (gems)' (Unify-gated) has no engine type; the 3 gems not encoded.",
+      "verified": true,
+      "notes": "Undergrowth Ally. Draw a card; Unify: gain 3 gems if Unify met.",
       "set": "base",
       "cardType": "regular",
       "cost": 2,
@@ -1645,7 +1710,7 @@
           },
           "then": [
             {
-              "type": "gainPower",
+              "type": "gainGems",
               "amount": 5
             }
           ]
@@ -1654,7 +1719,7 @@
       "art": "hounds_of_volos.jpg",
       "rawText": "Undergrowth Mercenary - Ally. Gain 5 (gems). If you are Volos, gain 5 (gems).",
       "verified": true,
-      "notes": "Undergrowth Mercenary. Gain 5 gems; if Volos, gain 5 POWER (red icon, corrected from prior gems note).",
+      "notes": "Undergrowth Mercenary. Gain 5 gems; if Volos, gain 5 more gems (both icons green — reviewer confirmed against art; prior 'power' correction was wrong).",
       "set": "rotf",
       "cardType": "mercenary",
       "cost": 3,
