@@ -832,6 +832,14 @@ store hashed at rest, allow rotation.
 
 ## 9. Deploy / ops on the Pi
 
+> **Turnkey hosted-alpha runbook:** for step-by-step instructions to stand up the
+> public alpha behind a custom domain with TLS (build web → static server → game
+> server → Cloudflare Tunnel routing → verify → ops), see
+> [`deploy_cloudflare.md`](deploy_cloudflare.md). It documents the exact env vars
+> (`SHARDS_ACCESS_TOKEN`, `SHARDS_ALLOWED_ORIGINS`, `SHARDS_DATA_DIR`,
+> `SHARDS_STATS_DB`) and the WebSocket routing constraint from the client's
+> `_defaultServerUrl`.
+
 ### Build
 
 ```bash

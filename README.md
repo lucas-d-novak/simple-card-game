@@ -25,7 +25,10 @@ with custom game names, and JSON/SQLite persistence so in-progress games survive
 a server restart. Each redacted view ships a shared **action log** (recent tail)
 and the recipient's own draw-pile **contents** (sorted, order hidden). Phase 0/1
 works end-to-end. See the design doc in
-[`ai-docs/multiplayer_architecture.md`](ai-docs/multiplayer_architecture.md).
+[`ai-docs/multiplayer_architecture.md`](ai-docs/multiplayer_architecture.md), the
+LAN demo runbook in [`server/LAN_DEMO.md`](server/LAN_DEMO.md), and the hosted
+public-alpha runbook (custom domain + TLS via Cloudflare Tunnel) in
+[`ai-docs/deploy_cloudflare.md`](ai-docs/deploy_cloudflare.md).
 
 A legacy single-player **deck-draw demo** also still ships:
 `DeckService` ([`lib/services/deck_service.dart`](lib/services/deck_service.dart))
