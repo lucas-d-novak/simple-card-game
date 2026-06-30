@@ -23,8 +23,10 @@ server in [`server/`](server/) reuses the same engine to run shared LAN games,
 with same-turn server-authoritative undo, reconnect/resync, a multi-game lobby
 with custom game names, and JSON/SQLite persistence so in-progress games survive
 a server restart. Each redacted view ships a shared **action log** (recent tail)
-and the recipient's own draw-pile **contents** (sorted, order hidden). Phase 0/1
-works end-to-end. See the design doc in
+and the recipient's own draw-pile **contents** (sorted, order hidden). The server
+can be gated behind a shared **access token** (`SHARDS_ACCESS_TOKEN`) + origin
+allowlist, and records hidden-info-safe **player-stats / ML telemetry** to a
+server-only SQLite store. Phase 0/1 works end-to-end. See the design doc in
 [`ai-docs/multiplayer_architecture.md`](ai-docs/multiplayer_architecture.md), the
 LAN demo runbook in [`server/LAN_DEMO.md`](server/LAN_DEMO.md), and the hosted
 public-alpha runbook (custom domain + TLS via Cloudflare Tunnel) in
@@ -145,6 +147,23 @@ flutter test test/screenshot_test.dart --update-goldens
 - JSON/SQLite persistence ([`server/lib/persistence.dart`](server/lib/persistence.dart)) — games survive a restart
 - Per-view **action log** (shared event tail) and the recipient's own draw-pile
   **contents** (sorted A→Z; order hidden to preserve the anti-scry rule)
+- Optional shared **access-token** gate (`SHARDS_ACCESS_TOKEN`; constant-time
+  compare, presented in `identify`), `SHARDS_ALLOWED_ORIGINS` origin allowlist,
+  64KB message cap, and name/length caps ([`server/bin/server.dart`](server/bin/server.dart)).
+  The client remembers name + token in `localStorage`
+  ([`lib/services/token_storage.dart`](lib/services/token_storage.dart)) with a
+  "Forget saved code" control
+- A **server-status** chip (online / offline / checking) on the login screen
+  ([`network_lobby_screen.dart`](lib/ui/screens/network_lobby_screen.dart)) probes
+  the server via a short-lived WebSocket so connect failures are visible
+- Hidden-info-safe **player-stats / ML telemetry** to a server-only SQLite store
+  ([`server/lib/stats_store.dart`](server/lib/stats_store.dart) +
+  [`stats_capture.dart`](server/lib/stats_capture.dart)) — `events` / `decisions`
+  / `games` tables + a `decision_export` view; see
+  [`ai-docs/player_stats_design.md`](ai-docs/player_stats_design.md)
+- Multiplayer-first routing: the bare domain defaults to the online lobby
+  (`wss://<host>/ws` over https, `ws://<host>:8080` over http); `?local=1` / `?solo=1`
+  for single-player
 - Opponent plays are visible on the networked board
 - Networked board: a **Log** button opens a newest-first event sheet; tapping the
   draw pile lists your own cards A→Z; a **Destinies** tray ([`destiny_tray.dart`](lib/ui/widgets/destiny_tray.dart))
@@ -192,8 +211,9 @@ flutter test test/screenshot_test.dart --update-goldens
 
 The Flutter suite has **563 engine tests** (run with `flutter test --exclude-tags golden`)
 plus **8 golden screenshot tests** (run locally with plain `flutter test`). The
-server package has **39 server tests** (`cd server && dart test`) covering state
-redaction, action authorization, lobby flow, undo, reconnect/resync, and persistence. Highlights:
+server package has **46 server tests** (`cd server && dart test`) covering state
+redaction, action authorization, lobby flow, undo, reconnect/resync, persistence,
+and player-stats/telemetry capture. Highlights:
 
 - [`test/services/game_service_test.dart`](test/services/game_service_test.dart): the engine spec — effects, combat, champions, mastery, win conditions
 - [`test/data/`](test/data/): card database, effect codec, and `game_state_codec` serialization tests
@@ -207,7 +227,9 @@ redaction, action authorization, lobby flow, undo, reconnect/resync, and persist
 - [`ai-docs/animation_system_design.md`](ai-docs/animation_system_design.md): design notes for the 3-speed animation system
 - [`ai-docs/responsive_ui_design.md`](ai-docs/responsive_ui_design.md): design notes for the responsive breakpoints
 - [`ai-docs/engine_gaps.md`](ai-docs/engine_gaps.md): catalogue of unmodeled competitive-multiplayer card mechanics and a phased plan to extend the engine
-- [`ai-docs/multiplayer_architecture.md`](ai-docs/multiplayer_architecture.md): design of the authoritative WebSocket server in [`server/`](server/)
+- [`ai-docs/multiplayer_architecture.md`](ai-docs/multiplayer_architecture.md): design of the authoritative WebSocket server in [`server/`](server/) (transport, redaction, access-token auth, wss `/ws` routing)
+- [`ai-docs/player_stats_design.md`](ai-docs/player_stats_design.md): hidden-info-safe player-stats / ML-decision telemetry SQLite store
+- [`ai-docs/deploy_cloudflare.md`](ai-docs/deploy_cloudflare.md): hosted public-alpha runbook (Cloudflare Tunnel + custom domain + TLS + env vars)
 
 The `android/`, `ios/`, and `web/` folders are the main product targets. The desktop folders are standard Flutter scaffolding and are not the stated focus of the project right now.
 
@@ -216,7 +238,7 @@ The `android/`, `ios/`, and `web/` folders are the main product targets. The des
 The authoritative source of card data is the JSON database in
 [`assets/card_db/`](assets/card_db/README.md):
 
-- [`cards.json`](assets/card_db/cards.json) — the 183-card database (142 in-scope, 101 verified; 41 out-of-scope co-op/boss), one entry per unique card.
+- [`cards.json`](assets/card_db/cards.json) — the 183-card database (142 in-scope, 101 verified; 41 out-of-scope co-op/boss), one entry per unique card. The 41 remaining unverified in-scope cards were adversarially re-checked against art and **0 flipped** — each has a genuinely unmodellable mechanic (variable shields, reveal-from-hand, per-resource scaling, etc.), so raising coverage now requires **engine work** (new effect types), not data entry.
 - [`schema.json`](assets/card_db/schema.json) — the per-field contract (`set`, `faction`, `group`, `cardType`, `cost`, `playEffects`, `art`, `verified`, and more).
 - [`README.md`](assets/card_db/README.md) — the data-entry workflow (phone photos + OCR → structured fields).
 

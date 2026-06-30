@@ -6,13 +6,17 @@ Test suite covering game logic and UI behavior.
 
 - **563 engine tests** — run with `flutter test --exclude-tags golden` (what CI runs).
 - **8 golden screenshot tests** — tagged `golden`, run locally with plain `flutter test`.
-- **39 server tests** — the separate `server/` Dart package; run with
+- **46 server tests** — the separate `server/` Dart package; run with
   `cd server && dart test`. Cover state redaction (hidden hands / deck order; the
   recipient's OWN draw-pile contents shipped SORTED — contents visible, order
   hidden; the trailing `actionLog` tail; the `cards` dictionary shipped to
   clients), action authorization (on-turn vs off-turn), same-turn server UNDO,
   reconnect / resync, custom game names, JSON/SQLite persistence (games survive a
-  restart), and lobby flow (create / join / start).
+  restart), lobby flow (create / join / start), and **player-stats / ML
+  telemetry** (`stats_test.dart` — `StatsStore` events/decisions/games rows + the
+  `decision_export` view, capture via `GameSession.apply`, `playerWon` backfill at
+  game end, and the HIDDEN-INFO guarantee that no opponent hand-card id ever
+  appears in a recorded decision's option set / state JSON).
 
 The bulk of the engine coverage is `test/services/game_service_test.dart`
 (the Shards of Infinity engine spec). The legacy `DeckService` demo tests below
@@ -71,7 +75,7 @@ flutter test                              # all tests (incl. goldens) — run lo
 flutter test test/services/               # just service tests
 flutter test test/widget_test.dart         # just widget tests
 flutter test --exclude-tags golden        # what CI runs (skips goldens) — 563 tests
-cd server && dart test                    # the 39 server tests (redaction / auth / undo / reconnect / persistence / lobby)
+cd server && dart test                    # the 46 server tests (redaction / auth / undo / reconnect / persistence / lobby / stats telemetry)
 ```
 
 ## Golden screenshot tests (the `golden` tag)

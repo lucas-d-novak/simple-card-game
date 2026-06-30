@@ -144,3 +144,16 @@ See `schema.json` `definitions.effect` for the full list. Quick reference:
 > (`verified: true`); the remaining in-scope cards still need their fields
 > confirmed against the physical cards before flipping `verified: true`. No
 > in-scope card is left blank — every in-scope entry is encoded.
+
+> **Verification status (why 101/142, not higher).** The 41 remaining unverified
+> in-scope cards were adversarially re-checked against their card art:
+> **0 flipped to `verified: true`.** Each carries a genuinely **unmodellable**
+> mechanic the current `CardEffect` vocabulary can't express (variable shields,
+> reveal-from-hand, per-resource scaling, etc.); their encodings already capture
+> the modellable portion, but they can't be honestly marked verified while a
+> piece of the printed card has no representation. So **raising verified coverage
+> requires ENGINE work — new effect types — not more data entry.** A few cosmetic
+> data gaps were also noted (`the_shard_defiant` / `unconditional_conscription` /
+> `stolen_future` lack a `cost` field; `dash` lacks a `shield` field). See
+> [`ai-docs/engine_gaps.md`](../../ai-docs/engine_gaps.md) for the unmodelled-mechanic
+> catalogue.

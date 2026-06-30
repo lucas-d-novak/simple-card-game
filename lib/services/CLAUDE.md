@@ -38,6 +38,12 @@ Map<String, CardModel>? relicCards, List<CardModel>? destinySupply})`
   draw pile); empty unless a `destinySupply` was injected
 - `removedFromGame` — banished/scrapped/mercenary cards
 - `currentPlayerIndex`, `turnNumber`, `isGameOver`, `winnerId`
+- `winType` — `String?`: HOW the game was won — `'mastery'` (Infinity Shard
+  played at mastery 30+) or `'elimination'` (all opponents at 0 health), null
+  while in progress. Set at each win site (the mastery win sets it before the
+  elimination check, so an Infinity Shard win never gets mislabelled). Round-tripped
+  by `GameStateCodec`, and read by the server's player-stats telemetry to stamp a
+  precise `winType` on each `games` row (see `server/lib/stats_store.dart`).
 - `actionLog` — `List<GameLogEntry>` (`{turn, playerId?, message}`) of public game
   events (play / recruit / attack / focus / destroy / turn change / win), appended
   by the internal `_log()` helper and bounded (oldest trimmed). Serialized by

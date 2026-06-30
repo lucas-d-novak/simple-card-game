@@ -16,8 +16,10 @@ flutter run -d chrome        # run in browser
 flutter analyze              # static analysis
 
 # Multiplayer server (pure Dart, reuses the engine):
-cd server && dart pub get && dart test       # 39 server tests
+cd server && dart pub get && dart test       # 46 server tests
 cd server && dart run bin/server.dart 8080   # run the WebSocket server
+# Optional env: SHARDS_ACCESS_TOKEN (shared-secret auth gate), SHARDS_ALLOWED_ORIGINS
+# (WS origin allowlist), SHARDS_STATS_DB (telemetry SQLite path, default server/data/stats.db)
 ```
 
 ## Flutter version
@@ -33,7 +35,7 @@ Pinned to **Flutter 3.41.5** (installed at `C:/Users/rldun/code/flutter/`). CI e
 
 - **DeckService** (legacy) — single-player deck demo, kept intact for backward compatibility
 - **GameService** (core engine) — full Shards of Infinity orchestrator with multiplayer turn structure. **Pure Dart** (no Flutter imports) so it runs identically in the Flutter client and the server. Now also drives Character Focus (gem→mastery), the Destiny system (claim / use / banish-to-cascade), and Relic recruitment.
-- **`server/`** (authoritative multiplayer) — a `dart:io` WebSocket server that depends on the engine package via `path: ../` and reuses the exact rules code. Clients send actions; the server validates + applies + broadcasts each player a redacted view (hidden-info filter). See [`ai-docs/multiplayer_architecture.md`](ai-docs/multiplayer_architecture.md).
+- **`server/`** (authoritative multiplayer) — a `dart:io` WebSocket server that depends on the engine package via `path: ../` and reuses the exact rules code. Clients send actions; the server validates + applies + broadcasts each player a redacted view (hidden-info filter). Gated by an optional shared **access token** (`SHARDS_ACCESS_TOKEN`) + origin allowlist; records hidden-info-safe **player-stats/ML telemetry** to a SQLite store (server-only, NOT in any redacted view). See [`ai-docs/multiplayer_architecture.md`](ai-docs/multiplayer_architecture.md).
 
 ```
 lib/
@@ -88,10 +90,12 @@ lib/
         └── responsive.dart              # Screen-class breakpoints & sizing helpers
 
 server/                                  # Authoritative multiplayer (pure-Dart, reuses lib/)
-├── bin/server.dart                      # dart:io WebSocket entrypoint
+├── bin/server.dart                      # dart:io WebSocket entrypoint (SHARDS_ACCESS_TOKEN gate, origin allowlist, 64KB msg cap, name/length caps)
 ├── lib/views.dart                       # redactFor() — per-player hidden-info filter (+ id→CardModel `cards` dict, focusedThisTurn/canUndo)
 ├── lib/protocol.dart                    # applyAction() — actions → GameService + auth gates
-├── lib/game_session.dart               # one GameService + lobby↔seat id mapping + per-turn UNDO stack
+├── lib/game_session.dart               # one GameService + lobby↔seat id mapping + per-turn UNDO stack + stats capture at apply
+├── lib/stats_store.dart                # SQLite telemetry store (events/decisions/games + decision_export view; SHARDS_STATS_DB, gitignored)
+├── lib/stats_capture.dart              # builds hidden-info-safe decision/event rows from each action
 └── lib/lobby.dart                       # in-memory create/join/auto-start, custom game names, reconnect/resync
 ```
 
@@ -149,6 +153,39 @@ server/                                  # Authoritative multiplayer (pure-Dart,
 - **About page** — [`lib/ui/screens/about_screen.dart`](lib/ui/screens/about_screen.dart):
   fan-made / non-commercial / own-the-physical-game notice, credits Stone Blade /
   Ultra PRO. Reachable via an ABOUT button on the setup screen and `?about=1`.
+- **Player-stats / ML telemetry** — [`server/lib/stats_store.dart`](server/lib/stats_store.dart)
+  + [`server/lib/stats_capture.dart`](server/lib/stats_capture.dart): a SQLite store
+  (`sqlite3` dep) opened at `SHARDS_STATS_DB` (default `server/data/stats.db`,
+  gitignored). Captured at `GameSession.apply` for ALL decision types
+  (recruit / play / chooseOne / attack / banish / destroy / claimDestiny /
+  recruitRelic). Tables: `events` (compact outcome rows), `decisions` (rich
+  state→choice ML records — the option set, the actor's OWN-info state, the
+  `ownedNonStarter` deck for synergy, per-option `conditionsMet`, and `playerWon`
+  backfilled at game end), and `games`; a `decision_export` SQL VIEW flattens
+  `decisions` for ML. **Hidden-info safe** (own info set only; opponents
+  count-only), server-stamped `ts`, additive, and a graceful no-op if the DB can't
+  open. The engine now records `GameService.winType` (`mastery` | `elimination`)
+  at each win site (round-tripped by `GameStateCodec`) so `games.winType` is
+  precise. Design doc: [`ai-docs/player_stats_design.md`](ai-docs/player_stats_design.md).
+- **Access-token auth & hardening** — [`server/bin/server.dart`](server/bin/server.dart)
+  gates connections behind an optional shared secret `SHARDS_ACCESS_TOKEN`
+  (unset = OPEN; constant-time compare; the client presents it in `identify` and an
+  auth reject closes the socket). Also: `SHARDS_ALLOWED_ORIGINS` origin allowlist on
+  the WS upgrade, 64KB max message, name/length caps, same-name takeover, and
+  sanitized persistence filenames. The client remembers name + token in
+  `localStorage` ([`lib/services/token_storage.dart`](lib/services/token_storage.dart),
+  conditional `dart:html` import via `token_storage_web.dart` / `token_storage_stub.dart`)
+  with a "Forget saved code" control.
+- **Server-status indicator** — the login screen
+  ([`lib/ui/screens/network_lobby_screen.dart`](lib/ui/screens/network_lobby_screen.dart))
+  probes the game server with a short-lived WebSocket (3s timeout, no `identify`)
+  and shows a "Server: online / offline / checking" chip so a player who can't
+  connect sees why.
+- **WSS `/ws` routing & deploy** — `lib/main.dart`'s `_defaultServerUrl` emits
+  `wss://<host>/ws` over https (the `/ws` path lets a single-host proxy split the
+  static app from the WS upgrade) and `ws://<host>:8080` over http. Hosted runbook
+  (Cloudflare Tunnel + custom domain + TLS + env vars):
+  [`ai-docs/deploy_cloudflare.md`](ai-docs/deploy_cloudflare.md).
 
 ## Game loop (Shards of Infinity)
 
@@ -199,6 +236,12 @@ server/                                  # Authoritative multiplayer (pure-Dart,
 | Networked server-authoritative UNDO (same turn) | Done | `game_session.dart`, `game_client.dart` |
 | Reconnect / resync + custom game names + per-game rejoin | Done | `lobby.dart`, `network_lobby_screen.dart` |
 | Server persistence (JSON/SQLite, games survive restart) | Done | `server/lib/persistence.dart` |
+| Win-type tracking (`winType`: mastery / elimination) | Done | `game_service.dart`, `game_state_codec.dart` |
+| Player-stats / ML telemetry (SQLite, hidden-info safe) | Done | `server/lib/stats_store.dart`, `stats_capture.dart` |
+| Access-token auth + origin allowlist + msg/name caps | Done | `server/bin/server.dart` |
+| Saved name+token (localStorage, "Forget saved code") | Done | `token_storage.dart` |
+| Server-status chip (online/offline/checking probe) | Done | `network_lobby_screen.dart` |
+| WSS `/ws` routing + multiplayer-first default route | Done | `main.dart` |
 | Action log (public events; serialized + per-view tail) | Done | `game_service.dart`, `game_state_codec.dart`, `server/lib/views.dart` |
 | Draw-pile contents viewer (own pile sorted, order hidden) | Done | `server/lib/views.dart`, `network_game_screen.dart` |
 | Destiny ability tray (Use claimed Destinies) | Done | `destiny_tray.dart`, `game_service.dart` |
@@ -212,6 +255,7 @@ server/                                  # Authoritative multiplayer (pure-Dart,
 | Card play animations (scale + highlight) | Done | `game_screen.dart` |
 | Legacy demo catalog (55 unique cards) | Done | `card_definitions.dart` |
 | Authoritative card DB (183 cards, 101/142 in-scope verified, 41 out-of-scope) | In progress | `assets/card_db/cards.json` |
+| Card-verify adversarial re-check (41 unverified re-audited, 0 flipped) | Done | `assets/card_db/cards.json` |
 | Engine Phase 2 + 3 (31 effect types) | Done | `card_effect.dart`, `game_service.dart` |
 | Game-state serialization (multiplayer snapshot) | Done | `game_state_codec.dart` |
 | Authoritative multiplayer server (Phase 0/1) | Done | `server/` |
@@ -236,13 +280,13 @@ flutter test test/models/                 # model-level tests
 flutter test test/widget_test.dart        # legacy widget tests
 flutter test test/screenshot_test.dart --update-goldens  # regenerate screenshots
 bash scripts/generate_report.sh           # generate visual QA report (HTML)
-cd server && dart test                    # 39 server tests (redaction + auth + lobby + undo + reconnect + persistence)
+cd server && dart test                    # 46 server tests (redaction + auth + lobby + undo + reconnect + persistence + stats)
 ```
 
-- **563 engine tests** (+ 8 goldens, + 39 server tests) across game mechanics,
+- **563 engine tests** (+ 8 goldens, + 46 server tests) across game mechanics,
   models, data, codecs/serialization, AI, widgets, and the multiplayer server
 - Tests use deterministic `Random` injection (`Random(7)`, `ZeroRandom`)
-- Game service tests cover: initialization, all 31 effect types, buying, turn cycling, champions, guard, ally abilities, mastery thresholds (additive + replace), banish/scrap, infinity shard scaling, combat, win conditions, Character Focus, Destiny (claim/use/cascade) and Relics, Phase 2/3 board conditions, and integration scenarios. Serialization tests round-trip a full mid-game snapshot (including the action log). Server tests assert hidden-info redaction (including draw-pile contents sorted/order-hidden and the action-log tail), action authorization, per-turn undo, reconnect/resync/multi-game lobby flow, and JSON/SQLite persistence across a restart.
+- Game service tests cover: initialization, all 31 effect types, buying, turn cycling, champions, guard, ally abilities, mastery thresholds (additive + replace), banish/scrap, infinity shard scaling, combat, win conditions, Character Focus, Destiny (claim/use/cascade) and Relics, Phase 2/3 board conditions, and integration scenarios. Serialization tests round-trip a full mid-game snapshot (including the action log). Server tests assert hidden-info redaction (including draw-pile contents sorted/order-hidden and the action-log tail), action authorization, per-turn undo, reconnect/resync/multi-game lobby flow, JSON/SQLite persistence across a restart, and the player-stats/telemetry capture.
 
 ## CI
 
@@ -278,7 +322,9 @@ Cross-referenced. The mechanics doc is source of truth for game rules.
 - [`ai-docs/responsive_ui_design.md`](ai-docs/responsive_ui_design.md) — Design (5 iterations) behind the responsive breakpoints (`lib/ui/theme/responsive.dart`).
 - [`ai-docs/engine_gaps.md`](ai-docs/engine_gaps.md) — Catalogue of unmodeled competitive-multiplayer card mechanics the current `CardEffect` vocabulary can't express, plus a phased plan to extend the engine.
 - [`ai-docs/engine_phase2_plan.md`](ai-docs/engine_phase2_plan.md) / [`ai-docs/engine_phase3_plan.md`](ai-docs/engine_phase3_plan.md) — the Phase 2 (14→31 effect types) and Phase 3 (final gap families) engine-extension designs.
-- [`ai-docs/multiplayer_architecture.md`](ai-docs/multiplayer_architecture.md) — **Authoritative-server multiplayer design** (transport, action protocol, hidden-info redaction, lobby, Pi/Cloudflare-Tunnel deploy, phased rollout). Phase 0/1 implemented in `server/`.
+- [`ai-docs/multiplayer_architecture.md`](ai-docs/multiplayer_architecture.md) — **Authoritative-server multiplayer design** (transport, action protocol, hidden-info redaction, access-token auth + origin allowlist, status probe, wss `/ws` routing, lobby, Pi/Cloudflare-Tunnel deploy, phased rollout). Phase 0/1 implemented in `server/`.
+- [`ai-docs/player_stats_design.md`](ai-docs/player_stats_design.md) — design of the hidden-info-safe player-stats / ML-decision telemetry SQLite store (`server/lib/stats_store.dart`).
+- [`ai-docs/deploy_cloudflare.md`](ai-docs/deploy_cloudflare.md) — hosted public-alpha runbook (Cloudflare Tunnel + custom domain + TLS + env vars).
 - [`ai-docs/design_reference/`](ai-docs/design_reference/DESIGN_SPEC.md) — official-client UI mockups + `DESIGN_SPEC.md`, the visual target for the board/modals/lobby.
 
 ## Open pull requests (temporary)

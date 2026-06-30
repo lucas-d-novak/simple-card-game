@@ -10,7 +10,7 @@ ui/
 │   ├── game_setup_screen.dart      # Player count picker → starts game
 │   ├── game_screen.dart            # Main game board (active, local + AI)
 │   ├── network_game_screen.dart    # Networked board (server-authoritative)
-│   ├── network_lobby_screen.dart   # Create/join multiplayer game
+│   ├── network_lobby_screen.dart   # Create/join multiplayer game (+ server-status chip, saved code)
 │   ├── online_lobby_screen.dart    # Multi-game lobby (auto-enter recent, back-to-lobby)
 │   ├── network_auto_screen.dart    # Auto-connect/reconnect entry
 │   ├── about_screen.dart           # Fan-made / non-commercial credits page
@@ -90,6 +90,20 @@ scroll rather than overflow.
   (`destiny_tray.dart`, `showDestinyTray`): your claimed Destinies, each with a
   **Use** action gated by `GameService.canUseDestinyAbility` (the server ships
   `exhaustedDestinies` so used ones are disabled).
+
+### Login / lobby screen (`network_lobby_screen.dart`)
+
+- **Server-status chip** — on entry the lobby probes the game server with a
+  short-lived WebSocket (3 s timeout) and shows a **Server: online / offline /
+  checking** chip, so a player who can't connect immediately sees *why* (server
+  down vs. their own mistake) instead of a silent failure.
+- **Access code (token) + saved login** — when the server runs with an access
+  token (`SHARDS_ACCESS_TOKEN`), the lobby collects the player's name and code and
+  the client presents the code in its `identify` message. The name+token are
+  remembered in browser `localStorage` via
+  [`token_storage.dart`](../services/token_storage.dart) (a conditional-import
+  shim — `token_storage_web.dart` uses `dart:html`, `token_storage_stub.dart` is
+  the non-web no-op), with a **"Forget saved code"** control to clear them.
 
 ## Card widget features
 
@@ -201,6 +215,25 @@ resizable desktop browser, not just by device). Design notes:
 `compact` card layouts on mobile. The web build ships PWA metadata
 (`web/manifest.json`, `web/index.html`) so the browser client can be installed /
 launched standalone.
+
+## Web routing & server URL (`lib/main.dart`)
+
+The web client is **multiplayer-first**: the bare domain defaults to the online
+lobby; append `?local=1` / `?solo=1` for single-player (and `?about=1` for the
+About page). `_defaultServerUrl` derives the WebSocket URL from the page:
+
+- **https** page → `wss://<host>/ws` — the `/ws` PATH lets a single-hostname
+  proxy/tunnel split the static app from the WS upgrade (so the bare domain serves
+  both); secure scheme is required because browsers block `ws://` from `https://`.
+- **http** page → `ws://<host>:8080` (direct LAN/dev); `localhost`/empty host →
+  `ws://localhost:8080`.
+- `?server=<url>` overrides the derived URL.
+
+See [`ai-docs/deploy_cloudflare.md`](../../ai-docs/deploy_cloudflare.md) for the
+Cloudflare-Tunnel + custom-domain + TLS deploy runbook (and the matching server
+env vars), and
+[`ai-docs/multiplayer_architecture.md`](../../ai-docs/multiplayer_architecture.md)
+for transport/security.
 
 ## Legacy widgets
 

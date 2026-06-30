@@ -91,14 +91,15 @@ simple-card-game/
 ├── server/
 │   ├── pubspec.yaml          # depends on simple_card_game via path: ../
 │   ├── bin/server.dart       # dart:io entrypoint (HttpServer + WebSocket)
-│   ├── lib/
-│   │   ├── game_session.dart # wraps one GameService + connected sockets
-│   │   ├── lobby.dart        # game registry, matchmaking
-│   │   ├── protocol.dart     # envelope + action/event codecs
-│   │   ├── views.dart        # per-player redaction (hidden-info filter)
-│   │   ├── store.dart        # SQLite persistence
-│   │   └── auth.dart         # device-token auth
-│   └── test/
+│   ├── lib/                  # (shipped layout)
+│   │   ├── game_session.dart # wraps one GameService + connected sockets + undo stack
+│   │   ├── lobby.dart        # game registry, matchmaking, reconnect lookup
+│   │   ├── protocol.dart     # applyAction() — actions → GameService + auth gates
+│   │   ├── views.dart        # redactFor() — per-player redaction (hidden-info filter)
+│   │   ├── persistence.dart  # one-JSON-file-per-game snapshot store (atomic writes)
+│   │   ├── stats_store.dart  # SQLite telemetry DB (events/decisions/games + export view)
+│   │   └── stats_capture.dart# decision capture hooked into GameSession.apply
+│   └── test/                 # (access-token auth + WS hardening live in bin/server.dart)
 ```
 
 > **One refactor blocks server reuse: `CardDatabase`.**
@@ -161,6 +162,20 @@ alternatives for *this* workload:
 
 Turn-based means message frequency is *low* (a handful of messages per turn), so
 WebSocket's overhead is negligible and its simplicity wins.
+
+> **Implemented (client URL derivation — `wss` + `/ws` routing).** The Flutter
+> client picks the server URL from the page scheme in `lib/main.dart`
+> `_defaultServerUrl`:
+> - **https page → `wss://<host>/ws`** (port omitted — the Cloudflare edge serves
+>   `wss` on 443). The **`/ws` path** lets a single hostname be split by a
+>   proxy/tunnel: static app on `/`, the WebSocket upgrade on `/ws*` → the Dart
+>   server on `:8080`. Browsers block `ws://` from an https page, so secure pages
+>   *must* use `wss`.
+> - **http page → `ws://<host>:8080`** (plain LAN/dev, straight to the server port).
+> - **localhost / empty host → `ws://localhost:8080`.**
+>
+> A `?server=` query param overrides the default. This is why the cloudflared
+> ingress ([§9](#9-deployops-on-the-pi)) must route `/ws` to `:8080`.
 
 ### Message envelope
 
@@ -637,6 +652,12 @@ specific in-progress game, see [§7](#7-reconnect--disconnect)).
 Server→client: `gameList {yours:[...], more:[...]}`, `gameUpdated {summary}`,
 `gameStarted {gameId}`.
 
+> **Implemented (server-status indicator).** Before a player even reaches the
+> lobby, the login screen (`lib/ui/screens/network_lobby_screen.dart`) **probes
+> the game server** with a short-lived WebSocket (3 s timeout) and shows a
+> **`Server: online / offline / checking`** chip, so a player who can't connect
+> sees *why* (server down vs. their network) instead of a silent failure.
+
 ### Screen flows (→ official UI)
 
 - **Your Games** = games where `you ∈ seats`. Surfaces it-is-your-turn badges and
@@ -691,6 +712,37 @@ for intermittent uptime. Tables:
 
 A game is persisted after **every applied action**, so a crash loses at most the
 in-flight action (which the client can resend).
+
+### Player-stats & ML-training telemetry (implemented, server-only)
+
+Separate from the per-game persistence above, the server captures a **telemetry
+stream** for analytics and supervised ML training. It lives entirely server-side
+and is **never** part of the redacted wire view ([§4](#4-state-sync-server--client))
+— clients neither send nor receive it.
+
+- **Store.** [`server/lib/stats_store.dart`](../server/lib/stats_store.dart) opens a
+  **SQLite** database (the lone server-side third-party dep, `sqlite3`) at
+  **`SHARDS_STATS_DB`** (default `server/data/stats.db`, gitignored). It degrades to
+  a **graceful no-op** if the DB can't open, so telemetry is purely additive and
+  never blocks a game. `ts` is **server-stamped** (clients can't forge timestamps).
+- **Schema.** Three tables plus a flattening VIEW:
+  - `events` — compact per-outcome rows (game/turn outcome summaries).
+  - `decisions` — rich `(state → choice)` ML records: the **option set** offered,
+    the actor's **own-info state** (hidden-info safe — own info only; opponents are
+    **count-only**, never their hand ids), the actor's **`ownedNonStarter`** deck
+    (for synergy features), **per-option `conditionsMet`** flags, and **`playerWon`**
+    (the supervised label, NULL until **backfilled at game end**).
+  - `games` — one row per game with winner / `winType` / turn count.
+  - `decision_export` — a SQL **VIEW** that flattens `decisions` (json_extract'd
+    columns + the raw `options` JSON) for direct ML consumption.
+- **Capture point.** [`server/lib/stats_capture.dart`](../server/lib/stats_capture.dart)
+  is invoked from `GameSession.apply` for **all** decision types
+  (recruit / play / chooseOne / attack / banish / destroy / claimDestiny /
+  recruitRelic).
+- **Precise win labels.** The engine records `GameService.winType`
+  (`'mastery' | 'elimination'`) at each win site (round-tripped by
+  `GameStateCodec`), so `games.winType` is exact rather than inferred.
+- Design doc: [`player_stats_design.md`](player_stats_design.md).
 
 ---
 
@@ -795,7 +847,9 @@ reveal what the server didn't send. This is why the `redactFor` filter and the
 ### Input validation
 
 - **Envelope validation.** Reject malformed JSON, unknown `type`, wrong `v`,
-  oversized frames (cap message size, e.g. 16 KB — legit actions are tiny).
+  oversized frames (cap message size — legit actions are tiny). **Implemented:**
+  `server/bin/server.dart` enforces a **64 KB** per-message cap (`_maxMessageBytes`)
+  and over-long frames are dropped before parsing.
 - **Argument validation.** Ids are strings of bounded length; `amount`/`maxCost`
   are non-negative ints in range; enums (`source`, `filter`, `disposition`) must
   be known values. Then hand off to the engine, which does the *semantic*
@@ -827,6 +881,29 @@ Low budget, frictionless onboarding:
 
 Tokens are bearer credentials: transmit only over `wss://` (TLS via Cloudflare),
 store hashed at rest, allow rotation.
+
+> **Implemented (shared access-token gate + WS hardening).** The shipped server
+> (`server/bin/server.dart`) gates the whole deployment behind a single **shared
+> access token** rather than the per-device-token scheme above (the device-token
+> design remains the intended Phase-3 shape). Concretely:
+> - **`SHARDS_ACCESS_TOKEN`** — when set, every client must present the token in
+>   its `identify` frame; the server compares it with a **constant-time** check
+>   and **closes the socket** on mismatch. When the env var is *unset* the server
+>   runs **OPEN** (LAN/dev) and logs a warning to set it for any exposed deploy.
+> - **Client-side token persistence** — the Flutter client remembers the player
+>   name + access code in `localStorage` (`lib/services/token_storage.dart` with a
+>   conditional `dart:html` import — `token_storage_web.dart` / `_stub.dart`), with
+>   a **"Forget saved code"** control on the login screen.
+> - **`SHARDS_ALLOWED_ORIGINS`** — a comma-separated browser-origin allowlist
+>   enforced on the WebSocket **upgrade** (empty = allow any, for native/dev).
+> - **Frame + identity caps** — the 64 KB message cap (above), bounded
+>   name/length caps, **same-name takeover** (a reconnecting client with an
+>   already-used name displaces the stale connection), and **sanitized
+>   persistence filenames** so a malicious game/player id can't escape the data
+>   directory.
+>
+> The deploy runbook ([`deploy_cloudflare.md`](deploy_cloudflare.md)) documents
+> setting `SHARDS_ACCESS_TOKEN` + `SHARDS_ALLOWED_ORIGINS` for the public alpha.
 
 ---
 
@@ -1002,7 +1079,7 @@ broadcast **no** state (nothing changed).
 ## Appendix B — Why this is low-risk
 
 The risky part of a card game is the rules engine, and **it already exists, is
-tested (563 engine tests + 39 server tests), is deterministic, and is pure Dart.** This architecture adds
+tested (563 engine tests + 46 server tests), is deterministic, and is pure Dart.** This architecture adds
 exactly three new responsibilities around that proven core: (1) a courier
 (WebSocket + envelope), (2) a redaction filter (the security boundary), and (3) a
 lobby + store. None of them re-implement a single game rule. That separation is

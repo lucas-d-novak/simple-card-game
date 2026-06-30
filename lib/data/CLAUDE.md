@@ -176,8 +176,8 @@ The card-level `masteryReplaces` (bool, default false) on the record controls
 whether a card's `masteryBonus` replaces `playEffects` (true) or stacks on top
 (false, the legacy default) at/above `masteryThreshold`.
 
-Only champions should carry `activatedAbility`. The 24 DB cards whose `rawText`
-mentions "exhaust" are the encoding targets.
+Only champions should carry `activatedAbility`. The DB cards whose `rawText`
+mentions "exhaust" (59 entries) are the encoding targets.
 
 ## Tooling
 
