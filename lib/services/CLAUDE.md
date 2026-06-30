@@ -8,6 +8,14 @@ Core game logic. Three service layers — GameService is the active engine, AiSe
 
 `GameService` — orchestrates the full game: multiplayer turns, effect resolution, market, combat, win conditions.
 
+`GameService` is **pure Dart** (no Flutter imports) and is reused by the
+authoritative multiplayer server in [`server/`](../../server/) — the same engine
+runs the rules on both client and server. Its full state is serialized to/from
+JSON by `GameStateCodec`
+([`lib/data/database/game_state_codec.dart`](../data/database/game_state_codec.dart))
+so a snapshot can be sent over the wire. See
+[`ai-docs/multiplayer_architecture.md`](../../ai-docs/multiplayer_architecture.md).
+
 **Constructor:** `GameService({required int playerCount, Random? random})`
 
 **State:**

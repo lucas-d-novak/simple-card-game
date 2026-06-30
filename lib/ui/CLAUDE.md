@@ -15,13 +15,21 @@ ui/
 │   ├── card_fan.dart               # Fan-of-cards hand display
 │   ├── card_art.dart               # Procedural canvas art (faction patterns)
 │   ├── resource_bar.dart           # Health/mastery/gems/power bar
+│   ├── resource_icons.dart         # Custom-painted gem/power/mastery/health/shield icons
+│   ├── beveled_button.dart         # Beveled action button (official-client styling)
 │   └── playing_card_widget.dart    # Legacy card widget
 └── theme/
     ├── game_theme.dart             # Dark board theme, colors
     ├── faction_colors.dart         # Faction color palettes (primary/light/dark)
+    ├── board_chrome.dart           # Board frame / chrome styling (official-client look)
     ├── animation_timing.dart       # 3-speed animation system (see below)
     └── responsive.dart             # Screen-class breakpoints & sizing helpers
 ```
+
+The board UI was reworked to match the official client; reference screenshots
+live in [`ai-docs/design_reference/`](../../ai-docs/design_reference/).
+`resource_icons.dart` (custom `CustomPainter` resource glyphs), `beveled_button.dart`,
+and `board_chrome.dart` were added as part of that pass.
 
 ## Game screen layout (top to bottom)
 

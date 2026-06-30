@@ -120,6 +120,8 @@ See `schema.json` `definitions.effect` for the full list. Quick reference:
 | `conditionalPower` | `condition` (`perChampionControlled`/`perAllyPlayedThisTurn`/`perFactionPlayedThisTurn`/`perCardInDiscard`) | scaling power |
 | `infinityShard` | — | the Infinity Shard's mastery scaling |
 
-> `cards.json` currently holds **183 entries** (183 with art, 19 verified); the
-> rest are partially encoded. Continue verifying fields against the physical
-> cards and flipping `verified: true`.
+> `cards.json` currently holds **183 entries**. **101 of the 145 in-scope cards
+> are verified** (`verified: true`); the remaining **38** entries are
+> out-of-scope co-op/boss cards flagged `outOfScope: true` and excluded from the
+> verification target. Continue verifying the remaining in-scope fields against
+> the physical cards and flipping `verified: true`.

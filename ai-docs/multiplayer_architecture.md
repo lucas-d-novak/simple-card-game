@@ -902,7 +902,7 @@ broadcast **no** state (nothing changed).
 ## Appendix B — Why this is low-risk
 
 The risky part of a card game is the rules engine, and **it already exists, is
-tested (198 tests), is deterministic, and is pure Dart.** This architecture adds
+tested (493 engine tests), is deterministic, and is pure Dart.** This architecture adds
 exactly three new responsibilities around that proven core: (1) a courier
 (WebSocket + envelope), (2) a redaction filter (the security boundary), and (3) a
 lobby + store. None of them re-implement a single game rule. That separation is

@@ -2,24 +2,35 @@
 
 ## Quick Summary
 
-This repo is a small Flutter card-game prototype aimed at iOS, Android, and web.
+This repo is a Flutter implementation of the **Shards of Infinity** deck-building
+card game, targeting Windows, iOS, Android, and web. See
+[`CLAUDE.md`](CLAUDE.md) for the full architecture overview.
 
-The current gameplay loop is:
+The real game engine is `GameService`
+([`lib/services/game_service.dart`](lib/services/game_service.dart)) — a pure-Dart
+Shards of Infinity orchestrator implementing multiplayer turns, all **31**
+`CardEffect` types, champions/guard/ally abilities, mastery, banish/scrap, and the
+Infinity Shard win condition. Card identity comes from a JSON card database
+([`assets/card_db/cards.json`](assets/card_db/cards.json), **183 cards**; 101 of
+the 145 in-scope cards verified so far).
 
-1. Start with a shuffled six-card money deck.
-2. Draw two cards into your hand.
-3. Play cards from your hand to generate money or trigger card effects.
-4. Buy cards from the market row if you can afford them.
-5. Put purchased cards into the discard pile.
-6. Shuffle the discard pile back into the deck or reset the game.
+The game also has **networked multiplayer**: an authoritative Dart WebSocket
+server in [`server/`](server/) reuses the same engine to run shared LAN games.
+Phase 0/1 works end-to-end; the in-app lobby UI is still a mockup. See the design
+doc in [`ai-docs/multiplayer_architecture.md`](ai-docs/multiplayer_architecture.md).
 
-Today, the whole game runs locally in memory. There is no backend, persistence, multiplayer, or package-based state management. Most of the game rules live in [`lib/services/deck_service.dart`](lib/services/deck_service.dart), and the UI is a thin Flutter layer over that service.
+A legacy single-player **deck-draw demo** also still ships:
+`DeckService` ([`lib/services/deck_service.dart`](lib/services/deck_service.dart))
+drives [`home_screen.dart`](lib/ui/screens/home_screen.dart), kept intact for
+backward compatibility. Its loop is: start with a six-card money deck, draw,
+play cards for money/effects, buy from a market row, discard, and reshuffle/reset.
 
 If you only need to get oriented quickly, read this section, then open:
 
-- [`lib/services/deck_service.dart`](lib/services/deck_service.dart)
-- [`lib/ui/screens/home_screen.dart`](lib/ui/screens/home_screen.dart)
-- [`test/services/deck_service_test.dart`](test/services/deck_service_test.dart)
+- [`lib/services/game_service.dart`](lib/services/game_service.dart) — the active engine
+- [`lib/models/card_effect.dart`](lib/models/card_effect.dart) — the 31 effect types
+- [`lib/ui/screens/game_screen.dart`](lib/ui/screens/game_screen.dart) — the game board
+- [`test/services/game_service_test.dart`](test/services/game_service_test.dart) — mechanic tests
 
 ## Quick Start
 
@@ -59,9 +70,18 @@ flutter run -d chrome
 Other useful run targets:
 
 ```bash
+flutter run -d windows
 flutter run -d ios
 flutter run -d android
 flutter analyze
+```
+
+The multiplayer server has its own Dart package and test suite:
+
+```bash
+cd server
+dart pub get
+dart test
 ```
 
 To see which targets are available on your machine:
@@ -89,31 +109,57 @@ flutter test test/screenshot_test.dart --update-goldens
 
 ## What Is Implemented
 
+### Shards of Infinity engine (`GameService`)
+
+- Full multiplayer turn structure (play / buy / attack / end), 2-4 players
+- All **31** `CardEffect` types resolved via exhaustive switch
+- 6-card center row / market with auto-refill
+- Champions (persistence, guard, manual + Exhaust-gated activated abilities)
+- Ally abilities (same-faction trigger), mastery thresholds, banish/scrap
+- Infinity Shard scaling + instant win at mastery 30+
+- Combat, elimination, and game-over detection
+- JSON card database (183 cards) loaded via `CardDatabase`
+- Heuristic AI opponent for solo play
+
+### Networked multiplayer (Phase 0/1)
+
+- Authoritative Dart WebSocket server ([`server/`](server/)) reusing the engine
+- Shared LAN games with per-player state redaction (hidden hands / deck order)
+- In-app lobby UI is still a mockup
+
+### Legacy deck-draw demo (`DeckService`)
+
 - A starting deck of six money cards with values 1, 1, 2, 2, 3, and 4
 - A market row with five purchasable cards, including four treasure cards and `Scout`
-- A hand area for drawn cards
-- A played area for cards that contribute spendable money or trigger effects
-- A discard pile for purchased cards
-- Manual reshuffling of discard cards into the deck
-- Automatic discard-to-deck reshuffle during draw when the deck is empty
-- Reset back to a fresh shuffled game state
-- Card data modeled with separate `cost` and `playEffects` fields
+- Draw / play / buy / discard / reshuffle / reset over an in-memory service
 
 ## Repo Map
 
 ### Core app files
 
-- [`lib/main.dart`](lib/main.dart): app entry point, theme, and `DeckDrawApp`
-- [`lib/services/deck_service.dart`](lib/services/deck_service.dart): core game state and rules
-- [`lib/models/card_effect.dart`](lib/models/card_effect.dart): card effect types and display descriptions
+- [`lib/main.dart`](lib/main.dart): app entry point, theme, routes to `GameSetupScreen`
+- [`lib/services/game_service.dart`](lib/services/game_service.dart): **the active engine** — all Shards of Infinity mechanics
+- [`lib/services/ai_service.dart`](lib/services/ai_service.dart): heuristic AI opponent
+- [`lib/models/card_effect.dart`](lib/models/card_effect.dart): the 31 card effect types
 - [`lib/models/card_model.dart`](lib/models/card_model.dart): card data model
-- [`lib/ui/screens/home_screen.dart`](lib/ui/screens/home_screen.dart): main screen and user actions
-- [`lib/ui/widgets/playing_card_widget.dart`](lib/ui/widgets/playing_card_widget.dart): reusable card display widget
+- [`lib/data/database/`](lib/data/CLAUDE.md): JSON card database loader + codecs
+- [`lib/ui/screens/game_screen.dart`](lib/ui/screens/game_screen.dart): main game board
+- [`server/`](server/): authoritative multiplayer WebSocket server
+- [`lib/services/deck_service.dart`](lib/services/deck_service.dart): legacy deck-draw demo
+- [`lib/ui/screens/home_screen.dart`](lib/ui/screens/home_screen.dart): legacy demo screen
 
 ### Tests
 
-- [`test/services/deck_service_test.dart`](test/services/deck_service_test.dart): game-rule coverage for deck, draw, play, buy, reset, and reshuffle behavior
-- [`test/widget_test.dart`](test/widget_test.dart): UI-level coverage for draw, play, buy, reset, empty-deck messaging, and shuffle controls
+The Flutter suite has **493 engine tests** (run with `flutter test --exclude-tags golden`)
+plus **8 golden screenshot tests** (run locally with plain `flutter test`). The
+server package has **8 server tests** (`cd server && dart test`) covering state
+redaction, action authorization, and lobby flow. Highlights:
+
+- [`test/services/game_service_test.dart`](test/services/game_service_test.dart): the engine spec — effects, combat, champions, mastery, win conditions
+- [`test/data/`](test/data/): card database, effect codec, and `game_state_codec` serialization tests
+- [`server/test/session_test.dart`](server/test/session_test.dart): redaction, authorization, and lobby tests
+- [`test/services/deck_service_test.dart`](test/services/deck_service_test.dart): legacy deck-draw rule coverage
+- [`test/widget_test.dart`](test/widget_test.dart): legacy demo UI coverage
 
 ### Supporting docs
 
@@ -121,6 +167,7 @@ flutter test test/screenshot_test.dart --update-goldens
 - [`ai-docs/animation_system_design.md`](ai-docs/animation_system_design.md): design notes for the 3-speed animation system
 - [`ai-docs/responsive_ui_design.md`](ai-docs/responsive_ui_design.md): design notes for the responsive breakpoints
 - [`ai-docs/engine_gaps.md`](ai-docs/engine_gaps.md): catalogue of unmodeled competitive-multiplayer card mechanics and a phased plan to extend the engine
+- [`ai-docs/multiplayer_architecture.md`](ai-docs/multiplayer_architecture.md): design of the authoritative WebSocket server in [`server/`](server/)
 
 The `android/`, `ios/`, and `web/` folders are the main product targets. The desktop folders are standard Flutter scaffolding and are not the stated focus of the project right now.
 
@@ -169,7 +216,11 @@ layout by available width into `ScreenClass.mobile` / `tablet` / `desktop`
 desktop browsers and phones. Design notes:
 [`ai-docs/responsive_ui_design.md`](ai-docs/responsive_ui_design.md).
 
-## How The App Works
+## How The App Works (legacy deck-draw demo)
+
+> The sections below describe the legacy `DeckService` demo only. The active
+> Shards of Infinity engine is `GameService`; see [`CLAUDE.md`](CLAUDE.md) and
+> [`lib/services/CLAUDE.md`](lib/services/CLAUDE.md).
 
 ### State ownership
 
@@ -206,9 +257,9 @@ Market row:
 - `m4`: Treasure +2, cost 2, when played gain 2 money
 - `m5`: Scout, cost 3, when played draw 2 cards
 
-## Fast Onboarding Path
+## Fast Onboarding Path (legacy deck-draw demo)
 
-If you are new to the repo and want to get productive quickly:
+If you are new to the legacy demo and want to get productive quickly:
 
 1. Read the Quick Summary above.
 2. Read [`lib/services/deck_service.dart`](lib/services/deck_service.dart) to understand the game rules.
@@ -252,4 +303,7 @@ If you are new to the repo and want to get productive quickly:
 
 ## Current Architecture In One Sentence
 
-This is a test-backed Flutter prototype where a single screen drives an in-memory `DeckService` that manages deck, hand, played cards, discard pile, market cards, and effect-based card resolution.
+This is a Flutter implementation of Shards of Infinity whose pure-Dart
+`GameService` engine (31 effect types, 183-card JSON database) is reused both by
+the Flutter client and by an authoritative WebSocket server in [`server/`](server/)
+for networked multiplayer — alongside a retained legacy `DeckService` deck-draw demo.

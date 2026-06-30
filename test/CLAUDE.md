@@ -2,10 +2,28 @@
 
 Test suite covering game logic and UI behavior.
 
+## Totals
+
+- **493 engine tests** — run with `flutter test --exclude-tags golden` (what CI runs).
+- **8 golden screenshot tests** — tagged `golden`, run locally with plain `flutter test`.
+- **8 server tests** — the separate `server/` Dart package; run with
+  `cd server && dart test`. Cover state redaction (hidden hands / deck order),
+  action authorization (on-turn vs off-turn), and lobby flow (create / join / start).
+
+The bulk of the engine coverage is `test/services/game_service_test.dart`
+(the Shards of Infinity engine spec). The legacy `DeckService` demo tests below
+are a small subset.
+
 ## Files
 
+### data/
+- `card_database_test.dart`, `card_definitions_test.dart`, `effect_codec_test.dart`,
+  `starter_deck_test.dart` — card catalog + JSON database + codec coverage.
+- `game_state_codec_test.dart` — round-trips a full `GameService`/`PlayerState`
+  snapshot through `GameStateCodec` (the multiplayer serialization layer).
+
 ### services/deck_service_test.dart
-Unit tests for `DeckService` — the game rules layer. 13 tests covering:
+Unit tests for `DeckService` — the legacy demo rules layer. 13 tests covering:
 - Initialization (deck size, market row, empty state)
 - Drawing cards (single, batch, deck depletion, auto-reshuffle from discard)
 - Playing cards (move to played, money calculation, rejection of invalid ids)
@@ -44,7 +62,8 @@ Widget/integration tests that pump the full `DeckDrawApp` and interact via tap. 
 flutter test                              # all tests (incl. goldens) — run locally
 flutter test test/services/               # just service tests
 flutter test test/widget_test.dart         # just widget tests
-flutter test --exclude-tags golden        # what CI runs (skips goldens)
+flutter test --exclude-tags golden        # what CI runs (skips goldens) — 493 tests
+cd server && dart test                    # the 8 server tests (redaction / auth / lobby)
 ```
 
 ## Golden screenshot tests (the `golden` tag)

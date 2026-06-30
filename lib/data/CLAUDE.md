@@ -12,9 +12,19 @@ data/
 ├── card_art_map.dart       # Card name → asset image path mapping
 ├── starter_deck.dart       # 10-card starter deck builder
 └── database/
-    ├── card_database.dart   # CardDatabase + CardRecord, loads cards.json
-    └── effect_codec.dart    # JSON ⇄ CardEffect codec
+    ├── card_database.dart        # CardDatabase + CardRecord (PURE DART — server-reusable)
+    ├── card_database_asset.dart  # CardDatabaseAsset — Flutter-only rootBundle loader
+    ├── card_serialization.dart   # CardModel ⇄ JSON (used by GameStateCodec)
+    ├── game_state_codec.dart     # GameStateCodec — full GameService/PlayerState snapshot ⇄ JSON
+    └── effect_codec.dart         # JSON ⇄ CardEffect codec (+ activated-ability codec)
 ```
+
+`card_database.dart` is now **pure Dart** (no Flutter import) so the multiplayer
+server can reuse it; the Flutter asset loader was split out into
+`card_database_asset.dart`. `card_serialization.dart` and `game_state_codec.dart`
+support the [multiplayer server](../../ai-docs/multiplayer_architecture.md):
+they serialize a `CardModel` and a full `GameService` snapshot to/from JSON so
+game state can be sent over the wire.
 
 ## Card database (authoritative source)
 
