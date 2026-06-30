@@ -693,7 +693,7 @@ the engine shuffles the Destiny cards and deals six face-up into a shared
   cascade through the Destiny deck.
 
 The Destiny supply is built from the authoritative card DB via
-`buildDestinySupplyFromDatabase` (the `Destiny` / `DestinyDeck` groups, ~30 cards,
+`buildDestinySupplyFromDatabase` (the `Destiny` / `DestinyDeck` groups, 29 cards,
 one copy each — Destinies are unique) and is explicitly excluded from the market
 deck.
 

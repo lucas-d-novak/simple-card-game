@@ -1,6 +1,12 @@
 # Card Coverage Gap List
 
-_Auto-generated from `assets/card_db/cards.json`. Tracks cards still missing effect information or encoded effects._
+_Originally auto-generated from `assets/card_db/cards.json`. Tracks cards still missing effect information or encoded effects._
+
+> **Stale snapshot — see the live `COVERAGE.md`.** The per-card tables (sections A
+> and B) below are a historical snapshot and no longer match `cards.json`. The
+> live, regenerated coverage report is [`assets/card_db/COVERAGE.md`](../assets/card_db/COVERAGE.md)
+> (run `dart run tool/gen_coverage_readme.dart` to refresh it). Only the Summary
+> below has been re-synced to the current DB.
 
 ## Summary
 
@@ -8,12 +14,12 @@ _Auto-generated from `assets/card_db/cards.json`. Tracks cards still missing eff
 |--------|------:|
 | Total cards | 183 |
 | Art on disk | 183/183 |
-| Verified | 19 |
-| Encoded (playEffects present) | 73 |
-| **Missing effect INFO (no rawText)** | **89** |
-| **Encodable now (rawText, no playEffects)** | **22** |
+| Verified | 101 |
+| Encoded (playEffects present) | 88 |
+| **Missing effect INFO (no rawText)** | **0** |
+| **Encodable now (rawText, no playEffects)** | **95** |
 
-> **Art note:** all 183 art files exist on disk and are real (none are <3KB placeholders). The active gap is *effect information*, not art.
+> **Art note:** all 183 art files exist on disk and are real (none are <3KB placeholders). Every card now carries `rawText`, so the active gap is *encoding* (turning rawText into `playEffects`/`activatedAbility`), not effect-info hunting.
 
 ## A. Encodable now — has rawText, missing playEffects
 

@@ -77,7 +77,7 @@ cost-bucket formula and not the legacy hardcoded catalog:
   Aion-group supplies. Injected into `GameService` (constructor `marketDeck:`),
   which expands one card instance per copy in `_buildInfinityDeck()`.
 - `buildDestinySupplyFromDatabase(db)` → `List<CardModel>` — the SEPARATE Destiny
-  supply (~30 cards, the `Destiny` / `DestinyDeck` groups). One copy each (unique).
+  supply (29 cards, the `Destiny` / `DestinyDeck` groups). One copy each (unique).
   Injected via `GameService` constructor `destinySupply:`; the engine deals six
   face-up into `destinyRow` and the rest into the cascade `destinyDeck`. Never
   part of the market.

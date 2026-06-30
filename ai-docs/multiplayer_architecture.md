@@ -244,17 +244,21 @@ The full action set (each maps to the identically-named `GameService` method):
 | `resetChampion` | `championId` | `resetChampion` |
 | `recruitFromCenter` | `cardId`, `free`, `maxCost?`, `toHand?`, `toTopOfDeck?` | `recruitFromCenter` |
 | `fastPlayFromCenter` | `cardId`, `maxCost?`, `alliesOnly?` | `fastPlayFromCenter` |
+| `claimDestiny` | `cardId` | `claimDestiny` |
+| `useDestinyAbility` | `cardId` | `useDestinyAbility` |
+| `recruitRelic` | `cardId` | `recruitRelic` |
 
 (`scryReveal`/`centerDeckScryReveal` are *read* helpers, not state
 mutations — see deferred selection below.)
 
-> **Not yet wired to the protocol.** The engine has gained `claimDestiny`,
-> `useDestinyAbility`, `banishDestinyToCascade`, and `recruitRelic` (the Destiny
-> and Relics subsystems — see
-> [`shards_of_infinity_mechanics.md`](shards_of_infinity_mechanics.md) §25), but
-> `server/lib/protocol.dart` does not yet expose them as wire actions. They work
-> in the local Flutter client today; adding them is a localized addition to the
-> action `switch` plus the same auth gates.
+> **Implemented (Destiny + Relics now wired).** `claimDestiny`,
+> `useDestinyAbility`, and `recruitRelic` (the Destiny and Relics subsystems —
+> see [`shards_of_infinity_mechanics.md`](shards_of_infinity_mechanics.md) §25)
+> are now exposed as wire actions in `server/lib/protocol.dart` (rows above),
+> guarded by the same identity/turn/legality gates. The only Destiny method still
+> not on the wire is `banishDestinyToCascade` (the rare "cascade past unwanted
+> face-up Destinies" path); it works in the local Flutter client and is a
+> localized `switch` addition when needed.
 
 ### Authorization: the server's two gates
 
@@ -399,7 +403,7 @@ produces a per-recipient redacted view.** For recipient `p`, the filter is:
 |-------|---------------|
 | `p`'s own `hand` | **Full** — card ids, ordered. |
 | Opponents' `hand` | **Count only** (`handCount: 3`). No ids. |
-| `p`'s own `drawPile` | **Count only** — `p` must NOT know their own deck order either (otherwise scry/shuffle are meaningless and a cheating client predicts draws). Exception: an active *scry/reveal* reveals exactly the peeked top cards to `p`, delivered via the `selectionRequired` event ([§3](#3-action-protocol)), never in the broadcast snapshot. |
+| `p`'s own `drawPile` | **Contents shown, order hidden.** Ships `drawPileContents` — the recipient's own draw-pile card ids **sorted** (alphabetical), so `p` can browse *which* cards remain but learns **nothing** about draw order (the anti-scry rule is intact: sorting destroys the sequence). Plus `drawPileCount`. An active *scry/reveal* still reveals exactly the peeked top cards to `p` via the `selectionRequired` event ([§3](#3-action-protocol)), never in the broadcast snapshot. |
 | Opponents' `drawPile` | **Count only.** |
 | `infinityDeck` | **Count only.** Order is server-secret. `centerDeckScryReveal` reveals the single top card to the acting player only. |
 | `discardPile` (all players) | **Full** — discards are public in Shards. Ordered list of card ids. |
@@ -433,6 +437,18 @@ unredacted hand or deck order.
 > - **`focusedThisTurn`** / **`ignoresShieldThisTurn`** per-player flags, and
 >   **`playedThisTurn`** (public card ids), surfacing the Focus action and the
 >   played-this-turn zone added to the engine.
+> - **`actionLog`** — the recent tail (last ~80) of `GameService.actionLog`, the
+>   public play-by-play (`{turn, playerId?, message}` entries for play / recruit /
+>   attack / focus / destroy / turn / win events). The networked board's **Log**
+>   button opens a scrollable, newest-first sheet of these. It is public game
+>   state, so the same entries go to every recipient.
+> - **`drawPileContents`** (own draw pile, sorted A→Z — see the table above) and
+>   **`drawPileCount`**. The networked board's draw-pile tap lists the recipient's
+>   own remaining cards alphabetically; opponents still get count only.
+> - **`exhaustedDestinies`** — the ids of claimed Destiny cards the player has
+>   already used this turn, so the client's **Destiny ability tray**
+>   (`showDestinyTray`) can grey out spent Destinies. Claimed Destinies are public;
+>   their per-turn exhaustion is surfaced here.
 
 > **Anti-cheat note (expanded in [§8](#8-security--anti-cheat)):** redaction is
 > not a UI nicety, it is the primary anti-cheat. A modified client cannot reveal
@@ -645,8 +661,23 @@ abandonment ([§7](#7-reconnect--disconnect)).
 
 ### Persistence
 
-**SQLite on the Pi.** Low-budget, zero-ops, single-file, perfect for intermittent
-uptime. Tables:
+> **Implemented (JSON files, not SQLite).** Persistence ships in
+> [`server/lib/persistence.dart`](../server/lib/persistence.dart) as **one JSON
+> file per game** (`<dir>/<gameId>.json`) rather than the SQLite schema sketched
+> below. Rationale baked into the code: the project carries **no third-party
+> dependencies** and the engine *already* serializes a full game via
+> `GameStateCodec.encode/decode`, so a per-game JSON snapshot is the smallest
+> zero-native-dep thing that satisfies "survive restart." Each file holds the
+> `LobbyGame` metadata (id, name, host, seats, seat↔id map), status,
+> `stateVersion`, and the full `GameStateCodec` snapshot. Writes are **atomic**
+> (temp file + rename), one file per game (a corrupt single game is skippable on
+> load), and the store **degrades gracefully** to in-memory-only if the directory
+> is unwritable. On boot the lobby restores every persisted game so reconnecting
+> clients can resync. The SQLite design below remains the intended shape for the
+> always-on phase; the JSON store is the shipped Phase-1/2 implementation.
+
+**SQLite on the Pi (design target).** Low-budget, zero-ops, single-file, perfect
+for intermittent uptime. Tables:
 
 - `games(id, status, summary_json, created_at, updated_at)` — lobby summaries.
 - `game_state(game_id, state_version, snapshot_json, seed)` — the
@@ -963,7 +994,7 @@ broadcast **no** state (nothing changed).
 ## Appendix B — Why this is low-risk
 
 The risky part of a card game is the rules engine, and **it already exists, is
-tested (550 engine tests + 21 server tests), is deterministic, and is pure Dart.** This architecture adds
+tested (563 engine tests + 39 server tests), is deterministic, and is pure Dart.** This architecture adds
 exactly three new responsibilities around that proven core: (1) a courier
 (WebSocket + envelope), (2) a redaction filter (the security boundary), and (3) a
 lobby + store. None of them re-implement a single game rule. That separation is

@@ -4,13 +4,15 @@ Test suite covering game logic and UI behavior.
 
 ## Totals
 
-- **550 engine tests** — run with `flutter test --exclude-tags golden` (what CI runs).
+- **563 engine tests** — run with `flutter test --exclude-tags golden` (what CI runs).
 - **8 golden screenshot tests** — tagged `golden`, run locally with plain `flutter test`.
-- **21 server tests** — the separate `server/` Dart package; run with
-  `cd server && dart test`. Cover state redaction (hidden hands / deck order, plus
-  the `cards` dictionary shipped to clients), action authorization (on-turn vs
-  off-turn), same-turn server UNDO, reconnect / resync, custom game names, and
-  lobby flow (create / join / start).
+- **39 server tests** — the separate `server/` Dart package; run with
+  `cd server && dart test`. Cover state redaction (hidden hands / deck order; the
+  recipient's OWN draw-pile contents shipped SORTED — contents visible, order
+  hidden; the trailing `actionLog` tail; the `cards` dictionary shipped to
+  clients), action authorization (on-turn vs off-turn), same-turn server UNDO,
+  reconnect / resync, custom game names, JSON/SQLite persistence (games survive a
+  restart), and lobby flow (create / join / start).
 
 The bulk of the engine coverage is `test/services/game_service_test.dart`
 (the Shards of Infinity engine spec). The legacy `DeckService` demo tests below
@@ -68,8 +70,8 @@ Widget/integration tests that pump the full `DeckDrawApp` and interact via tap. 
 flutter test                              # all tests (incl. goldens) — run locally
 flutter test test/services/               # just service tests
 flutter test test/widget_test.dart         # just widget tests
-flutter test --exclude-tags golden        # what CI runs (skips goldens) — 550 tests
-cd server && dart test                    # the 21 server tests (redaction / auth / undo / reconnect / lobby)
+flutter test --exclude-tags golden        # what CI runs (skips goldens) — 563 tests
+cd server && dart test                    # the 39 server tests (redaction / auth / undo / reconnect / persistence / lobby)
 ```
 
 ## Golden screenshot tests (the `golden` tag)

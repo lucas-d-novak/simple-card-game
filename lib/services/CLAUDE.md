@@ -38,6 +38,11 @@ Map<String, CardModel>? relicCards, List<CardModel>? destinySupply})`
   draw pile); empty unless a `destinySupply` was injected
 - `removedFromGame` — banished/scrapped/mercenary cards
 - `currentPlayerIndex`, `turnNumber`, `isGameOver`, `winnerId`
+- `actionLog` — `List<GameLogEntry>` (`{turn, playerId?, message}`) of public game
+  events (play / recruit / attack / focus / destroy / turn change / win), appended
+  by the internal `_log()` helper and bounded (oldest trimmed). Serialized by
+  `GameStateCodec` and shipped (recent tail) to clients in `server/lib/views.dart`
+  `redactFor` for the board's **Log** sheet.
 
 **Key methods:**
 
@@ -58,9 +63,10 @@ Map<String, CardModel>? relicCards, List<CardModel>? destinySupply})`
 | `useActivatedAbility(championId)` | Use a champion's Exhaust-gated `activatedAbility` (a SEPARATE action from `activateChampion`). Validates the champion is in play, has an ability, is not already exhausted, and the cost is payable; then pays the cost, resolves the ability effects, and marks it exhausted (`PlayerState.exhaustedChampions`). Returns false (no state change) on any failure. Exhaust clears at the owner's next turn (cleared in `resetTurnResources`). |
 | `focus()` | **Character Focus** action — spend 1 gem to gain 1 mastery, once per turn (`PlayerState.focusedThisTurn`). Returns false if already focused this turn or short on gems. |
 | `claimDestiny(cardId)` | Claim a face-up Destiny from the shared `destinyRow` for the current player (FREE, at Mastery 5+). Moves it into `PlayerState.claimedDestinies`. The row is NOT auto-refilled. |
-| `useDestinyAbility(cardId)` | Use a claimed Destiny's per-turn ability. |
 | `banishDestinyToCascade(...)` | Banish a claimed Destiny to reveal `revealCount` (default 2) cascade Destinies from `destinyDeck` face-up into `destinyRow`. |
+| `useDestinyAbility(cardId)` / `canUseDestinyAbility(cardId)` | Use (or test, without mutating) a claimed Destiny's per-turn ability; tracked by `PlayerState.exhaustedDestinies`. Drives the UI Destiny tray. |
 | `recruitRelic(cardId)` | At Mastery 10, recruit ONE of the Character's two set-aside `relicOptions`; the other is banished and the chosen relic is shuffled into the draw pile. |
+| `conditionsSatisfied(card)` | True when a card's `ConditionalEffect` predicate currently holds for the active player. Pure read-only; drives the **conditional glow** (hand + market) in the UI. The networked board mirrors it client-side over the redacted state via `redacted_condition_evaluator.dart`. |
 
 **Effect resolution:** `_resolveEffects()` handles all 31 CardEffect subtypes (the full Engine Phase 2 vocabulary) via exhaustive switch. Scaling/conditional effects (`ScalingResourceEffect`, the `ConditionalEffect` wrapper, and the legacy `ConditionalPowerEffect`) read per-turn state from `PlayerState.cardsPlayedThisTurn` — a list of cards played this turn, appended in `playCard()` (and `fastPlayFromCenter()`) and cleared each turn. Deferred-selection effects (banish/destroy/return/recruit/fastPlay/scry/copy/tuck/reset) resolve to a no-op here and expose a public `GameService` method the UI/AI calls after the player selects a target.
 

@@ -13,10 +13,13 @@ ui/
 │   ├── network_lobby_screen.dart   # Create/join multiplayer game
 │   ├── online_lobby_screen.dart    # Multi-game lobby (auto-enter recent, back-to-lobby)
 │   ├── network_auto_screen.dart    # Auto-connect/reconnect entry
+│   ├── about_screen.dart           # Fan-made / non-commercial credits page
 │   └── home_screen.dart            # Legacy demo screen
 ├── widgets/
-│   ├── game_card_widget.dart       # Styled card with faction colors, art, badges
+│   ├── game_card_widget.dart       # Styled card with faction colors, art, badges, conditional glow
 │   ├── card_detail_modal.dart      # Zoom modal w/ context action (Recruit/Play/Activate/Exhaust)
+│   ├── choice_modal.dart           # Shared modal for ChooseOne / Destiny / Relic picks
+│   ├── destiny_tray.dart           # Tray of claimed Destinies with Use actions (showDestinyTray)
 │   ├── card_fan.dart               # Fan-of-cards hand display
 │   ├── card_art.dart               # Procedural canvas art (faction patterns) fallback
 │   ├── scrollable_board.dart       # Landscape scrollable board container
@@ -76,6 +79,18 @@ Opponent plays are visible on the networked board. The board is wrapped in a
 landscape `ScrollableBoard` (`widgets/scrollable_board.dart`) so wide layouts
 scroll rather than overflow.
 
+### Networked board extras (`network_game_screen.dart`)
+
+- **Log** button → a scrollable, newest-first sheet of the game's public action
+  log (the `actionLog` tail shipped by the server's `redactFor`).
+- **Draw-pile viewer** — tapping your own draw pile lists its contents **A→Z**
+  (the server ships your own `drawPileContents` SORTED — contents visible, ORDER
+  hidden, so the anti-scry rule holds; opponents' piles still show a count only).
+- **Destinies** button (by Focus) → opens the **Destiny tray**
+  (`destiny_tray.dart`, `showDestinyTray`): your claimed Destinies, each with a
+  **Use** action gated by `GameService.canUseDestinyAbility` (the server ships
+  `exhaustedDestinies` so used ones are disabled).
+
 ## Card widget features
 
 - Faction-colored header bar with card name and cost badge
@@ -85,6 +100,12 @@ scroll rather than overflow.
   cards without art still show effect descriptions in the info area
 - Badges: shield value, GUARD, MERC, faction abbreviation
 - Gold glow highlight when selected or affordable
+- **Conditional glow** — an amber glow on hand/market cards whose
+  `ConditionalEffect` predicate currently holds (the `conditionsMet` flag). The
+  caller computes it from the engine's `GameService.conditionsSatisfied(card)`
+  locally, or — on the networked board — from
+  [`redacted_condition_evaluator.dart`](../services/redacted_condition_evaluator.dart),
+  a client-side mirror that evaluates conditions over the redacted state.
 - Long-press opens the full zoom modal (`card_detail_modal.dart`)
 - AnimatedScale on just-played cards in play area
 
@@ -111,6 +132,12 @@ use procedural glyphs (the old stock-photo placeholders were replaced).
 - **Scrap dialog** — list of center row cards to remove
 - **Attack target dialog** — choose opponent in 3-4 player games
 - **AI thinking overlay** — "AI is thinking..." indicator during AI turns
+- **About page** (`screens/about_screen.dart`) — fan-made / non-commercial /
+  own-the-physical-game notice, crediting Stone Blade Entertainment and Ultra PRO,
+  with a "Made with care by slowfadegold.com" footer. Reached via the **ABOUT**
+  button on the setup screen (`ValueKey('aboutButton')`) or the `?about=1` URL.
+- **Destiny tray** (`widgets/destiny_tray.dart`, `showDestinyTray`) — the claimed
+  Destinies sheet with per-Destiny **Use** actions (see networked-board extras).
 
 ## Resource bar
 

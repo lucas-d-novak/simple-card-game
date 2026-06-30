@@ -68,10 +68,11 @@ Used for ally ability matching and visual theming (colors, art patterns).
 - `exhaustedChampions` — champion ids tapped this turn by their Exhaust-gated `activatedAbility` (independent of `activatedChampions`); both clear in `resetTurnResources()`
 - `focusedThisTurn` (bool) — true once the player has used the **Character Focus** action this turn (`GameService.focus()` — spend a gem to gain mastery, once per turn); cleared in `resetTurnResources()`
 - `claimedDestinies` (List\<CardModel\>) — Destinies this player has claimed from the shared Destiny row (a persistent per-player zone; NOT reset between turns)
+- `exhaustedDestinies` (Set\<String\>) — ids of claimed Destinies whose per-turn ability has been used this turn (`GameService.useDestinyAbility`); cleared in `resetTurnResources()`
 - `relicOptions` (List\<CardModel\>) — the Character's set-aside relic choices, available to recruit once (see `GameService.recruitRelic` and `lib/data/character_relics.dart`)
 - `isEliminated` — true when health <= 0
 - `cleanupTurn()` — moves regular cards to discard, returns mercenaries for removal
-- `resetTurnResources()` — zeros gem and power pools, clears `focusedThisTurn`, `activatedChampions`, `exhaustedChampions`
+- `resetTurnResources()` — zeros gem and power pools, clears `focusedThisTurn`, `activatedChampions`, `exhaustedChampions`, `exhaustedDestinies`
 
 ## Extending
 To add a new card effect: add a `final class` extending `CardEffect` in `card_effect.dart`, then handle the new case in `GameService._resolveEffects()` and `DeckService._applyCardEffects()`.

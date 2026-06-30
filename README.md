@@ -13,14 +13,17 @@ Shards of Infinity orchestrator implementing multiplayer turns, all **31**
 Character Focus action (gem→mastery), the Destiny system, Relics, and the
 Infinity Shard win condition. Card identity comes from a JSON card database
 ([`assets/card_db/cards.json`](assets/card_db/cards.json), **183 cards**; 101 of
-the 145 in-scope cards verified so far). The live market (96 in-scope cards) and
-the separate Destiny supply (30 cards) are built from that database via
+the 142 in-scope cards verified so far). The live market (96 in-scope cards) and
+the separate Destiny supply (29 cards) are built from that database via
 [`lib/data/market_deck.dart`](lib/data/market_deck.dart).
 
 The game also has **networked multiplayer**: an authoritative Dart WebSocket
 server in [`server/`](server/) reuses the same engine to run shared LAN games,
-with same-turn server-authoritative undo, reconnect/resync, and a multi-game
-lobby with custom game names. Phase 0/1 works end-to-end. See the design doc in
+with same-turn server-authoritative undo, reconnect/resync, a multi-game lobby
+with custom game names, and JSON/SQLite persistence so in-progress games survive
+a server restart. Each redacted view ships a shared **action log** (recent tail)
+and the recipient's own draw-pile **contents** (sorted, order hidden). Phase 0/1
+works end-to-end. See the design doc in
 [`ai-docs/multiplayer_architecture.md`](ai-docs/multiplayer_architecture.md).
 
 A legacy single-player **deck-draw demo** also still ships:
@@ -123,6 +126,8 @@ flutter test test/screenshot_test.dart --update-goldens
 - Ally abilities (same-faction trigger), mastery thresholds, banish/scrap
 - Infinity Shard scaling + instant win at mastery 30+
 - Combat, elimination, and game-over detection
+- Bounded **action log** (`GameService.actionLog` / `GameLogEntry`) recording public
+  events (play / recruit / attack / focus / destroy / turn / win)
 - JSON card database (183 cards) loaded via `CardDatabase`
 - Heuristic AI opponent for solo play
 
@@ -133,7 +138,14 @@ flutter test test/screenshot_test.dart --update-goldens
   including an id→`CardModel` `cards` dictionary so clients render exact engine cards
 - Same-turn server-authoritative **undo**, reconnect/resync, and a multi-game
   lobby with custom game names + per-game rejoin
+- JSON/SQLite persistence ([`server/lib/persistence.dart`](server/lib/persistence.dart)) — games survive a restart
+- Per-view **action log** (shared event tail) and the recipient's own draw-pile
+  **contents** (sorted A→Z; order hidden to preserve the anti-scry rule)
 - Opponent plays are visible on the networked board
+- Networked board: a **Log** button opens a newest-first event sheet; tapping the
+  draw pile lists your own cards A→Z; a **Destinies** tray ([`destiny_tray.dart`](lib/ui/widgets/destiny_tray.dart))
+  lets you Use claimed Destinies; cards whose conditional effect currently holds
+  get an amber **conditional glow** (via [`redacted_condition_evaluator.dart`](lib/services/redacted_condition_evaluator.dart))
 
 ### UI
 
@@ -141,8 +153,13 @@ flutter test test/screenshot_test.dart --update-goldens
   with context actions (Recruit / Play / Activate / Exhaust); drag-to-play (long-press)
 - Local per-turn **undo** (via `GameStateCodec`)
 - Minimal on-card text (full text in the zoom modal; suppressed when a card has real art)
+- Conditional **glow**: cards whose `ConditionalEffect` currently holds get an amber
+  glow in hand + market (`GameService.conditionsSatisfied`; `GameCardWidget.conditionsMet`)
 - Landscape `ScrollableBoard` ([`scrollable_board.dart`](lib/ui/widgets/scrollable_board.dart))
   + web PWA meta ([`web/manifest.json`](web/manifest.json))
+- Fan-made **About page** ([`about_screen.dart`](lib/ui/screens/about_screen.dart)) —
+  non-commercial credits to Stone Blade / Ultra PRO; reachable via an ABOUT button on
+  the setup screen and `?about=1`
 
 ### Legacy deck-draw demo (`DeckService`)
 
@@ -161,7 +178,7 @@ flutter test test/screenshot_test.dart --update-goldens
 - [`lib/models/card_effect.dart`](lib/models/card_effect.dart): the 31 card effect types
 - [`lib/models/card_model.dart`](lib/models/card_model.dart): card data model (incl. `art`)
 - [`lib/data/database/`](lib/data/CLAUDE.md): JSON card database loader + codecs
-- [`lib/data/market_deck.dart`](lib/data/market_deck.dart): builds the live market (96) + Destiny supply (30) from the DB
+- [`lib/data/market_deck.dart`](lib/data/market_deck.dart): builds the live market (96) + Destiny supply (29) from the DB
 - [`lib/ui/screens/game_screen.dart`](lib/ui/screens/game_screen.dart): main game board (local undo, zoom modal)
 - [`server/`](server/): authoritative multiplayer WebSocket server
 - [`lib/services/deck_service.dart`](lib/services/deck_service.dart): legacy deck-draw demo
@@ -169,10 +186,10 @@ flutter test test/screenshot_test.dart --update-goldens
 
 ### Tests
 
-The Flutter suite has **550 engine tests** (run with `flutter test --exclude-tags golden`)
+The Flutter suite has **563 engine tests** (run with `flutter test --exclude-tags golden`)
 plus **8 golden screenshot tests** (run locally with plain `flutter test`). The
-server package has **21 server tests** (`cd server && dart test`) covering state
-redaction, action authorization, lobby flow, undo, and reconnect/resync. Highlights:
+server package has **39 server tests** (`cd server && dart test`) covering state
+redaction, action authorization, lobby flow, undo, reconnect/resync, and persistence. Highlights:
 
 - [`test/services/game_service_test.dart`](test/services/game_service_test.dart): the engine spec — effects, combat, champions, mastery, win conditions
 - [`test/data/`](test/data/): card database, effect codec, and `game_state_codec` serialization tests
@@ -195,7 +212,7 @@ The `android/`, `ios/`, and `web/` folders are the main product targets. The des
 The authoritative source of card data is the JSON database in
 [`assets/card_db/`](assets/card_db/README.md):
 
-- [`cards.json`](assets/card_db/cards.json) — the 183-card database, one entry per unique card.
+- [`cards.json`](assets/card_db/cards.json) — the 183-card database (142 in-scope, 101 verified; 41 out-of-scope co-op/boss), one entry per unique card.
 - [`schema.json`](assets/card_db/schema.json) — the per-field contract (`set`, `faction`, `group`, `cardType`, `cost`, `playEffects`, `art`, `verified`, and more).
 - [`README.md`](assets/card_db/README.md) — the data-entry workflow (phone photos + OCR → structured fields).
 
