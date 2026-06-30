@@ -4,7 +4,8 @@
 
 This repo is a Flutter implementation of the **Shards of Infinity** deck-building
 card game, targeting Windows, iOS, Android, and web. See
-[`CLAUDE.md`](CLAUDE.md) for the full architecture overview.
+[`CLAUDE.md`](CLAUDE.md) for the full architecture overview and
+[`ROADMAP.md`](ROADMAP.md) for deferred / future enhancements.
 
 The real game engine is `GameService`
 ([`lib/services/game_service.dart`](lib/services/game_service.dart)) — a pure-Dart
