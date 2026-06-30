@@ -6,9 +6,20 @@ import 'package:simple_card_game/services/game_service.dart';
 import 'package:simple_card_game/ui/screens/game_screen.dart';
 import 'package:simple_card_game/ui/screens/game_setup_screen.dart';
 import 'package:simple_card_game/ui/screens/home_screen.dart';
+import 'package:simple_card_game/ui/screens/network_lobby_screen.dart';
 import 'package:simple_card_game/ui/screens/online_lobby_screen.dart';
 import 'package:simple_card_game/ui/theme/animation_timing.dart';
 import 'package:simple_card_game/ui/theme/game_theme.dart';
+
+/// Derive a default WebSocket server URL. An explicit `?server=` wins; otherwise
+/// reuse the host the web build was loaded from (so a device that opened
+/// http://<lan-ip>:8123 targets ws://<lan-ip>:8080), falling back to localhost.
+String _defaultServerUrl(String? explicit) {
+  if (explicit != null && explicit.isNotEmpty) return explicit;
+  final host = Uri.base.host;
+  if (host.isEmpty || host == 'localhost') return 'ws://localhost:8080';
+  return 'ws://$host:8080';
+}
 
 void main() {
   runApp(const ShardsOfInfinityApp());
@@ -33,6 +44,9 @@ class ShardsOfInfinityApp extends StatelessWidget {
       );
     } else if (params.containsKey('lobby')) {
       home = const OnlineLobbyScreen();
+    } else if (params.containsKey('online')) {
+      // Live networked lobby (the real client net layer).
+      home = NetworkLobbyScreen(defaultUrl: _defaultServerUrl(params['server']));
     } else {
       home = const GameSetupScreen();
     }
