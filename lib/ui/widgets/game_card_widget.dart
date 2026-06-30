@@ -171,11 +171,14 @@ class GameCardWidget extends StatelessWidget {
               ),
 
               // ---- Rules text (lower box) ------------------------------
-              // Only large (zoomed) cards render the multi-line rules text. On
-              // small board cards the text was cramped / cut off / wrapped
-              // vertically, so it's suppressed here and shown only in the zoom
-              // modal (which renders this widget at a large width).
-              if (cardWidth >= rulesTextMinWidth)
+              // The widget only overlays its OWN rules text for cards that fall
+              // back to PROCEDURAL art (no real art asset). Real painted card art
+              // — whether from the DB `art` field or the name→file art map —
+              // already has the rules printed on the face, so overlaying widget
+              // text would double-print and look cramped. And even for
+              // procedural cards, only render the text when the card is large
+              // enough to read it (the zoom modal).
+              if (!_hasArtAsset(card) && cardWidth >= rulesTextMinWidth)
                 Positioned(
                   left: 4 * scale,
                   right: (22 * scale).clamp(16.0, 30.0) + 4 * scale,
@@ -275,6 +278,15 @@ int? _primaryValue(CardModel card) {
 /// which has empty [CardModel.playEffects]) therefore still render their ability
 /// text instead of a blank info area. Compact cards show one line; full cards
 /// up to three.
+/// Whether [card] resolves to a real painted art asset (DB `art` field or the
+/// name→file art map) rather than procedural art. Mirrors `_CardArtArea`'s
+/// resolution. When true, the painted art already shows the card's rules, so the
+/// widget must not overlay its own (double-printed, cramped) rules text.
+bool _hasArtAsset(CardModel card) {
+  if (card.art != null && card.art!.isNotEmpty) return true;
+  return getCardArtAsset(card.name) != null;
+}
+
 List<String> _rulesLines(CardModel card, bool compact) {
   final lines = [for (final e in card.playEffects) e.description];
 
