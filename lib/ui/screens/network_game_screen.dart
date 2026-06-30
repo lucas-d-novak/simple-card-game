@@ -108,6 +108,103 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
     _flash('Dealt $power to ${opponent.name}');
   }
 
+  // ---- pile viewers -------------------------------------------------------
+
+  /// Show the recipient's discard pile — public info, so full card content.
+  void _showDiscard(_PlayerView me) {
+    final cards = [for (final id in me.discard) _card(id)];
+    _showPileSheet(
+      title: 'Your discard pile (${cards.length})',
+      cards: cards,
+      emptyNote: 'Your discard pile is empty.',
+    );
+  }
+
+  /// Show the draw pile. The server NEVER sends draw-pile order or contents
+  /// (a deliberate anti-scry/shuffle-exploit rule), so we can only show the
+  /// count and explain why the cards aren't listed.
+  void _showDrawPile(_PlayerView me) {
+    _showPileSheet(
+      title: 'Your draw pile (${me.drawPileCount})',
+      cards: const [],
+      emptyNote: 'Draw-pile order is hidden — even from you — so shuffles and '
+          'scry effects stay fair. ${me.drawPileCount} card'
+          '${me.drawPileCount == 1 ? '' : 's'} remaining.',
+    );
+  }
+
+  void _showPileSheet({
+    required String title,
+    required List<CardModel> cards,
+    required String emptyNote,
+  }) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF0E2236),
+      isScrollControlled: true,
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: BoardChrome.goldText,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (cards.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Text(
+                      emptyNote,
+                      style: const TextStyle(
+                          color: Colors.white60, fontSize: 13, height: 1.3),
+                    ),
+                  )
+                else
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.of(ctx).size.height * 0.55,
+                    ),
+                    child: SingleChildScrollView(
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final c in cards)
+                            GameCardWidget(
+                              key: ValueKey('pile_${c.id}'),
+                              card: c,
+                              width: 96,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    child: const Text('CLOSE',
+                        style: TextStyle(color: Color(0xFF5FD0E6))),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final client = widget.client;
@@ -219,6 +316,8 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
               ? () => _onAttackPlayer(opponent, me.powerPool)
               : null,
           hasGuards: opponentHasGuard,
+          onTapDraw: () => _showDrawPile(me),
+          onTapDiscard: () => _showDiscard(me),
         ),
       ],
     );
@@ -299,7 +398,7 @@ class _PlayerView {
     required this.hand,
     required this.handCount,
     required this.drawPileCount,
-    required this.discardCount,
+    required this.discard,
     required this.champions,
     required this.playedThisTurn,
   });
@@ -318,7 +417,10 @@ class _PlayerView {
   /// Card count — always available, even when [hand] is hidden.
   final int handCount;
   final int drawPileCount;
-  final int discardCount;
+
+  /// Discard pile card ids — public info (discards are face-up).
+  final List<String> discard;
+  int get discardCount => discard.length;
   final List<_ChampionView> champions;
   final List<String> playedThisTurn;
 
@@ -335,7 +437,7 @@ class _PlayerView {
       hand: hand,
       handCount: (p['handCount'] as int?) ?? hand.length,
       drawPileCount: (p['drawPileCount'] as int?) ?? 0,
-      discardCount: (p['discardPile'] as List?)?.length ?? 0,
+      discard: (p['discardPile'] as List?)?.cast<String>() ?? const <String>[],
       champions: [
         for (final c in (p['championsInPlay'] as List? ?? const []).cast<Map>())
           _ChampionView.parse(c),
@@ -758,6 +860,8 @@ class _NetworkBottomZone extends StatelessWidget {
     required this.onPlayAll,
     required this.onAttack,
     required this.hasGuards,
+    required this.onTapDraw,
+    required this.onTapDiscard,
   });
 
   final _PlayerView me;
@@ -769,6 +873,8 @@ class _NetworkBottomZone extends StatelessWidget {
   final VoidCallback? onPlayAll;
   final VoidCallback? onAttack;
   final bool hasGuards;
+  final VoidCallback onTapDraw;
+  final VoidCallback onTapDiscard;
 
   @override
   Widget build(BuildContext context) {
@@ -834,7 +940,11 @@ class _NetworkBottomZone extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 4),
-              _PileHex(count: me.drawPileCount, style: _PileStyle.draw),
+              _PileHex(
+                count: me.drawPileCount,
+                style: _PileStyle.draw,
+                onTap: onTapDraw,
+              ),
             ],
           ),
           const SizedBox(width: 8),
@@ -887,7 +997,11 @@ class _NetworkBottomZone extends StatelessWidget {
                 radius: 16,
               ),
               const SizedBox(height: 4),
-              _PileHex(count: me.discardCount, style: _PileStyle.discard),
+              _PileHex(
+                count: me.discardCount,
+                style: _PileStyle.discard,
+                onTap: onTapDiscard,
+              ),
             ],
           ),
         ],
@@ -899,9 +1013,10 @@ class _NetworkBottomZone extends StatelessWidget {
 enum _PileStyle { draw, discard }
 
 class _PileHex extends StatelessWidget {
-  const _PileHex({required this.count, required this.style});
+  const _PileHex({required this.count, required this.style, this.onTap});
   final int count;
   final _PileStyle style;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -909,29 +1024,44 @@ class _PileHex extends StatelessWidget {
     final colors = isDraw
         ? const [Color(0xFF2FA85B), Color(0xFF16622F)]
         : const [Color(0xFF9A4A2E), Color(0xFF5A2415)];
-    return Container(
-      width: 44,
-      height: 52,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: colors,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 44,
+        height: 52,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: colors,
+          ),
+          borderRadius: BorderRadius.circular(8),
+          border:
+              Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5),
+          boxShadow: const [
+            BoxShadow(color: Colors.black45, blurRadius: 4, offset: Offset(0, 2)),
+          ],
         ),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5),
-        boxShadow: const [
-          BoxShadow(color: Colors.black45, blurRadius: 4, offset: Offset(0, 2)),
-        ],
-      ),
-      child: Text(
-        '$count',
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-          shadows: [Shadow(color: Colors.black54, blurRadius: 2)],
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              '$count',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                shadows: [Shadow(color: Colors.black54, blurRadius: 2)],
+              ),
+            ),
+            // A tiny affordance hint that the pile is tappable.
+            Icon(
+              isDraw ? Icons.style : Icons.layers,
+              size: 11,
+              color: Colors.white.withValues(alpha: 0.7),
+            ),
+          ],
         ),
       ),
     );
