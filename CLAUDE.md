@@ -1,6 +1,6 @@
 # Shards of Infinity — Digital Card Game
 
-A Flutter implementation of the Shards of Infinity deck-building card game. Targets Windows, iOS, Android, and web. All game logic runs locally in memory — no backend or persistence yet.
+A Flutter implementation of the Shards of Infinity deck-building card game. Targets Windows, iOS, Android, and web. The Flutter client runs the full game engine locally; an **authoritative Dart server** (`server/`) reuses that same engine for networked cross-device multiplayer (Phase 0/1 working — see [`ai-docs/multiplayer_architecture.md`](ai-docs/multiplayer_architecture.md)).
 
 ## Project goal
 
@@ -10,10 +10,14 @@ Build a playable digital version of Shards of Infinity with all core mechanics: 
 
 ```bash
 flutter pub get              # install dependencies
-flutter test                 # run all tests (198 tests)
+flutter test                 # run all tests (493 + 8 goldens)
 flutter run -d windows       # run on Windows
 flutter run -d chrome        # run in browser
 flutter analyze              # static analysis
+
+# Multiplayer server (pure Dart, reuses the engine):
+cd server && dart pub get && dart test       # 8 server tests
+cd server && dart run bin/server.dart 8080   # run the WebSocket server
 ```
 
 ## Flutter version
@@ -27,9 +31,9 @@ Pinned to **Flutter 3.41.5** (installed at `C:/Users/rldun/code/flutter/`). CI e
 
 ## Architecture
 
-Two-layer architecture:
 - **DeckService** (legacy) — single-player deck demo, kept intact for backward compatibility
-- **GameService** (new) — full Shards of Infinity orchestrator with multiplayer turn structure
+- **GameService** (core engine) — full Shards of Infinity orchestrator with multiplayer turn structure. **Pure Dart** (no Flutter imports) so it runs identically in the Flutter client and the server.
+- **`server/`** (authoritative multiplayer) — a `dart:io` WebSocket server that depends on the engine package via `path: ../` and reuses the exact rules code. Clients send actions; the server validates + applies + broadcasts each player a redacted view (hidden-info filter). See [`ai-docs/multiplayer_architecture.md`](ai-docs/multiplayer_architecture.md).
 
 ```
 lib/
@@ -39,11 +43,14 @@ lib/
 │   ├── card_art_map.dart               # Card name → asset image path mapping
 │   ├── starter_deck.dart               # 10-card starter deck builder
 │   └── database/                       # JSON-backed authoritative card DB
-│       ├── card_database.dart          # CardDatabase + CardRecord (loads cards.json)
-│       └── effect_codec.dart           # JSON ⇄ CardEffect codec
+│       ├── card_database.dart          # CardDatabase + CardRecord (PURE DART — server-reusable)
+│       ├── card_database_asset.dart    # Flutter-only rootBundle loader (CardDatabaseAsset.load)
+│       ├── effect_codec.dart           # JSON ⇄ CardEffect codec
+│       ├── card_serialization.dart     # CardModel ⇄ JSON (multiplayer)
+│       └── game_state_codec.dart       # GameStateCodec: full GameService/PlayerState snapshot ⇄ JSON
 ├── models/
 │   ├── card_model.dart                 # CardModel with faction, type, shield, guard, etc.
-│   ├── card_effect.dart                # Sealed class hierarchy (14 effect types)
+│   ├── card_effect.dart                # Sealed class hierarchy (31 effect types)
 │   ├── card_type.dart                  # regular | champion | mercenary
 │   ├── faction.dart                    # homodeus | wraethe | order | undergrowth | none
 │   └── player_state.dart              # Per-player mutable state (HP, mastery, zones)
@@ -57,16 +64,26 @@ lib/
     │   ├── game_screen.dart            # Main game board (market, hand, play area)
     │   └── home_screen.dart            # Legacy demo screen
     ├── widgets/
-    │   ├── game_card_widget.dart        # Styled card with faction colors & badges
-    │   ├── card_fan.dart                # Fan-of-cards hand display
-    │   ├── card_art.dart                # Procedural card art (faction patterns)
+    │   ├── game_card_widget.dart        # Faction-framed card (official-client anatomy)
+    │   ├── card_fan.dart                # Hand row display
+    │   ├── card_art.dart                # Procedural card art (faction patterns) fallback
+    │   ├── resource_icons.dart          # Custom-painted gem/power/mastery/health/shield icons
+    │   ├── beveled_button.dart          # Beveled-teal chrome buttons
     │   ├── resource_bar.dart            # Health/mastery/gems/power display
     │   └── playing_card_widget.dart     # Legacy card widget
     └── theme/
         ├── game_theme.dart              # Dark board theme
+        ├── board_chrome.dart            # Board background + chrome palette/painters
         ├── faction_colors.dart          # Faction color palettes
         ├── animation_timing.dart        # 3-speed animation system (slow/fast/instant)
         └── responsive.dart              # Screen-class breakpoints & sizing helpers
+
+server/                                  # Authoritative multiplayer (pure-Dart, reuses lib/)
+├── bin/server.dart                      # dart:io WebSocket entrypoint
+├── lib/views.dart                       # redactFor() — per-player hidden-info filter
+├── lib/protocol.dart                    # applyAction() — actions → GameService + auth gates
+├── lib/game_session.dart               # one GameService + lobby↔seat id mapping
+└── lib/lobby.dart                       # in-memory create/join/auto-start
 ```
 
 ## Subsystems
@@ -131,7 +148,11 @@ lib/
 | Mastery progress indicator (bar to 30) | Done | `resource_bar.dart` |
 | Rematch flow (game over → replay) | Done | `game_screen.dart` |
 | Card play animations (scale + highlight) | Done | `game_screen.dart` |
-| Full card catalog (55 unique cards) | Done | `card_definitions.dart` |
+| Legacy demo catalog (55 unique cards) | Done | `card_definitions.dart` |
+| Authoritative card DB (183 cards, 101/145 in-scope verified) | In progress | `assets/card_db/cards.json` |
+| Engine Phase 2 + 3 (31 effect types) | Done | `card_effect.dart`, `game_service.dart` |
+| Game-state serialization (multiplayer snapshot) | Done | `game_state_codec.dart` |
+| Authoritative multiplayer server (Phase 0/1) | Done | `server/` |
 
 ## Factions
 
@@ -145,18 +166,21 @@ lib/
 ## Testing
 
 ```bash
-flutter test                              # all 198 tests
+flutter test                              # all tests (493 + 8 goldens)
+flutter test --exclude-tags golden        # what CI runs (493)
 flutter test test/services/               # game service + deck service + AI tests
-flutter test test/data/                   # card definition + starter deck tests
+flutter test test/data/                   # card db, codecs, serialization, starter deck
 flutter test test/models/                 # model-level tests
 flutter test test/widget_test.dart        # legacy widget tests
 flutter test test/screenshot_test.dart --update-goldens  # regenerate screenshots
 bash scripts/generate_report.sh           # generate visual QA report (HTML)
+cd server && dart test                    # 8 server tests (redaction + auth + lobby)
 ```
 
-- **198 total tests** across game mechanics, models, data, AI, and widgets
+- **493 engine tests** (+ 8 goldens, + 8 server tests) across game mechanics,
+  models, data, codecs/serialization, AI, widgets, and the multiplayer server
 - Tests use deterministic `Random` injection (`Random(7)`, `ZeroRandom`)
-- Game service tests cover: initialization, effects, buying, turn cycling, champions, guard, ally abilities, mastery thresholds, banish/scrap, infinity shard scaling, combat, win conditions, and integration scenarios
+- Game service tests cover: initialization, all 31 effect types, buying, turn cycling, champions, guard, ally abilities, mastery thresholds (additive + replace), banish/scrap, infinity shard scaling, combat, win conditions, Phase 2/3 board conditions, and integration scenarios. Serialization tests round-trip a full mid-game snapshot. Server tests assert hidden-info redaction + action authorization.
 
 ## CI
 
@@ -172,11 +196,12 @@ See [`test/CLAUDE.md`](test/CLAUDE.md).
 ## Key files to read first
 
 1. `lib/services/game_service.dart` — all game mechanics (the brain)
-2. `lib/models/card_effect.dart` — sealed effect hierarchy (the vocabulary)
-3. `lib/data/card_definitions.dart` — 55 unique cards, full catalog (the content)
+2. `lib/models/card_effect.dart` — sealed effect hierarchy, 31 types (the vocabulary)
+3. `assets/card_db/cards.json` — authoritative 183-card DB (the content; 101/145 in-scope verified). Legacy `lib/data/card_definitions.dart` (55 cards) still drives the live demo.
 4. `test/services/game_service_test.dart` — mechanic tests (the spec)
 5. `lib/ui/screens/game_screen.dart` — game board UI
 6. `lib/services/ai_service.dart` — AI opponent logic
+7. `server/` + `ai-docs/multiplayer_architecture.md` — authoritative multiplayer
 
 ## Research docs
 
@@ -190,6 +215,9 @@ Cross-referenced. The mechanics doc is source of truth for game rules.
 - [`ai-docs/animation_system_design.md`](ai-docs/animation_system_design.md) — Design (5 iterations) behind the 3-speed animation system (`lib/ui/theme/animation_timing.dart`).
 - [`ai-docs/responsive_ui_design.md`](ai-docs/responsive_ui_design.md) — Design (5 iterations) behind the responsive breakpoints (`lib/ui/theme/responsive.dart`).
 - [`ai-docs/engine_gaps.md`](ai-docs/engine_gaps.md) — Catalogue of unmodeled competitive-multiplayer card mechanics the current `CardEffect` vocabulary can't express, plus a phased plan to extend the engine.
+- [`ai-docs/engine_phase2_plan.md`](ai-docs/engine_phase2_plan.md) / [`ai-docs/engine_phase3_plan.md`](ai-docs/engine_phase3_plan.md) — the Phase 2 (14→31 effect types) and Phase 3 (final gap families) engine-extension designs.
+- [`ai-docs/multiplayer_architecture.md`](ai-docs/multiplayer_architecture.md) — **Authoritative-server multiplayer design** (transport, action protocol, hidden-info redaction, lobby, Pi/Cloudflare-Tunnel deploy, phased rollout). Phase 0/1 implemented in `server/`.
+- [`ai-docs/design_reference/`](ai-docs/design_reference/DESIGN_SPEC.md) — official-client UI mockups + `DESIGN_SPEC.md`, the visual target for the board/modals/lobby.
 
 ## Open pull requests (temporary)
 
