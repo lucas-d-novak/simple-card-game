@@ -4,7 +4,8 @@ Stand up the **public alpha** of Shards of Infinity behind a custom domain with
 TLS, on a low-budget always-on box (a Raspberry Pi or any spare machine) using a
 **Cloudflare Tunnel**. The end state: an invitee opens `https://play.example.com`,
 types a **name** + the **shared access code**, and plays — no app install, no
-port-forwarding, no exposed home IP.
+port-forwarding, no exposed home IP, **no `?server=` query param** (the bare
+domain link works; see §0).
 
 This is the public sibling of [`../server/LAN_DEMO.md`](../server/LAN_DEMO.md)
 (local-network demo, plain `http`/`ws`, no TLS). Read that first if you just want
@@ -41,19 +42,22 @@ Three processes run on the box, plus Cloudflare at the edge:
 In [`lib/main.dart`](../lib/main.dart), `_defaultServerUrl()` derives the
 WebSocket URL **from the page's own host and scheme**:
 
-- On an **`https://`** page it returns **`wss://<host>`** with **NO explicit port**
-  (so the edge/tunnel routes the upgrade on 443).
+- On an **`https://`** page it returns **`wss://<host>/ws`** — NO explicit port
+  (the edge serves wss on 443) and the **`/ws` path** so a single-hostname tunnel
+  can split the WebSocket upgrade from the static app.
 - On an **`http://`** page it returns `ws://<host>:8080` (the LAN/dev path).
 - `localhost` / empty host falls back to `ws://localhost:8080`.
 
 So when the app is served from `https://play.example.com`, the client opens
-**`wss://play.example.com`** — the *same* host, no port. **The tunnel must route
-the WebSocket upgrade for that host to the Dart server on `localhost:8080`, while
-routing normal page/asset requests to the static web app.** That split is the
-heart of §5 below.
+**`wss://play.example.com/ws`** — the *same* host, no port, at the `/ws` path.
+**The tunnel routes `/ws*` for that host to the Dart server on `localhost:8080`,
+and everything else to the static web app.** That split is the heart of §5 below,
+and because the client *already* targets `/ws`, the **bare `https://play.example.com`
+link works with no query param** — Option A is now the zero-config path.
 
-An explicit `?server=` query param overrides this derivation — it's the escape
-hatch for the dedicated-subdomain topology (§5, option B).
+An explicit `?server=` query param still overrides this derivation — it's the
+escape hatch for the dedicated-subdomain topology (§5, option B) or any non-default
+routing.
 
 ---
 
@@ -61,13 +65,44 @@ hatch for the dedicated-subdomain topology (§5, option B).
 
 On the box:
 
-- **Flutter 3.41.5 + Dart** (the repo is pinned to 3.41.5; CI enforces it — see
-  [`README.md`](../README.md) "Flutter version policy"). Verify with
-  `flutter --version`. You need Flutter to *build* the web app; you need Dart to
-  run the server (Flutter bundles Dart).
+- **Dart SDK (ARM build for a Pi)** — the server is pure Dart and runs with
+  `dart run` (Flutter bundles Dart, but you don't need all of Flutter on the box
+  just to run the server). The repo is pinned to **Flutter 3.41.5 / Dart 3.11.x**;
+  CI enforces the Flutter version — see [`README.md`](../README.md) "Flutter
+  version policy". On a Raspberry Pi, install the **ARM64 Dart SDK** (the SDK is
+  ~560 MB — the bulk of the box's storage need; plan for **~1–2 GB free**). You
+  only need *Flutter itself* if you build the web app on the box (see the split
+  topology note below — usually you don't).
+- **`libsqlite3` native library (ARM).** The stats telemetry uses the `sqlite3`
+  package, which loads the system `libsqlite3` shared library at runtime. On
+  Raspberry Pi OS / Debian: `sudo apt-get install -y libsqlite3-0` (often already
+  present). **If it's missing the server still runs** — the stats store
+  gracefully disables itself (telemetry off, game unaffected) — but install it to
+  keep telemetry on.
 - The repo checked out, on the working branch (`rld-mvp-sprint`).
-- A **static file server** of your choice: `python3 -m http.server` (zero install)
-  or `nginx` / `caddy` (nicer for always-on). Examples below use Python.
+- **Only if you serve the web app from the box** (not the recommended split — see
+  below): a **static file server** (`python3 -m http.server`, or `nginx`/`caddy`
+  for always-on) **and** Flutter installed to build `build/web`.
+
+### Where to host the web app: the box, or Cloudflare Pages?
+
+The compiled web app is **~111 MB** (≈75 MB card art + ≈32 MB CanvasKit). Two
+topologies:
+
+- **Recommended — Cloudflare Pages for the app, box for the server only.** Upload
+  `build/web` to **Cloudflare Pages** (free, served from Cloudflare's CDN). The box
+  then runs **only** the tiny (~88 KB) Dart WebSocket server — it never serves the
+  111 MB app, never needs a static server or Flutter installed, and handles only
+  small JSON game messages. Point the Pages project at `play.example.com` (app) and
+  tunnel `play.example.com/ws*` → the box's `:8080` (server). This is the lowest
+  storage / lowest bandwidth option for a Pi.
+- **All-on-the-box.** Serve `build/web` from a local static server (§3) and tunnel
+  both the app and `/ws` from the same box (§5 Option A). Simpler to reason about
+  (one box), but the box stores + serves the full 111 MB app.
+
+The sections below (§2–§3) cover building/serving the app on the box; if you use
+Cloudflare Pages, you build `build/web` *anywhere*, upload it to Pages, and skip
+§3 entirely — the box just runs §4 (the server) + §5 (tunnel, `/ws` only).
 
 In Cloudflare:
 
@@ -140,20 +175,25 @@ SHARDS_ALLOWED_ORIGINS=https://play.example.com \
 dart run bin/server.dart 8080
 ```
 
-### Compiled (recommended for the box)
+### Recommended for the box: `dart run` (not `dart compile exe`)
 
-Compile once to a single self-contained native binary (no Dart runtime needed to
-run it — ideal for a Pi). The source header documents this:
+Run the server with `dart run` and the installed Dart SDK. **`dart compile exe`
+does not work here** — the `sqlite3` dependency uses Dart build hooks that
+`dart compile exe` rejects ("use `dart build` instead"), so a single self-contained
+native binary isn't available for this server. Keep the SDK on the box and run:
 
 ```bash
 cd server
-dart pub get
-dart compile exe bin/server.dart -o build/shards-server
-# run it (same env vars; run from server/ so the ../assets path resolves):
+dart pub get        # first time only
 SHARDS_ACCESS_TOKEN=alpha-7Q2K \
 SHARDS_ALLOWED_ORIGINS=https://play.example.com \
-./build/shards-server 8080
+dart run bin/server.dart 8080
 ```
+
+This is why the box needs the **~560 MB Dart SDK** (§1) — it's the runtime, not a
+build-only tool. For always-on, wrap this command in a `systemd` unit
+(`Restart=on-failure`, `WorkingDirectory=.../server`, the env vars in the unit's
+`Environment=` lines).
 
 On a healthy start you'll see lines like:
 
@@ -234,23 +274,23 @@ ingress:
   - service: http_status:404
 ```
 
-**The catch:** the current client (`_defaultServerUrl`) opens `wss://<host>` with
-**no path** — it targets `wss://play.example.com`, which Option A's path rules
-send to the *static* app, not the game server. So to use the clean path split you
-must point the client at the `/ws` path explicitly via the **escape hatch**:
+**This now works with the bare link — no `?server=` needed.** The client
+(`_defaultServerUrl`) opens **`wss://play.example.com/ws`** on https (it derives the
+`/ws` path itself). Option A's `path: /ws*` rule routes exactly that upgrade to the
+game server on `:8080`, while `/` and all assets go to the static app. So you can
+share the plain domain:
 
 ```
-https://play.example.com/?server=wss://play.example.com/ws
+https://play.example.com
 ```
 
-That `?server=` wins over the host-derived default (see `_defaultServerUrl` —
-"an explicit `?server=` wins"). Share *that* URL with invitees (or set it as the
-default link). The server upgrades any non-`/health` request to a WebSocket, so it
-happily accepts the upgrade at `/ws`.
+The server upgrades any non-`/health` request to a WebSocket, so it happily accepts
+the upgrade at `/ws`. (An explicit `?server=` still overrides if you ever need it —
+e.g. Option B's subdomain — but Option A needs none.)
 
-Tradeoff: **one hostname, one TLS cert, one DNS record** — operationally the
-simplest box-side. The cost is the slightly longer invite URL with the `?server=`
-param. This is the recommended topology.
+Tradeoff: **one hostname, one TLS cert, one DNS record, and a clean bare invite
+link** — operationally the simplest box-side and the cleanest URL. This is the
+recommended topology.
 
 ---
 
@@ -290,18 +330,16 @@ hostnames** to manage, and you still can't rely on the bare-host default — the
 
 ### Why Option A is recommended
 
-Both options need the `?server=` escape hatch given the current client URL
-derivation, so neither lets you ship a truly bare `https://play.example.com` link
-that "just works" for the WebSocket. Given that, **Option A wins on operational
-simplicity**: one hostname, one DNS record, one ingress block. Option B's only
-advantage (a path-less WS URL) is moot because you're already passing `?server=`.
+**Option A ships a truly bare `https://play.example.com` link** — the client
+derives `wss://<host>/ws` on https, and Option A's `path: /ws*` rule routes that
+upgrade to `:8080` automatically. One hostname, one DNS record, one ingress block,
+no query param. Option B needs a second hostname *and* the `?server=` escape hatch
+(its app on `play.example.com` would otherwise derive `wss://play.example.com/ws`,
+not the `ws.example.com` server). So Option A wins on every axis for the alpha.
 
-> **The only no-escape-hatch path** would be a future client change so that on
-> `https` it derives `wss://<host>/ws` (adding the `/ws` path itself). With that,
-> Option A's bare `https://play.example.com` link would route the WS upgrade to
-> `/ws` → `:8080` automatically, no query param. That's a one-line change in
-> `_defaultServerUrl` if you decide the bare link matters. **Until then, ship the
-> `?server=` invite link.** (See "Open questions" at the end.)
+(Historically this needed a `?server=` invite link because the client derived a
+path-less `wss://<host>`; the `_defaultServerUrl` change to derive `/ws` removed
+that requirement — the bare link is now the default.)
 
 ### Run the tunnel
 
@@ -352,10 +390,10 @@ Work through these in order:
    **Join**. Seats fill → both drop into the shared board. Take turns. Confirm
    each device sees only its own hand (hidden info is enforced server-side).
 
-The invite URL you actually share (Option A):
+The invite URL you actually share (Option A) — the bare domain:
 
 ```
-https://play.example.com/?server=wss://play.example.com/ws
+https://play.example.com
 ```
 
 ---
@@ -427,8 +465,9 @@ restart (below).
    confirm it matches what the browser sends.
 4. **Tunnel forwards the WS upgrade.** Confirm `config.yml` routes the WS host/path
    to `http://localhost:8080` (not to the static `:8123`). In Option A, the
-   `path: /ws*` rule must come **before** the catch-all `/` rule, and the invite
-   URL must carry `?server=wss://play.example.com/ws`.
+   `path: /ws*` rule must come **before** the catch-all `/` rule. The client derives
+   `wss://play.example.com/ws` on its own, so the bare link suffices — but if you
+   passed a `?server=` override, make sure it points at `/ws` (or the Option B host).
 
 **Mixed-content error in the browser console (`ws://` blocked from `https://`).**
 The client already emits **`wss://`** on https pages, so this only happens if you
@@ -444,16 +483,13 @@ didn't auto-resync.
 
 ## Open questions for the operator
 
-1. **Which tunnel topology?** Option A (one hostname, path split, recommended) vs
-   Option B (dedicated WS subdomain). Both currently need the `?server=` invite
-   link — pick based on whether you'd rather manage one DNS record (A) or keep a
-   clean path-less WS URL on a second host (B).
-2. **Bare-link goal?** If you want `https://play.example.com` to work with **no**
-   `?server=` param, that requires a one-line client change so `_defaultServerUrl`
-   derives `wss://<host>/ws` on https (then Option A's bare link routes the upgrade
-   to `/ws` → `:8080` automatically). Decide whether the cleaner invite link is
-   worth that small code change. **This doc does not change code** — until then,
-   ship the `?server=` link.
+1. **Web app on Cloudflare Pages or on the box?** Pages (recommended) keeps the
+   111 MB app off the Pi entirely — the box runs only the ~88 KB server. All-on-box
+   is simpler to reason about but stores + serves the full app. See §1's "Where to
+   host the web app" box.
+2. **Which tunnel topology?** Option A (one hostname, path split, recommended —
+   bare link works) vs Option B (dedicated WS subdomain, needs `?server=`). Pick A
+   unless you specifically want the server on its own hostname.
 3. **`cloudflared` path-matching support.** Confirm your installed `cloudflared`
    version supports `path:` ingress matching (modern versions do). If not, fall
    back to Option B (host-based), which needs no path matching.

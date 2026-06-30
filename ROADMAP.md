@@ -19,9 +19,14 @@ captured so they aren't lost. Grouped by area.
 - **SQLite persistence** — the shipped store is one-JSON-file-per-game
   (`server/lib/persistence.dart`), which survives restarts. SQLite is the design
   target for the always-on hosted phase (concurrent writes, queries for the
-  stats DB below).
-- **Cloudflare Tunnel deploy runbook** — document the exact tunnel + custom
-  domain + `wss://` routing setup (the client already emits `wss://` on https).
+  stats DB below). *Note: the stats/telemetry DB already uses SQLite
+  (`server/lib/stats_store.dart`); this item is only about migrating the
+  per-game **persistence** store from JSON files to SQLite.*
+- ~~**Cloudflare Tunnel deploy runbook**~~ — **DONE**:
+  [`ai-docs/deploy_cloudflare.md`](ai-docs/deploy_cloudflare.md) documents the
+  tunnel + custom domain + `wss://play.example.com/ws` routing (bare-link Option A),
+  the Cloudflare-Pages-for-app vs box split, and the Pi `dart run` + `libsqlite3`
+  setup.
 - **Connection / lobby caps + rate limiting** — basic per-IP connection caps and
   action rate limits for a public endpoint (message-size cap + Origin allowlist
   already shipped).
@@ -46,6 +51,14 @@ captured so they aren't lost. Grouped by area.
 - **Verify the remaining unverified cards** — ~41 in-scope cards are encoded but
   not yet human-confirmed against the printed card; raise verified coverage above
   the current ~71%.
+
+## Community / bug intake
+
+- **Discord bug-report channel + automated triage pipeline** — a Discord server
+  where alpha players report bugs, wired to an automated agent pipeline that reads
+  the channel and spins up investigator → implementation → verification agents to
+  propose fixes. Design: [`ai-docs/discord_bug_pipeline.md`](ai-docs/discord_bug_pipeline.md).
+  *Status: design drafted; not yet built.*
 
 ## AI
 
