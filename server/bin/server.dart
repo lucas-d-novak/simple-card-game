@@ -23,8 +23,12 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:shards_server/lobby.dart';
+import 'package:simple_card_game/data/database/card_database.dart';
+import 'package:simple_card_game/data/market_deck.dart';
 
-final Lobby _lobby = Lobby();
+/// The lobby is built in [main] once the authoritative card database has loaded
+/// from disk, so all games use the real market deck (per-card copy counts).
+late final Lobby _lobby;
 
 /// Connected clients by lobby player id → their socket.
 final Map<String, WebSocket> _sockets = {};
@@ -32,6 +36,22 @@ final Map<String, WebSocket> _sockets = {};
 void main(List<String> args) async {
   final port =
       args.isNotEmpty ? int.tryParse(args.first) ?? 8080 : 8080;
+
+  // Load the authoritative card DB from disk (pure-Dart, no Flutter) and build
+  // the market deck. The path is relative to the repo root; the server runs
+  // from server/, so the DB sits one level up.
+  final dbFile = File('../assets/card_db/cards.json');
+  List<MarketCard>? marketDeck;
+  if (dbFile.existsSync()) {
+    final db = CardDatabase.fromJsonString(dbFile.readAsStringSync());
+    marketDeck = buildMarketDeckFromDatabase(db);
+    stdout.writeln('Loaded card DB: ${db.records.length} records, '
+        '${marketDeck.length} unique market cards.');
+  } else {
+    stdout.writeln('WARNING: ${dbFile.path} not found — '
+        'falling back to the legacy hardcoded market.');
+  }
+  _lobby = Lobby(marketDeck: marketDeck);
 
   final server = await HttpServer.bind(InternetAddress.anyIPv4, port);
   stdout.writeln('Shards server listening on ws://0.0.0.0:$port');

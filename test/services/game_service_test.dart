@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:simple_card_game/models/card_effect.dart';
 import 'package:simple_card_game/models/card_model.dart';
+import 'package:simple_card_game/data/market_deck.dart';
 import 'package:simple_card_game/models/card_type.dart';
 import 'package:simple_card_game/models/faction.dart';
 import 'package:simple_card_game/services/game_service.dart';
@@ -3584,6 +3585,79 @@ void main() {
       expect(revealed.map((c) => c.id).toList(), ['top', 'under'],
           reason: 'top of deck (end of list) first');
       expect(player.drawPile.length, 3, reason: 'reveal does not remove');
+    });
+  });
+
+  group('Character Focus (gem -> mastery base action)', () {
+    test('pays 1 gem to gain 1 mastery, once per turn', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final p = game.currentPlayer;
+      p.gemPool = 2;
+      final m0 = p.mastery;
+
+      expect(game.focus(), isTrue);
+      expect(p.gemPool, 1, reason: 'spent 1 gem');
+      expect(p.mastery, m0 + 1, reason: 'gained 1 mastery');
+
+      // Second focus the same turn is rejected (once per turn).
+      expect(game.focus(), isFalse);
+      expect(p.gemPool, 1, reason: 'no gem spent on rejected focus');
+      expect(p.mastery, m0 + 1, reason: 'no extra mastery');
+    });
+
+    test('rejected with no gems', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final p = game.currentPlayer;
+      p.gemPool = 0;
+      expect(game.focus(), isFalse);
+      expect(p.mastery, 0);
+    });
+
+    test('focus resets each turn', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      game.currentPlayer.gemPool = 1;
+      expect(game.focus(), isTrue);
+      expect(game.currentPlayer.focusedThisTurn, isTrue);
+      game.endTurn(); // -> p1
+      game.endTurn(); // -> back to p0
+      expect(game.currentPlayer.focusedThisTurn, isFalse,
+          reason: 'focus is available again next turn');
+    });
+  });
+
+  group('Injectable market deck (authoritative copies)', () {
+    test('expands each MarketCard by its copies count', () {
+      final deck = [
+        const MarketCard(
+          template: CardModel(
+              id: 'one', name: 'One', cost: 1, playEffects: [GainGemsEffect(1)]),
+          copies: 3,
+        ),
+        const MarketCard(
+          template: CardModel(
+              id: 'rare',
+              name: 'Rare',
+              cost: 6,
+              playEffects: [GainPowerEffect(5)]),
+          copies: 1,
+        ),
+      ];
+      final game = GameService(
+        playerCount: 2,
+        random: Random(7),
+        marketDeck: deck,
+      );
+
+      // Every market card (center row + remaining infinity deck) is one of the
+      // injected templates, never the legacy hardcoded catalog.
+      final all = [...game.centerRow, ...game.infinityDeck];
+      final ones = all.where((c) => c.id.startsWith('one_')).length;
+      final rares = all.where((c) => c.id.startsWith('rare_')).length;
+      expect(ones, 3, reason: '3 copies of One');
+      expect(rares, 1, reason: '1 copy of Rare');
+      expect(all.length, 4, reason: 'only the injected cards, by their copies');
+      // Ids are per-copy unique.
+      expect(all.map((c) => c.id).toSet().length, all.length);
     });
   });
 }

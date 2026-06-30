@@ -89,6 +89,11 @@ class PlayerState {
   /// [resetTurnResources].
   final List<CardModel> cardsPlayedThisTurn = [];
 
+  /// True once the player has used their once-per-turn Character **Focus**
+  /// ability this turn (pay 1 gem → gain 1 mastery — the universal base action,
+  /// "exhaust your character card"). Cleared each turn by [resetTurnResources].
+  bool focusedThisTurn = false;
+
   bool get isEliminated => health <= 0;
 
   void addMastery(int amount) {
@@ -115,6 +120,7 @@ class PlayerState {
     activatedChampions.clear();
     exhaustedChampions.clear();
     cardsPlayedThisTurn.clear();
+    focusedThisTurn = false;
   }
 
   /// Moves regular played cards to discard pile and returns mercenaries

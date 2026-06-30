@@ -3,6 +3,7 @@
 // §6/§10. For the LAN/beta phase, in-memory is enough.)
 
 import 'package:shards_server/game_session.dart';
+import 'package:simple_card_game/data/market_deck.dart';
 import 'package:simple_card_game/services/game_service.dart';
 
 enum GameStatus { waiting, started, complete }
@@ -39,6 +40,12 @@ class LobbyGame {
 }
 
 class Lobby {
+  /// Optional authoritative market deck (real cards + per-card copies), built
+  /// once at server startup from the card database. When null, games fall back
+  /// to the engine's legacy hardcoded catalog.
+  Lobby({List<MarketCard>? marketDeck}) : _marketDeck = marketDeck;
+
+  final List<MarketCard>? _marketDeck;
   final Map<String, LobbyGame> _games = {};
   int _counter = 0;
 
@@ -70,7 +77,10 @@ class Lobby {
   GameSession? startGame(String gameId) {
     final g = _games[gameId];
     if (g == null || g.status != GameStatus.waiting || !g.isFull) return null;
-    final svc = GameService(playerCount: g.players.length);
+    final svc = GameService(
+      playerCount: g.players.length,
+      marketDeck: _marketDeck,
+    );
     // The engine names seats p0..pN (both PlayerState.id and .name are final);
     // GameSession owns the lobby-player-id <-> seat-id mapping for both
     // authorization and redaction, so no engine renaming is needed.

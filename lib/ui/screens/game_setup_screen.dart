@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:simple_card_game/data/database/card_database_asset.dart';
+import 'package:simple_card_game/data/market_deck.dart';
 import 'package:simple_card_game/models/card_effect.dart';
 import 'package:simple_card_game/services/ai_service.dart';
 import 'package:simple_card_game/services/game_service.dart';
@@ -19,6 +21,19 @@ class GameSetupScreen extends StatefulWidget {
 class _GameSetupScreenState extends State<GameSetupScreen> {
   int _playerCount = 2;
   bool _vsAi = false;
+
+  /// Authoritative market deck (real cards + per-card copy counts), loaded from
+  /// the card database. Null until loaded; a started game falls back to the
+  /// legacy hardcoded catalog if loading fails.
+  List<MarketCard>? _marketDeck;
+
+  @override
+  void initState() {
+    super.initState();
+    CardDatabaseAsset.load().then((db) {
+      if (mounted) setState(() => _marketDeck = buildMarketDeckFromDatabase(db));
+    }).catchError((_) {/* fall back to legacy market */});
+  }
 
   /// Per-player Character selection (null = "None"). Index = player index;
   /// length always 4 (max players) so it survives player-count changes — only
@@ -49,6 +64,7 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
     final gameService = GameService(
       playerCount: _playerCount,
       characters: _characters.take(_playerCount).toList(),
+      marketDeck: _marketDeck,
     );
     AiService? aiService;
     if (_vsAi && _playerCount == 2) {

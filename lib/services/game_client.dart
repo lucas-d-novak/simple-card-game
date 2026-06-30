@@ -146,6 +146,7 @@ class GameClient extends ChangeNotifier {
       sendAction('activateChampion', {'championId': championId});
   void useActivatedAbility(String championId) =>
       sendAction('useActivatedAbility', {'championId': championId});
+  void focus() => sendAction('focus');
 
   // ---- internals ----
 

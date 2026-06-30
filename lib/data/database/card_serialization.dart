@@ -59,6 +59,7 @@ Map<String, dynamic> cardModelToJson(CardModel c) {
     if (c.countsAsAllFactions) 'countsAsAllFactions': true,
     if (c.activatedAbility != null)
       'activatedAbility': encodeActivatedAbility(c.activatedAbility!),
+    if (c.art != null) 'art': c.art,
   };
 }
 
@@ -79,5 +80,6 @@ CardModel cardModelFromJson(Map<String, dynamic> json) {
     masteryReplaces: (json['masteryReplaces'] as bool?) ?? false,
     countsAsAllFactions: (json['countsAsAllFactions'] as bool?) ?? false,
     activatedAbility: decodeActivatedAbility(json['activatedAbility']),
+    art: json['art'] as String?,
   );
 }

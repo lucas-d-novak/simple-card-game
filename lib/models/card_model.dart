@@ -56,6 +56,11 @@ class CardModel {
   /// start of the owner's next turn. See [ActivatedAbility].
   final ActivatedAbility? activatedAbility;
 
+  /// Optional art asset filename (e.g. `furrowing_elemental.jpg`) from the card
+  /// database. When set, the UI loads `assets/cards/<art>` directly instead of
+  /// guessing an asset from the card name. Null for cards without DB art.
+  final String? art;
+
   const CardModel({
     required this.id,
     required this.name,
@@ -71,5 +76,6 @@ class CardModel {
     this.masteryReplaces = false,
     this.countsAsAllFactions = false,
     this.activatedAbility,
+    this.art,
   });
 }

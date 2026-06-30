@@ -140,6 +140,7 @@ class CardRecord {
         masteryReplaces: (json['masteryReplaces'] as bool?) ?? false,
         countsAsAllFactions: (json['countsAsAllFactions'] as bool?) ?? false,
         activatedAbility: decodeActivatedAbility(json['activatedAbility']),
+        art: json['art'] as String?,
       ),
     );
   }

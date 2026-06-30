@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:simple_card_game/data/card_definitions.dart';
+import 'package:simple_card_game/data/market_deck.dart';
 import 'package:simple_card_game/data/starter_deck.dart';
 import 'package:simple_card_game/models/card_effect.dart';
 import 'package:simple_card_game/models/card_model.dart';
@@ -15,7 +16,9 @@ class GameService {
     required int playerCount,
     Random? random,
     List<Character?>? characters,
+    List<MarketCard>? marketDeck,
   })  : _random = random ?? Random(),
+        _marketDeck = marketDeck,
         assert(playerCount >= 2 && playerCount <= 4),
         assert(characters == null || characters.length == playerCount,
             'characters, when provided, must have one entry per player') {
@@ -34,9 +37,17 @@ class GameService {
   /// model the server is the only place shuffles happen, so it is correct to
   /// resume from the already-shuffled concrete pile orders captured in the
   /// snapshot and reseed the RNG for any future shuffle.
-  GameService.restore({Random? random}) : _random = random ?? Random();
+  GameService.restore({Random? random})
+      : _random = random ?? Random(),
+        _marketDeck = null;
 
   final Random _random;
+
+  /// The authoritative market deck (unique templates + per-card copy counts).
+  /// When null, the legacy [allInfinityDeckCards] + cost-bucket formula is used
+  /// (keeps existing tests and the legacy demo unchanged).
+  final List<MarketCard>? _marketDeck;
+
   final List<PlayerState> players = [];
   final List<CardModel> centerRow = [];
   final List<CardModel> infinityDeck = [];
@@ -126,6 +137,25 @@ class GameService {
     player.activatedChampions.add(championId);
     _resolvePlayOrMastery(champion, player);
     _checkAllyAbility(champion, player);
+    return true;
+  }
+
+  /// Character **Focus** — the universal once-per-turn base action: exhaust your
+  /// character card and pay 1 gem to gain 1 mastery (Shards of Infinity core
+  /// rules). Available to every player every turn, independent of any card.
+  ///
+  /// Returns false (no state change) if the player can't act, has already
+  /// focused this turn, or has fewer than 1 gem. Card effects may grant more
+  /// mastery on top; only this Focus action is once-per-turn.
+  bool focus() {
+    if (!_currentPlayerCanAct) return false;
+    final player = currentPlayer;
+    if (player.focusedThisTurn) return false;
+    if (player.gemPool < 1) return false;
+
+    player.gemPool -= 1;
+    player.addMastery(1);
+    player.focusedThisTurn = true;
     return true;
   }
 
@@ -1801,6 +1831,22 @@ class GameService {
   ///   Cost 7-8: 1 copy each
   ///   Neutral (faction == none): 3 copies each (overrides cost-based rule)
   List<CardModel> _buildInfinityDeck() {
+    // Authoritative path: an injected market deck carries each unique card with
+    // its REAL printed copy count. Expand one concrete instance per copy.
+    final injected = _marketDeck;
+    if (injected != null) {
+      final deck = <CardModel>[];
+      for (final entry in injected) {
+        for (int copy = 0; copy < entry.copies; copy++) {
+          deck.add(_instanceOf(entry.template, copy));
+        }
+      }
+      return deck;
+    }
+
+    // Legacy path (no injected deck): the original cost-bucket approximation
+    // over the hardcoded catalog. Kept so existing tests / the legacy demo are
+    // unchanged.
     final List<CardModel> deck = [];
     for (final template in allInfinityDeckCards) {
       int copies;
@@ -1816,23 +1862,32 @@ class GameService {
         copies = 1;
       }
       for (int copy = 0; copy < copies; copy++) {
-        deck.add(CardModel(
-          id: '${template.id}_$copy',
-          name: template.name,
-          cost: template.cost,
-          playEffects: template.playEffects,
-          faction: template.faction,
-          cardType: template.cardType,
-          shield: template.shield,
-          hasGuard: template.hasGuard,
-          allyAbility: template.allyAbility,
-          masteryThreshold: template.masteryThreshold,
-          masteryBonus: template.masteryBonus,
-          countsAsAllFactions: template.countsAsAllFactions,
-        ));
+        deck.add(_instanceOf(template, copy));
       }
     }
     return deck;
+  }
+
+  /// A concrete market-card instance for [copy], preserving every gameplay field
+  /// of [template] but with a per-copy unique id (`<id>_<copy>`).
+  CardModel _instanceOf(CardModel template, int copy) {
+    return CardModel(
+      id: '${template.id}_$copy',
+      name: template.name,
+      cost: template.cost,
+      playEffects: template.playEffects,
+      faction: template.faction,
+      cardType: template.cardType,
+      shield: template.shield,
+      hasGuard: template.hasGuard,
+      allyAbility: template.allyAbility,
+      masteryThreshold: template.masteryThreshold,
+      masteryBonus: template.masteryBonus,
+      masteryReplaces: template.masteryReplaces,
+      countsAsAllFactions: template.countsAsAllFactions,
+      activatedAbility: template.activatedAbility,
+      art: template.art,
+    );
   }
 
   // -------------------------------------------------------------------------

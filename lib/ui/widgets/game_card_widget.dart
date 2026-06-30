@@ -450,7 +450,11 @@ class _CardArtArea extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final assetPath = getCardArtAsset(card.name);
+    // Prefer the card's own DB art path (authoritative); fall back to the
+    // name-based art map, then to procedural art.
+    final assetPath = (card.art != null && card.art!.isNotEmpty)
+        ? 'assets/cards/${card.art}'
+        : getCardArtAsset(card.name);
     if (assetPath != null) {
       return Image.asset(
         assetPath,

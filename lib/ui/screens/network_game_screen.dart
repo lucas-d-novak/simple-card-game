@@ -108,6 +108,11 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
     _flash('Dealt $power to ${opponent.name}');
   }
 
+  void _onFocus() {
+    widget.client.focus();
+    _flash('Focus: spent 1 gem → +1 mastery');
+  }
+
   // ---- pile viewers -------------------------------------------------------
 
   /// Show the recipient's discard pile — public info, so full card content.
@@ -318,6 +323,9 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
           hasGuards: opponentHasGuard,
           onTapDraw: () => _showDrawPile(me),
           onTapDiscard: () => _showDiscard(me),
+          onFocus: (myTurn && !me.focusedThisTurn && me.gemPool >= 1)
+              ? _onFocus
+              : null,
         ),
       ],
     );
@@ -395,6 +403,7 @@ class _PlayerView {
     required this.gemPool,
     required this.powerPool,
     required this.eliminated,
+    required this.focusedThisTurn,
     required this.hand,
     required this.handCount,
     required this.drawPileCount,
@@ -410,6 +419,9 @@ class _PlayerView {
   final int gemPool;
   final int powerPool;
   final bool eliminated;
+
+  /// Whether this player has used their once-per-turn Focus action.
+  final bool focusedThisTurn;
 
   /// Full ids ONLY for the recipient; empty for opponents (hidden info).
   final List<String> hand;
@@ -434,6 +446,7 @@ class _PlayerView {
       gemPool: (p['gemPool'] as int?) ?? 0,
       powerPool: (p['powerPool'] as int?) ?? 0,
       eliminated: p['eliminated'] == true,
+      focusedThisTurn: p['focusedThisTurn'] == true,
       hand: hand,
       handCount: (p['handCount'] as int?) ?? hand.length,
       drawPileCount: (p['drawPileCount'] as int?) ?? 0,
@@ -862,6 +875,7 @@ class _NetworkBottomZone extends StatelessWidget {
     required this.hasGuards,
     required this.onTapDraw,
     required this.onTapDiscard,
+    required this.onFocus,
   });
 
   final _PlayerView me;
@@ -875,6 +889,9 @@ class _NetworkBottomZone extends StatelessWidget {
   final bool hasGuards;
   final VoidCallback onTapDraw;
   final VoidCallback onTapDiscard;
+
+  /// Character Focus (1 gem → 1 mastery). Null when unavailable this turn.
+  final VoidCallback? onFocus;
 
   @override
   Widget build(BuildContext context) {
@@ -939,6 +956,9 @@ class _NetworkBottomZone extends StatelessWidget {
                       fontSize: 14),
                 ],
               ),
+              const SizedBox(height: 4),
+              // Focus: spend 1 gem → +1 mastery, once per turn.
+              _FocusButton(onPressed: onFocus),
               const SizedBox(height: 4),
               _PileHex(
                 count: me.drawPileCount,
@@ -1005,6 +1025,52 @@ class _NetworkBottomZone extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Small "Focus" pill — spend 1 gem to gain 1 mastery (once per turn). Greyed
+/// out when unavailable (not your turn / already focused / no gems).
+class _FocusButton extends StatelessWidget {
+  const _FocusButton({required this.onPressed});
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onPressed != null;
+    return Opacity(
+      opacity: enabled ? 1.0 : 0.45,
+      child: GestureDetector(
+        onTap: onPressed,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF7B4FC0), Color(0xFF4A2A78)],
+            ),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+                color: const Color(0xFFB89AE8).withValues(alpha: 0.8),
+                width: 1.2),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ResourceIconWidget(ResourceIcon.gem, size: 13),
+              Text('→', style: TextStyle(color: Colors.white, fontSize: 12)),
+              ResourceIconWidget(ResourceIcon.mastery, size: 13),
+              SizedBox(width: 4),
+              Text('Focus',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
       ),
     );
   }

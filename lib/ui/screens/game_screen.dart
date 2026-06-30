@@ -628,6 +628,14 @@ class _GameScreenState extends State<GameScreen>
     });
   }
 
+  void _focus() {
+    setState(() {
+      if (_game.focus()) {
+        _actionMessage = 'Focus: spent 1 gem → +1 mastery';
+      }
+    });
+  }
+
   void _endTurn() {
     setState(() {
       // Auto-play remaining cards before ending turn
@@ -789,6 +797,10 @@ class _GameScreenState extends State<GameScreen>
                                 : null,
                             onAttack: canDirectAttack ? _attackOpponent : null,
                             hasGuards: hasGuards,
+                            onFocus: (!currentPlayer.focusedThisTurn &&
+                                    currentPlayer.gemPool >= 1)
+                                ? _focus
+                                : null,
                           ),
                         ],
                       ),
@@ -1253,6 +1265,7 @@ class _BottomZone extends StatelessWidget {
     required this.onPlayAll,
     required this.onAttack,
     required this.hasGuards,
+    required this.onFocus,
   });
 
   final dynamic player; // PlayerState
@@ -1265,6 +1278,9 @@ class _BottomZone extends StatelessWidget {
   final VoidCallback? onPlayAll;
   final VoidCallback? onAttack;
   final bool hasGuards;
+
+  /// Character Focus (1 gem → 1 mastery). Null when unavailable this turn.
+  final VoidCallback? onFocus;
 
   @override
   Widget build(BuildContext context) {
@@ -1329,6 +1345,8 @@ class _BottomZone extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 4),
+              _FocusButton(onPressed: onFocus),
+              const SizedBox(height: 4),
               _PileHex(
                 count: player.drawPile.length as int,
                 style: _PileStyle.draw,
@@ -1371,6 +1389,52 @@ class _BottomZone extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Small "Focus" pill — spend 1 gem to gain 1 mastery (once per turn). Greyed
+/// out when unavailable (already focused this turn / no gems).
+class _FocusButton extends StatelessWidget {
+  const _FocusButton({required this.onPressed});
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onPressed != null;
+    return Opacity(
+      opacity: enabled ? 1.0 : 0.45,
+      child: GestureDetector(
+        onTap: onPressed,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF7B4FC0), Color(0xFF4A2A78)],
+            ),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+                color: const Color(0xFFB89AE8).withValues(alpha: 0.8),
+                width: 1.2),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ResourceIconWidget(ResourceIcon.gem, size: 13),
+              Text('→', style: TextStyle(color: Colors.white, fontSize: 12)),
+              ResourceIconWidget(ResourceIcon.mastery, size: 13),
+              SizedBox(width: 4),
+              Text('Focus',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
       ),
     );
   }

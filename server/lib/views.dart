@@ -83,6 +83,7 @@ Map<String, dynamic> _redactPlayer(PlayerState p, bool isRecipient) {
     'powerPool': p.powerPool,
     'unblockedDamageThisTurn': p.unblockedDamageThisTurn,
     'ignoresShieldThisTurn': p.ignoresShieldThisTurn,
+    'focusedThisTurn': p.focusedThisTurn,
     'eliminated': p.isEliminated,
     // Hand: full ids for the recipient, COUNT ONLY for opponents.
     if (isRecipient) 'hand': _ids(p.hand),

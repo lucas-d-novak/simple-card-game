@@ -62,6 +62,8 @@ ActionResult applyAction(
       ok = game.activateChampion(s('championId'));
     case 'useActivatedAbility':
       ok = game.useActivatedAbility(s('championId'));
+    case 'focus':
+      ok = game.focus();
     case 'banishCard':
       ok = game.banishCard(s('cardId'), _banishSource(s('source')));
     case 'scrapFromCenterRow':
