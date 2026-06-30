@@ -47,8 +47,9 @@ class _CardFanState extends State<CardFan> {
     }
 
     final cardCount = widget.cards.length;
-    // Fan angle range: more cards = wider fan
-    final totalAngle = math.min(cardCount * 5.0, 30.0);
+    // The official client lays the hand out as a near-flat upright row rather
+    // than a steep fan, so keep only a whisper of rotation for life.
+    final totalAngle = math.min(cardCount * 1.2, 6.0);
     final angleStep = cardCount > 1 ? totalAngle / (cardCount - 1) : 0.0;
     final startAngle = -totalAngle / 2;
 
@@ -89,11 +90,12 @@ class _CardFanState extends State<CardFan> {
                   ? (startAngle + angleStep * index) * math.pi / 180
                   : 0.0;
               final xPos = startX + effectiveStep * index;
-              // Arc: cards at edges are lower, center cards higher
+              // Near-flat row: only a faint arc so the centre cards sit a hair
+              // higher than the edges (matches the official client).
               final normalizedPos = cardCount > 1
                   ? (index - (cardCount - 1) / 2) / ((cardCount - 1) / 2)
                   : 0.0;
-              final yOffset = normalizedPos * normalizedPos * 15;
+              final yOffset = normalizedPos * normalizedPos * 4;
 
               return AnimatedPositioned(
                 key: ValueKey(card.id),

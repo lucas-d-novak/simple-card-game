@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:simple_card_game/data/card_art_map.dart';
+import 'package:simple_card_game/models/card_effect.dart';
 import 'package:simple_card_game/models/card_model.dart';
 import 'package:simple_card_game/models/card_type.dart';
 import 'package:simple_card_game/models/faction.dart';
 import 'package:simple_card_game/ui/theme/animation_timing.dart';
+import 'package:simple_card_game/ui/theme/board_chrome.dart';
 import 'package:simple_card_game/ui/theme/faction_colors.dart';
-import 'package:simple_card_game/ui/theme/game_theme.dart';
 import 'package:simple_card_game/ui/widgets/card_art.dart';
+import 'package:simple_card_game/ui/widgets/resource_icons.dart';
 
-/// A styled card widget for the Shards of Infinity game.
-/// Supports tap-to-play, faction coloring, cost badge, shield badge,
-/// and visual indicators for champions/mercenaries/guard.
+/// A styled card widget matching the official Shards of Infinity card frame:
+/// faction-tinted title bar, blue teardrop recruit cost, painted art filling
+/// the upper portion, a faction "<Faction> <Type>" italic banner, a green
+/// value chevron, a shield badge (champions), and a MERCENARY tab.
 class GameCardWidget extends StatelessWidget {
   const GameCardWidget({
     super.key,
@@ -34,14 +37,12 @@ class GameCardWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final factionColor = FactionColors.getPrimary(card.faction);
+    final factionDark = FactionColors.getDark(card.faction);
     final cardWidth = width ?? (compact ? 90.0 : 120.0);
-    // Keep a consistent card aspect ratio regardless of the (responsive) width
-    // so cards never look squashed or stretched on different screen sizes.
-    // Compact cards are a touch taller relative to width to fit their badges.
-    final cardHeight = compact ? cardWidth * (130 / 90) : cardWidth * (170 / 120);
-    // On smaller cards there is only room for a single effect line; larger
-    // cards can show two. Compact cards always show one.
-    final maxEffectLines = compact || cardWidth < 100 ? 1 : 2;
+    final cardHeight =
+        compact ? cardWidth * (130 / 90) : cardWidth * (170 / 120);
+    final scale = cardWidth / 120.0; // 120 is the reference design width
+    final radius = 8.0 * scale.clamp(0.7, 1.4);
 
     return GestureDetector(
       onTap: onTap,
@@ -51,118 +52,151 @@ class GameCardWidget extends StatelessWidget {
         width: cardWidth,
         height: cardHeight,
         decoration: BoxDecoration(
-          color: GameTheme.cardSurface,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isHighlighted ? GameTheme.gold : factionColor,
-            width: isHighlighted ? 2.5 : 1.5,
+          borderRadius: BorderRadius.circular(radius),
+          // Metallic faction frame: a thin lighter inner rim over the faction
+          // colour, with a subtle vertical sheen.
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color.lerp(factionColor, Colors.white, 0.35)!,
+              factionColor,
+              factionDark,
+            ],
           ),
           boxShadow: [
             if (isHighlighted)
               BoxShadow(
-                color: GameTheme.gold.withValues(alpha: 0.4),
-                blurRadius: 8,
+                color: BoardChrome.tealHighlight.withValues(alpha: 0.7),
+                blurRadius: 12 * scale,
                 spreadRadius: 1,
               )
             else
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.3),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
+                color: Colors.black.withValues(alpha: 0.45),
+                blurRadius: 5,
+                offset: const Offset(0, 3),
               ),
           ],
         ),
+        padding: EdgeInsets.all(2.0 * scale.clamp(0.7, 1.3)),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(7),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          borderRadius: BorderRadius.circular(radius - 2),
+          child: Stack(
+            fit: StackFit.expand,
             children: [
-              // Faction color header bar
-              Container(
-                color: factionColor,
-                padding: EdgeInsets.symmetric(
-                  horizontal: compact ? 4 : 6,
-                  vertical: compact ? 2 : 3,
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        card.name,
-                        style: TextStyle(
-                          color: FactionColors.getTextOnPrimary(card.faction),
-                          fontSize: compact ? 9 : 11,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
+              // ---- Art fills the whole inner card ----------------------
+              _CardArtArea(card: card),
+              // Dark gradient over the lower portion for text legibility.
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.0),
+                        Colors.black.withValues(alpha: 0.0),
+                        Colors.black.withValues(alpha: 0.35),
+                        const Color(0xFF0C1726).withValues(alpha: 0.92),
+                      ],
+                      stops: const [0.0, 0.42, 0.52, 0.66],
                     ),
-                    if (showCost && card.cost > 0)
-                      _CostBadge(cost: card.cost, compact: compact),
-                  ],
+                  ),
                 ),
               ),
 
-              // Card art area
-              Expanded(
-                flex: 3,
-                child: _CardArtArea(card: card, compact: compact),
+              // ---- Title bar -------------------------------------------
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: _TitleBar(
+                  card: card,
+                  factionColor: factionColor,
+                  factionDark: factionDark,
+                  scale: scale,
+                  showCost: showCost,
+                ),
               ),
 
-              // Card info area
-              Expanded(
-                flex: 2,
-                child: Padding(
-                  padding: EdgeInsets.all(compact ? 2 : 3),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Effects summary fills the available space and clips so
-                      // it never overflows the info area on small cards.
-                      Expanded(
-                        child: ClipRect(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              for (final effect
-                                  in card.playEffects.take(maxEffectLines))
-                                Text(
-                                  effect.description,
-                                  style: TextStyle(
-                                    color: GameTheme.textPrimary,
-                                    fontSize: compact ? 7 : 8,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                  maxLines: 1,
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      // Bottom badges row - wrap to prevent overflow
-                      Wrap(
-                        spacing: 2,
-                        runSpacing: 1,
-                        children: [
-                          if (card.cardType == CardType.champion &&
-                              card.shield > 0)
-                            _ShieldBadge(
-                                shield: card.shield, compact: compact),
-                          if (card.hasGuard)
-                            _GuardBadge(compact: compact),
-                          if (card.cardType == CardType.mercenary)
-                            _MercenaryBadge(compact: compact),
-                          if (card.faction != Faction.none)
-                            _FactionBadge(
-                                faction: card.faction, compact: compact),
-                        ],
-                      ),
+              // ---- Shield badge (champions), lower-left of art ---------
+              if (card.cardType == CardType.champion && card.shield > 0)
+                Positioned(
+                  left: 4 * scale,
+                  top: cardHeight * 0.30,
+                  child: _ShieldBadge(shield: card.shield, scale: scale),
+                ),
+
+              // ---- MERCENARY tab ---------------------------------------
+              if (card.cardType == CardType.mercenary)
+                Positioned(
+                  right: 0,
+                  top: cardHeight * 0.42,
+                  child: _MercTab(scale: scale),
+                ),
+
+              // ---- Type banner (italic, right-aligned) -----------------
+              Positioned(
+                left: 4 * scale,
+                right: 4 * scale,
+                top: cardHeight * 0.48,
+                child: Text(
+                  _typeBanner(card),
+                  textAlign: TextAlign.right,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: (8.5 * scale).clamp(6.5, 12),
+                    fontStyle: FontStyle.italic,
+                    fontWeight: FontWeight.w600,
+                    shadows: const [
+                      Shadow(color: Colors.black, blurRadius: 3),
                     ],
                   ),
                 ),
               ),
+
+              // ---- Rules text (lower box) ------------------------------
+              Positioned(
+                left: 4 * scale,
+                right: (22 * scale).clamp(16.0, 30.0) + 4 * scale,
+                top: cardHeight * 0.56,
+                bottom: 3 * scale,
+                child: ClipRect(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (final line in _rulesLines(card, compact))
+                        Padding(
+                          padding: EdgeInsets.only(bottom: 1 * scale),
+                          child: Text(
+                            line,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: const Color(0xFFE8EEF4),
+                              fontSize: (7.5 * scale).clamp(6, 10.5),
+                              height: 1.15,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // ---- Value chevron (bottom-right corner) -----------------
+              if (_primaryValue(card) != null)
+                Positioned(
+                  right: 0,
+                  bottom: 3 * scale,
+                  child: _ValueChevron(
+                    value: _primaryValue(card)!,
+                    scale: scale,
+                  ),
+                ),
             ],
           ),
         ),
@@ -171,63 +205,139 @@ class GameCardWidget extends StatelessWidget {
   }
 }
 
-class _CostBadge extends StatelessWidget {
-  const _CostBadge({required this.cost, this.compact = false});
-  final int cost;
-  final bool compact;
+// --- Frame helpers ----------------------------------------------------------
+
+String _typeBanner(CardModel card) {
+  final faction = card.faction == Faction.none
+      ? ''
+      : card.faction.name[0].toUpperCase() + card.faction.name.substring(1);
+  final type = switch (card.cardType) {
+    CardType.champion => 'Champion',
+    CardType.mercenary => 'Ally',
+    CardType.regular => 'Ally',
+  };
+  return faction.isEmpty ? type : '$faction $type';
+}
+
+/// The card's primary numeric output for the green value chevron: the largest
+/// single resource gain among its play effects (gems / power / mastery /
+/// health / draw). Returns null when there's no obvious scalar output.
+int? _primaryValue(CardModel card) {
+  int? best;
+  void consider(int v) {
+    if (best == null || v > best!) best = v;
+  }
+
+  for (final e in card.playEffects) {
+    switch (e) {
+      case GainGemsEffect(:final amount):
+        consider(amount);
+      case GainPowerEffect(:final amount):
+        consider(amount);
+      case GainMasteryEffect(:final amount):
+        consider(amount);
+      case GainHealthEffect(:final amount):
+        consider(amount);
+      case OpponentLosesHealthEffect(:final amount):
+        consider(amount);
+      default:
+        break;
+    }
+  }
+  return best;
+}
+
+List<String> _rulesLines(CardModel card, bool compact) {
+  final lines = [for (final e in card.playEffects) e.description];
+  return compact ? lines.take(1).toList() : lines.take(3).toList();
+}
+
+// --- Sub-components ----------------------------------------------------------
+
+class _TitleBar extends StatelessWidget {
+  const _TitleBar({
+    required this.card,
+    required this.factionColor,
+    required this.factionDark,
+    required this.scale,
+    required this.showCost,
+  });
+
+  final CardModel card;
+  final Color factionColor;
+  final Color factionDark;
+  final double scale;
+  final bool showCost;
 
   @override
   Widget build(BuildContext context) {
-    final size = compact ? 16.0 : 20.0;
     return Container(
-      width: size,
-      height: size,
+      padding: EdgeInsets.fromLTRB(5 * scale, 3 * scale, 3 * scale, 3 * scale),
       decoration: BoxDecoration(
-        color: GameTheme.gemCyan,
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 1),
-      ),
-      child: Center(
-        child: Text(
-          '$cost',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: compact ? 9 : 11,
-            fontWeight: FontWeight.bold,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color.lerp(factionColor, Colors.white, 0.2)!
+                .withValues(alpha: 0.95),
+            factionDark.withValues(alpha: 0.92),
+          ],
+        ),
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.white.withValues(alpha: 0.35),
+            width: 1,
           ),
         ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              card.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: FactionColors.getTextOnPrimary(card.faction),
+                fontSize: (10 * scale).clamp(8, 14),
+                fontWeight: FontWeight.bold,
+                shadows: const [Shadow(color: Colors.black38, blurRadius: 2)],
+              ),
+            ),
+          ),
+          if (showCost && card.cost > 0) ...[
+            SizedBox(width: 3 * scale),
+            _CostTeardrop(cost: card.cost, scale: scale),
+          ],
+        ],
       ),
     );
   }
 }
 
-class _ShieldBadge extends StatelessWidget {
-  const _ShieldBadge({required this.shield, this.compact = false});
-  final int shield;
-  final bool compact;
+/// Recruit cost shown in a blue gem teardrop (top-right of the title bar).
+class _CostTeardrop extends StatelessWidget {
+  const _CostTeardrop({required this.cost, required this.scale});
+  final int cost;
+  final double scale;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: compact ? 3 : 4,
-        vertical: 1,
-      ),
-      margin: const EdgeInsets.only(right: 2),
-      decoration: BoxDecoration(
-        color: Colors.blue.shade800,
-        borderRadius: BorderRadius.circular(3),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+    final size = (20 * scale).clamp(15.0, 28.0);
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        alignment: Alignment.center,
         children: [
-          Icon(Icons.shield, size: compact ? 8 : 10, color: Colors.white),
+          ResourceIconWidget(ResourceIcon.gem, size: size),
           Text(
-            '$shield',
+            '$cost',
             style: TextStyle(
               color: Colors.white,
-              fontSize: compact ? 7 : 8,
+              fontSize: size * 0.5,
               fontWeight: FontWeight.bold,
+              shadows: const [Shadow(color: Colors.black54, blurRadius: 2)],
             ),
           ),
         ],
@@ -236,187 +346,118 @@ class _ShieldBadge extends StatelessWidget {
   }
 }
 
-class _GuardBadge extends StatelessWidget {
-  const _GuardBadge({this.compact = false});
-  final bool compact;
+class _ShieldBadge extends StatelessWidget {
+  const _ShieldBadge({required this.shield, required this.scale});
+  final int shield;
+  final double scale;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: compact ? 3 : 4,
-        vertical: 1,
-      ),
-      margin: const EdgeInsets.only(right: 2),
-      decoration: BoxDecoration(
-        color: GameTheme.gold.withValues(alpha: 0.8),
-        borderRadius: BorderRadius.circular(3),
-      ),
-      child: Text(
-        'GUARD',
-        style: TextStyle(
-          color: Colors.black,
-          fontSize: compact ? 6 : 7,
-          fontWeight: FontWeight.bold,
-        ),
+    final size = (22 * scale).clamp(16.0, 30.0);
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          ResourceIconWidget(ResourceIcon.shield, size: size),
+          Text(
+            '$shield',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: size * 0.45,
+              fontWeight: FontWeight.bold,
+              shadows: const [Shadow(color: Colors.black87, blurRadius: 2)],
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _MercenaryBadge extends StatelessWidget {
-  const _MercenaryBadge({this.compact = false});
-  final bool compact;
+/// Green chevron/hex value badge holding the card's main output number.
+class _ValueChevron extends StatelessWidget {
+  const _ValueChevron({required this.value, required this.scale});
+  final int value;
+  final double scale;
 
   @override
   Widget build(BuildContext context) {
+    final size = (22 * scale).clamp(16.0, 30.0);
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: compact ? 3 : 4,
-        vertical: 1,
-      ),
-      margin: const EdgeInsets.only(right: 2),
+      width: size * 1.05,
+      height: size,
+      alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: GameTheme.accent.withValues(alpha: 0.8),
-        borderRadius: BorderRadius.circular(3),
-      ),
-      child: Text(
-        'MERC',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: compact ? 6 : 7,
-          fontWeight: FontWeight.bold,
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF7BE08F), Color(0xFF2E9A48)],
         ),
-      ),
-    );
-  }
-}
-
-class _FactionBadge extends StatelessWidget {
-  const _FactionBadge({required this.faction, this.compact = false});
-  final Faction faction;
-  final bool compact;
-
-  String get _label {
-    switch (faction) {
-      case Faction.homodeus:
-        return 'HOD';
-      case Faction.wraethe:
-        return 'WRA';
-      case Faction.order:
-        return 'ORD';
-      case Faction.undergrowth:
-        return 'UND';
-      case Faction.none:
-        return '';
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (faction == Faction.none) return const SizedBox.shrink();
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: compact ? 3 : 4,
-        vertical: 1,
-      ),
-      decoration: BoxDecoration(
-        color: FactionColors.getPrimary(faction).withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(size * 0.25),
+          bottomLeft: Radius.circular(size * 0.25),
+        ),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.7)),
       ),
       child: Text(
-        _label,
+        '$value',
         style: TextStyle(
           color: Colors.white,
-          fontSize: compact ? 6 : 7,
+          fontSize: size * 0.55,
           fontWeight: FontWeight.bold,
+          shadows: const [Shadow(color: Colors.black54, blurRadius: 2)],
         ),
       ),
     );
   }
 }
 
-class _CardTypeIcon extends StatelessWidget {
-  const _CardTypeIcon({
-    required this.cardType,
-    required this.hasGuard,
-    this.compact = false,
-  });
-  final CardType cardType;
-  final bool hasGuard;
-  final bool compact;
+class _MercTab extends StatelessWidget {
+  const _MercTab({required this.scale});
+  final double scale;
 
   @override
   Widget build(BuildContext context) {
-    final iconSize = compact ? 24.0 : 32.0;
-    final IconData icon;
-    final Color color;
-
-    switch (cardType) {
-      case CardType.champion:
-        icon = hasGuard ? Icons.shield : Icons.person;
-        color = hasGuard
-            ? GameTheme.gold.withValues(alpha: 0.6)
-            : Colors.blue.withValues(alpha: 0.4);
-      case CardType.mercenary:
-        icon = Icons.flash_on;
-        color = GameTheme.accent.withValues(alpha: 0.4);
-      case CardType.regular:
-        icon = Icons.auto_awesome;
-        color = Colors.white.withValues(alpha: 0.2);
-    }
-
-    return Icon(icon, size: iconSize, color: color);
+    return Container(
+      padding:
+          EdgeInsets.symmetric(horizontal: 4 * scale, vertical: 1.5 * scale),
+      decoration: const BoxDecoration(
+        color: Color(0xFFC0392B),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(3),
+          bottomLeft: Radius.circular(3),
+        ),
+      ),
+      child: Text(
+        'MERCENARY',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: (6.5 * scale).clamp(5, 9),
+          fontWeight: FontWeight.bold,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
   }
 }
 
 /// Shows asset image if available, falls back to procedural art.
-/// Overlays a faction-tinted gradient for visual cohesion.
 class _CardArtArea extends StatelessWidget {
-  const _CardArtArea({required this.card, this.compact = false});
+  const _CardArtArea({required this.card});
   final CardModel card;
-  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final assetPath = getCardArtAsset(card.name);
-    final factionColor = FactionColors.getPrimary(card.faction);
-
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // Base art layer
-        if (assetPath != null)
-          Image.asset(
-            assetPath,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => CardArt(card: card),
-          )
-        else
-          CardArt(card: card),
-        // Faction color overlay
-        Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                factionColor.withValues(alpha: 0.3),
-                factionColor.withValues(alpha: 0.1),
-                factionColor.withValues(alpha: 0.4),
-              ],
-            ),
-          ),
-        ),
-        // Card type icon centered
-        Center(
-          child: _CardTypeIcon(
-            cardType: card.cardType,
-            hasGuard: card.hasGuard,
-            compact: compact,
-          ),
-        ),
-      ],
-    );
+    if (assetPath != null) {
+      return Image.asset(
+        assetPath,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => CardArt(card: card),
+      );
+    }
+    return CardArt(card: card);
   }
 }

@@ -6,12 +6,14 @@ import 'package:simple_card_game/models/faction.dart';
 import 'package:simple_card_game/services/ai_service.dart';
 import 'package:simple_card_game/services/game_service.dart';
 import 'package:simple_card_game/ui/theme/animation_timing.dart';
+import 'package:simple_card_game/ui/theme/board_chrome.dart';
 import 'package:simple_card_game/ui/theme/faction_colors.dart';
 import 'package:simple_card_game/ui/theme/game_theme.dart';
 import 'package:simple_card_game/ui/theme/responsive.dart';
+import 'package:simple_card_game/ui/widgets/beveled_button.dart';
 import 'package:simple_card_game/ui/widgets/card_fan.dart';
 import 'package:simple_card_game/ui/widgets/game_card_widget.dart';
-import 'package:simple_card_game/ui/widgets/resource_bar.dart';
+import 'package:simple_card_game/ui/widgets/resource_icons.dart';
 
 /// The main game screen for Shards of Infinity.
 /// Layout (top to bottom):
@@ -624,12 +626,18 @@ class _GameScreenState extends State<GameScreen>
     );
     final canDirectAttack = currentPlayer.powerPool > 0 && !hasGuards;
 
+    final opponent = livingOpponents.isNotEmpty ? livingOpponents.first : null;
+
     return Scaffold(
-      backgroundColor: GameTheme.boardBackground,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            AbsorbPointer(
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Painted board backdrop (deep blue-teal + central glow).
+          const Positioned.fill(
+            child: CustomPaint(painter: BoardBackdropPainter()),
+          ),
+          SafeArea(
+            child: AbsorbPointer(
               absorbing: _aiThinking,
               child: LayoutBuilder(
                 builder: (context, constraints) {
@@ -640,204 +648,106 @@ class _GameScreenState extends State<GameScreen>
                         maxWidth: Responsive.maxContentWidth,
                       ),
                       child: Column(
-          children: [
-            // Turn indicator
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'Turn ${_game.turnNumber}',
-                    style: const TextStyle(
-                      color: GameTheme.textSecondary,
-                      fontSize: 11,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: const BoxDecoration(
-                      color: GameTheme.gold,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${currentPlayer.name}\'s Turn',
-                    style: const TextStyle(
-                      color: GameTheme.gold,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+                        children: [
+                          // ---- Top bar: opponent pill + hamburger ----------
+                          _TopBar(
+                            opponent: opponent,
+                            allOpponents: livingOpponents,
+                          ),
 
-            // Opponent areas (one per living opponent)
-            for (final opponent in livingOpponents)
-              _OpponentArea(
-                opponent: opponent,
-                canAttack: currentPlayer.powerPool > 0,
-                onAttackChampion: (champ) =>
-                    _attackChampion(champ, opponent.id),
-                screenWidth: screenWidth,
-              ),
+                          // ---- Helper line --------------------------------
+                          const Padding(
+                            padding: EdgeInsets.only(top: 2, bottom: 4),
+                            child: Text(
+                              'Drag to Play cards, Exhaust champions, '
+                              'or Recruit from the center row',
+                              style: TextStyle(
+                                color: Color(0xFFBFD8E8),
+                                fontSize: 12,
+                                fontStyle: FontStyle.italic,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
 
-            const SizedBox(height: 4),
+                          // ---- Center row (6 market cards) ----------------
+                          _CenterRow(
+                            cards: _game.centerRow,
+                            canAfford: (card) =>
+                                currentPlayer.gemPool >= card.cost,
+                            onBuy: _buyCard,
+                            infinityDeckCount: _game.infinityDeck.length,
+                            onLongPress: _showCardDetail,
+                            screenWidth: screenWidth,
+                          ),
 
-            // Center row (market)
-            _CenterRow(
-              cards: _game.centerRow,
-              canAfford: (card) => currentPlayer.gemPool >= card.cost,
-              onBuy: _buyCard,
-              infinityDeckCount: _game.infinityDeck.length,
-              onLongPress: _showCardDetail,
-              screenWidth: screenWidth,
-            ),
+                          // ---- Play area (opponent champs + played) -------
+                          Expanded(
+                            child: _PlayField(
+                              opponentChampions:
+                                  opponent?.championsInPlay ?? const [],
+                              opponentId: opponent?.id,
+                              canAttackChampions:
+                                  currentPlayer.powerPool > 0,
+                              onAttackChampion: (champ, ownerId) =>
+                                  _attackChampion(champ, ownerId),
+                              playedCards: currentPlayer.playedThisTurn,
+                              champions: currentPlayer.championsInPlay,
+                              activatedChampionIds:
+                                  currentPlayer.activatedChampions,
+                              onActivateChampion: _activateChampion,
+                              lastPlayedCardId: _lastPlayedCardId,
+                              actionMessage: _actionMessage,
+                              screenWidth: screenWidth,
+                            ),
+                          ),
 
-            const SizedBox(height: 4),
-
-            // Current player's played cards and champions
-            _PlayArea(
-              playedCards: currentPlayer.playedThisTurn,
-              champions: currentPlayer.championsInPlay,
-              activatedChampionIds: currentPlayer.activatedChampions,
-              onActivateChampion: _activateChampion,
-              lastPlayedCardId: _lastPlayedCardId,
-              screenWidth: screenWidth,
-            ),
-
-            // Action message with fade animation
-            AnimatedSwitcher(
-              duration: AnimationTiming.of(context).cardMove,
-              child: _actionMessage != null
-                  ? Padding(
-                      key: ValueKey(_actionMessage),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 2),
-                      child: Text(
-                        _actionMessage!,
-                        style: const TextStyle(
-                          color: GameTheme.gold,
-                          fontSize: 12,
-                          fontStyle: FontStyle.italic,
-                        ),
+                          // ---- Bottom zone: chrome + hand -----------------
+                          _BottomZone(
+                            player: currentPlayer,
+                            screenWidth: screenWidth,
+                            hand: currentPlayer.hand,
+                            selectedCardId: _selectedHandCardId,
+                            onCardTap: _playCard,
+                            onCardLongPress: _showCardDetail,
+                            onEndTurn: _endTurn,
+                            onPlayAll: currentPlayer.hand.isNotEmpty
+                                ? _playAllCards
+                                : null,
+                            onAttack: canDirectAttack ? _attackOpponent : null,
+                            hasGuards: hasGuards,
+                          ),
+                        ],
                       ),
-                    )
-                  : const SizedBox(height: 18),
-            ),
-
-            // Current player resource bar
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: ResourceBar(
-                health: currentPlayer.health,
-                mastery: currentPlayer.mastery,
-                gems: currentPlayer.gemPool,
-                power: currentPlayer.powerPool,
-                playerName: currentPlayer.name,
-                isCurrentPlayer: true,
-                deckCount: currentPlayer.drawPile.length,
-                discardCount: currentPlayer.discardPile.length,
-              ),
-            ),
-
-            // Action buttons row
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: Row(
-                children: [
-                  // Play All button
-                  Expanded(
-                    child: _ActionButton(
-                      label: 'PLAY ALL',
-                      icon: Icons.play_arrow,
-                      color: GameTheme.gemCyan,
-                      compact: Responsive.isMobile(screenWidth),
-                      onPressed:
-                          currentPlayer.hand.isNotEmpty ? _playAllCards : null,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  // Attack button - blocked by guard champions
-                  Expanded(
-                    child: _ActionButton(
-                      label: hasGuards && currentPlayer.powerPool > 0
-                          ? 'BLOCKED (${currentPlayer.powerPool})'
-                          : 'ATTACK (${currentPlayer.powerPool})',
-                      icon: hasGuards && currentPlayer.powerPool > 0
-                          ? Icons.shield
-                          : Icons.bolt,
-                      color: hasGuards
-                          ? GameTheme.textSecondary
-                          : GameTheme.powerOrange,
-                      compact: Responsive.isMobile(screenWidth),
-                      onPressed: canDirectAttack ? _attackOpponent : null,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  // End Turn button - always enabled, auto-plays cards first
-                  Expanded(
-                    child: _ActionButton(
-                      label: currentPlayer.hand.isNotEmpty
-                          ? 'PLAY & END'
-                          : 'END TURN',
-                      icon: Icons.skip_next,
-                      color: GameTheme.endTurnGreen,
-                      compact: Responsive.isMobile(screenWidth),
-                      onPressed: _endTurn,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 4),
-
-            // Hand fan
-            Expanded(
-              child: CardFan(
-                cards: currentPlayer.hand,
-                onCardTap: _playCard,
-                onCardLongPress: _showCardDetail,
-                selectedCardId: _selectedHandCardId,
-              ),
-            ),
-          ],
-        ),
                     ),
                   );
                 },
               ),
             ),
-            // AI thinking overlay
-            if (_aiThinking)
-              Container(
-                color: Colors.black.withValues(alpha: 0.4),
-                child: const Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CircularProgressIndicator(color: GameTheme.gold),
-                      SizedBox(height: 16),
-                      Text(
-                        'AI is thinking...',
-                        style: TextStyle(
-                          color: GameTheme.gold,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+          ),
+          // AI thinking overlay
+          if (_aiThinking)
+            Container(
+              color: Colors.black.withValues(alpha: 0.4),
+              child: const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(color: GameTheme.gold),
+                    SizedBox(height: 16),
+                    Text(
+                      'AI is thinking...',
+                      style: TextStyle(
+                        color: GameTheme.gold,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }
@@ -846,118 +756,185 @@ class _GameScreenState extends State<GameScreen>
 // ---------------------------------------------------------------------------
 // Sub-widgets
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Top bar — centered opponent pill + hamburger menu
+// ---------------------------------------------------------------------------
 
-class _OpponentArea extends StatelessWidget {
-  const _OpponentArea({
-    required this.opponent,
-    required this.screenWidth,
-    this.canAttack = false,
-    this.onAttackChampion,
-  });
+class _TopBar extends StatelessWidget {
+  const _TopBar({required this.opponent, required this.allOpponents});
 
-  final dynamic opponent; // PlayerState
-  final bool canAttack;
-  final void Function(CardModel)? onAttackChampion;
-  final double screenWidth;
-
-  bool get _hasGuardChampions {
-    for (final champ in opponent.championsInPlay) {
-      if ((champ as CardModel).hasGuard) return true;
-    }
-    return false;
-  }
+  final dynamic opponent; // PlayerState?
+  final List<dynamic> allOpponents;
 
   @override
   Widget build(BuildContext context) {
-    final champions = opponent.championsInPlay as List;
-    final champWidth = Responsive.compactCardWidth(screenWidth);
-    final champHeight = champWidth * (130 / 90) + 10;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: Column(
-        children: [
-          ResourceBar(
-            health: opponent.health,
-            mastery: opponent.mastery,
-            gems: opponent.gemPool,
-            power: opponent.powerPool,
-            playerName: opponent.name,
-            deckCount: opponent.drawPile.length,
-            discardCount: opponent.discardPile.length,
-          ),
-          if (champions.isNotEmpty)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (_hasGuardChampions && canAttack)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 4, left: 4),
-                    child: Row(
-                      children: [
-                        Icon(Icons.shield, size: 12, color: GameTheme.gold),
-                        SizedBox(width: 4),
-                        Text(
-                          'Guard champions must be destroyed first!',
-                          style: TextStyle(
-                            color: GameTheme.gold,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                SizedBox(
-                  height: champHeight,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: [
-                      for (final champ in champions)
-                        Padding(
-                          padding: const EdgeInsets.only(right: 4, top: 4),
-                          child: Stack(
-                            children: [
-                              GameCardWidget(
-                                card: champ,
-                                compact: true,
-                                width: champWidth,
-                                isHighlighted: canAttack,
-                                onTap: canAttack && onAttackChampion != null
-                                    ? () => onAttackChampion!(champ)
-                                    : null,
-                              ),
-                              // Guard indicator overlay
-                              if ((champ as CardModel).hasGuard)
-                                Positioned(
-                                  top: 0,
-                                  right: 0,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(2),
-                                    decoration: BoxDecoration(
-                                      color: GameTheme.gold,
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: const Icon(
-                                      Icons.shield,
-                                      size: 10,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
+      padding: const EdgeInsets.fromLTRB(8, 4, 8, 2),
+      child: SizedBox(
+        height: 40,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Centered opponent pill (kept clear of the hamburger via padding
+            // so the right-most stat chip is never clipped). FittedBox lets it
+            // shrink rather than overflow on very narrow screens.
+            if (opponent != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 64),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: _OpponentPill(opponent: opponent),
                 ),
-              ],
+              ),
+            // Hamburger top-right.
+            Positioned(
+              right: 0,
+              top: 0,
+              bottom: 0,
+              child: Center(child: _HamburgerButton()),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OpponentPill extends StatelessWidget {
+  const _OpponentPill({required this.opponent});
+  final dynamic opponent; // PlayerState
+
+  @override
+  Widget build(BuildContext context) {
+    final name = opponent.name as String;
+    final label = name == 'Player 2' ? 'Hard AI' : name;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF14405E), Color(0xFF0B2236)],
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: BoardChrome.tealHighlight.withValues(alpha: 0.7),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: BoardChrome.tealHighlight.withValues(alpha: 0.25),
+            blurRadius: 8,
+            spreadRadius: -2,
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Avatar disc.
+          Container(
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const LinearGradient(
+                colors: [Color(0xFFE5443B), Color(0xFF7A1E18)],
+              ),
+              border: Border.all(color: Colors.white24, width: 1),
+            ),
+            child: const Icon(Icons.smart_toy,
+                size: 15, color: Colors.white70),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(width: 12),
+          _StatChip(
+            icon: ResourceIcon.health,
+            value: opponent.health as int,
+          ),
+          const SizedBox(width: 8),
+          _StatChip(
+            icon: ResourceIcon.mastery,
+            value: opponent.mastery as int,
+          ),
+          const SizedBox(width: 8),
+          _StatChip(
+            icon: ResourceIcon.gem,
+            value: opponent.gemPool as int,
+          ),
         ],
       ),
     );
   }
 }
+
+/// A small icon + value pair used in the opponent pill and resource chip row.
+class _StatChip extends StatelessWidget {
+  const _StatChip({required this.icon, required this.value, this.fontSize = 15});
+  final ResourceIcon icon;
+  final int value;
+  final double fontSize;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ResourceIconWidget(icon, size: fontSize + 2),
+        const SizedBox(width: 3),
+        Text(
+          '$value',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: fontSize,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HamburgerButton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 52,
+      height: 34,
+      decoration: BoxDecoration(
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(6),
+          bottomLeft: Radius.circular(6),
+          topRight: Radius.circular(14),
+          bottomRight: Radius.circular(6),
+        ),
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            BoardChrome.tealHighlight,
+            BoardChrome.tealBody,
+            BoardChrome.tealShadow,
+          ],
+        ),
+        border: Border.all(color: BoardChrome.tealRim, width: 1.2),
+      ),
+      child: const Icon(Icons.menu, size: 18, color: Color(0xFF0B2236)),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Center row (6 market cards, evenly spaced, no chrome box)
+// ---------------------------------------------------------------------------
 
 class _CenterRow extends StatelessWidget {
   const _CenterRow({
@@ -978,230 +955,50 @@ class _CenterRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cardWidth = Responsive.handCardWidth(screenWidth);
-    final rowHeight = cardWidth * (170 / 120) + 6;
     final refillDuration = AnimationTiming.of(context).cardMove;
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 8),
-      padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(
-        color: GameTheme.surfaceDark.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.1),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Text(
-                'CENTER ROW',
-                style: TextStyle(
-                  color: GameTheme.textSecondary,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.5,
-                ),
-              ),
-              const Spacer(),
-              const Icon(Icons.layers, size: 12, color: GameTheme.textSecondary),
-              const SizedBox(width: 2),
-              Text(
-                '$infinityDeckCount',
-                style: const TextStyle(
-                  color: GameTheme.textSecondary,
-                  fontSize: 10,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          SizedBox(
-            height: rowHeight,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [
-                for (int i = 0; i < cards.length; i++)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    // Keyed per slot: when a card is bought and a new one
-                    // refills the slot, the AnimatedSwitcher cross-fades it in
-                    // (instant duration = snap, no transition).
-                    child: AnimatedSwitcher(
-                      duration: refillDuration,
-                      transitionBuilder: (child, animation) => FadeTransition(
-                        opacity: animation,
-                        child: ScaleTransition(scale: animation, child: child),
-                      ),
-                      child: Builder(
-                        key: ValueKey(cards[i].id),
-                        builder: (context) {
-                          final card = cards[i];
-                          final affordable = canAfford(card);
-                          return GameCardWidget(
-                            card: card,
-                            onTap: affordable ? () => onBuy(card) : null,
-                            onLongPress: onLongPress != null
-                                ? () => onLongPress!(card)
-                                : null,
-                            isHighlighted: affordable,
-                            compact: false,
-                            width: cardWidth,
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+    // Size cards so 6 fit the row width evenly (like the reference). Cap the
+    // width so the row leaves room for the play area + hand below, matching the
+    // reference proportions (cards ~36% of board height, not the full top half).
+    final usable = (screenWidth - 16).clamp(0.0, Responsive.maxContentWidth);
+    final slot = usable / 6;
+    // Allow cards to shrink on very narrow screens so all six always fit the
+    // row width (no horizontal overflow), but cap the size on wide screens.
+    final cardWidth = (slot - 8).clamp(46.0, 138.0);
+    final rowHeight = cardWidth * (170 / 120) + 4;
 
-class _PlayArea extends StatelessWidget {
-  const _PlayArea({
-    required this.playedCards,
-    required this.champions,
-    required this.screenWidth,
-    this.activatedChampionIds = const {},
-    this.onActivateChampion,
-    this.lastPlayedCardId,
-  });
-
-  final List<CardModel> playedCards;
-  final List<CardModel> champions;
-  final Set<String> activatedChampionIds;
-  final void Function(CardModel)? onActivateChampion;
-  final String? lastPlayedCardId;
-  final double screenWidth;
-
-  @override
-  Widget build(BuildContext context) {
-    if (champions.isEmpty && playedCards.isEmpty) {
-      return const SizedBox(
-        height: 50,
-        child: Center(
-          child: Text(
-            'Play area',
-            style: TextStyle(color: Colors.white24, fontSize: 12),
-          ),
-        ),
-      );
-    }
-
-    final cardWidth = Responsive.compactCardWidth(screenWidth);
-    // Room for the compact card plus the small "CHAMPIONS" header / padding.
-    final areaHeight = cardWidth * (130 / 90) + 22;
-
-    return SizedBox(
-      height: areaHeight,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: SizedBox(
+        height: rowHeight,
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Champions section (persistent, tappable to activate)
-            if (champions.isNotEmpty) ...[
-              Container(
-                padding: const EdgeInsets.only(right: 6),
-                decoration: BoxDecoration(
-                  border: Border(
-                    right: BorderSide(
-                      color: GameTheme.gold.withValues(alpha: 0.3),
-                      width: 1,
-                    ),
-                  ),
+            for (int i = 0; i < cards.length; i++)
+              AnimatedSwitcher(
+                duration: refillDuration,
+                transitionBuilder: (child, animation) => FadeTransition(
+                  opacity: animation,
+                  child: ScaleTransition(scale: animation, child: child),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'CHAMPIONS (tap to activate)',
-                      style: TextStyle(
-                        color: GameTheme.gold,
-                        fontSize: 8,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1,
-                      ),
-                    ),
-                    Expanded(
-                      child: Row(
-                        children: champions.map((card) {
-                          final isActivated =
-                              activatedChampionIds.contains(card.id);
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 4),
-                            child: Stack(
-                              children: [
-                                GameCardWidget(
-                                  card: card,
-                                  compact: true,
-                                  showCost: false,
-                                  width: cardWidth,
-                                  isHighlighted: !isActivated,
-                                  onTap: !isActivated &&
-                                          onActivateChampion != null
-                                      ? () => onActivateChampion!(card)
-                                      : null,
-                                ),
-                                // Activated checkmark overlay
-                                if (isActivated)
-                                  Positioned(
-                                    top: 2,
-                                    right: 2,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(2),
-                                      decoration: BoxDecoration(
-                                        color: GameTheme.endTurnGreen,
-                                        borderRadius:
-                                            BorderRadius.circular(4),
-                                      ),
-                                      child: const Icon(
-                                        Icons.check,
-                                        size: 10,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                  ],
+                child: Builder(
+                  key: ValueKey(cards[i].id),
+                  builder: (context) {
+                    final card = cards[i];
+                    final affordable = canAfford(card);
+                    return GameCardWidget(
+                      card: card,
+                      onTap: affordable ? () => onBuy(card) : null,
+                      onLongPress: onLongPress != null
+                          ? () => onLongPress!(card)
+                          : null,
+                      isHighlighted: affordable,
+                      compact: false,
+                      width: cardWidth,
+                    );
+                  },
                 ),
               ),
-              const SizedBox(width: 6),
-            ],
-            // Played cards this turn
-            Expanded(
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: playedCards.map((card) {
-                  final isJustPlayed = card.id == lastPlayedCardId;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 4),
-                    child: AnimatedScale(
-                      scale: isJustPlayed ? 1.15 : 1.0,
-                      duration: AnimationTiming.of(context).cardMove,
-                      curve: Curves.easeOutBack,
-                      child: GameCardWidget(
-                        card: card,
-                        compact: true,
-                        showCost: false,
-                        width: cardWidth,
-                        isHighlighted: isJustPlayed,
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
           ],
         ),
       ),
@@ -1209,53 +1006,384 @@ class _PlayArea extends StatelessWidget {
   }
 }
 
-class _ActionButton extends StatelessWidget {
-  const _ActionButton({
-    required this.label,
-    required this.icon,
-    required this.color,
-    this.onPressed,
-    this.compact = false,
+// ---------------------------------------------------------------------------
+// Play field — opponent champions (top) + played cards / your champions
+// ---------------------------------------------------------------------------
+
+class _PlayField extends StatelessWidget {
+  const _PlayField({
+    required this.opponentChampions,
+    required this.opponentId,
+    required this.canAttackChampions,
+    required this.onAttackChampion,
+    required this.playedCards,
+    required this.champions,
+    required this.activatedChampionIds,
+    required this.onActivateChampion,
+    required this.lastPlayedCardId,
+    required this.actionMessage,
+    required this.screenWidth,
   });
 
-  final String label;
-  final IconData icon;
-  final Color color;
-  final VoidCallback? onPressed;
-
-  /// When true (mobile), the button uses a larger touch target and text.
-  final bool compact;
+  final List<dynamic> opponentChampions;
+  final String? opponentId;
+  final bool canAttackChampions;
+  final void Function(CardModel champ, String ownerId) onAttackChampion;
+  final List<CardModel> playedCards;
+  final List<CardModel> champions;
+  final Set<String> activatedChampionIds;
+  final void Function(CardModel)? onActivateChampion;
+  final String? lastPlayedCardId;
+  final String? actionMessage;
+  final double screenWidth;
 
   @override
   Widget build(BuildContext context) {
-    final isEnabled = onPressed != null;
-    // Mobile gets a taller, easier-to-tap button (>= 48px) with bigger text.
-    final verticalPadding = compact ? 14.0 : 10.0;
-    final fontSize = compact ? 12.0 : 10.0;
-    final iconSize = compact ? 18.0 : 16.0;
-    return ElevatedButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon, size: iconSize),
-      label: Text(
-        label,
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          fontSize: fontSize,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 0.5,
+    final cardWidth = Responsive.compactCardWidth(screenWidth);
+    return Stack(
+      children: [
+        Column(
+          children: [
+            // Opponent champions row (just under the center row).
+            if (opponentChampions.isNotEmpty && opponentId != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: SizedBox(
+                  height: cardWidth * (130 / 90) + 4,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      for (final champ in opponentChampions)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 4),
+                          child: GameCardWidget(
+                            card: champ as CardModel,
+                            compact: true,
+                            width: cardWidth,
+                            isHighlighted: canAttackChampions,
+                            onTap: canAttackChampions
+                                ? () => onAttackChampion(champ, opponentId!)
+                                : null,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            const Spacer(),
+            // Your champions + played-this-turn row sit just above the hand.
+            if (champions.isNotEmpty || playedCards.isNotEmpty)
+              SizedBox(
+                height: cardWidth * (130 / 90) + 4,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    for (final card in champions)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 4),
+                        child: Stack(
+                          children: [
+                            GameCardWidget(
+                              card: card,
+                              compact: true,
+                              showCost: false,
+                              width: cardWidth,
+                              isHighlighted:
+                                  !activatedChampionIds.contains(card.id),
+                              onTap: !activatedChampionIds.contains(card.id) &&
+                                      onActivateChampion != null
+                                  ? () => onActivateChampion!(card)
+                                  : null,
+                            ),
+                            if (activatedChampionIds.contains(card.id))
+                              Positioned(
+                                top: 2,
+                                right: 2,
+                                child: Container(
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: BoxDecoration(
+                                    color: GameTheme.endTurnGreen,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Icon(Icons.check,
+                                      size: 10, color: Colors.white),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    for (final card in playedCards)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 4),
+                        child: AnimatedScale(
+                          scale: card.id == lastPlayedCardId ? 1.12 : 1.0,
+                          duration: AnimationTiming.of(context).cardMove,
+                          curve: Curves.easeOutBack,
+                          child: GameCardWidget(
+                            card: card,
+                            compact: true,
+                            showCost: false,
+                            width: cardWidth,
+                            isHighlighted: card.id == lastPlayedCardId,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+          ],
         ),
-        overflow: TextOverflow.ellipsis,
+        // Action message floats over the play area centre.
+        if (actionMessage != null)
+          Positioned(
+            top: 6,
+            left: 0,
+            right: 0,
+            child: IgnorePointer(
+              child: Center(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.45),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    actionMessage!,
+                    style: const TextStyle(
+                      color: BoardChrome.goldText,
+                      fontSize: 12,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Bottom zone — End Turn + resource chips + draw hex | hand | power | Play All
+// ---------------------------------------------------------------------------
+
+class _BottomZone extends StatelessWidget {
+  const _BottomZone({
+    required this.player,
+    required this.screenWidth,
+    required this.hand,
+    required this.selectedCardId,
+    required this.onCardTap,
+    required this.onCardLongPress,
+    required this.onEndTurn,
+    required this.onPlayAll,
+    required this.onAttack,
+    required this.hasGuards,
+  });
+
+  final dynamic player; // PlayerState
+  final double screenWidth;
+  final List<CardModel> hand;
+  final String? selectedCardId;
+  final void Function(CardModel) onCardTap;
+  final void Function(CardModel) onCardLongPress;
+  final VoidCallback onEndTurn;
+  final VoidCallback? onPlayAll;
+  final VoidCallback? onAttack;
+  final bool hasGuards;
+
+  @override
+  Widget build(BuildContext context) {
+    final isMobile = Responsive.isMobile(screenWidth);
+    final power = player.powerPool as int;
+    // Bottom row strip with a subtle teal-tinted band like the reference.
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            const Color(0xFF0E2C44).withValues(alpha: 0.0),
+            const Color(0xFF0E2C44).withValues(alpha: 0.55),
+          ],
+        ),
       ),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: isEnabled ? color : color.withValues(alpha: 0.3),
-        foregroundColor: Colors.white,
-        disabledBackgroundColor: color.withValues(alpha: 0.2),
-        disabledForegroundColor: Colors.white38,
-        padding:
-            EdgeInsets.symmetric(horizontal: 8, vertical: verticalPadding),
-        minimumSize: Size(0, compact ? Responsive.minTouchTarget : 0),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+      padding: const EdgeInsets.fromLTRB(8, 2, 8, 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Left column: End Turn + resource chips + draw pile hex.
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              BeveledButton(
+                label: 'End Turn',
+                onPressed: onEndTurn,
+                width: isMobile ? 120 : 150,
+                height: 40,
+                fontSize: isMobile ? 16 : 20,
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF3E6E8E), Color(0xFF1B3650)],
+                      ),
+                      border: Border.all(color: Colors.white24),
+                    ),
+                    child: const Icon(Icons.person,
+                        size: 14, color: Colors.white70),
+                  ),
+                  const SizedBox(width: 6),
+                  _StatChip(
+                    icon: ResourceIcon.mastery,
+                    value: player.mastery as int,
+                    fontSize: 14,
+                  ),
+                  const SizedBox(width: 8),
+                  _StatChip(
+                    icon: ResourceIcon.gem,
+                    value: player.gemPool as int,
+                    fontSize: 14,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              _PileHex(
+                count: player.drawPile.length as int,
+                style: _PileStyle.draw,
+              ),
+            ],
+          ),
+          const SizedBox(width: 8),
+          // Power diamond (gems/power available for the turn).
+          _ValueDiamond(value: power),
+          const SizedBox(width: 4),
+          // Center: hand fan.
+          Expanded(
+            child: CardFan(
+              cards: hand,
+              onCardTap: onCardTap,
+              onCardLongPress: onCardLongPress,
+              selectedCardId: selectedCardId,
+            ),
+          ),
+          const SizedBox(width: 4),
+          // Right column: Play All button + discard hex.
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              BeveledButton(
+                label: 'Play All',
+                onPressed: onPlayAll,
+                style: BeveledStyle.green,
+                width: isMobile ? 96 : 132,
+                height: isMobile ? 64 : 92,
+                fontSize: isMobile ? 20 : 28,
+                radius: 16,
+              ),
+              const SizedBox(height: 4),
+              _PileHex(
+                count: player.discardPile.length as int,
+                style: _PileStyle.discard,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+enum _PileStyle { draw, discard }
+
+/// A small beveled hex showing a pile count — green for the draw pile,
+/// red-brown for the discard pile (matching the reference corners).
+class _PileHex extends StatelessWidget {
+  const _PileHex({required this.count, required this.style});
+  final int count;
+  final _PileStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDraw = style == _PileStyle.draw;
+    final colors = isDraw
+        ? const [Color(0xFF2FA85B), Color(0xFF16622F)]
+        : const [Color(0xFF9A4A2E), Color(0xFF5A2415)];
+    return Container(
+      width: 44,
+      height: 52,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: colors,
+        ),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.4),
+          width: 1.5,
+        ),
+        boxShadow: const [
+          BoxShadow(color: Colors.black45, blurRadius: 4, offset: Offset(0, 2)),
+        ],
+      ),
+      child: Text(
+        '$count',
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          shadows: [Shadow(color: Colors.black54, blurRadius: 2)],
+        ),
+      ),
+    );
+  }
+}
+
+/// The diamond badge showing available power/gems for the turn.
+class _ValueDiamond extends StatelessWidget {
+  const _ValueDiamond({required this.value});
+  final int value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Transform.rotate(
+      angle: 0.785398, // 45°
+      child: Container(
+        width: 34,
+        height: 34,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFEAF2F6), Color(0xFFAFC4D0)],
+          ),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Colors.white, width: 1.5),
+          boxShadow: const [
+            BoxShadow(color: Colors.black38, blurRadius: 3, offset: Offset(0, 1)),
+          ],
+        ),
+        child: Transform.rotate(
+          angle: -0.785398,
+          child: Text(
+            '$value',
+            style: const TextStyle(
+              color: Color(0xFF14405E),
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ),
       ),
     );
