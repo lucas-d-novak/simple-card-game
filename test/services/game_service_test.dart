@@ -2605,6 +2605,90 @@ void main() {
   });
 
   // -------------------------------------------------------------------------
+  // Merged champion USE — the free play-effect activation AND the Exhaust
+  // ability together, once each per turn. This is the engine contract the UI's
+  // single "Use"/"Exhaust" button relies on (both boards fire
+  // activateChampion + useActivatedAbility as ONE action). Locks the fix for
+  // the Giga, Source Adept bug where using the champion via Exhaust skipped its
+  // "draw a card" play effect after the initial play-from-hand.
+  // -------------------------------------------------------------------------
+  group('merged champion use (activate + exhaust in one turn)', () {
+    // A champion mirroring Giga/Evokatus/Chlorophyte: it has BOTH a re-resolvable
+    // play effect (draw) AND an Exhaust-gated activated ability (gain mastery).
+    CardModel drawThenMasteryChampion() => const CardModel(
+          id: 'giga_like',
+          name: 'Giga-like',
+          cost: 0,
+          playEffects: [DrawCardsEffect(1)],
+          cardType: CardType.champion,
+          shield: 4,
+          activatedAbility: ActivatedAbility(effects: [GainMasteryEffect(3)]),
+        );
+
+    // Deploys [champ] for p0, then cycles back to p0 so its per-turn flags are
+    // clear (it's a persistent fixture, not freshly played this turn).
+    GameService deployReady(CardModel champ) {
+      final game = GameService(playerCount: 2, random: Random(7));
+      game.currentPlayer.hand.add(champ);
+      game.playCard(champ.id); // deploy: draws once, marks activated
+      game.endTurn(); // p0 -> p1
+      game.endTurn(); // p1 -> p0 (clears activated/exhausted flags)
+      return game;
+    }
+
+    test('using the champion both draws AND grants the ability', () {
+      final game = deployReady(drawThenMasteryChampion());
+      final me = game.players[0];
+      final handBefore = me.hand.length;
+      final masteryBefore = me.mastery;
+
+      // The merged UI action fires both halves in one press.
+      expect(game.activateChampion('giga_like'), true);
+      expect(game.useActivatedAbility('giga_like'), true);
+
+      expect(me.hand.length, handBefore + 1,
+          reason: 'the play-effect draw must re-fire on use');
+      expect(me.mastery, masteryBefore + 3,
+          reason: 'the Exhaust ability must also resolve');
+    });
+
+    test('neither half double-fires within the same turn', () {
+      final game = deployReady(drawThenMasteryChampion());
+      final me = game.players[0];
+
+      expect(game.activateChampion('giga_like'), true);
+      expect(game.useActivatedAbility('giga_like'), true);
+      final handAfter = me.hand.length;
+      final masteryAfter = me.mastery;
+
+      // Re-tapping is a no-op — the engine rejects the repeat, so the UI's
+      // merged handler can safely call both without granting twice.
+      expect(game.activateChampion('giga_like'), false);
+      expect(game.useActivatedAbility('giga_like'), false);
+      expect(me.hand.length, handAfter);
+      expect(me.mastery, masteryAfter);
+    });
+
+    test('draw re-fires every turn the champion is used', () {
+      final game = deployReady(drawThenMasteryChampion());
+      final me = game.players[0];
+
+      game.activateChampion('giga_like');
+      game.useActivatedAbility('giga_like');
+
+      game.endTurn(); // p0 -> p1
+      game.endTurn(); // p1 -> p0 (flags cleared)
+
+      final handBefore = me.hand.length;
+      final masteryBefore = me.mastery;
+      expect(game.activateChampion('giga_like'), true);
+      expect(game.useActivatedAbility('giga_like'), true);
+      expect(me.hand.length, handBefore + 1);
+      expect(me.mastery, masteryBefore + 3);
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // Wave 1 — mastery REPLACE (vs additive) behavior
   // -------------------------------------------------------------------------
   group('mastery replace vs additive', () {

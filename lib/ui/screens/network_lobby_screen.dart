@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:simple_card_game/services/game_client.dart';
 import 'package:simple_card_game/services/token_storage.dart';
 import 'package:simple_card_game/ui/screens/about_screen.dart';
+import 'package:simple_card_game/ui/screens/card_list_screen.dart';
 import 'package:simple_card_game/ui/screens/game_setup_screen.dart';
 import 'package:simple_card_game/ui/screens/network_game_screen.dart';
 import 'package:simple_card_game/ui/theme/board_chrome.dart';
@@ -113,6 +115,24 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
     client.connect(_urlController.text.trim());
   }
 
+  /// Paste the OS clipboard into the access-code field. Access codes are opaque
+  /// tokens users copy from an invite, and summoning the OS paste menu via
+  /// long-press is finicky on web/mobile — a one-tap Paste button is reliable.
+  /// Pasted tokens often carry a trailing newline/space, so we trim.
+  Future<void> _pasteToken() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final text = data?.text?.trim();
+    if (!mounted) return;
+    if (text == null || text.isEmpty) {
+      _toast('Clipboard is empty');
+      return;
+    }
+    _tokenController.text = text;
+    // Move the cursor to the end so the field looks natural after a paste.
+    _tokenController.selection =
+        TextSelection.collapsed(offset: text.length);
+  }
+
   /// Forget the remembered token (e.g. on a shared computer).
   void _forgetToken() {
     TokenStorage.instance.forgetToken();
@@ -212,6 +232,31 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
               ),
             ),
           ),
+          // Persistent Card List link, pinned top-left (mirrors ABOUT) so it's
+          // reachable from both the login and lobby states.
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 4, left: 8),
+                child: TextButton.icon(
+                  key: const ValueKey('lobbyCardListButton'),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const CardListScreen()),
+                  ),
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFFBFD8E8),
+                  ),
+                  icon: const Icon(Icons.style, size: 16),
+                  label: const Text(
+                    'CARD LIST',
+                    style:
+                        TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -249,7 +294,18 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
               controller: _tokenController,
               style: const TextStyle(color: Colors.white),
               obscureText: true,
-              decoration: _dec('Access code (from your invite)'),
+              decoration: _dec(
+                'Access code (from your invite)',
+                // One-tap paste — access codes are copied from an invite and the
+                // OS long-press paste menu is unreliable on web/mobile.
+                suffixIcon: IconButton(
+                  key: const ValueKey('pasteAccessCodeButton'),
+                  tooltip: 'Paste',
+                  icon: const Icon(Icons.content_paste,
+                      color: Colors.white60, size: 20),
+                  onPressed: _pasteToken,
+                ),
+              ),
               onSubmitted: (_) => _connect(),
             ),
             if (_hasRememberedToken)
@@ -533,9 +589,10 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
     );
   }
 
-  InputDecoration _dec(String label) => InputDecoration(
+  InputDecoration _dec(String label, {Widget? suffixIcon}) => InputDecoration(
         labelText: label,
         labelStyle: const TextStyle(color: Colors.white60),
+        suffixIcon: suffixIcon,
         enabledBorder: const OutlineInputBorder(
             borderSide: BorderSide(color: Colors.white24)),
         focusedBorder: const OutlineInputBorder(

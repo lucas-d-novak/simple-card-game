@@ -771,22 +771,25 @@ class GameService {
     return shield;
   }
 
-  /// Resolve the under-card state when [championId]'s champion leaves [owner]'s
-  /// play (destroyed or eliminated). Moves any cards tucked under it to the
-  /// owner's discard pile (paradigm_the_archivist "put all cards under it into
-  /// your discard pile" — the simple, default disposition; carmine_eclipse's
-  /// optional "recruit any, banish the rest" is a documented follow-up) and
-  /// drops any self-scoped shieldPerCardUnder modifier the champion carried so a
-  /// stale buff cannot linger. A no-op when the champion had no under-cards /
-  /// modifier.
+  /// Resolve the state a champion leaves behind when [championId]'s champion
+  /// leaves [owner]'s play (destroyed or eliminated). Moves any cards tucked
+  /// under it to the owner's discard pile (paradigm_the_archivist "put all cards
+  /// under it into your discard pile" — the simple, default disposition;
+  /// carmine_eclipse's optional "recruit any, banish the rest" is a documented
+  /// follow-up) and drops EVERY [StaticModifier] the champion sourced — not just
+  /// its self-scoped shieldPerCardUnder buff, but any board-wide aura it granted
+  /// (e.g. zetta_the_encryptor's [StaticModifierKind.cannotBeAttacked], which
+  /// protects the owner and their other champions only while zetta is in play).
+  /// A champion-sourced modifier is aura-scoped: it must vanish the instant its
+  /// source leaves, else "you and your other champions can't be attacked" would
+  /// outlive the champion granting it. A no-op when the champion had no
+  /// under-cards / modifier.
   void _releaseUnderCards(PlayerState owner, String championId) {
     final under = owner.cardsUnderChampion.remove(championId);
     if (under != null && under.isNotEmpty) {
       owner.discardPile.addAll(under);
     }
-    owner.staticModifiers.removeWhere((m) =>
-        m.kind == StaticModifierKind.shieldPerCardUnder &&
-        m.sourceChampionId == championId);
+    owner.staticModifiers.removeWhere((m) => m.sourceChampionId == championId);
   }
 
   /// Whether [player] owns a [StaticModifierKind.cannotBeAttacked] modifier.
@@ -2647,5 +2650,14 @@ class GameService {
       removedFromGame.addAll(under);
     }
     player.cardsUnderChampion.clear();
+
+    // Board-wide static modifiers leave with the player too. Champion-sourced
+    // auras (e.g. zetta_the_encryptor's cannotBeAttacked) are keyed to a
+    // champion that just left play above; the per-champion combat path
+    // (_releaseUnderCards) drops them one champion at a time, but an all-at-once
+    // elimination (attackPlayer / an AllPlayersLoseHealthEffect) never destroys
+    // those champions individually — so clear the whole set here, else a stale
+    // aura would outlive its source. An eliminated player holds no board state.
+    player.staticModifiers.clear();
   }
 }

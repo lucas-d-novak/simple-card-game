@@ -93,10 +93,10 @@ void main() {
       final me = game.currentPlayer;
       me.hand.add(_card(id: 'condy', playEffects: [
         const GainGemsEffect(1),
-        ConditionalEffect(
-          condition: const GameCondition(
+        const ConditionalEffect(
+          condition: GameCondition(
               kind: GameConditionKind.highestMasteryAmongPlayers),
-          then: const [GainGemsEffect(5)],
+          then: [GainGemsEffect(5)],
         ),
       ]));
 

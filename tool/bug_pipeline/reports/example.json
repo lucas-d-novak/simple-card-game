@@ -1,0 +1,16 @@
+{
+  "reportId": "disc-000000000000000000",
+  "source": "manual",
+  "reporter": "example-user",
+  "title": "Zetta's can't-be-attacked stays after Zetta dies",
+  "summary": "I played the Order champion that makes my other champions unattackable. After it died, my other champions were still unattackable for the rest of the game.",
+  "expected": "Once the champion granting the aura leaves play, the protection should end.",
+  "repro": [
+    "Play Zetta the Encryptor (you + other champions can't be attacked)",
+    "Have the opponent destroy Zetta",
+    "Try to attack my other champions — still blocked"
+  ],
+  "gameId": null,
+  "attachments": [],
+  "rawText": "the champion that protects my other champions kept protecting them even after it died"
+}

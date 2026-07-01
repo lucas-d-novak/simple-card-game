@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:simple_card_game/models/card_effect.dart';
 import 'package:simple_card_game/models/card_model.dart';
 import 'package:simple_card_game/ui/theme/board_chrome.dart';
 import 'package:simple_card_game/ui/theme/faction_colors.dart';
@@ -18,6 +19,26 @@ class CardDetailAction {
   final VoidCallback onPressed;
   final bool enabled;
 }
+
+/// A "passive-only" champion is one whose ONLY on-play behaviour is a persistent
+/// board AURA — every entry in [CardModel.playEffects] is an
+/// [AddStaticModifierEffect] (e.g. zetta_the_encryptor's `cannotBeAttacked`,
+/// carmine_eclipse's shield-per-card-under) — AND it has no Exhaust-gated
+/// [CardModel.activatedAbility].
+///
+/// Such an aura already applies the moment the champion enters play
+/// (`GameService.playCard` resolves a champion's `playEffects` on enter-play, and
+/// the `AddStaticModifierEffect` dedup guard prevents any double-apply). There is
+/// therefore nothing for the player to "activate" — so the boards deliberately
+/// show NO Activate/Exhaust button for these champions. The predicate is general
+/// (not hardcoded to Zetta/Carmine): any future pure-aura champion is covered.
+///
+/// [CardModel.playEffects] must be non-empty — a champion with no play effects at
+/// all is a vanilla body, not a passive aura, and keeps its (disabled) button.
+bool isPassiveOnlyChampion(CardModel card) =>
+    card.activatedAbility == null &&
+    card.playEffects.isNotEmpty &&
+    card.playEffects.every((e) => e is AddStaticModifierEffect);
 
 /// A full-screen card-detail modal matching the official Fragments of Boundlessness
 /// client (reference 03/04): the tapped card scaled up and centered with a

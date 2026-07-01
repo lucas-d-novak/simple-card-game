@@ -7,6 +7,7 @@ import 'package:simple_card_game/ui/screens/game_screen.dart';
 import 'package:simple_card_game/ui/screens/game_setup_screen.dart';
 import 'package:simple_card_game/ui/screens/home_screen.dart';
 import 'package:simple_card_game/ui/screens/about_screen.dart';
+import 'package:simple_card_game/ui/screens/card_list_screen.dart';
 import 'package:simple_card_game/ui/screens/net_board_fixture_screen.dart';
 import 'package:simple_card_game/ui/screens/network_auto_screen.dart';
 import 'package:simple_card_game/ui/screens/network_lobby_screen.dart';
@@ -77,6 +78,8 @@ class FragmentsOfBoundlessnessApp extends StatelessWidget {
       );
     } else if (params.containsKey('about')) {
       home = const AboutScreen();
+    } else if (params.containsKey('cards') || params.containsKey('cardlist')) {
+      home = const CardListScreen();
     } else if (params.containsKey('local') || params.containsKey('solo')) {
       // Single-player / vs-AI setup (hotseat & AI). Kept behind a flag now that
       // online multiplayer is the principal use case.

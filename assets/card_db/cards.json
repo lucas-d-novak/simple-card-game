@@ -430,13 +430,12 @@
         }
       ],
       "art": "cryptofist_monk.jpg",
-      "rawText": "Order Champion (Ally). Draw a card.",
+      "rawText": "Order Ally. Draw a card.",
       "verified": true,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 17: name='Cryptofist Monk', faction='Order', amount=2. | art added from TTS spritesheet crop (effects pending verification). | VERIFIED from image. Champion shield 8, Order, Ally. On-deploy: draw a card.",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 17: name='Cryptofist Monk', faction='Order', amount=2. | art added from TTS spritesheet crop (effects pending verification). | VERIFIED from image. Champion shield 8, Order, Ally. On-deploy: draw a card. | FIX (user+art): retyped Champion→Ally (regular); shield removed per art — bottom banner reads 'Order Ally' (art shows a shield-shaped badge, but Allies carry no toughness in-engine).",
       "set": "base",
-      "cardType": "champion",
+      "cardType": "regular",
       "cost": 5,
-      "shield": 8,
       "chapter": 1
     },
     {
@@ -1629,14 +1628,13 @@
         }
       ],
       "art": "mainframe_abbot.jpg",
-      "rawText": "Order Champion (Ally). Draw a card. If you are Tetra, gain 1 (gem).",
+      "rawText": "Order Ally. Draw a card. If you are Tetra, gain 1 (gem).",
       "verified": true,
-      "notes": "Order Champion (type line 'Order Ally' but shield 3 = champion). Draw a card; if Tetra, gain 1 gem.",
+      "notes": "Draw a card; if Tetra, gain 1 gem. | FIX (user+art): retyped Champion→Ally (regular); shield removed per art — bottom banner reads 'Order Ally' (prior note wrongly overrode the banner, treating the shield-shaped badge as champion toughness; Allies carry no toughness in-engine).",
       "set": "rotf",
       "chapter": 2,
-      "cardType": "champion",
-      "cost": 3,
-      "shield": 3
+      "cardType": "regular",
+      "cost": 3
     },
     {
       "id": "nexus_datic_hunter",
@@ -3866,13 +3864,12 @@
         }
       ],
       "art": "subversion_elders.jpg",
-      "rawText": "Order Champion (Ally). Gain 1 (gem) for each Faction you have played this turn. (The Factions are Homodeus, Order, Undergrowth, Wraethe, and Aion.)",
+      "rawText": "Order Ally. Gain 1 (gem) for each Faction you have played this turn. (The Factions are Homodeus, Order, Undergrowth, Wraethe, and Aion.)",
       "verified": true,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 167: name='Subversion Elders', faction='Order', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Champion shield 4. UNMODELED: scaling 'Gain 1 gem for each Faction you have played this turn'. No fixed base. verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false.",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 167: name='Subversion Elders', faction='Order', amount=1. | art added from TTS spritesheet crop (effects pending verification). | UNMODELED: scaling 'Gain 1 gem for each Faction you have played this turn'. No fixed base. verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false. | FIX (user+art): retyped Champion→Ally (regular); shield removed per art — bottom banner reads 'Order Ally' (art shows a shield-shaped badge, but Allies carry no toughness in-engine).",
       "set": "rotf",
-      "cardType": "champion",
+      "cardType": "regular",
       "cost": 5,
-      "shield": 4,
       "chapter": 4
     },
     {
@@ -3887,13 +3884,12 @@
         }
       ],
       "art": "querry_monk.jpg",
-      "rawText": "Order Champion (Ally). Draw a card. Mastery 10: This also counts as Homodeus, Wraethe and Undergrowth. This effect also applies in your hand and discard pile.",
+      "rawText": "Order Ally. Draw a card. Mastery 10: This also counts as Homodeus, Wraethe and Undergrowth. This effect also applies in your hand and discard pile.",
       "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 168: name='Querry Monk', faction='Order', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Champion shield 3. On-deploy draw 1 encoded; masteryThreshold 10 set. UNMODELED: mastery-10 'counts as Homodeus, Wraethe and Undergrowth' (multi-faction, not the all-faction countsAsAllFactions, and conditional on mastery). verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false.",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 168: name='Querry Monk', faction='Order', amount=1. | art added from TTS spritesheet crop (effects pending verification). | On-deploy draw 1 encoded; masteryThreshold 10 set. UNMODELED: mastery-10 'counts as Homodeus, Wraethe and Undergrowth' (multi-faction, not the all-faction countsAsAllFactions, and conditional on mastery). verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false. | FIX (user+art): retyped Champion→Ally (regular); shield removed per art — bottom banner reads 'Order Ally' (art shows a shield-shaped badge, but Allies carry no toughness in-engine).",
       "set": "rotf",
-      "cardType": "champion",
+      "cardType": "regular",
       "cost": 4,
-      "shield": 3,
       "masteryThreshold": 10,
       "chapter": 4
     },

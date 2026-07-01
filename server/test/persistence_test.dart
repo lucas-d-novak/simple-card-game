@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:shards_server/lobby.dart';
 import 'package:shards_server/persistence.dart';
+import 'package:shards_server/stats_capture.dart' show winTypeOf;
 import 'package:test/test.dart';
 
 /// Build a started 2-player game inside a fresh lobby.
@@ -172,6 +173,49 @@ void main() {
       final freshLobby = Lobby();
       GamePersistence.open(tmp.path).loadInto(freshLobby);
       expect(freshLobby.game(g.id)?.status, GameStatus.complete);
+    });
+
+    test("a finished game's WINNER survives a restart (not defaulted to a "
+        'draw)', () {
+      final store = GamePersistence.open(tmp.path);
+      final lobby = Lobby();
+      final g = _startedGame(lobby); // players: alice (seat 0), bob (seat 1)
+      final session = g.session!;
+
+      // Drive the engine to a real ELIMINATION win by the host (seat 0). The
+      // engine's winnerId/winType are what GameStateCodec persists inside the
+      // `game` blob; the LobbyGame's own winnerId/winType are transient and
+      // NOT persisted separately.
+      session.game.winnerId = session.game.players[0].id;
+      session.game.winType = 'elimination';
+      session.game.restoreGameOver(true);
+
+      // Mirror the live complete-transition in bin/server.dart.
+      g.status = GameStatus.complete;
+      g.winnerId = session.winnerLobbyId; // 'alice'
+      g.winType = winTypeOf(session.game); // 'elimination'
+      expect(g.winnerId, 'alice', reason: 'sanity: real winner before restart');
+
+      store.save(g);
+
+      // --- Simulated restart into a FRESH lobby. ---
+      final freshLobby = Lobby();
+      GamePersistence.open(tmp.path).loadInto(freshLobby);
+      final rg = freshLobby.game(g.id);
+      expect(rg, isNotNull);
+      expect(rg!.status, GameStatus.complete);
+
+      // The past-games summary reads these LobbyGame fields; before the fix they
+      // were null after a restart, so the lobby mislabelled a won game as a
+      // "Draw / no winner". They must be re-derived from the restored engine.
+      expect(rg.winnerId, 'alice',
+          reason: 'a real winner must survive a restart, not become a draw');
+      expect(rg.winType, 'elimination');
+
+      // And the summary payload the client parses carries the winner too.
+      final summary = rg.toSummary();
+      expect(summary['winnerId'], 'alice');
+      expect(summary['winType'], 'elimination');
     });
   });
 }

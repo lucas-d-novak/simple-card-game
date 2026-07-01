@@ -56,9 +56,12 @@ captured so they aren't lost. Grouped by area.
 
 - **Discord bug-report channel + automated triage pipeline** — a Discord server
   where alpha players report bugs, wired to an automated agent pipeline that reads
-  the channel and spins up investigator → implementation → verification agents to
-  propose fixes. Design: [`ai-docs/discord_bug_pipeline.md`](ai-docs/discord_bug_pipeline.md).
-  *Status: design drafted; not yet built.*
+  the channel and spins up investigator → implementation → verification agents that
+  fix the bug, **auto-merge** the passing fix into `rld-mvp-sprint`, and **trigger
+  the Pi to rebuild/redeploy** (clients cache-bust within ~30s). Design:
+  [`ai-docs/discord_bug_pipeline.md`](ai-docs/discord_bug_pipeline.md).
+  *Status: design drafted (alpha closed-loop auto-merge); Phase 0 runner being
+  scaffolded under [`tool/bug_pipeline/`](tool/bug_pipeline/).*
 
 ## AI
 

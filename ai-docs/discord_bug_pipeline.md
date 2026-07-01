@@ -2,19 +2,28 @@
 
 A design for the alpha's community bug-intake loop: alpha players report bugs in a
 **Discord** channel; a pipeline **reads** those reports and runs **investigator →
-implementation → verification** agents that produce a triaged, draft-PR fix for a
-human (you) to review and merge.
+implementation → verification** agents that fix the bug, **auto-merge** the passing
+fix into `rld-mvp-sprint`, and **trigger the Pi to rebuild + redeploy** — so a
+reporter's bug can be fixed and live without a human in the loop.
 
 This is the public sibling of the existing in-repo agent workflow we already use
-(parallel worktree agents + adversarial verifiers). It's deferred — captured in
-[`../ROADMAP.md`](../ROADMAP.md) under "Community / bug intake" — but designed here
-so it can be built directly when the alpha has enough players to generate reports.
+([`bug_fix_workflow.md`](bug_fix_workflow.md) — parallel worktree agents +
+adversarial verifiers; the pipeline's INVESTIGATE stage runs that exact
+find-root-cause → identify-the-class loop). Captured in
+[`../ROADMAP.md`](../ROADMAP.md) under "Community / bug intake".
 
-> **North-star constraint, read first.** These agents touch the repo and open PRs.
-> The pipeline is **human-gated at the merge step, always.** No agent merges to
-> `rld-mvp-sprint` or `main`. Every fix lands as a **draft PR** you review. The
-> automated stages do triage + investigation + a *proposed* patch + verification
-> evidence; a human makes the merge call. (See §6 Safety.)
+> **Stance, read first — ALPHA: closed-loop auto-merge (intentionally unsafe).**
+> During the alpha we optimize for velocity over safety: a fix that clears the
+> **mechanical gate** (analyze + full test suite + card-DB validation) and the
+> **adversarial-verifier gate** is **auto-merged into `rld-mvp-sprint`** and
+> **auto-deployed** (Pi rebuild → version stamp → clients cache-bust within
+> ~30s). No human approves the merge. This is a deliberate, **reversible** bet:
+> every fix is an isolated squash-merge with a linked PR, so a bad merge is one
+> `git revert` + rebuild away, and the whole auto-merge behavior is a single
+> config flag (`AUTO_MERGE=1`) we can flip off to fall back to draft-PR-only.
+> `main` remains collaborator-owned and **out of bounds** — the pipeline only
+> ever touches `rld-mvp-sprint`. (See §6 for the guardrails that survive even in
+> this fast mode.)
 
 ---
 
@@ -33,14 +42,16 @@ so it can be built directly when the alpha has enough players to generate report
  ┌──────────── pipeline (one run per accepted report) ────────────┐
  │ 1. INTAKE      normalize report → structured issue record       │
  │ 2. TRIAGE      dupe? valid? severity? enough info? → label       │
- │ 3. INVESTIGATE agent: reproduce + root-cause (read-only)         │
+ │ 3. INVESTIGATE agent: reproduce + root-cause + identify-class    │
  │ 4. IMPLEMENT   agent: minimal patch on a worktree branch         │
- │ 5. VERIFY      agent(s): adversarial check + run tests           │
- │ 6. DRAFT PR    open a draft PR, link it back to the Discord thread│
+ │ 5. VERIFY      mechanical gate (analyze+tests+db) + adversarial   │
+ │ 6. PR + MERGE  open PR → both gates green? → AUTO-MERGE to sprint │
+ │ 7. DEPLOY      trigger Pi rebuild → version stamp → cache-bust    │
  └──────────────────────────────────────────────────────────────────┘
-   │  bot posts: "🔎 investigating" → "🔧 fix drafted: PR #N" → status
+   │  bot posts: "🔎 investigating" → "🔧 fix merged: PR #N" → "🚀 live"
    ▼
- Human reviews the draft PR → merge / request changes / reject
+ Fix is live in the alpha. Human can `git revert` any bad merge after the fact.
+ (Gates fail, or AUTO_MERGE=0 → falls back to a draft PR a human reviews.)
 ```
 
 Each stage posts a status update back to the report's Discord thread, so reporters
@@ -230,17 +241,34 @@ low-confidence and flagged for human attention rather than presented as a clean
 fix. (This is the same adversarial-verifier pattern we already use for in-repo
 work — it's what catches plausible-but-wrong patches.)
 
-Only a fix that clears **both** gates is presented as a confident draft PR.
+A fix that clears **both** gates is **auto-merged** into `rld-mvp-sprint` (squash)
+and triggers the deploy (§7b) — or, when `AUTO_MERGE=0`, is presented as a
+confident draft PR for a human to merge. A fix that clears neither/one gate never
+auto-merges: it lands as a draft PR labeled `needs-human`.
 
 ---
 
 ## 6. Safety / guardrails (the part that must not be cut)
 
-The whole pipeline is built around **never letting an agent merge code**:
+In alpha we accept auto-merge, so the guardrails shift from "a human catches
+everything at the merge" to "the merge is **cheap to undo** and the gates are
+**strict + honest**." The guardrails that MUST survive even in fast mode:
 
-1. **Human-gated merge, always.** Agents open **draft PRs** into `rld-mvp-sprint`.
-   A human reviews and merges. No auto-merge, ever. `main` is collaborator-owned
-   and out of bounds for the pipeline entirely.
+1. **Auto-merge is gated, scoped, and reversible — never blind.**
+   - **Gated:** a fix auto-merges ONLY if BOTH the mechanical gate (§5:
+     `analyze` + `flutter test --exclude-tags golden` + `dart test` + card-DB
+     validation, all green) AND the adversarial-verifier gate (no majority
+     refute) pass. Either gate red → **no merge**; it falls back to a draft PR
+     labeled `needs-human`.
+   - **Scoped:** the pipeline touches **only `rld-mvp-sprint`**. `main` is
+     collaborator-owned and never a merge target. Merges are **squash** (one
+     commit per fix) so revert is atomic.
+   - **Reversible:** every merge keeps its linked PR + the `bugfix/disc-*`
+     branch, and the bot posts the merge SHA to `#bug-triage`. A bad fix is one
+     `git revert <sha>` + rebuild away. `AUTO_MERGE=0` disables the whole
+     behavior (→ draft-PR-only) without touching pipeline code.
+   - **Kill switch + caps:** a per-day auto-merge cap and a global
+     `PIPELINE_PAUSED` flag stop the loop instantly if it misbehaves.
 2. **Isolated worktrees.** Each fix runs in its own git worktree on its own
    `bugfix/disc-*` branch — concurrent runs can't corrupt each other or the working
    tree.
@@ -286,6 +314,38 @@ toolchain already is.
 
 ---
 
+## 7b. Deploy stage (auto-redeploy after merge)
+
+Stage 7 closes the loop: once a fix is auto-merged to `rld-mvp-sprint`, the alpha
+must rebuild so players actually get it. This reuses machinery that **already
+exists** — no new client work:
+
+- [`scripts/build_web.sh`](../scripts/build_web.sh) builds `flutter build web`
+  and **stamps the git SHA** into `web/version.json` (+ `build/web/version.json`).
+- [`web/index.html`](../web/index.html) polls `version.json?ts=<now>` on load,
+  every 30s, on focus, and on reconnect; when the served SHA differs from the
+  running one it **unregisters the SW, clears caches, and hard-reloads once**.
+  So a redeploy reaches every player — fresh and mid-session — within ~30s, with
+  no manual cache clearing.
+
+The only missing piece is the **trigger**: after a successful merge the pipeline
+pings the Pi to pull + rebuild + swap in the new `build/web`. Two ways to wire it
+(pick one; both live behind the runner's `deploy_trigger` step):
+
+1. **Pull-based (simplest):** a tiny loop/cron on the Pi (`git fetch` +
+   fast-forward `rld-mvp-sprint`; if HEAD moved → `bash scripts/build_web.sh` →
+   atomically swap the served dir). The pipeline does nothing special; the Pi
+   self-heals to the latest SHA within its poll interval.
+2. **Push-based (immediate):** the runner, after merge, hits a small authenticated
+   `deploy` endpoint (or SSHes) on the Pi that runs the same
+   `build_web.sh` + swap. Faster, but adds a secret + an inbound hook.
+
+Recommended for the alpha: **push-based trigger, pull-based fallback** — the merge
+fires an immediate rebuild, and a slow cron backstops it if the hook is missed.
+Either way the client cache-bust (already built) does the rest.
+
+---
+
 ## 8. Phased build plan
 
 1. **Phase 0 — manual trigger, prove the stages.** No bot. Hand a real report to
@@ -299,12 +359,17 @@ toolchain already is.
    investigate** (all read-only) on accepted reports and posts the finding. Still no
    automated code change. Low risk (nothing mutates the repo yet) and immediately
    useful (root-cause triage on every bug).
-4. **Phase 3 — auto-draft-PR.** Add implement + verify; the bot opens **draft PRs**
-   for high-confidence, test-passing, adversarially-verified fixes. Human merges.
-   This is the full loop, with the merge gate firmly human.
+4. **Phase 3 — auto-draft-PR.** Add implement + verify; the runner opens PRs for
+   high-confidence, test-passing, adversarially-verified fixes. Land this with
+   `AUTO_MERGE=0` first so you eyeball a few real PRs before trusting the merge.
+5. **Phase 4 — auto-merge + auto-deploy (the alpha target).** Flip `AUTO_MERGE=1`:
+   a fix that clears both gates squash-merges to `rld-mvp-sprint` and fires the
+   deploy trigger (§7b) → Pi rebuild → clients cache-bust. Full closed loop, human
+   only in the loop *after the fact* via `git revert`.
 
-Each phase is independently useful and adds exactly one new trust boundary, so you
-never go from "manual" to "agents writing code" in one jump.
+Each phase is independently useful and reversible. Even in Phase 4 you can drop to
+Phase 3 behavior instantly with `AUTO_MERGE=0` — the phases are a dial, not a
+one-way ratchet.
 
 ---
 

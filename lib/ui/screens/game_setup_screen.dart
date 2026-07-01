@@ -6,6 +6,7 @@ import 'package:simple_card_game/models/card_model.dart';
 import 'package:simple_card_game/services/ai_service.dart';
 import 'package:simple_card_game/services/game_service.dart';
 import 'package:simple_card_game/ui/screens/about_screen.dart';
+import 'package:simple_card_game/ui/screens/card_list_screen.dart';
 import 'package:simple_card_game/ui/screens/game_screen.dart';
 import 'package:simple_card_game/ui/screens/network_lobby_screen.dart';
 import 'package:simple_card_game/ui/theme/animation_timing.dart';
@@ -388,6 +389,26 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
               icon: const Icon(Icons.favorite_border, size: 16),
               label: const Text(
                 'ABOUT',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 2,
+                ),
+              ),
+            ),
+
+            // Card List — browse every card in the database (opposite ABOUT).
+            TextButton.icon(
+              key: const ValueKey('lobbyCardListButton'),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CardListScreen()),
+              ),
+              style: TextButton.styleFrom(
+                foregroundColor: GameTheme.textSecondary,
+              ),
+              icon: const Icon(Icons.style, size: 16),
+              label: const Text(
+                'CARD LIST',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,

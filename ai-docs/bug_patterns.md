@@ -9,6 +9,12 @@ Each pattern lists: the tell (how to recognize it), the root cause, the cards/
 sites hit, the fix, and — most usefully — **how to catch the rest of the class
 proactively** rather than waiting for a player to hit each one.
 
+> **This doc is the bug *shapes*; [`bug_fix_workflow.md`](bug_fix_workflow.md) is
+> the *method* for stamping them out** (the parallel find → fix → confirm →
+> identify-the-rest-of-the-class → investigate → review loop). Read the matching
+> pattern here first — it tells you where the rest of the class hides — then run
+> the workflow to clear it.
+
 ---
 
 ## 1. Resource-icon transcription errors (the biggest class)
@@ -175,6 +181,73 @@ After adding `healthAtLeast`, grep for other "if you have N (health)" rawText
 still encoded as `masteryAtLeast`.
 
 ---
+
+## 7. Aura / static-modifier outlives its source
+
+**The tell:** a "while this is in play" effect keeps applying after the source
+card leaves play — e.g. "you and your other champions can't be attacked" still
+protecting them after that champion died.
+
+**Root cause:** a champion-sourced `StaticModifier` is stamped with a
+`sourceChampionId`, but the leave-play cleanup only removed ONE kind of modifier,
+and the **all-at-once elimination path** (`_cleanupEliminatedPlayer`) didn't clean
+static modifiers at all — so the aura lingered.
+
+**Cards/sites:** zetta_the_encryptor (`cannotBeAttacked`), any
+champion-sourced aura (`shieldPerCardUnder`, etc.).
+
+**How to catch the class:** every effect that grants a persistent thing keyed to a
+source (aura, tucked cards, buff) needs a symmetric teardrop at EVERY exit — combat
+destroy, effect-destroy, banish, scrap, AND elimination. Grep the leave-play
+choke points (`_releaseUnderCards`, `_cleanupEliminatedPlayer`) and confirm each
+drops everything keyed to the departing id.
+
+## 8. A champion's play-effect is skipped when it's used via Exhaust
+
+**The tell:** "the draw only happens the first time I play it" — a champion whose
+play-effect (draw) should re-fire each turn only fires on the initial play.
+
+**Root cause:** the champion's use was wired as TWO buttons — "Activate" (free
+play-effects) and "Exhaust" (the ability). A player who tapped only Exhaust for
+the payoff silently skipped the free activation. Champions are documented as a
+**single action** that fires both.
+
+**Fix:** merge into one `_useChampion` that fires `activateChampion` THEN
+`useActivatedAbility`, each guarded by its per-turn flag so neither double-fires.
+
+**Catch the class:** any champion with BOTH non-empty `playEffects` AND an
+`activatedAbility` (evokatus, chlorophyte_guardian, giga_source_adept) hits this;
+fix at the use-handler, not per card. (Also: the AI never fires Exhaust abilities —
+`ai_service._activateChampionsPhase` — a still-open sibling.)
+
+## 9. Card mis-typed (Champion vs Ally vs Mercenary)
+
+**The tell:** a card behaves as the wrong type — an Ally that persists in play like
+a champion, or shows an Activate button it shouldn't.
+
+**Root cause:** `cardType` was scaffolded wrong; the printed **type banner** is the
+truth. Several allies were typed `champion` (their rawText even hedged "Order
+Champion (Ally)"), and carried a bogus `shield` (champion-only).
+
+**Catch the class:** audit `cardType` vs the printed type-banner (the "X Ally"/"X
+Champion" line at the START of rawText, before the effect text — don't be fooled by
+"Ally" appearing INSIDE effect text like "Fast-play an Ally"). Open the art. The
+in-app Card List page surfaces these by eye. Fixed: cryptofist_monk, querry_monk,
+mainframe_abbot, subversion_elders (→ Ally/regular, shield removed).
+
+## 10. A finished game's winner is lost on restore → shows "Draw"
+
+**The tell:** the past-games list shows a real win as a tie/draw.
+
+**Root cause:** the lobby-level `winnerId`/`winType` are transient and NOT in the
+persisted snapshot (only inside the encoded engine blob). `restoreGame` rebuilt the
+lobby row without re-deriving them, so they stayed null and the display defaulted
+to "Draw / no winner." (Confirmed against `server/data/game_2.json`: engine blob
+`winnerId=p0/elimination`, top-level null.)
+
+**Catch the class:** any field that's derived-then-displayed but not persisted must
+be RE-derived on restore. Also audit the inverse — a UI that *invents* a winner
+when `winnerId` is null (the networked game-over overlay did, on a true draw).
 
 ## Meta-patterns for smarter bug-fixing
 

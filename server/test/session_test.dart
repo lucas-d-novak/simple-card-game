@@ -238,6 +238,74 @@ void main() {
         expect(dmg['amount'], 4);
       }
     });
+
+    test('redacted staticModifiers carry sourceChampionId, and that id is '
+        'already public (in the cards dict) — no hidden-info leak', () {
+      final game = GameService(playerCount: 2);
+      // Simulate zetta_the_encryptor's aura: a champion in play on p0 that
+      // SOURCES a cannotBeAttacked modifier (the engine's attackChampion gates
+      // on `m.sourceChampionId != champion.id`, so the source stays attackable
+      // while OTHER champions are protected). The champion must be a public,
+      // registered card so its id is board-visible.
+      const zetta = CardModel(
+        id: 'zetta_the_encryptor_1',
+        name: 'Zetta the Encryptor',
+        cost: 6,
+        playEffects: [],
+        cardType: CardType.champion,
+        shield: 4,
+      );
+      final p0 = game.players[0];
+      p0.championsInPlay.add(zetta);
+      p0.staticModifiers.add(StaticModifier(
+        kind: StaticModifierKind.cannotBeAttacked,
+        sourceChampionId: zetta.id,
+      ));
+
+      final view = redactFor(game, 'p0', stateVersion: 1);
+      final players = (view['players'] as List).cast<Map>();
+      final p0View = players.firstWhere((p) => p['id'] == 'p0');
+
+      final mods = (p0View['staticModifiers'] as List).cast<Map>();
+      final aura = mods.firstWhere(
+        (m) => m['kind'] == StaticModifierKind.cannotBeAttacked.name,
+        orElse: () => throw StateError('cannotBeAttacked modifier missing'),
+      );
+      // The source champion id ROUND-TRIPS into the redacted modifier, so a
+      // client-side attack-gating mirror can tell the source (still attackable)
+      // from the champions the aura protects.
+      expect(aura['sourceChampionId'], 'zetta_the_encryptor_1');
+
+      // NOT a hidden-info leak: the id is a champion INSTANCE that is already
+      // registered into the shared, public `cards` dictionary for this recipient
+      // (championsInPlay is dictionaried for ALL recipients, not gated on owner).
+      final cards = view['cards'] as Map;
+      expect(cards.containsKey('zetta_the_encryptor_1'), isTrue,
+          reason: 'the source champion id must already be board-visible; '
+              'exposing it on the modifier leaks nothing new');
+    });
+
+    test('a staticModifier with no sourceChampionId omits the key '
+        '(conditional emission unchanged)', () {
+      final game = GameService(playerCount: 2);
+      final p0 = game.players[0];
+      // A board-wide buff with no source champion (e.g. a cost reduction).
+      p0.staticModifiers.add(const StaticModifier(
+        kind: StaticModifierKind.cardCostReduction,
+        amount: 1,
+      ));
+
+      final view = redactFor(game, 'p0', stateVersion: 1);
+      final players = (view['players'] as List).cast<Map>();
+      final p0View = players.firstWhere((p) => p['id'] == 'p0');
+      final mods = (p0View['staticModifiers'] as List).cast<Map>();
+      final buff = mods.firstWhere(
+        (m) => m['kind'] == StaticModifierKind.cardCostReduction.name,
+      );
+      expect(buff.containsKey('sourceChampionId'), isFalse,
+          reason: 'sourceChampionId must only be emitted when non-null');
+      expect(buff['amount'], 1);
+    });
   });
 
   group('GameSession — action authorization', () {

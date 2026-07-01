@@ -14,9 +14,11 @@ ui/
 │   ├── online_lobby_screen.dart    # Multi-game lobby (auto-enter recent, back-to-lobby)
 │   ├── network_auto_screen.dart    # Auto-connect/reconnect entry
 │   ├── about_screen.dart           # Fan-made / non-commercial credits page
+│   ├── card_list_screen.dart       # Full browsable card catalog (search + faction/Destiny filter, cost-sorted; co-op/relics hidden). Linked from the setup lobby; also ?cards=1
 │   └── home_screen.dart            # Legacy demo screen
 ├── widgets/
 │   ├── game_card_widget.dart       # Styled card with faction colors, art, badges, conditional glow
+│   ├── opponent_bar_strip.dart     # 4-player: condensed per-opponent bars (champions·mastery·health + guard); tap to select whose champions show (OpponentBarData/OpponentBarStrip)
 │   ├── card_detail_modal.dart      # Zoom modal w/ context action (Recruit/Play/Activate/Exhaust)
 │   ├── choice_modal.dart           # Shared modal for ChooseOne / Destiny / Relic picks
 │   ├── destiny_tray.dart           # Tray of claimed Destinies with Use actions (showDestinyTray)
@@ -79,8 +81,14 @@ Shared affordances (both boards):
   Cancel / End Turn) fires first.
 - **Champions are a SINGLE action.** The zoom's champion button is labelled
   **"Exhaust"** (when the champion has an Exhaust-gated `activatedAbility`) or
-  **"Activate"** (play-effects-only). Firing it does the free once-per-turn
+  **"Activate"** (active play-effects only). Firing it does the free once-per-turn
   activation AND the Exhaust ability together — they are not separate presses.
+  (The old literal **"Use"** label is gone.) A **passive-only champion** — no
+  `activatedAbility` and whose play-effects are all auras (`AddStaticModifier`,
+  e.g. zetta_the_encryptor's can't-be-attacked, carmine_eclipse's
+  shield-per-card-under) — shows **NO button at all**; its aura applies passively
+  the moment it enters play (`playCard` resolves champion play-effects on
+  enter-play). Predicate: `isPassiveOnlyChampion` in `card_detail_modal.dart`.
   "Use All" (the champion-side Play All) does this for every champion. A green
   check marks an activated champion; a moon marks an exhausted one.
 - **Tap an opponent champion** → zoom modal with an **Attack** action (costs the
@@ -176,9 +184,13 @@ scroll rather than overflow.
 - **Affordable glow** — a bright BLUE glow + border on a market card you can buy
   right now (affordable on your turn); a distinct action prompt from the gold
   selection accent and the amber conditional glow.
-- **Conditional glow** — an amber glow on hand/market cards whose
-  `ConditionalEffect` predicate currently holds (the `conditionsMet` flag). The
-  caller computes it from the engine's `GameService.conditionsSatisfied(card)`
+- **Conditional (synergy) glow** — a GOLD glow/border on a card whose
+  `ConditionalEffect` predicate currently holds (the `conditionsMet` flag) **and**
+  which is actually actionable (the `interactable` flag — for a market card that
+  means affordable). GOLD **trumps** the blue affordable glow (they are
+  mutually exclusive now, not additive), and both glows are ~15% more pronounced.
+  So a synergy prompt never shows on a card you can't act on. The caller computes
+  `conditionsMet` from the engine's `GameService.conditionsSatisfied(card)`
   locally, or — on the networked board — from
   [`redacted_condition_evaluator.dart`](../services/redacted_condition_evaluator.dart),
   a client-side mirror that evaluates conditions over the redacted state.

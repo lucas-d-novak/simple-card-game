@@ -3,6 +3,7 @@
 // §6/§10. For the LAN/beta phase, in-memory is enough.)
 
 import 'package:shards_server/game_session.dart';
+import 'package:shards_server/stats_capture.dart' show winTypeOf;
 import 'package:shards_server/stats_store.dart';
 import 'package:simple_card_game/data/database/game_state_codec.dart';
 import 'package:simple_card_game/data/market_deck.dart';
@@ -154,13 +155,24 @@ class Lobby {
     final gameJson = snapshot['game'];
     if (gameJson is Map) {
       final svc = GameStateCodec.decode(gameJson.cast<String, dynamic>());
-      g.session = GameSession.restored(
+      final session = GameSession.restored(
         id: id,
         game: svc,
         playerIds: List.of(players),
         stateVersion: (snapshot['stateVersion'] as int?) ?? 0,
         stats: _stats,
       );
+      g.session = session;
+      // A finished game carries its result inside the encoded engine state
+      // (GameStateCodec round-trips winnerId/winType), but the LobbyGame's own
+      // winnerId/winType are NOT persisted separately. Re-derive them from the
+      // restored session — same mapping the live complete-transition uses in
+      // bin/server.dart — so the lobby's past-games summary shows the real
+      // winner after a restart instead of defaulting to "Draw / no winner".
+      if (svc.isGameOver) {
+        g.winnerId = session.winnerLobbyId;
+        g.winType = winTypeOf(svc);
+      }
     }
 
     _games[id] = g;

@@ -21,6 +21,7 @@ class GameCardWidget extends StatelessWidget {
     this.onLongPress,
     this.isHighlighted = false,
     this.conditionsMet = false,
+    this.interactable = true,
     this.showCost = true,
     this.compact = false,
     this.width,
@@ -37,6 +38,14 @@ class GameCardWidget extends StatelessWidget {
   /// glow. The caller computes this (engine `conditionsSatisfied` locally, or a
   /// client-side evaluator over the redacted state online). Defaults false.
   final bool conditionsMet;
+
+  /// Whether the card can currently be ACTED ON (e.g. an affordable market card
+  /// on your turn). The gold [conditionsMet] "synergy is active" glow only paints
+  /// when this is true, so a synergy prompt never appears on a card you can't
+  /// interact with — mirroring the blue affordable prompt. Market call sites pass
+  /// affordability here; hand/other contexts leave it `true` (default) so their
+  /// glow is unchanged.
+  final bool interactable;
   final bool showCost;
   final bool compact;
   final double? width;
@@ -83,43 +92,45 @@ class GameCardWidget extends StatelessWidget {
               factionDark,
             ],
           ),
+          // Outline precedence: GOLD (synergy active) trumps BLUE (affordable).
+          // Each shows only when the card is ACTIONABLE — gold is gated on
+          // [interactable] just as blue is on affordability — so a synergy prompt
+          // never appears on a card you can't act on. Exactly ONE glow paints
+          // (gold wins when both apply), so gold no longer merely stacks on blue.
+          // Both are ~15% more pronounced (spread + blur + alpha) than before.
           boxShadow: [
-            // Yellow/amber "conditions active right now" glow — additive, so a
-            // card can be both affordable (blue) AND have its bonus active
-            // (amber). Painted first so it sits under the affordable glow.
-            if (conditionsMet)
+            if (conditionsMet && interactable)
+              // GOLD/amber "this card's synergy is active AND you can act on it".
               BoxShadow(
-                color: const Color(0xFFFFC53D).withValues(alpha: 0.85),
-                blurRadius: 14 * scale,
-                spreadRadius: 1.5,
-              ),
-            if (isHighlighted)
-              // Bright BLUE "you can buy this now" glow (affordable on your
-              // turn). Blue so it reads as an action prompt distinct from the
-              // gold selected/condition accents.
-              BoxShadow(
-                color: const Color(0xFF49B4FF).withValues(alpha: 0.9),
-                blurRadius: 16 * scale,
-                spreadRadius: 2,
+                color: const Color(0xFFFFC53D).withValues(alpha: 0.98),
+                blurRadius: 16.1 * scale,
+                spreadRadius: 1.7,
               )
-            else if (!conditionsMet)
+            else if (isHighlighted)
+              // Bright BLUE "you can buy this now" glow (affordable on your turn).
+              BoxShadow(
+                color: const Color(0xFF49B4FF),
+                blurRadius: 18.4 * scale,
+                spreadRadius: 2.3,
+              )
+            else
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.45),
                 blurRadius: 5,
                 offset: const Offset(0, 3),
               ),
           ],
-          // Border precedence: amber (condition active) → blue (affordable) →
-          // none. A glowing blue border marks a card you can buy right now.
-          border: conditionsMet
+          // Border mirrors the glow precedence: gold (actionable synergy) → blue
+          // (affordable) → none, ~15% thicker than before.
+          border: (conditionsMet && interactable)
               ? Border.all(
                   color: const Color(0xFFFFD666),
-                  width: 1.5 * scale.clamp(0.7, 1.4),
+                  width: 1.7 * scale.clamp(0.7, 1.4),
                 )
               : isHighlighted
                   ? Border.all(
                       color: const Color(0xFF6FD0FF),
-                      width: 1.6 * scale.clamp(0.7, 1.4),
+                      width: 1.84 * scale.clamp(0.7, 1.4),
                     )
                   : null,
         ),

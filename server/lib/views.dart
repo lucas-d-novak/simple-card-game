@@ -248,6 +248,16 @@ Map<String, dynamic> _redactPlayer(
           if (m.amount != 0) 'amount': m.amount,
           if (m.faction != null) 'faction': m.faction!.name,
           if (m.cardType != null) 'cardType': m.cardType!.name,
+          // The champion INSTANCE that sources this modifier (self-scoped
+          // buffs like shieldPerCardUnder, and zetta_the_encryptor's
+          // cannotBeAttacked aura, which exempts its OWN source champion).
+          // Public, NOT a hidden-info leak: every player's champions are
+          // already registered into the shared `cards` dict for ALL
+          // recipients above (`registerAll(p.championsInPlay)`), so this id
+          // is already board-visible. Without it a client-side attack-gating
+          // mirror can't tell the source champion (still attackable) from the
+          // ones the aura protects. Mirrors GameStateCodec._encodeStaticModifier.
+          if (m.sourceChampionId != null) 'sourceChampionId': m.sourceChampionId,
         },
     ],
   };

@@ -306,18 +306,18 @@ server/                                  # Authoritative multiplayer (pure-Dart,
 ## Testing
 
 ```bash
-flutter test                              # all tests (608 + 8 goldens)
-flutter test --exclude-tags golden        # what CI runs (608)
+flutter test                              # all tests (640 + 8 goldens)
+flutter test --exclude-tags golden        # what CI runs (640)
 flutter test test/services/               # game service + deck service + AI tests
 flutter test test/data/                   # card db, codecs, serialization, starter deck
 flutter test test/models/                 # model-level tests
 flutter test test/widget_test.dart        # legacy widget tests
 flutter test test/screenshot_test.dart --update-goldens  # regenerate screenshots
 bash scripts/generate_report.sh           # generate visual QA report (HTML)
-cd server && dart test                    # 52 server tests (redaction + auth + lobby + undo + reconnect + persistence + stats)
+cd server && dart test                    # 56 server tests (redaction + auth + lobby + undo + reconnect + persistence + stats)
 ```
 
-- **608 engine tests** (+ 8 goldens, + 52 server tests) across game mechanics,
+- **640 engine tests** (+ 8 goldens, + 56 server tests) across game mechanics,
   models, data, codecs/serialization, AI, widgets, and the multiplayer server
 - Tests use deterministic `Random` injection (`Random(7)`, `ZeroRandom`)
 - Game service tests cover: initialization, all 31 effect types, buying, turn cycling, champions, guard, ally abilities, mastery thresholds (additive + replace), banish/scrap, infinity shard scaling, combat, win conditions, Character Focus, Destiny (claim/use/cascade) and Relics, Phase 2/3 board conditions, and integration scenarios. Serialization tests round-trip a full mid-game snapshot (including the action log). Server tests assert hidden-info redaction (including draw-pile contents sorted/order-hidden and the action-log tail), action authorization, per-turn undo, reconnect/resync/multi-game lobby flow, JSON/SQLite persistence across a restart, and the player-stats/telemetry capture.
@@ -355,6 +355,7 @@ Cross-referenced. The mechanics doc is source of truth for game rules.
 - [`ai-docs/animation_system_design.md`](ai-docs/animation_system_design.md) — Design (5 iterations) behind the 3-speed animation system (`lib/ui/theme/animation_timing.dart`).
 - [`ai-docs/responsive_ui_design.md`](ai-docs/responsive_ui_design.md) — Design (5 iterations) behind the responsive breakpoints (`lib/ui/theme/responsive.dart`).
 - [`ai-docs/bug_patterns.md`](ai-docs/bug_patterns.md) — **Field guide to the recurring bug SHAPES** from the alpha bug-bash (resource-icon transcription errors, deferred-effect pickers, seat-id-vs-username leaks, stale deploy, rules-model gaps) and how to catch each class proactively. Read this before fixing a card-data or "nothing happened when I clicked" bug.
+- [`ai-docs/bug_fix_workflow.md`](ai-docs/bug_fix_workflow.md) — **Our principal METHOD for card/mechanic bugs:** the parallel find-and-stamp-out loop (find root cause → fix → confirm → identify other affected cards/mechanics → investigate → review → iterate). Parallel workflows per bug, grouped when fixes could conflict. The method paired with `bug_patterns.md`'s shapes; the in-repo sibling of `discord_bug_pipeline.md`.
 - [`ai-docs/engine_gaps.md`](ai-docs/engine_gaps.md) — **(Historical)** Catalogue of unmodeled card mechanics the ORIGINAL 14-effect vocabulary couldn't express, plus the phased plan to extend the engine. Phases 1–3 have largely landed (31 effect types now) — see `card_effect.dart` + [`engine_phase2_plan.md`](ai-docs/engine_phase2_plan.md)/[`engine_phase3_plan.md`](ai-docs/engine_phase3_plan.md) for what shipped.
 - [`ai-docs/engine_phase2_plan.md`](ai-docs/engine_phase2_plan.md) / [`ai-docs/engine_phase3_plan.md`](ai-docs/engine_phase3_plan.md) — the Phase 2 (14→31 effect types) and Phase 3 (final gap families) engine-extension designs.
 - [`ai-docs/multiplayer_architecture.md`](ai-docs/multiplayer_architecture.md) — **Authoritative-server multiplayer design** (transport, action protocol, hidden-info redaction, access-token auth + origin allowlist, status probe, wss `/ws` routing, lobby, Pi/Cloudflare-Tunnel deploy, phased rollout). Phase 0/1 implemented in `server/`.

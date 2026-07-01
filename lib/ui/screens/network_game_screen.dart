@@ -23,6 +23,7 @@ import 'package:simple_card_game/ui/widgets/damage_flash_overlay.dart';
 import 'package:simple_card_game/ui/widgets/destiny_tray.dart';
 import 'package:simple_card_game/ui/widgets/faction_flame_backdrop.dart';
 import 'package:simple_card_game/ui/widgets/game_card_widget.dart';
+import 'package:simple_card_game/ui/widgets/opponent_bar_strip.dart';
 import 'package:simple_card_game/ui/widgets/resource_grant.dart';
 import 'package:simple_card_game/ui/widgets/resource_icons.dart';
 import 'package:simple_card_game/ui/widgets/scrollable_board.dart';
@@ -775,6 +776,10 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
   /// only fire the parts that haven't been used yet (re-using is a server no-op,
   /// but this keeps the flash message accurate).
   void _onUseChampion(CardModel champ, {_ChampionView? view}) {
+    // Passive-only aura champions (e.g. Zetta / Carmine) are NOT activatable:
+    // their aura already applied on enter-play. Tapping one is a no-op (the
+    // direct champion-tap gesture routes here, not through a zoom button).
+    if (isPassiveOnlyChampion(champ)) return;
     final canActivate =
         champ.playEffects.isNotEmpty && (view == null || !view.activated);
     final ability = champ.activatedAbility;
@@ -801,6 +806,9 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
     var fired = 0;
     for (final champ in me.champions) {
       final card = _card(champ.id);
+      // Passive-only aura champions have nothing to fire — skip them so the
+      // bulk "Use" never (harmlessly, but pointlessly) re-activates an aura.
+      if (isPassiveOnlyChampion(card)) continue;
       final hasUnusedActivation =
           card.playEffects.isNotEmpty && !champ.activated;
       final hasUnusedAbility =
@@ -819,6 +827,8 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
     var n = 0;
     for (final champ in view.me.champions) {
       final card = _card(champ.id);
+      // Passive-only aura champions are not "usable" — they carry no action.
+      if (isPassiveOnlyChampion(card)) continue;
       final hasUnusedActivation =
           card.playEffects.isNotEmpty && !champ.activated;
       final hasUnusedAbility =
@@ -826,6 +836,21 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
       if (hasUnusedActivation || hasUnusedAbility) n++;
     }
     return n;
+  }
+
+  /// Label for the bulk champion phase of the primary action button: "Exhaust"
+  /// when any still-usable champion has an Exhaust-gated ability, else
+  /// "Activate" (active play-effect-only champions). Mirrors the per-champion
+  /// zoom label. Passive-only aura champions are ignored (they carry no action).
+  String _usableChampionActionLabel(_GameView view) {
+    var anyActivate = false;
+    for (final champ in view.me.champions) {
+      final card = _card(champ.id);
+      if (isPassiveOnlyChampion(card)) continue;
+      if (card.activatedAbility != null && !champ.exhausted) return 'Exhaust';
+      if (card.playEffects.isNotEmpty && !champ.activated) anyActivate = true;
+    }
+    return anyActivate ? 'Activate' : 'Exhaust';
   }
 
   /// Whether [effects] contains any deferred-selection effect (banish / scrap /
@@ -854,11 +879,12 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
     return false;
   }
 
-  /// Open the zoom modal for one of MY champions, offering a SINGLE "Use" action
-  /// that fires its free activation and its Exhaust ability together (they are
-  /// not separate presses). Labelled "Use" when it has an Exhaust ability,
-  /// "Activate" for a champion with only free play effects. Only enabled on your
-  /// turn.
+  /// Open the zoom modal for one of MY champions, offering a SINGLE action that
+  /// fires its free activation and its Exhaust ability together (they are not
+  /// separate presses). Labelled "Exhaust" when it has an Exhaust-gated ability,
+  /// "Activate" for a champion with only free play effects. Passive-only aura
+  /// champions (e.g. Zetta / Carmine) get NO button — their aura applied on
+  /// enter-play. Only enabled on your turn.
   void _zoomMyChampion(List<_ChampionView> champs, _ChampionView champ) {
     final cards = [for (final c in champs) _card(c.id)];
     final byId = {for (final c in champs) c.id: c};
@@ -867,11 +893,15 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
     _zoom(
       cards,
       index < 0 ? 0 : index,
-      // A champion is a SINGLE action: "Use" fires its free activation AND its
-      // Exhaust ability together (they are not separate presses). One button,
-      // labelled by what the champion does — plain "Use" when it has an Exhaust
-      // ability, "Activate" for a champion with only free play effects.
+      // A champion is a SINGLE action: one button fires its free activation AND
+      // its Exhaust ability together (they are not separate presses), labelled by
+      // what the champion does — "Exhaust" when it has an Exhaust-gated ability,
+      // "Activate" for a champion with only free play effects. Passive-only aura
+      // champions get NO button (their aura already applied on enter-play).
       actionFor: (card) {
+        // Passive-only champions (pure auras — e.g. Zetta / Carmine) have no
+        // action to fire: their aura already applied on enter-play. No button.
+        if (isPassiveOnlyChampion(card)) return null;
         final hasPlay = card.playEffects.isNotEmpty;
         final hasAbility = card.activatedAbility != null;
         if (!hasPlay && !hasAbility) return null;
@@ -1521,6 +1551,33 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
     final canAttackPlayer =
         myTurn && me.powerPool > 0 && opponent != null && !opponentHasGuard;
 
+    // ---- Condensed opponent-bar strip (Phase A: read-only display) ----------
+    // One bar per LIVING opponent (skip me + eliminated). Stats are all already
+    // board-visible for opponents. guardShield is derived from the opponent's
+    // champions: the MAX shield among them (the toughest guard the player must
+    // punch through), null when they have no champion with a shield. Selection
+    // wiring is Phase B — for now the strip highlights the current single
+    // `opponent` and its onSelect is a no-op stub.
+    final opponentBars = <OpponentBarData>[
+      for (final p in view.players)
+        if (p.id != view.meId && !p.eliminated)
+          OpponentBarData(
+            id: p.id,
+            name: p.name,
+            championCount: p.champions.length,
+            mastery: p.mastery,
+            health: p.health,
+            guardShield: () {
+              var maxShield = 0;
+              for (final c in p.champions) {
+                final s = _card(c.id).shield;
+                if (s > maxShield) maxShield = s;
+              }
+              return maxShield > 0 ? maxShield : null;
+            }(),
+          ),
+    ];
+
     // Hand gestures: tap = zoom (card detail, with a Play action so cards can
     // be played in a deliberate order from the zoomed view); long-press =
     // begin drag-to-play (drop on the play field). Off-turn, Play is hidden.
@@ -1556,6 +1613,18 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
           },
           onShowLog: () => _showLog(view),
         ),
+
+        // ---- Condensed opponent-bar strip (3-4 players) -------------------
+        // In a 2-player game the top bar's centered pill already shows the sole
+        // opponent, so the strip is only added for 3/4-player games to avoid
+        // duplicating it (and to keep the 2p layout pixel-identical). Phase A:
+        // display only — onSelect is a no-op (target selection is Phase B).
+        if (opponentBars.length >= 2)
+          OpponentBarStrip(
+            opponents: opponentBars,
+            selectedId: opponent?.id,
+            onSelect: (_) {},
+          ),
 
         // ---- Helper / status line -----------------------------------------
         Padding(
@@ -1676,6 +1745,8 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
           onUndo: client.canUndo ? client.undo : null,
           onPlayAll: myTurn && me.hand.isNotEmpty ? () => _onPlayAll(me) : null,
           exhaustableCount: myTurn ? _usableChampionCount(view) : 0,
+          championActionLabel:
+              myTurn ? _usableChampionActionLabel(view) : 'Activate',
           onExhaustAll: myTurn ? () => _onExhaustAll(view) : null,
           onAttack: canAttackPlayer
               ? () => _onAttackPlayer(opponent, me.powerPool)
@@ -2548,6 +2619,9 @@ class _MaybeDraggableMarketCard extends StatelessWidget {
       onLongPress: onLongPress,
       isHighlighted: isHighlighted,
       conditionsMet: conditionsMet,
+      // Market card: interactable == affordable, so the gold synergy glow only
+      // shows on a card you can actually recruit (matches the blue prompt).
+      interactable: isHighlighted,
       width: cardWidth,
     );
 
@@ -3156,6 +3230,7 @@ class _NetworkBottomZone extends StatelessWidget {
     required this.onUndo,
     required this.onPlayAll,
     required this.exhaustableCount,
+    required this.championActionLabel,
     required this.onExhaustAll,
     required this.onAttack,
     required this.hasGuards,
@@ -3206,6 +3281,10 @@ class _NetworkBottomZone extends StatelessWidget {
 
   /// Count of champions still Exhaustable this turn — surfaces the Exhaust phase.
   final int exhaustableCount;
+
+  /// Label for the bulk champion phase of the primary button ("Exhaust" when an
+  /// ability-bearing champion is ready, else "Activate").
+  final String championActionLabel;
 
   /// Exhaust ALL ready champions (the champion-side Play All). Null off-turn.
   final VoidCallback? onExhaustAll;
@@ -3392,6 +3471,7 @@ class _NetworkBottomZone extends StatelessWidget {
               _PrimaryActionButton(
                 handCount: hand.length,
                 exhaustableCount: exhaustableCount,
+                championActionLabel: championActionLabel,
                 powerPool: me.powerPool,
                 hasGuards: hasGuards,
                 onPlayAll: onPlayAll,
@@ -3502,6 +3582,7 @@ class _NetworkBottomZone extends StatelessWidget {
             _PrimaryActionButton(
               handCount: hand.length,
               exhaustableCount: exhaustableCount,
+              championActionLabel: championActionLabel,
               powerPool: me.powerPool,
               hasGuards: hasGuards,
               onPlayAll: onPlayAll,
@@ -3653,6 +3734,7 @@ class _PrimaryActionButton extends StatelessWidget {
   const _PrimaryActionButton({
     required this.handCount,
     required this.exhaustableCount,
+    required this.championActionLabel,
     required this.powerPool,
     required this.hasGuards,
     required this.onPlayAll,
@@ -3669,6 +3751,10 @@ class _PrimaryActionButton extends StatelessWidget {
   /// How many champions can still be Exhausted this turn (have an activated
   /// ability and aren't exhausted). > 0 surfaces the Exhaust phase.
   final int exhaustableCount;
+
+  /// Label for the champion phase: "Exhaust" when a ready champion has an
+  /// Exhaust-gated ability, else "Activate" (active play-effect champions).
+  final String championActionLabel;
   final int powerPool;
 
   /// True when every living opponent's face is behind a guard (so a face attack
@@ -3696,11 +3782,13 @@ class _PrimaryActionButton extends StatelessWidget {
         fontSize: fontSize,
       );
     }
-    // Phase 2: hand empty, champions still have something to do → Use (the
-    // champion-side "play all" — activates + exhausts each in one go).
+    // Phase 2: hand empty, champions still have something to do → Exhaust /
+    // Activate (the champion-side "play all" — activates + exhausts each in one
+    // go). Labelled "Exhaust" when a ready champion has an Exhaust ability, else
+    // "Activate" — consistent with the per-champion zoom and the local board.
     if (handCount == 0 && exhaustableCount > 0 && onExhaustAll != null) {
       return BeveledButton(
-        label: 'Use',
+        label: championActionLabel,
         onPressed: onExhaustAll,
         style: BeveledStyle.green,
         width: width,
@@ -3887,9 +3975,21 @@ class _NetworkGameOver extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final winner = view.winnerId != null
-        ? view.players.where((p) => p.id == view.winnerId).firstOrNull
-        : view.players.where((p) => !p.eliminated).firstOrNull;
+    // A genuine mutual knockout is a DRAW: the engine (game_service.dart
+    // `_checkGameOver`) sets winType == 'draw' and leaves winnerId null when the
+    // last players are eliminated at once (e.g. an AllPlayersLoseHealthEffect
+    // like bound_for_life). Prefer that explicit signal; fall back to "no
+    // winnerId AND nobody left standing" so a finished game never fabricates a
+    // winner via firstOrNull.
+    final isDraw = view.winType == 'draw' ||
+        (view.winnerId == null && !view.players.any((p) => !p.eliminated));
+    // Only derive a winner when this is NOT a draw. On a mutual knockout we
+    // intentionally leave `winner` null instead of inventing one.
+    final winner = isDraw
+        ? null
+        : view.winnerId != null
+            ? view.players.where((p) => p.id == view.winnerId).firstOrNull
+            : view.players.where((p) => !p.eliminated).firstOrNull;
     final winnerName = winner?.name ?? 'Unknown';
     final iWon = winner != null && winner.id == view.meId;
     final isMasteryWin = winner != null && winner.mastery >= 30;
@@ -3900,11 +4000,21 @@ class _NetworkGameOver extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(iWon ? Icons.emoji_events : Icons.flag,
-                size: 64, color: GameTheme.gold),
+            Icon(
+                isDraw
+                    ? Icons.handshake
+                    : iWon
+                        ? Icons.emoji_events
+                        : Icons.flag,
+                size: 64,
+                color: GameTheme.gold),
             const SizedBox(height: 16),
             Text(
-              iWon ? 'Victory!' : '$winnerName Wins',
+              isDraw
+                  ? 'Draw'
+                  : iWon
+                      ? 'Victory!'
+                      : '$winnerName Wins',
               style: const TextStyle(
                 color: GameTheme.gold,
                 fontSize: 32,
@@ -3913,9 +4023,11 @@ class _NetworkGameOver extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              isMasteryWin
-                  ? 'Infinity Shard victory at Mastery ${winner.mastery}'
-                  : 'Opponent eliminated',
+              isDraw
+                  ? 'Mutual knockout — all players eliminated at once'
+                  : isMasteryWin
+                      ? 'Infinity Shard victory at Mastery ${winner.mastery}'
+                      : 'Opponent eliminated',
               style: const TextStyle(
                 color: GameTheme.textSecondary,
                 fontSize: 14,

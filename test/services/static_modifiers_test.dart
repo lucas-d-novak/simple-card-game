@@ -299,6 +299,135 @@ void main() {
       expect(target.championsInPlay.any((c) => c.id == 'zetta'), false,
           reason: 'Zetta was destroyed by the attack');
     });
+
+    test('when the source champion (Zetta) leaves play, its cannotBeAttacked '
+        'aura is removed from the owner AND their other champions', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final attacker = game.currentPlayer;
+      final target = game.players[1];
+
+      const zetta = CardModel(
+        id: 'zetta',
+        name: 'Zetta',
+        cost: 5,
+        playEffects: [],
+        cardType: CardType.champion,
+        shield: 1,
+      );
+      const other = CardModel(
+        id: 'other_champ',
+        name: 'Other',
+        cost: 0,
+        playEffects: [],
+        cardType: CardType.champion,
+        shield: 1,
+      );
+      target.championsInPlay.addAll([zetta, other]);
+      target.staticModifiers.add(const StaticModifier(
+        kind: StaticModifierKind.cannotBeAttacked,
+        sourceChampionId: 'zetta',
+      ));
+      attacker.powerPool = 30;
+
+      // While Zetta is in play the aura is active: the OTHER champion and the
+      // player are both protected.
+      expect(game.attackChampion('other_champ', 'p1'), false,
+          reason: 'other champion protected while Zetta is in play');
+      final healthBefore = target.health;
+      expect(game.attackPlayer('p1', 5), false,
+          reason: 'player protected while Zetta is in play');
+      expect(target.health, healthBefore);
+
+      // Destroy Zetta (it is itself attackable).
+      expect(game.attackChampion('zetta', 'p1'), true);
+      expect(target.championsInPlay.any((c) => c.id == 'zetta'), false);
+
+      // The aura must vanish with its source — nothing keyed to Zetta lingers.
+      expect(
+        target.staticModifiers
+            .any((m) => m.kind == StaticModifierKind.cannotBeAttacked),
+        false,
+        reason: 'cannotBeAttacked aura removed when Zetta left play',
+      );
+      // ...so the other champion and the player are attackable again.
+      expect(game.attackChampion('other_champ', 'p1'), true,
+          reason: 'other champion attackable after Zetta gone');
+      expect(target.championsInPlay.any((c) => c.id == 'other_champ'), false);
+      expect(game.attackPlayer('p1', 5), true,
+          reason: 'player attackable after Zetta gone');
+      expect(target.health, lessThan(healthBefore));
+    });
+
+    test('eliminating a player all-at-once clears their champion-sourced static '
+        'modifiers (elimination path, not champion-by-champion)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final attacker = game.currentPlayer;
+      final target = game.players[1];
+
+      // A champion granting a NON-attack-blocking modifier (so the lethal attack
+      // is not itself blocked), keyed to its source champion.
+      const auraChamp = CardModel(
+        id: 'aura_champ',
+        name: 'Aura Champ',
+        cost: 0,
+        playEffects: [],
+        cardType: CardType.champion,
+        shield: 0,
+      );
+      target.championsInPlay.add(auraChamp);
+      target.staticModifiers.add(const StaticModifier(
+        kind: StaticModifierKind.cardCostReduction,
+        amount: 1,
+        sourceChampionId: 'aura_champ',
+      ));
+
+      // Reduce the target to 0 health in one blow → elimination cleanup runs
+      // without ever destroying the champion individually.
+      attacker.powerPool = target.health;
+      expect(game.attackPlayer('p1', target.health), true);
+      expect(target.isEliminated, true);
+
+      // The eliminated player's board state — including champion-sourced static
+      // modifiers — must be fully cleared, not left dangling.
+      expect(target.championsInPlay, isEmpty);
+      expect(target.staticModifiers, isEmpty,
+          reason: 'eliminated player retained a stale champion-sourced modifier');
+    });
+
+    test('a PASSIVE-only champion applies its cannotBeAttacked aura on '
+        'enter-play — no activateChampion call needed', () {
+      // Underpins the UI change (passive-only champions show NO Activate/Exhaust
+      // button): the aura must already be live the moment the champion enters
+      // play, since there is no button to activate it.
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+
+      const zetta = CardModel(
+        id: 'zetta_the_encryptor',
+        name: 'Zetta the Encryptor',
+        cost: 5,
+        cardType: CardType.champion,
+        shield: 2,
+        playEffects: [
+          AddStaticModifierEffect(
+              StaticModifier(kind: StaticModifierKind.cannotBeAttacked)),
+        ],
+        // No activatedAbility — this is a pure passive aura champion.
+      );
+      player.hand.add(zetta);
+
+      expect(player.staticModifiers, isEmpty);
+      // Deploy from hand — NO activateChampion / useActivatedAbility call.
+      expect(game.playCard('zetta_the_encryptor'), true);
+      expect(
+        player.staticModifiers
+            .where((m) => m.kind == StaticModifierKind.cannotBeAttacked),
+        hasLength(1),
+        reason: 'passive aura applied on enter-play, without any activation',
+      );
+      expect(player.activatedChampions, isEmpty,
+          reason: 'the champion was never manually activated');
+    });
   });
 
   group('AddStaticModifierEffect — recruitToTopOfDeck', () {

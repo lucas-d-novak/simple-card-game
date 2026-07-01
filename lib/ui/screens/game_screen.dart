@@ -587,12 +587,17 @@ class _GameScreenState extends State<GameScreen>
   }
 
   /// Opens the card-detail modal for one of the current player's champions.
-  /// Champions have TWO distinct actions:
-  ///   * "Activate" — the free, once-per-turn re-resolution of the champion's
-  ///     play effects ([GameService.activateChampion]).
-  ///   * "Exhaust" — the separate Exhaust-gated [CardModel.activatedAbility]
-  ///     ([GameService.useActivatedAbility]); only shown when the card has an
-  ///     activated ability, and disabled once the champion is exhausted.
+  ///
+  /// A champion is a **SINGLE action**: firing it does the free once-per-turn
+  /// play-effect activation ([GameService.activateChampion] — e.g. Giga's "draw
+  /// a card") AND, when the champion has an Exhaust-gated
+  /// [CardModel.activatedAbility] ([GameService.useActivatedAbility] — e.g.
+  /// Giga's Dominion mastery), together in one press. This mirrors the networked
+  /// board's `_onUseChampion` and the documented behaviour in `lib/ui/CLAUDE.md`
+  /// ("champions are a SINGLE action ... the free activation AND the Exhaust
+  /// ability together — they are not separate presses"). The button is labelled
+  /// "Exhaust" when there is an activated ability, "Activate" otherwise, and it
+  /// disables once everything the champion can do this turn is done.
   void _openChampionDetail(CardModel champion) {
     final champs = _game.currentPlayer.championsInPlay;
     final start = champs.indexWhere((c) => c.id == champion.id);
@@ -601,18 +606,22 @@ class _GameScreenState extends State<GameScreen>
       context,
       cards: champs,
       initialIndex: start,
-      actionFor: (c) => CardDetailAction(
-        label: 'Activate',
-        enabled: !_game.currentPlayer.activatedChampions.contains(c.id),
-        onPressed: () => _activateChampion(c),
-      ),
-      secondaryActionFor: (c) => c.activatedAbility == null
-          ? null
-          : CardDetailAction(
-              label: 'Exhaust',
-              enabled: !_game.currentPlayer.exhaustedChampions.contains(c.id),
-              onPressed: () => _useActivatedAbility(c),
-            ),
+      actionFor: (c) {
+        // Passive-only champions (pure auras — e.g. Zetta / Carmine) have no
+        // action to fire: their aura already applied on enter-play. No button.
+        if (isPassiveOnlyChampion(c)) return null;
+        final player = _game.currentPlayer;
+        final hasAbility = c.activatedAbility != null;
+        final activationDone = c.playEffects.isEmpty ||
+            player.activatedChampions.contains(c.id);
+        final exhaustDone =
+            !hasAbility || player.exhaustedChampions.contains(c.id);
+        return CardDetailAction(
+          label: hasAbility ? 'Exhaust' : 'Activate',
+          enabled: !(activationDone && exhaustDone),
+          onPressed: () => _useChampion(c),
+        );
+      },
     );
   }
 
@@ -726,27 +735,34 @@ class _GameScreenState extends State<GameScreen>
     });
   }
 
-  void _activateChampion(CardModel champion) {
+  /// Use a champion — a SINGLE action that fires BOTH the champion's free
+  /// once-per-turn play-effect activation ([GameService.activateChampion], e.g.
+  /// Giga's "draw a card") AND, when present, its Exhaust-gated activated
+  /// ability ([GameService.useActivatedAbility], e.g. Giga's Dominion mastery).
+  /// They are not separate presses — this matches the networked board's
+  /// `_onUseChampion` and `lib/ui/CLAUDE.md`.
+  ///
+  /// Each half is guarded by its own per-turn flag ([activatedChampions] /
+  /// [exhaustedChampions]) so neither can double-fire; the engine also rejects a
+  /// repeat, so re-tapping is a harmless no-op. Previously the modal exposed the
+  /// draw ("Activate") and the ability ("Exhaust") as TWO separate buttons, so a
+  /// player who only pressed Exhaust to gain mastery silently SKIPPED the
+  /// champion's draw after the initial play-from-hand (the reported Giga bug).
+  void _useChampion(CardModel champion) {
     _pushUndo();
+    final player = _game.currentPlayer;
+    final ability = champion.activatedAbility;
+    final canActivate = champion.playEffects.isNotEmpty &&
+        !player.activatedChampions.contains(champion.id);
+    final canExhaust =
+        ability != null && !player.exhaustedChampions.contains(champion.id);
+    var didAny = false;
     setState(() {
-      if (_game.activateChampion(champion.id)) {
-        _actionMessage = 'Activated ${champion.name}!';
-      } else {
-        _actionMessage = '${champion.name} already activated this turn';
-      }
-    });
-  }
-
-  /// Use a champion's Exhaust-gated [CardModel.activatedAbility] — distinct from
-  /// the free [_activateChampion] re-resolution.
-  void _useActivatedAbility(CardModel champion) {
-    _pushUndo();
-    setState(() {
-      if (_game.useActivatedAbility(champion.id)) {
-        _actionMessage = 'Exhausted ${champion.name}!';
-      } else {
-        _actionMessage = '${champion.name} cannot be exhausted now';
-      }
+      if (canActivate && _game.activateChampion(champion.id)) didAny = true;
+      if (canExhaust && _game.useActivatedAbility(champion.id)) didAny = true;
+      _actionMessage = didAny
+          ? 'Used ${champion.name}!'
+          : '${champion.name} has nothing to use now';
     });
   }
 
@@ -1427,6 +1443,11 @@ class _CenterRow extends StatelessWidget {
                           : null,
                       isHighlighted: affordable,
                       conditionsMet: conditionsMet?.call(card) ?? false,
+                      // Gate the gold synergy glow on being able to act on the
+                      // card (affordable) — a synergy prompt on an unaffordable
+                      // market card is noise; it should read like the blue
+                      // affordable prompt.
+                      interactable: affordable,
                       compact: false,
                       width: cardWidth,
                     );

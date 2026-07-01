@@ -50,3 +50,9 @@ screenshots/live_*.png
 
 # Self-play bot output (dev-only; replayable bug reports, not source)
 tool/selfplay/bug_reports/
+
+# Bug-fix pipeline local config (may hold a deploy secret) + runtime state
+tool/bug_pipeline/config.sh
+tool/bug_pipeline/.PAUSED
+tool/bug_pipeline/.automerge-count.*
+tool/bug_pipeline/.discord-watermark.*

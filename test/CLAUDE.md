@@ -4,9 +4,9 @@ Test suite covering game logic and UI behavior.
 
 ## Totals
 
-- **608 engine tests** — run with `flutter test --exclude-tags golden` (what CI runs).
+- **640 engine tests** — run with `flutter test --exclude-tags golden` (what CI runs).
 - **8 golden screenshot tests** — tagged `golden`, run locally with plain `flutter test`.
-- **52 server tests** — the separate `server/` Dart package; run with
+- **56 server tests** — the separate `server/` Dart package; run with
   `cd server && dart test`. Cover state redaction (hidden hands / deck order; the
   recipient's OWN draw-pile contents shipped SORTED — contents visible, order
   hidden; the trailing `actionLog` tail; the `cards` dictionary shipped to
