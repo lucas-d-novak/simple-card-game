@@ -926,14 +926,14 @@
       "copies": 3,
       "playEffects": [
         {
-          "type": "gainGems",
+          "type": "gainHealth",
           "amount": 4
         }
       ],
       "art": "spore_cleric.jpg",
-      "rawText": "Undergrowth Mercenary - Ally. Gain 4 (gems).",
+      "rawText": "Undergrowth Mercenary - Ally. Gain 4 (health).",
       "verified": true,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 34: name='Spore Cleric', faction='Undergrowth', amount=3. | art added from TTS spritesheet crop (effects pending verification). | VERIFIED from image. Undergrowth Mercenary, Ally. Play: gain 4 gems.",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 34: name='Spore Cleric', faction='Undergrowth', amount=3. | art added from TTS spritesheet crop (effects pending verification). | VERIFIED from image. Undergrowth Mercenary, Ally. Play: gain 4 gems. | [fix] icon is HEALTH not gems (user re-read art): gainGems 4 -> gainHealth 4.",
       "set": "base",
       "cardType": "mercenary",
       "cost": 2,

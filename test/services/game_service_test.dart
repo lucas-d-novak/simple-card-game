@@ -1765,7 +1765,7 @@ void main() {
       expect(game.winnerId, player.id);
     });
 
-    test('Infinity Shard at mastery 9 bumps to 10 and gives 6 power (enters tier 10-14)', () {
+    test('Infinity Shard at mastery 9 stays 9 and gives 3 power (tier 5-9)', () {
       final game = GameService(playerCount: 2, random: Random(7));
       final player = game.currentPlayer;
       player.mastery = 9;
@@ -1780,8 +1780,8 @@ void main() {
       player.hand.add(shard);
 
       game.playCard('test_shard_9');
-      expect(player.mastery, 10);
-      expect(player.powerPool, 6); // mastery evaluated after +1: 10 → tier 10-14
+      expect(player.mastery, 9); // no mastery gain → stays in the 5-9 tier
+      expect(player.powerPool, 3);
       expect(player.gemPool, 0);
     });
   });
