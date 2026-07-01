@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:simple_card_game/services/game_client.dart';
 import 'package:simple_card_game/services/token_storage.dart';
+import 'package:simple_card_game/ui/screens/about_screen.dart';
 import 'package:simple_card_game/ui/screens/game_setup_screen.dart';
 import 'package:simple_card_game/ui/screens/network_game_screen.dart';
 import 'package:simple_card_game/ui/theme/board_chrome.dart';
@@ -182,6 +183,31 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
                   child: client == null || client.status != ClientStatus.connected
                       ? _connectPanel(client)
                       : _lobbyPanel(client),
+                ),
+              ),
+            ),
+          ),
+          // Persistent About link (fan-made / non-commercial credits), pinned
+          // top-right so it's reachable from both the login and lobby states.
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topRight,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 4, right: 8),
+                child: TextButton.icon(
+                  key: const ValueKey('lobbyAboutButton'),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const AboutScreen()),
+                  ),
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFFBFD8E8),
+                  ),
+                  icon: const Icon(Icons.favorite_border, size: 16),
+                  label: const Text(
+                    'ABOUT',
+                    style:
+                        TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
             ),
