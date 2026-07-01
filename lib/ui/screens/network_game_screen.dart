@@ -58,6 +58,15 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
   /// Rehydrated card models from the latest state's `cards` dictionary, by id.
   Map<String, CardModel> _cards = const {};
 
+  /// Cache of each player's dominant faction (for the flame backdrop behind the
+  /// draw pile), keyed by player id. A player is a single faction leader, so the
+  /// flame should be ONE stable colour for the whole game — not shift as cards
+  /// move between zones (draw/hand/discard/played). We therefore compute the
+  /// dominant faction ONCE, the first time it resolves to a real (non-neutral)
+  /// faction, and reuse that thereafter so the flame never changes colour
+  /// mid-game. See [_dominantFaction].
+  final Map<String, Faction> _dominantFactionCache = {};
+
   /// Deferred target-selection prompts queued by cards/abilities we just played.
   /// They run on SUBSEQUENT server states (not synchronously after
   /// [GameClient.playCard], which only sends a message) so each picker reads the
@@ -169,7 +178,17 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
   /// ignored so they don't outweigh a real faction lean. Ties break by a fixed
   /// faction order for stability. Returns [Faction.none] when the player owns no
   /// faction cards yet (all starters) — a neutral grey flame.
+  ///
+  /// STABLE colour: a player is a single faction leader, so the flame behind
+  /// their draw pile should stay ONE colour all game rather than flicker as cards
+  /// move between zones. Once this resolves to a real (non-neutral) faction for a
+  /// player, we cache it by id ([_dominantFactionCache]) and keep returning that
+  /// value for the rest of the game — the tally below only runs until the flame
+  /// first "locks in".
   Faction _dominantFaction(_PlayerView p) {
+    final cached = _dominantFactionCache[p.id];
+    if (cached != null) return cached;
+
     final counts = <Faction, int>{};
     void tally(String id) {
       final f = _card(id).faction;
@@ -193,6 +212,9 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
       tally(c.id);
     }
 
+    // No faction cards yet (all starters): a neutral grey flame. Do NOT cache —
+    // we want to lock in the FIRST real faction, so keep re-evaluating until one
+    // appears.
     if (counts.isEmpty) return Faction.none;
     // Stable tie-break: highest count, then a fixed faction ordering.
     const order = [
@@ -210,6 +232,8 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
         best = f;
       }
     }
+    // Lock in the first real faction so the flame colour is stable for the game.
+    _dominantFactionCache[p.id] = best;
     return best;
   }
 
@@ -218,9 +242,17 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
   /// (resolved from the `cards` dict) when the log entry carries a public
   /// `cardId`. Card-less events (focus / turn change / direct attack / end turn)
   /// have no cardId and show text only.
-  List<PlaybackEntry> _playbackEntries(_GameView view) {
+  ///
+  /// When [excludeOwnPlays] is set, log entries authored by the LOCAL player are
+  /// dropped so the ticker only narrates the opponent's turn. Used on a
+  /// mobile-portrait phone: a toast "dropping down" from the top to echo your own
+  /// action (e.g. "You played Crystal") was redundant and read like an intrusive
+  /// status bar. Landscape / desktop keep the full narration.
+  List<PlaybackEntry> _playbackEntries(_GameView view,
+      {bool excludeOwnPlays = false}) {
     return [
       for (final e in view.actionLog)
+        if (!(excludeOwnPlays && (e['playerId'] as String?) == view.meId))
         () {
           final who = view.nameFor(e['playerId'] as String?);
           final msg = e['message'] as String? ?? '';
@@ -1023,8 +1055,11 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
   /// Show the recipient's discard pile — public info, so full card content.
   void _showDiscard(_PlayerView me) {
     final cards = [for (final id in me.discard) _card(id)];
+    final who = me.characterDisplayName;
     _showPileSheet(
-      title: 'Your discard pile (${cards.length})',
+      title: who != null
+          ? "$who's discard pile (${cards.length})"
+          : 'Your discard pile (${cards.length})',
       cards: cards,
       emptyNote: 'Your discard pile is empty.',
     );
@@ -1261,7 +1296,11 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
           ),
           // Dynamic action-playback ticker: newly-arrived public log entries fade
           // in one at a time near the top so a player can WATCH the opponent's
-          // turn unfold. Only while a game is in progress.
+          // turn unfold. Only while a game is in progress. On a mobile-PORTRAIT
+          // phone we suppress narration of YOUR OWN actions (the toast dropping
+          // down over the board read like an intrusive status bar when you played
+          // a card) — opponent moves still animate in. Landscape/desktop keep the
+          // full ticker.
           if (state != null && !(_GameView.parse(state, client.playerId).isGameOver))
             Positioned(
               top: 4,
@@ -1270,8 +1309,13 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
               child: SafeArea(
                 bottom: false,
                 child: ActionPlaybackOverlay(
-                  entries:
-                      _playbackEntries(_GameView.parse(state, client.playerId)),
+                  entries: _playbackEntries(
+                    _GameView.parse(state, client.playerId),
+                    excludeOwnPlays: Responsive.isMobile(
+                            MediaQuery.of(context).size.width) &&
+                        MediaQuery.of(context).orientation ==
+                            Orientation.portrait,
+                  ),
                 ),
               ),
             ),
