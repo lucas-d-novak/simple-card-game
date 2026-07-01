@@ -1701,25 +1701,32 @@ class _NetworkPlayField extends StatelessWidget {
                 padding: const EdgeInsets.only(top: 4),
                 child: SizedBox(
                   height: champHeight,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: [
-                      for (final champ in opponentChampions)
-                        Padding(
-                          padding: const EdgeInsets.only(right: 4),
-                          child: _ChampionTile(
-                            card: cardFor(champ.id),
-                            champ: champ,
-                            width: cardWidth,
-                            isHighlighted: canAttackChampions,
-                            onTap: canAttackChampions
-                                ? () => onAttackChampion(
-                                    cardFor(champ.id), opponentId!)
-                                : null,
-                            onLongPress: () => onZoomCard(cardFor(champ.id)),
-                          ),
-                        ),
-                    ],
+                  width: double.infinity,
+                  child: Center(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          for (final champ in opponentChampions)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 4),
+                              child: _ChampionTile(
+                                card: cardFor(champ.id),
+                                champ: champ,
+                                width: cardWidth,
+                                isHighlighted: canAttackChampions,
+                                onTap: canAttackChampions
+                                    ? () => onAttackChampion(
+                                        cardFor(champ.id), opponentId!)
+                                    : null,
+                                onLongPress: () =>
+                                    onZoomCard(cardFor(champ.id)),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -1730,11 +1737,11 @@ class _NetworkPlayField extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Padding(
-                      padding: const EdgeInsets.only(left: 4, bottom: 2),
+                      padding: const EdgeInsets.only(bottom: 2),
                       child: Text(
                         '${opponentName ?? 'Opponent'} played this turn',
                         style: const TextStyle(
@@ -1746,21 +1753,27 @@ class _NetworkPlayField extends StatelessWidget {
                     ),
                     SizedBox(
                       height: champHeight,
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        children: [
-                          for (final id in opponentPlayedThisTurn)
-                            Padding(
-                              padding: const EdgeInsets.only(right: 4),
-                              child: GameCardWidget(
-                                card: cardFor(id),
-                                compact: true,
-                                showCost: false,
-                                width: cardWidth,
-                                onLongPress: () => onZoomCard(cardFor(id)),
-                              ),
-                            ),
-                        ],
+                      width: double.infinity,
+                      child: Center(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              for (final id in opponentPlayedThisTurn)
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 4),
+                                  child: GameCardWidget(
+                                    card: cardFor(id),
+                                    compact: true,
+                                    showCost: false,
+                                    width: cardWidth,
+                                    onLongPress: () => onZoomCard(cardFor(id)),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -1773,54 +1786,61 @@ class _NetworkPlayField extends StatelessWidget {
             if (myChampions.isNotEmpty || playedThisTurn.isNotEmpty)
               SizedBox(
                 height: champHeight,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: [
-                    for (final champ in myChampions)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 4),
-                        child: Stack(
-                          children: [
-                            GameCardWidget(
-                              card: cardFor(champ.id),
+                width: double.infinity,
+                child: Center(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (final champ in myChampions)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 4),
+                            child: Stack(
+                              children: [
+                                GameCardWidget(
+                                  card: cardFor(champ.id),
+                                  compact: true,
+                                  showCost: false,
+                                  width: cardWidth,
+                                  isHighlighted: !champ.activated,
+                                  onTap: onActivateChampion != null
+                                      ? () =>
+                                          onActivateChampion!(cardFor(champ.id))
+                                      : null,
+                                  onLongPress: () => onZoomMyChampion(champ),
+                                ),
+                                if (champ.activated)
+                                  Positioned(
+                                    top: 2,
+                                    right: 2,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(2),
+                                      decoration: BoxDecoration(
+                                        color: GameTheme.endTurnGreen,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: const Icon(Icons.check,
+                                          size: 10, color: Colors.white),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        for (final id in playedThisTurn)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 4),
+                            child: GameCardWidget(
+                              card: cardFor(id),
                               compact: true,
                               showCost: false,
                               width: cardWidth,
-                              isHighlighted: !champ.activated,
-                              onTap: onActivateChampion != null
-                                  ? () => onActivateChampion!(cardFor(champ.id))
-                                  : null,
-                              onLongPress: () => onZoomMyChampion(champ),
+                              onLongPress: () => onZoomCard(cardFor(id)),
                             ),
-                            if (champ.activated)
-                              Positioned(
-                                top: 2,
-                                right: 2,
-                                child: Container(
-                                  padding: const EdgeInsets.all(2),
-                                  decoration: BoxDecoration(
-                                    color: GameTheme.endTurnGreen,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: const Icon(Icons.check,
-                                      size: 10, color: Colors.white),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    for (final id in playedThisTurn)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 4),
-                        child: GameCardWidget(
-                          card: cardFor(id),
-                          compact: true,
-                          showCost: false,
-                          width: cardWidth,
-                          onLongPress: () => onZoomCard(cardFor(id)),
-                        ),
-                      ),
-                  ],
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
           ],
