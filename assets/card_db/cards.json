@@ -3438,13 +3438,12 @@
         }
       ],
       "art": "torian_commandos.jpg",
-      "rawText": "Homodeus Champion. Gain 2 (gems) and 2 (power).",
+      "rawText": "Homodeus Ally. Gain 2 (gems) and 2 (power).",
       "verified": true,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 151: name='Torian Commandos', faction='Homodeus', amount=3. | art added from TTS spritesheet crop (effects pending verification). | VERIFIED from image. Homodeus Champion shield 4. On-deploy: gain 2 gems and 2 power. All maps to engine effects.",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 151: name='Torian Commandos', faction='Homodeus', amount=3. | art added from TTS spritesheet crop (effects pending verification). | VERIFIED from image. Type banner reads 'Homodeus Ally' (NOT a Champion) — cardType corrected champion->regular, rawText 'Champion'->'Ally', and the erroneous shield:4 removed (schema: shield is Champions-only). On-play: gain 2 gems and 2 power. All maps to engine effects.",
       "set": "ioh",
-      "cardType": "champion",
+      "cardType": "regular",
       "cost": 3,
-      "shield": 4,
       "chapter": 3
     },
     {
