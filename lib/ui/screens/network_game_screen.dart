@@ -11,6 +11,8 @@ import 'package:simple_card_game/ui/theme/game_theme.dart';
 import 'package:simple_card_game/ui/theme/responsive.dart';
 import 'package:simple_card_game/ui/theme/faction_colors.dart';
 import 'package:simple_card_game/ui/widgets/action_playback_overlay.dart';
+import 'package:simple_card_game/ui/widgets/animated_value.dart';
+import 'package:simple_card_game/ui/widgets/animated_zone.dart';
 import 'package:simple_card_game/ui/widgets/beveled_button.dart';
 import 'package:simple_card_game/ui/widgets/board_animator.dart';
 import 'package:simple_card_game/ui/widgets/card_detail_modal.dart';
@@ -1592,8 +1594,8 @@ class _StatChip extends StatelessWidget {
       children: [
         ResourceIconWidget(icon, size: fontSize + 2),
         const SizedBox(width: 3),
-        Text(
-          '$value',
+        AnimatedCounter(
+          value: value,
           style: TextStyle(
             color: Colors.white,
             fontSize: fontSize,
@@ -1617,8 +1619,8 @@ class _MiniCount extends StatelessWidget {
       children: [
         Icon(icon, size: 14, color: Colors.white60),
         const SizedBox(width: 2),
-        Text(
-          '$value',
+        AnimatedCounter(
+          value: value,
           style: const TextStyle(
             color: Colors.white70,
             fontSize: 13,
@@ -1898,17 +1900,20 @@ class _NetworkPlayField extends StatelessWidget {
                           for (final champ in opponentChampions)
                             Padding(
                               padding: const EdgeInsets.only(right: 4),
-                              child: _ChampionTile(
-                                card: cardFor(champ.id),
-                                champ: champ,
-                                width: cardWidth,
-                                isHighlighted: canAttackChampions,
-                                onTap: canAttackChampions
-                                    ? () => onAttackChampion(
-                                        cardFor(champ.id), opponentId!)
-                                    : null,
-                                onLongPress: () =>
-                                    onZoomCard(cardFor(champ.id)),
+                              child: AnimatedZoneList.wrap(
+                                id: champ.id,
+                                child: _ChampionTile(
+                                  card: cardFor(champ.id),
+                                  champ: champ,
+                                  width: cardWidth,
+                                  isHighlighted: canAttackChampions,
+                                  onTap: canAttackChampions
+                                      ? () => onAttackChampion(
+                                          cardFor(champ.id), opponentId!)
+                                      : null,
+                                  onLongPress: () =>
+                                      onZoomCard(cardFor(champ.id)),
+                                ),
                               ),
                             ),
                         ],
@@ -1950,12 +1955,15 @@ class _NetworkPlayField extends StatelessWidget {
                               for (final id in opponentPlayedThisTurn)
                                 Padding(
                                   padding: const EdgeInsets.only(right: 4),
-                                  child: GameCardWidget(
-                                    card: cardFor(id),
-                                    compact: true,
-                                    showCost: false,
-                                    width: cardWidth,
-                                    onLongPress: () => onZoomCard(cardFor(id)),
+                                  child: AnimatedZoneList.wrap(
+                                    id: id,
+                                    child: GameCardWidget(
+                                      card: cardFor(id),
+                                      compact: true,
+                                      showCost: false,
+                                      width: cardWidth,
+                                      onLongPress: () => onZoomCard(cardFor(id)),
+                                    ),
                                   ),
                                 ),
                             ],
@@ -1986,7 +1994,9 @@ class _NetworkPlayField extends StatelessWidget {
                         for (final champ in myChampions)
                           Padding(
                             padding: const EdgeInsets.only(right: 4),
-                            child: Stack(
+                            child: AnimatedZoneList.wrap(
+                              id: champ.id,
+                              child: Stack(
                               children: [
                                 GameCardWidget(
                                   card: cardFor(champ.id),
@@ -2015,17 +2025,21 @@ class _NetworkPlayField extends StatelessWidget {
                                     ),
                                   ),
                               ],
+                              ),
                             ),
                           ),
                         for (final id in playedThisTurn)
                           Padding(
                             padding: const EdgeInsets.only(right: 4),
-                            child: GameCardWidget(
-                              card: cardFor(id),
-                              compact: true,
-                              showCost: false,
-                              width: cardWidth,
-                              onLongPress: () => onZoomCard(cardFor(id)),
+                            child: AnimatedZoneList.wrap(
+                              id: id,
+                              child: GameCardWidget(
+                                card: cardFor(id),
+                                compact: true,
+                                showCost: false,
+                                width: cardWidth,
+                                onLongPress: () => onZoomCard(cardFor(id)),
+                              ),
                             ),
                           ),
                       ],
