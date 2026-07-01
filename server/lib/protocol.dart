@@ -80,7 +80,12 @@ ActionResult applyAction(
     case 'resetChampion':
       ok = game.resetChampion(s('championId'));
     case 'recruitFromCenter':
-      ok = game.recruitFromCenter(s('cardId'), free: b('free'));
+      ok = game.recruitFromCenter(
+        s('cardId'),
+        free: b('free'),
+        toHand: b('toHand'),
+        toTopOfDeck: b('toTopOfDeck'),
+      );
     case 'fastPlayFromCenter':
       ok = game.fastPlayFromCenter(s('cardId'));
     case 'copyPlayedCard':

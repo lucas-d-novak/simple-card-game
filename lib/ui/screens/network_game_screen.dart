@@ -260,6 +260,14 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
         if (index == null) return;
         widget.client.playCard(card.id, choiceIndex: index);
         _flash('Played ${card.name}');
+        _animatePlay(card);
+        // The chosen branch may carry a deferred-selection effect (e.g. Datic
+        // Inquisitors' "recruit a card cost 6 or less for free"). Queue a picker
+        // for the SELECTED branch's effects — without this the chosen effect
+        // (recruit / banish / etc.) silently never resolves.
+        if (index >= 0 && index < choose.choices.length) {
+          _queueDeferredSelection(card, choose.choices[index]);
+        }
       });
       return;
     }
@@ -360,6 +368,10 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
           return _promptDestroyChampion;
         case ReturnFromDiscardEffect():
           return _promptReturnFromDiscard;
+        case RecruitFromCenterEffect():
+          return () => _promptRecruitFromCenter(effect);
+        case FastPlayFromCenterEffect():
+          return () => _promptFastPlayFromCenter(effect);
         case ConditionalEffect():
           final holds = ctx != null &&
               redactedConditionHolds(effect.condition, source, ctx);
@@ -505,6 +517,59 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
       onPick: (t) {
         widget.client.returnFromDiscard(t.id);
         _flash('Returned ${t.card.name}');
+      },
+    );
+  }
+
+  /// Prompt to recruit one center-row card within the effect's maxCost (after a
+  /// [RecruitFromCenterEffect] — e.g. Datic Inquisitors' free recruit). Sends the
+  /// follow-up so the recruit actually happens; the server re-validates cost.
+  void _promptRecruitFromCenter(RecruitFromCenterEffect effect) {
+    final view = _view;
+    if (view == null) return;
+    final candidates = [
+      for (final id in view.centerRow)
+        if (effect.maxCost == null || _card(id).cost <= effect.maxCost!)
+          _TargetCandidate(_card(id), 'Center row'),
+    ];
+    _promptTargets(
+      title: effect.free ? 'Recruit for Free' : 'Recruit a Card',
+      subtitle: effect.maxCost != null
+          ? 'Choose a card costing ${effect.maxCost} or less'
+          : 'Choose a card to recruit',
+      candidates: candidates,
+      emptyMsg: 'No eligible cards to recruit',
+      onPick: (t) {
+        widget.client.recruitFromCenter(
+          t.id,
+          free: effect.free,
+          toHand: effect.toHand,
+          toTopOfDeck: effect.toTopOfDeck,
+        );
+        _flash('Recruited ${t.card.name}');
+      },
+    );
+  }
+
+  /// Prompt to fast-play ("warp") one center-row card within maxCost / allies
+  /// filter (after a [FastPlayFromCenterEffect]), then send the follow-up.
+  void _promptFastPlayFromCenter(FastPlayFromCenterEffect effect) {
+    final view = _view;
+    if (view == null) return;
+    final candidates = [
+      for (final id in view.centerRow)
+        if ((effect.maxCost == null || _card(id).cost <= effect.maxCost!) &&
+            (!effect.alliesOnly || _card(id).cardType != CardType.champion))
+          _TargetCandidate(_card(id), 'Center row'),
+    ];
+    _promptTargets(
+      title: 'Fast-Play a Card',
+      subtitle: 'Play one now for free, then it is banished',
+      candidates: candidates,
+      emptyMsg: 'No eligible cards to fast-play',
+      onPick: (t) {
+        widget.client.fastPlayFromCenter(t.id);
+        _flash('Fast-played ${t.card.name}');
       },
     );
   }
@@ -730,6 +795,8 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
         case BanishCardEffect():
         case ScrapFromCenterRowEffect():
         case ReturnFromDiscardEffect():
+        case RecruitFromCenterEffect():
+        case FastPlayFromCenterEffect():
           return true;
         case DestroyChampionEffect() when !e.all:
           return true;
@@ -856,6 +923,7 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
   /// fully validate server-side, but disable obvious non-uses here).
   void _openDestinyTray(_PlayerView me) {
     final myTurn = widget.client.isMyTurn;
+    final condCtx = _conditionContext(me);
     final entries = <DestinyEntry>[];
     for (final id in me.claimedDestinies) {
       final card = _card(id);
@@ -869,9 +937,18 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
         if (me.mastery < cost.mastery) costOk = false;
         if (cost.health > 0 && me.health <= cost.health) costOk = false;
       }
+      // Requirement check: when the ability's effects are gated behind a
+      // ConditionalEffect (e.g. Forged in Flame's "if you've played a Wraethe
+      // AND a Homodeus card this turn"), disable Use until that predicate holds
+      // — otherwise the player taps Use, pays the Exhaust, and the effect (the
+      // banish) does nothing. Evaluated over the redacted state; conditions we
+      // can't evaluate client-side are treated as holding (server re-validates).
+      final requirementMet =
+          ability == null || _abilityRequirementMet(ability, card, condCtx);
       entries.add(DestinyEntry(
         card: card,
-        canUse: myTurn && ability != null && !exhausted && costOk,
+        canUse:
+            myTurn && ability != null && !exhausted && costOk && requirementMet,
         exhausted: exhausted,
       ));
     }
@@ -892,6 +969,29 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
         if (ability != null) _queueDeferredSelection(card, ability.effects);
       },
     );
+  }
+
+  /// Whether an activated [ability]'s effects can actually DO something right
+  /// now: if the effects are gated behind a top-level [ConditionalEffect], the
+  /// condition must currently hold (evaluated over the redacted [ctx] with
+  /// [source] as the source card). Abilities with no conditional gate are always
+  /// met. NOTE: [redactedConditionHolds] returns false for conditions it can't
+  /// evaluate from redacted data, so such a (rare) gate would grey the ability
+  /// conservatively — the server still re-validates, so this never lets an
+  /// illegal use through; at worst it hides a legal one for an unevaluable gate.
+  bool _abilityRequirementMet(
+    ActivatedAbility ability,
+    CardModel source,
+    RedactedConditionContext ctx,
+  ) {
+    for (final e in ability.effects) {
+      if (e is ConditionalEffect) {
+        // If ANY top-level conditional gate fails to hold, the ability can't do
+        // its gated work — disable Use.
+        if (!redactedConditionHolds(e.condition, source, ctx)) return false;
+      }
+    }
+    return true;
   }
 
   // ---- zoomed card detail -------------------------------------------------

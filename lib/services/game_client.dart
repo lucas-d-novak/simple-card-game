@@ -278,6 +278,27 @@ class GameClient extends ChangeNotifier {
   void returnFromDiscard(String cardId) =>
       sendAction('returnFromDiscard', {'cardId': cardId});
 
+  /// Recruit a chosen center-row card (after a RecruitFromCenterEffect). [free]
+  /// mirrors the effect's free flag; [toHand]/[toTopOfDeck] route the recruited
+  /// card (default → discard). The server re-validates cost/maxCost.
+  void recruitFromCenter(
+    String cardId, {
+    required bool free,
+    bool toHand = false,
+    bool toTopOfDeck = false,
+  }) =>
+      sendAction('recruitFromCenter', {
+        'cardId': cardId,
+        'free': free,
+        'toHand': toHand,
+        'toTopOfDeck': toTopOfDeck,
+      });
+
+  /// Fast-play ("warp") a chosen center-row card for free, then banish it
+  /// (after a FastPlayFromCenterEffect).
+  void fastPlayFromCenter(String cardId) =>
+      sendAction('fastPlayFromCenter', {'cardId': cardId});
+
   // ---- Destiny / Relic -----------------------------------------------------
 
   /// Claim a face-up Destiny from the shared row (Mastery 5+, free, once).
