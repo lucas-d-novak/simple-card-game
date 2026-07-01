@@ -1613,6 +1613,9 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
                 onZoomCard: _zoomOne,
                 myChampions: me.champions,
                 playedThisTurn: me.playedThisTurn,
+                myFastPlayedThisTurn: me.fastPlayedThisTurn,
+                opponentFastPlayedThisTurn:
+                    opponent?.fastPlayedThisTurn ?? const [],
                 onActivateChampion: myTurn ? (c) => _onUseChampion(c) : null,
                 onZoomMyChampion: (champ) =>
                     _zoomMyChampion(me.champions, champ),
@@ -1784,6 +1787,7 @@ class _PlayerView {
     required this.discard,
     required this.champions,
     required this.playedThisTurn,
+    required this.fastPlayedThisTurn,
     required this.claimedDestinies,
     required this.exhaustedDestinies,
     required this.canClaimAnotherDestiny,
@@ -1865,6 +1869,10 @@ class _PlayerView {
   final List<_ChampionView> champions;
   final List<String> playedThisTurn;
 
+  /// Card ids fast-played / warped this turn — shown GREYED in the play area
+  /// (they leave the game at end of turn rather than going to discard).
+  final List<String> fastPlayedThisTurn;
+
   static _PlayerView parse(Map p) {
     final hand = (p['hand'] as List?)?.cast<String>() ?? const <String>[];
     return _PlayerView(
@@ -1889,6 +1897,9 @@ class _PlayerView {
       ],
       playedThisTurn:
           (p['playedThisTurn'] as List?)?.cast<String>() ?? const <String>[],
+      fastPlayedThisTurn:
+          (p['fastPlayedThisTurn'] as List?)?.cast<String>() ??
+              const <String>[],
       claimedDestinies:
           (p['claimedDestinies'] as List?)?.cast<String>() ?? const <String>[],
       exhaustedDestinies:
@@ -2599,6 +2610,71 @@ class _EdgeFadeScrollState extends State<_EdgeFadeScroll> {
   }
 }
 
+/// A GREYED, desaturated play-area tile for a fast-played / warped card — it's
+/// still visible (so you can see it was played) but dimmed with a small
+/// "removed at end of turn" indicator, signalling it leaves the game rather than
+/// going to discard. Tap to zoom.
+class _GreyedPlayTile extends StatelessWidget {
+  const _GreyedPlayTile({
+    required this.card,
+    required this.width,
+    required this.onTap,
+  });
+
+  final CardModel card;
+  final double width;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        // Desaturate + dim so it reads as "spent / leaving the game".
+        Opacity(
+          opacity: 0.5,
+          child: ColorFiltered(
+            colorFilter: const ColorFilter.matrix(<double>[
+              0.33, 0.33, 0.33, 0, 0, //
+              0.33, 0.33, 0.33, 0, 0, //
+              0.33, 0.33, 0.33, 0, 0, //
+              0, 0, 0, 1, 0, //
+            ]),
+            child: GameCardWidget(
+              card: card,
+              compact: true,
+              showCost: false,
+              width: width,
+              onTap: onTap,
+              onLongPress: onTap,
+            ),
+          ),
+        ),
+        // A small corner badge that this card leaves the game.
+        Positioned(
+          top: 2,
+          left: 2,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: const Text(
+              'WARP',
+              style: TextStyle(
+                color: Color(0xFFE0C060),
+                fontSize: 8,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// Play field — opponent champions (top) + my champions / played cards.
 class _NetworkPlayField extends StatelessWidget {
   const _NetworkPlayField({
@@ -2613,6 +2689,8 @@ class _NetworkPlayField extends StatelessWidget {
     required this.onZoomCard,
     required this.myChampions,
     required this.playedThisTurn,
+    required this.myFastPlayedThisTurn,
+    required this.opponentFastPlayedThisTurn,
     required this.onActivateChampion,
     required this.onZoomMyChampion,
     required this.actionMessage,
@@ -2641,6 +2719,11 @@ class _NetworkPlayField extends StatelessWidget {
   final void Function(CardModel) onZoomCard;
   final List<_ChampionView> myChampions;
   final List<String> playedThisTurn;
+
+  /// Card ids fast-played / warped this turn — rendered GREYED after the normal
+  /// played cards (they leave the game at end of turn, not to discard).
+  final List<String> myFastPlayedThisTurn;
+  final List<String> opponentFastPlayedThisTurn;
   final void Function(CardModel)? onActivateChampion;
 
   /// Long-press one of MY champions → open the champion zoom (Activate +
@@ -2717,7 +2800,9 @@ class _NetworkPlayField extends StatelessWidget {
             // Opponent play area — cards they've played this turn (public).
             // Mirrors your own played-this-turn row, so you can follow their
             // turn live as the server broadcasts each action.
-            if (opponentPlayedThisTurn.isNotEmpty && opponentId != null)
+            if ((opponentPlayedThisTurn.isNotEmpty ||
+                    opponentFastPlayedThisTurn.isNotEmpty) &&
+                opponentId != null)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Column(
@@ -2755,6 +2840,19 @@ class _NetworkPlayField extends StatelessWidget {
                                       width: cardWidth,
                                       onTap: () => onZoomCard(cardFor(id)),
                                       onLongPress: () => onZoomCard(cardFor(id)),
+                                    ),
+                                  ),
+                                ),
+                              // Opponent's fast-played / warped cards, greyed.
+                              for (final id in opponentFastPlayedThisTurn)
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 4),
+                                  child: AnimatedZoneList.wrap(
+                                    id: id,
+                                    child: _GreyedPlayTile(
+                                      card: cardFor(id),
+                                      width: cardWidth,
+                                      onTap: () => onZoomCard(cardFor(id)),
                                     ),
                                   ),
                                 ),
@@ -2847,6 +2945,20 @@ class _NetworkPlayField extends StatelessWidget {
                                 width: cardWidth,
                                 onTap: () => onZoomCard(cardFor(id)),
                                 onLongPress: () => onZoomCard(cardFor(id)),
+                              ),
+                            ),
+                          ),
+                        // Fast-played / warped cards: greyed, since they leave
+                        // the game at end of turn (not discarded).
+                        for (final id in myFastPlayedThisTurn)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 4),
+                            child: AnimatedZoneList.wrap(
+                              id: id,
+                              child: _GreyedPlayTile(
+                                card: cardFor(id),
+                                width: cardWidth,
+                                onTap: () => onZoomCard(cardFor(id)),
                               ),
                             ),
                           ),
