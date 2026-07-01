@@ -757,6 +757,33 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
     _flash('Attacking ${champ.name}');
   }
 
+  /// Open the zoom modal for an ENEMY champion (mirrors [_zoomMyChampion] for
+  /// your own champions), offering an "Attack" action bubble. Attack is enabled
+  /// only on your turn AND when your power pool can pay the champion's shield —
+  /// the same eligibility the direct-tap attack path required
+  /// ([_onOpponentChampionTap]); the server re-validates on send. Reached by
+  /// tapping OR long-pressing an opponent champion, so any card is always
+  /// inspectable and the attack lives inside the zoom rather than firing on tap.
+  void _zoomEnemyChampion(
+    List<_ChampionView> champs,
+    _ChampionView champ,
+    String ownerId,
+  ) {
+    final cards = [for (final c in champs) _card(c.id)];
+    final index = champs.indexWhere((c) => c.id == champ.id);
+    final myTurn = widget.client.isMyTurn;
+    final power = _view?.me.powerPool ?? 0;
+    _zoom(
+      cards,
+      index < 0 ? 0 : index,
+      actionFor: (card) => CardDetailAction(
+        label: 'Attack',
+        enabled: myTurn && power >= card.shield,
+        onPressed: () => _onOpponentChampionTap(card, ownerId),
+      ),
+    );
+  }
+
   void _onAttackPlayer(_PlayerView opponent, int power) {
     widget.client.attackPlayer(opponent.id, power);
     _flash('Dealt $power to ${opponent.name}');
@@ -1225,6 +1252,8 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
                 cardFor: _card,
                 canAttackChampions: myTurn && me.powerPool > 0,
                 onAttackChampion: _onOpponentChampionTap,
+                onZoomEnemyChampion: (champ, ownerId) => _zoomEnemyChampion(
+                    opponent?.champions ?? const [], champ, ownerId),
                 onZoomCard: _zoomOne,
                 myChampions: me.champions,
                 playedThisTurn: me.playedThisTurn,
@@ -2018,6 +2047,7 @@ class _NetworkPlayField extends StatelessWidget {
     required this.cardFor,
     required this.canAttackChampions,
     required this.onAttackChampion,
+    required this.onZoomEnemyChampion,
     required this.onZoomCard,
     required this.myChampions,
     required this.playedThisTurn,
@@ -2038,6 +2068,12 @@ class _NetworkPlayField extends StatelessWidget {
   final CardModel Function(String id) cardFor;
   final bool canAttackChampions;
   final void Function(CardModel champ, String ownerId) onAttackChampion;
+
+  /// Tap / long-press an ENEMY champion → open its zoom modal, which offers an
+  /// "Attack" action bubble (mirrors your own champion's Activate/Exhaust zoom).
+  /// Carries the champion view + its owning opponent id so paging + the Attack
+  /// target both resolve correctly.
+  final void Function(_ChampionView champ, String ownerId) onZoomEnemyChampion;
 
   /// Long-press a champion / played card → zoom it.
   final void Function(CardModel) onZoomCard;
@@ -2091,15 +2127,17 @@ class _NetworkPlayField extends StatelessWidget {
                                   champ: champ,
                                   width: cardWidth,
                                   isHighlighted: canAttackChampions,
-                                  // Tap attacks when you can; otherwise it falls
-                                  // back to zoom so any card is always
-                                  // inspectable, even when you can't act on it.
-                                  onTap: canAttackChampions
-                                      ? () => onAttackChampion(
-                                          cardFor(champ.id), opponentId!)
-                                      : () => onZoomCard(cardFor(champ.id)),
+                                  // Tap (and long-press) ALWAYS open the zoom
+                                  // modal — which offers an "Attack" action
+                                  // bubble (enabled only when you can pay the
+                                  // shield) — so an enemy champion is always
+                                  // inspectable and the attack is a deliberate
+                                  // choice inside the zoom rather than firing on
+                                  // tap. Mirrors your own champion's zoom.
+                                  onTap: () =>
+                                      onZoomEnemyChampion(champ, opponentId!),
                                   onLongPress: () =>
-                                      onZoomCard(cardFor(champ.id)),
+                                      onZoomEnemyChampion(champ, opponentId!),
                                 ),
                               ),
                             ),
