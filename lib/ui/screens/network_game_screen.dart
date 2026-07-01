@@ -2412,6 +2412,106 @@ class _MaybeDraggableMarketCard extends StatelessWidget {
   }
 }
 
+/// A horizontal scroll row with PRONOUNCED left/right edge fades, so it's
+/// obvious when cards are hidden off-screen and there's more to scroll to. The
+/// fade on each edge only appears when there is actually clipped content on that
+/// side (tracked via the scroll position), so a row that fits shows no fade.
+///
+/// Implemented with a [ShaderMask] (BlendMode.dstIn) that multiplies the row's
+/// alpha by a horizontal gradient — opaque in the middle, transparent at any
+/// edge that has more content. Wrap a horizontally-scrolling [child] (its own
+/// `SingleChildScrollView` with a controller we own).
+class _EdgeFadeScroll extends StatefulWidget {
+  const _EdgeFadeScroll({required this.child});
+
+  /// The scrollable content — a Row of cards.
+  final Widget child;
+
+  /// How wide (px) each edge fade is. Pronounced.
+  static const double fadeWidth = 34;
+
+  @override
+  State<_EdgeFadeScroll> createState() => _EdgeFadeScrollState();
+}
+
+class _EdgeFadeScrollState extends State<_EdgeFadeScroll> {
+  final ScrollController _controller = ScrollController();
+  bool _fadeLeft = false;
+  bool _fadeRight = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(_update);
+    // Evaluate once after first layout so an initially-overflowing row fades.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _update());
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_update);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _update() {
+    if (!_controller.hasClients) return;
+    final pos = _controller.position;
+    final left = pos.pixels > pos.minScrollExtent + 1;
+    final right = pos.pixels < pos.maxScrollExtent - 1;
+    if (left != _fadeLeft || right != _fadeRight) {
+      setState(() {
+        _fadeLeft = left;
+        _fadeRight = right;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        // Fraction of the width each fade occupies (clamped so a narrow row
+        // still leaves an opaque middle).
+        final frac =
+            w > 0 ? (_EdgeFadeScroll.fadeWidth / w).clamp(0.0, 0.45) : 0.0;
+        final scroller = NotificationListener<ScrollMetricsNotification>(
+          onNotification: (_) {
+            _update();
+            return false;
+          },
+          child: SingleChildScrollView(
+            controller: _controller,
+            scrollDirection: Axis.horizontal,
+            child: widget.child,
+          ),
+        );
+        // No fade needed → return the plain scroller (avoids a needless
+        // saveLayer for rows that fit).
+        if (!_fadeLeft && !_fadeRight) return scroller;
+        return ShaderMask(
+          blendMode: BlendMode.dstIn,
+          shaderCallback: (rect) {
+            return LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: [
+                _fadeLeft ? const Color(0x00000000) : const Color(0xFF000000),
+                const Color(0xFF000000),
+                const Color(0xFF000000),
+                _fadeRight ? const Color(0x00000000) : const Color(0xFF000000),
+              ],
+              stops: [0.0, frac, 1.0 - frac, 1.0],
+            ).createShader(rect);
+          },
+          child: scroller,
+        );
+      },
+    );
+  }
+}
+
 /// Play field — opponent champions (top) + my champions / played cards.
 class _NetworkPlayField extends StatelessWidget {
   const _NetworkPlayField({
@@ -2493,8 +2593,7 @@ class _NetworkPlayField extends StatelessWidget {
                   height: champHeight,
                   width: double.infinity,
                   child: Center(
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
+                    child: _EdgeFadeScroll(
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -2553,8 +2652,7 @@ class _NetworkPlayField extends StatelessWidget {
                       height: champHeight,
                       width: double.infinity,
                       child: Center(
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
+                        child: _EdgeFadeScroll(
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -2593,8 +2691,7 @@ class _NetworkPlayField extends StatelessWidget {
                 height: champHeight,
                 width: double.infinity,
                 child: Center(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
+                  child: _EdgeFadeScroll(
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.center,
