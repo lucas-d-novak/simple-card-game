@@ -840,7 +840,7 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
         final exhaustDone = !hasAbility || (view?.exhausted ?? false);
         final spent = activatedDone && exhaustDone;
         return CardDetailAction(
-          label: hasAbility ? 'Use' : 'Activate',
+          label: hasAbility ? 'Exhaust' : 'Activate',
           enabled: myTurn && !spent,
           onPressed: () => _onUseChampion(card, view: view),
         );

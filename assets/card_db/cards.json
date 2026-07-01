@@ -471,9 +471,9 @@
         }
       ],
       "art": "giga_source_adept.jpg",
-      "rawText": "Order Champion. Cost 2, shield 4. When you play this, draw a card. Dominion - Exhaust: Gain 3 (gems). Use this only if you have played and/or reveal from your hand a Homodeus, Undergrowth, AND Wraethe card this turn.",
+      "rawText": "Order Champion. Cost 2, shield 4. When you play this, draw a card. Dominion - Exhaust: Gain 3 (mastery). Use this only if you have played and/or reveal from your hand a Homodeus, Undergrowth, AND Wraethe card this turn.",
       "verified": false,
-      "notes": "Champion shield 4. On-play: draw a card -> playEffects. UNMODELED: Dominion Exhaust 'Gain 3 (gems)' gated on Dominion (played/revealed Homodeus, Undergrowth, AND Wraethe card this turn) has no engine type; the 3 gems not encoded. | [encode-gap] Dominion also allows REVEAL-from-hand; factionsPlayedAll counts played-this-turn only (approximation) -> unverified.",
+      "notes": "Champion shield 4. On-play: draw a card -> playEffects. UNMODELED: Dominion Exhaust 'Gain 3 (gems)' gated on Dominion (played/revealed Homodeus, Undergrowth, AND Wraethe card this turn) has no engine type; the 3 gems not encoded. | [encode-gap] Dominion also allows REVEAL-from-hand; factionsPlayedAll counts played-this-turn only (approximation) -> unverified. | FIX (user): Dominion Exhaust Gain 3 is MASTERY, not gems.",
       "set": "base",
       "cardType": "champion",
       "cost": 2,
@@ -493,7 +493,7 @@
             },
             "then": [
               {
-                "type": "gainGems",
+                "type": "gainMastery",
                 "amount": 3
               }
             ]
@@ -1639,9 +1639,9 @@
       "copies": 1,
       "playEffects": [],
       "art": "nexus_datic_hunter.jpg",
-      "rawText": "Nexus, Datic Hunter\nOrder Champion\n[health][health][health][health]\nIf you are Tetra, put this into your hand when you Recruit it.\nExhaust: Gain [gem][gem].",
+      "rawText": "Nexus, Datic Hunter\nOrder Champion\n[health][health][health][health]\nIf you are Tetra, put this into your hand when you Recruit it.\nExhaust: Gain [mastery][mastery].",
       "verified": false,
-      "notes": "Note: 'datic' kept verbatim from BGG source (possible lowercase/typo, left as-is). set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 59: name='Nexus, Datic Hunter', faction='Order', amount=1. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/nexus_datic_hunter.jpg (printed name 'Nexus, Datic Hunter'; shield shown as green health/cross icon value 4); conf=high | [encode-gap] 'If you are Tetra, put this into your hand when you Recruit it' is an on-recruit, character-gated zone change. There is no on-recruit trigger hook in the vocabulary (conditional/isCharacter only gate effects at play/resolve time, not acquisition).",
+      "notes": "Note: 'datic' kept verbatim from BGG source (possible lowercase/typo, left as-is). set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 59: name='Nexus, Datic Hunter', faction='Order', amount=1. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/nexus_datic_hunter.jpg (printed name 'Nexus, Datic Hunter'; shield shown as green health/cross icon value 4); conf=high | [encode-gap] 'If you are Tetra, put this into your hand when you Recruit it' is an on-recruit, character-gated zone change. There is no on-recruit trigger hook in the vocabulary (conditional/isCharacter only gate effects at play/resolve time, not acquisition). | FIX: Exhaust Gain 2 is MASTERY (gold star), not gems.",
       "set": "saga",
       "chapter": 2,
       "cost": 5,
@@ -1650,7 +1650,7 @@
       "activatedAbility": {
         "effects": [
           {
-            "type": "gainGems",
+            "type": "gainMastery",
             "amount": 2
           }
         ]

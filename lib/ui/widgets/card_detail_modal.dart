@@ -216,10 +216,12 @@ class _CardDetailModalState extends State<CardDetailModal> {
             ),
           ),
 
-          // Primary context action — large glowing circular button, bottom-left.
+          // Primary context action — large glowing circular button on the
+          // MIDDLE-RIGHT side of the window (below the right nav chevron so they
+          // don't collide).
           if (action != null)
             Align(
-              alignment: const Alignment(-0.55, 0.74),
+              alignment: const Alignment(0.82, 0.42),
               child: _CircularActionButton(
                 label: action.label,
                 enabled: action.enabled,
@@ -232,11 +234,11 @@ class _CardDetailModalState extends State<CardDetailModal> {
               ),
             ),
 
-          // Secondary context action — mirrored on the bottom-right (e.g. a
-          // champion's Exhaust ability beside its free Activate).
+          // Secondary context action (when a card has two) — mirrored on the
+          // LEFT side.
           if (secondaryAction != null)
             Align(
-              alignment: const Alignment(0.55, 0.74),
+              alignment: const Alignment(-0.82, 0.42),
               child: _CircularActionButton(
                 label: secondaryAction.label,
                 enabled: secondaryAction.enabled,
