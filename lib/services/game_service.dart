@@ -1066,9 +1066,10 @@ class GameService {
     player.discardPile.addAll(player.hand);
     player.hand.clear();
 
-    // Cleanup: move played cards to discard, separate mercenaries
-    final mercenaries = player.cleanupTurn();
-    removedFromGame.addAll(mercenaries);
+    // Cleanup: move played cards to discard; mercenaries and fast-played/warped
+    // cards (kept visible in the play area this turn) leave the game.
+    final removed = player.cleanupTurn();
+    removedFromGame.addAll(removed);
 
     // Reset per-turn resources
     player.resetTurnResources();
@@ -1417,16 +1418,22 @@ class GameService {
     _resolvePlayOrMastery(card, player);
     _checkAllyAbility(card, player);
 
-    // Per warp rules: banish the card after it resolves. Remove it from
-    // playedThisTurn so end-of-turn cleanup does not also move it to discard,
-    // then move it to removedFromGame. NOTE: it deliberately STAYS in
+    // Per warp rules: the card is removed from the game after it resolves. Move
+    // it out of playedThisTurn (so end-of-turn cleanup does not send it to
+    // discard) and into fastPlayedThisTurn, where it STAYS VISIBLE (greyed) in
+    // the play area for the rest of the turn; cleanupTurn() moves it to
+    // removedFromGame at end of turn. NOTE: it deliberately STAYS in
     // cardsPlayedThisTurn — the ally was genuinely played this turn, so later
     // cards' play-history scaling/conditions (perAllyPlayedThisTurn, etc.)
-    // should still count it even though the physical card is now banished.
+    // should still count it even though the physical card will leave the game.
     player.playedThisTurn.removeWhere((c) => identical(c, card));
-    removedFromGame.add(card);
+    player.fastPlayedThisTurn.add(card);
 
     _refillCenterRow();
+    _log('warped ${card.name}',
+        playerId: player.id,
+        cardId: card.id,
+        grants: _resourceGrantsOf(card.playEffects));
     return true;
   }
 
@@ -1464,11 +1471,13 @@ class GameService {
     _resolvePlayOrMastery(card, player);
     _checkAllyAbility(card, player);
 
-    // Mercenaries are removed from the game after use — remove from
-    // playedThisTurn so end-of-turn cleanup doesn't also discard it, but keep it
-    // in cardsPlayedThisTurn for this turn's play-history scaling.
+    // Mercenaries are removed from the game after use — move out of
+    // playedThisTurn (so end-of-turn cleanup doesn't discard it) and into
+    // fastPlayedThisTurn, where it STAYS VISIBLE (greyed) in the play area for
+    // the rest of the turn; cleanupTurn() removes it from the game at end of
+    // turn. Keep it in cardsPlayedThisTurn for this turn's play-history scaling.
     player.playedThisTurn.removeWhere((c) => identical(c, card));
-    removedFromGame.add(card);
+    player.fastPlayedThisTurn.add(card);
 
     _refillCenterRow();
     _log('fast-played ${card.name} for $price gems',
@@ -2475,6 +2484,10 @@ class GameService {
 
     removedFromGame.addAll(player.playedThisTurn);
     player.playedThisTurn.clear();
+
+    // Fast-played / warped cards were kept visible this turn; they too leave.
+    removedFromGame.addAll(player.fastPlayedThisTurn);
+    player.fastPlayedThisTurn.clear();
 
     removedFromGame.addAll(player.championsInPlay);
     player.championsInPlay.clear();

@@ -3346,17 +3346,24 @@ void main() {
       expect(game.centerRow.any((c) => c.id == 'warp_target'), true);
     });
 
-    test('card is played (effects resolve) then banished, center refilled', () {
+    test(
+        'card is played (effects resolve), kept visible in fastPlayedThisTurn '
+        '(not discard, not yet removed), center refilled', () {
       final game = GameService(playerCount: 2, random: Random(7));
       final player = game.currentPlayer;
       seedCenter(game, cost: 2, playEffects: [const GainPowerEffect(3)]);
 
       expect(game.fastPlayFromCenter('warp_target', maxCost: 4), true);
       expect(player.powerPool, 3); // play effects resolved
-      // The physical card is banished and out of the discard/play-area zones.
+      // It is NOT in playedThisTurn (so end-of-turn cleanup won't discard it)
+      // nor in discard. DURING the turn it stays VISIBLE in fastPlayedThisTurn
+      // (greyed by the UI) — it has NOT yet gone to removedFromGame.
       expect(player.playedThisTurn.any((c) => c.id == 'warp_target'), false);
       expect(player.discardPile.any((c) => c.id == 'warp_target'), false);
-      expect(game.removedFromGame.any((c) => c.id == 'warp_target'), true);
+      expect(player.fastPlayedThisTurn.any((c) => c.id == 'warp_target'), true,
+          reason: 'warped card stays visible in the play area this turn');
+      expect(game.removedFromGame.any((c) => c.id == 'warp_target'), false,
+          reason: 'not removed from game until end of turn');
       // But it STAYS recorded in cardsPlayedThisTurn — it was genuinely played,
       // so later cards' play-history scaling should still count it.
       expect(player.cardsPlayedThisTurn.any((c) => c.id == 'warp_target'), true,
@@ -3415,8 +3422,12 @@ void main() {
 
       expect(game.fastPlayFromCenter('warp_target'), true); // alliesOnly false
       expect(player.powerPool, 3);
-      // Banished, did NOT persist as a champion.
+      // Warped, did NOT persist as a champion; kept visible this turn then
+      // removed from the game at end of turn.
       expect(player.championsInPlay.any((c) => c.id == 'warp_target'), false);
+      expect(player.fastPlayedThisTurn.any((c) => c.id == 'warp_target'), true);
+      expect(game.removedFromGame.any((c) => c.id == 'warp_target'), false);
+      game.endTurn();
       expect(game.removedFromGame.any((c) => c.id == 'warp_target'), true);
     });
 
@@ -3445,6 +3456,41 @@ void main() {
       final game = GameService(playerCount: 2, random: Random(7));
       expect(game.fastPlayFromCenter('not_present'), false);
     });
+
+    test('warped card stays visible this turn, then leaves the game at endTurn',
+        () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      seedCenter(game, cost: 2, playEffects: [const GainPowerEffect(3)]);
+
+      game.fastPlayFromCenter('warp_target', maxCost: 4);
+      // During the turn: visible, not removed.
+      expect(player.fastPlayedThisTurn.any((c) => c.id == 'warp_target'), true);
+      expect(game.removedFromGame.any((c) => c.id == 'warp_target'), false);
+
+      game.endTurn();
+      // After end of turn: removed from game, cleared from the visible zone,
+      // never discarded.
+      expect(player.fastPlayedThisTurn.any((c) => c.id == 'warp_target'), false);
+      expect(player.discardPile.any((c) => c.id == 'warp_target'), false);
+      expect(game.removedFromGame.any((c) => c.id == 'warp_target'), true);
+    });
+
+    test('warp is logged as "warped X" (distinct from a normal "played X")', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      seedCenter(game, cost: 2, playEffects: [const GainPowerEffect(3)]);
+
+      game.fastPlayFromCenter('warp_target', maxCost: 4);
+      expect(
+        game.actionLog.any((e) => e.message == 'warped warp_target'),
+        true,
+        reason: 'warp has its own log verb, not "played"',
+      );
+      expect(
+        game.actionLog.any((e) => e.message.startsWith('played ')),
+        false,
+      );
+    });
   });
 
   group('payAndFastPlayFromCenter() — mercenary recruit-or-fast-play', () {
@@ -3465,7 +3511,9 @@ void main() {
       return card;
     }
 
-    test('pays cost, plays immediately, removes from game, refills', () {
+    test(
+        'pays cost, plays immediately, stays visible, removed at endTurn, '
+        'refills', () {
       final game = GameService(playerCount: 2, random: Random(7));
       final player = game.currentPlayer;
       player.gemPool = 5;
@@ -3474,11 +3522,19 @@ void main() {
       expect(game.payAndFastPlayFromCenter('merc'), true);
       expect(player.gemPool, 2, reason: 'paid the 3 cost');
       expect(player.powerPool, 5, reason: 'effect resolved immediately');
-      // Removed from the game (mercenary), NOT sent to discard.
+      // Kept VISIBLE (greyed) in the play area this turn — NOT in discard, and
+      // NOT yet removed from the game.
       expect(player.discardPile.any((c) => c.id == 'merc'), false);
-      expect(game.removedFromGame.any((c) => c.id == 'merc'), true);
+      expect(player.fastPlayedThisTurn.any((c) => c.id == 'merc'), true);
+      expect(game.removedFromGame.any((c) => c.id == 'merc'), false);
       expect(player.cardsPlayedThisTurn.any((c) => c.id == 'merc'), true);
       expect(game.centerRow.length, 6, reason: 'row refilled');
+
+      // At end of turn: removed from the game (mercenary), never discarded.
+      game.endTurn();
+      expect(player.fastPlayedThisTurn.any((c) => c.id == 'merc'), false);
+      expect(player.discardPile.any((c) => c.id == 'merc'), false);
+      expect(game.removedFromGame.any((c) => c.id == 'merc'), true);
     });
 
     test('refuses when the player cannot afford the cost', () {
