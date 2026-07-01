@@ -42,6 +42,20 @@
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
+  <!-- Auto-refresh on new deploys: when an updated service worker takes over
+       (i.e. a newer build than the one cached in this browser), reload ONCE so
+       users always run the latest build without manually clearing cache. The
+       one-shot guard prevents a reload loop. -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      let reloadedForUpdate = false;
+      navigator.serviceWorker.addEventListener('controllerchange', function () {
+        if (reloadedForUpdate) return;
+        reloadedForUpdate = true;
+        window.location.reload();
+      });
+    }
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

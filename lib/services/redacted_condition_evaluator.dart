@@ -81,6 +81,19 @@ bool redactedConditionsSatisfied(CardModel card, RedactedConditionContext ctx) {
   return false;
 }
 
+/// Evaluate a SINGLE [GameCondition] against the redacted [ctx], with [source]
+/// as the condition's source card (faction-less conditions resolve against its
+/// faction). Public so callers can gate a conditional effect's deferred
+/// follow-up (e.g. only prompt Limiter Drones' banish when "you control a
+/// Champion" actually holds). Not-evaluable-from-redacted-data conditions return
+/// false — never guess.
+bool redactedConditionHolds(
+  GameCondition condition,
+  CardModel source,
+  RedactedConditionContext ctx,
+) =>
+    _evaluate(condition, source, ctx);
+
 /// Base faction match honouring `countsAsAllFactions` on either side. Turn-scoped
 /// aliases (TreatFactionAs) are not in redacted data, so they are not applied —
 /// this matches the engine for the common (no-alias) case.

@@ -290,25 +290,64 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
   /// carries (banish / scrap / destroy-champion / return-from-discard). The
   /// picker runs on the next server state via [_pendingSelection] so it reads
   /// the POST-play board (the played card already gone from hand, etc.).
-  void _queuePostPlayEffects(CardModel card) {
-    for (final effect in card.playEffects) {
-      if (effect is BanishCardEffect) {
-        _pendingSelection = () => _promptBanish(effect.source);
-        return;
-      }
-      if (effect is ScrapFromCenterRowEffect) {
-        _pendingSelection = _promptScrap;
-        return;
-      }
-      if (effect is DestroyChampionEffect && !effect.all) {
-        _pendingSelection = _promptDestroyChampion;
-        return;
-      }
-      if (effect is ReturnFromDiscardEffect) {
-        _pendingSelection = _promptReturnFromDiscard;
-        return;
+  void _queuePostPlayEffects(CardModel card) =>
+      _queueDeferredSelection(card, card.playEffects);
+
+  /// Queue a deferred target picker for the first deferred effect in [effects]
+  /// (a card's playEffects, or a champion's activated-ability effects), with
+  /// [source] as the effect's source card for condition evaluation.
+  void _queueDeferredSelection(CardModel source, List<CardEffect> effects) {
+    // Evaluate conditions against the POST-action state (the played card is now
+    // in playedThisTurn / championsInPlay), mirroring what the engine saw.
+    final me = _view?.me;
+    final ctx = me != null ? _conditionContext(me) : null;
+    final picker = _deferredPickerFor(effects, source, ctx);
+    if (picker != null) _pendingSelection = picker;
+  }
+
+  /// Walks a list of effects (recursing into `ConditionalEffect.then` and
+  /// `ChooseOneEffect.choices`) and returns the target picker for the FIRST
+  /// deferred effect found, or null if none. Nesting matters: cards like Limiter
+  /// Drones carry their banish INSIDE a `ConditionalEffect` (Inspire — "if you
+  /// control a Champion, you may banish…"), so a flat top-level scan would miss
+  /// it and the banish prompt would silently never appear.
+  ///
+  /// A `ConditionalEffect` is only recursed into when its condition HOLDS — the
+  /// server's banish/destroy/etc. actions are unconditional, so prompting when
+  /// the condition failed would let the player take an effect they didn't earn.
+  /// Conditions the redacted state can't evaluate are treated as NOT holding
+  /// (conservative: no spurious prompt).
+  VoidCallback? _deferredPickerFor(
+    List<CardEffect> effects,
+    CardModel source,
+    RedactedConditionContext? ctx,
+  ) {
+    for (final effect in effects) {
+      switch (effect) {
+        case BanishCardEffect():
+          return () => _promptBanish(effect.source);
+        case ScrapFromCenterRowEffect():
+          return _promptScrap;
+        case DestroyChampionEffect() when !effect.all:
+          return _promptDestroyChampion;
+        case ReturnFromDiscardEffect():
+          return _promptReturnFromDiscard;
+        case ConditionalEffect():
+          final holds = ctx != null &&
+              redactedConditionHolds(effect.condition, source, ctx);
+          if (!holds) break;
+          final nested = _deferredPickerFor(effect.then, source, ctx);
+          if (nested != null) return nested;
+        case ChooseOneEffect():
+          for (final group in effect.choices) {
+            final nested = _deferredPickerFor(group, source, ctx);
+            if (nested != null) return nested;
+          }
+        default:
+          break;
       }
     }
+    return null;
   }
 
   /// The latest typed view, or null when no state has arrived yet.
@@ -594,11 +633,20 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
   void _onMyChampionTap(CardModel champ) {
     widget.client.activateChampion(champ.id);
     _flash('Activated ${champ.name}');
+    // Activating a champion re-resolves its play effects, which may include a
+    // deferred target picker (banish / return / destroy) — queue it too.
+    _queueDeferredSelection(champ, champ.playEffects);
   }
 
   void _onExhaustChampion(CardModel champ) {
     widget.client.useActivatedAbility(champ.id);
     _flash('Exhausted ${champ.name}');
+    // The Exhaust ability's effects can be deferred-selection (e.g. Aedifex's
+    // "Put a Champion from your discard pile into your hand" =
+    // returnFromDiscard, which needs a card pick). Queue that picker; without it
+    // the Exhaust silently does nothing.
+    final ability = champ.activatedAbility;
+    if (ability != null) _queueDeferredSelection(champ, ability.effects);
   }
 
   /// Open the zoom modal for one of MY champions, offering its two distinct
@@ -615,6 +663,11 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
       cards,
       index < 0 ? 0 : index,
       actionFor: (card) {
+        // "Activate" re-resolves the champion's PLAY effects (a free once-per-
+        // turn re-trigger). A champion with no play effects (e.g. Aedifex, whose
+        // only ability is Exhaust-gated) has nothing to Activate — hide it so the
+        // modal shows just the Exhaust action, not a useless button.
+        if (card.playEffects.isEmpty) return null;
         final view = byId[card.id];
         return CardDetailAction(
           label: 'Activate',
@@ -1842,9 +1895,10 @@ class _MaybeDraggableMarketCard extends StatelessWidget {
       key: ValueKey(card.id),
       card: card,
       onTap: onTap,
-      // When draggable, long-press starts the drag (not the popup); tap still
-      // opens the popup. Off-turn, long-press falls back to the popup.
-      onLongPress: canDrag ? null : onLongPress,
+      // Tap opens the popup (Recruit / Fast Play). A plain Draggable starts the
+      // drag on pointer MOVEMENT, so a stationary tap still fires onTap and a
+      // long-press still opens the popup — no hold delay to begin dragging.
+      onLongPress: onLongPress,
       isHighlighted: isHighlighted,
       conditionsMet: conditionsMet,
       width: cardWidth,
@@ -1865,7 +1919,7 @@ class _MaybeDraggableMarketCard extends StatelessWidget {
       ),
     );
 
-    return LongPressDraggable<_MarketCardDrag>(
+    return Draggable<_MarketCardDrag>(
       data: _MarketCardDrag(card),
       dragAnchorStrategy: childDragAnchorStrategy,
       onDragStarted: onDragStarted,
@@ -2046,47 +2100,65 @@ class _NetworkPlayField extends StatelessWidget {
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        for (final champ in myChampions)
-                          Padding(
-                            padding: const EdgeInsets.only(right: 4),
-                            child: AnimatedZoneList.wrap(
-                              id: champ.id,
-                              child: Stack(
-                              children: [
-                                GameCardWidget(
-                                  card: cardFor(champ.id),
-                                  compact: true,
-                                  showCost: false,
-                                  width: cardWidth,
-                                  isHighlighted: !champ.activated,
-                                  // Tap activates on your turn; off-turn it
-                                  // falls back to zoom (the modal still offers
-                                  // Activate/Exhaust when eligible).
-                                  onTap: onActivateChampion != null
-                                      ? () =>
-                                          onActivateChampion!(cardFor(champ.id))
-                                      : () => onZoomMyChampion(champ),
-                                  onLongPress: () => onZoomMyChampion(champ),
-                                ),
-                                if (champ.activated)
-                                  Positioned(
-                                    top: 2,
-                                    right: 2,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(2),
-                                      decoration: BoxDecoration(
-                                        color: GameTheme.endTurnGreen,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: const Icon(Icons.check,
-                                          size: 10, color: Colors.white),
+                        // Champions live in a labelled "tray" that visually sets
+                        // them aside as persistent, board-resident cards.
+                        if (myChampions.isNotEmpty)
+                          _ChampionsTray(
+                            height: champHeight,
+                            children: [
+                              for (final champ in myChampions)
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 4),
+                                  child: AnimatedZoneList.wrap(
+                                    id: champ.id,
+                                    child: Stack(
+                                      children: [
+                                        GameCardWidget(
+                                          card: cardFor(champ.id),
+                                          compact: true,
+                                          showCost: false,
+                                          width: cardWidth,
+                                          isHighlighted: !champ.activated,
+                                          // Tap activates on your turn ONLY when
+                                          // the champion has play effects to
+                                          // re-trigger; otherwise (e.g. Aedifex —
+                                          // Exhaust-only) tap zooms to reach its
+                                          // Exhaust ability. Off-turn, tap zooms.
+                                          onTap: (onActivateChampion != null &&
+                                                  cardFor(champ.id)
+                                                      .playEffects
+                                                      .isNotEmpty)
+                                              ? () => onActivateChampion!(
+                                                  cardFor(champ.id))
+                                              : () => onZoomMyChampion(champ),
+                                          onLongPress: () =>
+                                              onZoomMyChampion(champ),
+                                        ),
+                                        if (champ.activated)
+                                          Positioned(
+                                            top: 2,
+                                            right: 2,
+                                            child: Container(
+                                              padding: const EdgeInsets.all(2),
+                                              decoration: BoxDecoration(
+                                                color: GameTheme.endTurnGreen,
+                                                borderRadius:
+                                                    BorderRadius.circular(4),
+                                              ),
+                                              child: const Icon(Icons.check,
+                                                  size: 10, color: Colors.white),
+                                            ),
+                                          ),
+                                      ],
                                     ),
                                   ),
-                              ],
-                              ),
-                            ),
+                                ),
+                            ],
                           ),
+                        if (myChampions.isNotEmpty && playedThisTurn.isNotEmpty)
+                          const SizedBox(width: 8),
                         for (final id in playedThisTurn)
                           Padding(
                             padding: const EdgeInsets.only(right: 4),
@@ -2349,27 +2421,13 @@ class _NetworkBottomZone extends StatelessWidget {
     return Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Left column: End Turn + resource chips + draw pile hex.
+          // Left column: resource chips + Focus/acquisition pills, with the DRAW
+          // pile anchored at the BOTTOM-LEFT (Undo removed; End Turn folded into
+          // the morphing primary button on the right).
           Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              BeveledButton(
-                label: 'End Turn',
-                onPressed: onEndTurn,
-                width: isMobile ? 120 : 150,
-                height: 40,
-                fontSize: isMobile ? 16 : 20,
-              ),
-              const SizedBox(height: 4),
-              BeveledButton(
-                label: 'Undo',
-                onPressed: onUndo,
-                width: isMobile ? 120 : 150,
-                height: 32,
-                fontSize: isMobile ? 14 : 16,
-              ),
-              const SizedBox(height: 4),
               Row(
                 children: [
                   Container(
@@ -2474,23 +2532,13 @@ class _NetworkBottomZone extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 4),
-          // Right column: Attack (if any) + Play All + discard hex.
+          // Right column: the single morphing primary button (Play All → Attack
+          // → End Turn) with the DISCARD pile anchored at the BOTTOM-RIGHT.
           Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              if (onAttack != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: BeveledButton(
-                    label: 'Attack (${me.powerPool})',
-                    onPressed: onAttack,
-                    width: isMobile ? 96 : 132,
-                    height: 34,
-                    fontSize: isMobile ? 14 : 18,
-                  ),
-                )
-              else if (hasGuards)
+              if (hasGuards && me.powerPool > 0 && hand.isEmpty)
                 const Padding(
                   padding: EdgeInsets.only(bottom: 4),
                   child: Text(
@@ -2501,14 +2549,16 @@ class _NetworkBottomZone extends StatelessWidget {
                         fontStyle: FontStyle.italic),
                   ),
                 ),
-              BeveledButton(
-                label: 'Play All',
-                onPressed: onPlayAll,
-                style: BeveledStyle.green,
+              _PrimaryActionButton(
+                handCount: hand.length,
+                powerPool: me.powerPool,
+                hasGuards: hasGuards,
+                onPlayAll: onPlayAll,
+                onAttack: onAttack,
+                onEndTurn: onEndTurn,
                 width: isMobile ? 96 : 132,
                 height: isMobile ? 56 : 80,
                 fontSize: isMobile ? 18 : 26,
-                radius: 16,
               ),
               const SizedBox(height: 4),
               KeyedSubtree(
@@ -2529,55 +2579,7 @@ class _NetworkBottomZone extends StatelessWidget {
   /// the top (action buttons + resource chips), then the hand fan spans the full
   /// width flanked by the piles, so the player's HAND gets the most room.
   Widget _buildPortrait(BuildContext context) {
-    // Row 1: primary actions. End Turn / Undo / Attack (or Play All) as compact
-    // beveled buttons, plus the acquisition pills when eligible.
-    final actionRow = Row(
-      children: [
-        Expanded(
-          child: BeveledButton(
-            label: 'End Turn',
-            onPressed: onEndTurn,
-            height: 34,
-            fontSize: 14,
-          ),
-        ),
-        const SizedBox(width: 6),
-        Expanded(
-          child: BeveledButton(
-            label: 'Undo',
-            onPressed: onUndo,
-            height: 34,
-            fontSize: 14,
-          ),
-        ),
-        const SizedBox(width: 6),
-        Expanded(
-          child: onAttack != null
-              ? BeveledButton(
-                  label: 'Attack (${me.powerPool})',
-                  onPressed: onAttack,
-                  height: 34,
-                  fontSize: 13,
-                )
-              : hasGuards
-                  ? const SizedBox(
-                      height: 34,
-                      child: Center(
-                        child: Text(
-                          'Guard blocks',
-                          style: TextStyle(
-                              color: Color(0xFFE8C45A),
-                              fontSize: 11,
-                              fontStyle: FontStyle.italic),
-                        ),
-                      ),
-                    )
-                  : const SizedBox(height: 34),
-        ),
-      ],
-    );
-
-    // Row 2: resource chips + power + Focus + acquisition pills, all in one
+    // Row 1 (resource chips + power + Focus + acquisition pills), all in one
     // compact, wrapping row.
     final statusRow = Wrap(
       spacing: 8,
@@ -2655,14 +2657,16 @@ class _NetworkBottomZone extends StatelessWidget {
         Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            BeveledButton(
-              label: 'Play All',
-              onPressed: onPlayAll,
-              style: BeveledStyle.green,
-              width: 72,
+            _PrimaryActionButton(
+              handCount: hand.length,
+              powerPool: me.powerPool,
+              hasGuards: hasGuards,
+              onPlayAll: onPlayAll,
+              onAttack: onAttack,
+              onEndTurn: onEndTurn,
+              width: 84,
               height: 46,
               fontSize: 15,
-              radius: 14,
             ),
             const SizedBox(height: 4),
             KeyedSubtree(
@@ -2681,8 +2685,6 @@ class _NetworkBottomZone extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        actionRow,
-        const SizedBox(height: 4),
         statusRow,
         const SizedBox(height: 4),
         handRow,
@@ -2788,6 +2790,129 @@ class _AcquirePill extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// The single morphing PRIMARY action button that walks the player through the
+/// turn in order: **Play All** (while cards remain in hand) → **Attack (N)**
+/// (hand empty, power available, opponent not fully guard-blocked) → **End
+/// Turn**. Recruiting from the market and attacking champions stay free at any
+/// time via their own taps — this button only ever advances the MAIN sequence.
+///
+/// Each phase's callback is supplied by the board (null when unavailable). The
+/// button picks the first applicable phase and renders its label/colour, so the
+/// player always sees exactly the next step.
+class _PrimaryActionButton extends StatelessWidget {
+  const _PrimaryActionButton({
+    required this.handCount,
+    required this.powerPool,
+    required this.hasGuards,
+    required this.onPlayAll,
+    required this.onAttack,
+    required this.onEndTurn,
+    required this.width,
+    required this.height,
+    required this.fontSize,
+  });
+
+  final int handCount;
+  final int powerPool;
+
+  /// True when every living opponent's face is behind a guard (so a face attack
+  /// is impossible even with power — the button skips to End Turn).
+  final bool hasGuards;
+
+  final VoidCallback? onPlayAll;
+  final VoidCallback? onAttack;
+  final VoidCallback? onEndTurn;
+  final double width;
+  final double height;
+  final double fontSize;
+
+  @override
+  Widget build(BuildContext context) {
+    // Phase 1: cards still in hand → Play All.
+    if (handCount > 0 && onPlayAll != null) {
+      return BeveledButton(
+        label: 'Play All',
+        onPressed: onPlayAll,
+        style: BeveledStyle.green,
+        width: width,
+        height: height,
+        fontSize: fontSize,
+      );
+    }
+    // Phase 2: hand empty, power available, a face is attackable → Attack.
+    if (handCount == 0 && powerPool > 0 && !hasGuards && onAttack != null) {
+      return BeveledButton(
+        label: 'Attack ($powerPool)',
+        onPressed: onAttack,
+        style: BeveledStyle.green,
+        width: width,
+        height: height,
+        fontSize: fontSize,
+      );
+    }
+    // Phase 3: nothing left to do in sequence → End Turn.
+    return BeveledButton(
+      label: 'End Turn',
+      onPressed: onEndTurn,
+      width: width,
+      height: height,
+      fontSize: fontSize,
+    );
+  }
+}
+
+/// A light bordered "tray" that visually groups the player's champions and
+/// labels them "Champions", setting them apart from the turn's transient plays.
+/// The label is a small pill riding the top-left of the border so the tray adds
+/// no vertical height beyond its card row.
+class _ChampionsTray extends StatelessWidget {
+  const _ChampionsTray({required this.children, required this.height});
+
+  final List<Widget> children;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(top: 6),
+      padding: const EdgeInsets.fromLTRB(6, 5, 4, 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+      ),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Row(mainAxisSize: MainAxisSize.min, children: children),
+          // Floating label pill on the top-left border.
+          Positioned(
+            top: -13,
+            left: 4,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+              decoration: BoxDecoration(
+                color: const Color(0xFF102A40),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+              ),
+              child: const Text(
+                'Champions',
+                style: TextStyle(
+                  color: Color(0xFFBFD8E8),
+                  fontSize: 9,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.4,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

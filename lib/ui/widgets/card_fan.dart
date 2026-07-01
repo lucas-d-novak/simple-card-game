@@ -12,8 +12,11 @@ import 'package:simple_card_game/ui/widgets/game_card_widget.dart';
 /// Gestures:
 ///  - SINGLE TAP on a card → [onCardTap] (the board wires this to the card
 ///    ZOOM / detail modal).
-///  - LONG-PRESS on a card → begins a DRAG (via [LongPressDraggable]); drop it
-///    on the play area's [DragTarget<CardModel>] to play it.
+///  - DRAG a card off the fan → begins immediately on pointer movement (via a
+///    plain [Draggable], no hold delay); drop it on the play area's
+///    [DragTarget<CardModel>] to play it. A stationary tap never starts a drag,
+///    so tap-to-zoom is unaffected.
+///  - LONG-PRESS → [onCardLongPress] (also wired to zoom as a fallback).
 ///
 /// The fan adapts to the available width: card size and overlap scale down on
 /// narrow / mobile screens so the whole hand stays on screen and remains
@@ -217,13 +220,14 @@ class _DraggableHandCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // The resting card. When draggable, the long-press is consumed by the
-    // LongPressDraggable below (to begin the drag), so we don't also wire the
-    // card's own onLongPress in that case.
+    // The resting card. A plain Draggable (below) starts only once the pointer
+    // moves past the drag slop, so a tap-without-movement still fires onTap
+    // (zoom) and a long-press still fires onLongPress — no hold delay needed to
+    // BEGIN a drag.
     final resting = GameCardWidget(
       card: card,
       onTap: onTap,
-      onLongPress: draggable ? null : onLongPress,
+      onLongPress: onLongPress,
       isHighlighted: isHighlighted,
       conditionsMet: conditionsMet,
       showCost: false,
@@ -248,7 +252,10 @@ class _DraggableHandCard extends StatelessWidget {
       ),
     );
 
-    return LongPressDraggable<CardModel>(
+    // Plain Draggable — the drag begins immediately on pointer movement (no
+    // hold delay). A stationary tap never crosses the slop threshold, so onTap
+    // (zoom) still fires; only an actual drag-out plays the card.
+    return Draggable<CardModel>(
       data: card,
       dragAnchorStrategy: childDragAnchorStrategy,
       onDragStarted: onDragStarted,
