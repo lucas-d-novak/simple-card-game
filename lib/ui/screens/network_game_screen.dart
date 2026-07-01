@@ -3,6 +3,7 @@ import 'package:simple_card_game/data/database/card_serialization.dart';
 import 'package:simple_card_game/models/card_effect.dart';
 import 'package:simple_card_game/models/card_model.dart';
 import 'package:simple_card_game/models/card_type.dart';
+import 'package:simple_card_game/models/faction.dart';
 import 'package:simple_card_game/services/fullscreen.dart';
 import 'package:simple_card_game/services/game_client.dart';
 import 'package:simple_card_game/services/redacted_condition_evaluator.dart';
@@ -19,6 +20,7 @@ import 'package:simple_card_game/ui/widgets/card_detail_modal.dart';
 import 'package:simple_card_game/ui/widgets/card_fan.dart';
 import 'package:simple_card_game/ui/widgets/choice_modal.dart';
 import 'package:simple_card_game/ui/widgets/destiny_tray.dart';
+import 'package:simple_card_game/ui/widgets/faction_flame_backdrop.dart';
 import 'package:simple_card_game/ui/widgets/game_card_widget.dart';
 import 'package:simple_card_game/ui/widgets/resource_grant.dart';
 import 'package:simple_card_game/ui/widgets/resource_icons.dart';
@@ -156,6 +158,55 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
   CardModel _card(String id) {
     return _cards[id] ??
         CardModel(id: id, name: '', cost: 0, playEffects: const []);
+  }
+
+  /// The player's dominant faction across every card they own (draw pile + hand
+  /// + discard + played + champions). Starter/neutral cards (Faction.none) are
+  /// ignored so they don't outweigh a real faction lean. Ties break by a fixed
+  /// faction order for stability. Returns [Faction.none] when the player owns no
+  /// faction cards yet (all starters) — a neutral grey flame.
+  Faction _dominantFaction(_PlayerView p) {
+    final counts = <Faction, int>{};
+    void tally(String id) {
+      final f = _card(id).faction;
+      if (f == Faction.none) return;
+      counts[f] = (counts[f] ?? 0) + 1;
+    }
+
+    for (final id in p.drawPileContents) {
+      tally(id);
+    }
+    for (final id in p.hand) {
+      tally(id);
+    }
+    for (final id in p.discard) {
+      tally(id);
+    }
+    for (final id in p.playedThisTurn) {
+      tally(id);
+    }
+    for (final c in p.champions) {
+      tally(c.id);
+    }
+
+    if (counts.isEmpty) return Faction.none;
+    // Stable tie-break: highest count, then a fixed faction ordering.
+    const order = [
+      Faction.homodeus,
+      Faction.wraethe,
+      Faction.order,
+      Faction.undergrowth,
+    ];
+    Faction best = Faction.none;
+    int bestCount = -1;
+    for (final f in order) {
+      final c = counts[f] ?? 0;
+      if (c > bestCount) {
+        bestCount = c;
+        best = f;
+      }
+    }
+    return best;
   }
 
   /// Build the playback entries for the action-ticker overlay from the current
@@ -1079,6 +1130,7 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
         // drag-to-play (drop on the play field above).
         _NetworkBottomZone(
           me: me,
+          deckFaction: _dominantFaction(me),
           screenWidth: screenWidth,
           hand: [for (final id in me.hand) _card(id)],
           enabled: myTurn,
@@ -1907,10 +1959,13 @@ class _NetworkPlayField extends StatelessWidget {
                                   champ: champ,
                                   width: cardWidth,
                                   isHighlighted: canAttackChampions,
+                                  // Tap attacks when you can; otherwise it falls
+                                  // back to zoom so any card is always
+                                  // inspectable, even when you can't act on it.
                                   onTap: canAttackChampions
                                       ? () => onAttackChampion(
                                           cardFor(champ.id), opponentId!)
-                                      : null,
+                                      : () => onZoomCard(cardFor(champ.id)),
                                   onLongPress: () =>
                                       onZoomCard(cardFor(champ.id)),
                                 ),
@@ -1962,6 +2017,7 @@ class _NetworkPlayField extends StatelessWidget {
                                       compact: true,
                                       showCost: false,
                                       width: cardWidth,
+                                      onTap: () => onZoomCard(cardFor(id)),
                                       onLongPress: () => onZoomCard(cardFor(id)),
                                     ),
                                   ),
@@ -2004,10 +2060,13 @@ class _NetworkPlayField extends StatelessWidget {
                                   showCost: false,
                                   width: cardWidth,
                                   isHighlighted: !champ.activated,
+                                  // Tap activates on your turn; off-turn it
+                                  // falls back to zoom (the modal still offers
+                                  // Activate/Exhaust when eligible).
                                   onTap: onActivateChampion != null
                                       ? () =>
                                           onActivateChampion!(cardFor(champ.id))
-                                      : null,
+                                      : () => onZoomMyChampion(champ),
                                   onLongPress: () => onZoomMyChampion(champ),
                                 ),
                                 if (champ.activated)
@@ -2038,6 +2097,7 @@ class _NetworkPlayField extends StatelessWidget {
                                 compact: true,
                                 showCost: false,
                                 width: cardWidth,
+                                onTap: () => onZoomCard(cardFor(id)),
                                 onLongPress: () => onZoomCard(cardFor(id)),
                               ),
                             ),
@@ -2181,6 +2241,7 @@ class _ChampionTile extends StatelessWidget {
 class _NetworkBottomZone extends StatelessWidget {
   const _NetworkBottomZone({
     required this.me,
+    required this.deckFaction,
     required this.screenWidth,
     required this.hand,
     required this.enabled,
@@ -2214,6 +2275,10 @@ class _NetworkBottomZone extends StatelessWidget {
   final GlobalKey? discardAnchorKey;
 
   final _PlayerView me;
+
+  /// The player's dominant faction — drives the colour of the flame backdrop
+  /// behind the draw pile. [Faction.none] = neutral grey (all-starter deck).
+  final Faction deckFaction;
   final double screenWidth;
   final List<CardModel> hand;
   final bool enabled;
@@ -2376,10 +2441,13 @@ class _NetworkBottomZone extends StatelessWidget {
               const SizedBox(height: 4),
               KeyedSubtree(
                 key: deckAnchorKey,
-                child: _PileHex(
-                  count: me.drawPileCount,
-                  style: _PileStyle.draw,
-                  onTap: onTapDraw,
+                child: FactionFlameBackdrop(
+                  faction: deckFaction,
+                  child: _PileHex(
+                    count: me.drawPileCount,
+                    style: _PileStyle.draw,
+                    onTap: onTapDraw,
+                  ),
                 ),
               ),
             ],
@@ -2560,10 +2628,15 @@ class _NetworkBottomZone extends StatelessWidget {
       children: [
         KeyedSubtree(
           key: deckAnchorKey,
-          child: _PileHex(
-            count: me.drawPileCount,
-            style: _PileStyle.draw,
-            onTap: onTapDraw,
+          child: FactionFlameBackdrop(
+            faction: deckFaction,
+            width: 66,
+            height: 90,
+            child: _PileHex(
+              count: me.drawPileCount,
+              style: _PileStyle.draw,
+              onTap: onTapDraw,
+            ),
           ),
         ),
         const SizedBox(width: 4),

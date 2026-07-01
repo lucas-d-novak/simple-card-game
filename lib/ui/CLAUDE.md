@@ -93,6 +93,21 @@ scroll rather than overflow.
   (`destiny_tray.dart`, `showDestinyTray`): your claimed Destinies, each with a
   **Use** action gated by `GameService.canUseDestinyAbility` (the server ships
   `exhaustedDestinies` so used ones are disabled).
+- **Faction flame backdrop** (`widgets/faction_flame_backdrop.dart`,
+  `FactionFlameBackdrop`) — a flame-shaped, faction-color-coded plume rendered
+  BEHIND your draw pile. Its colour is your **dominant faction** across every
+  card you own (draw pile + hand + discard + played + champions; neutral
+  starters excluded, ties broken by a fixed faction order) — computed by
+  `_dominantFaction` on the board state — so you can read your own identity at a
+  glance (the same info a card like Chlorophyte Guardian keys off). It gently
+  flickers when motion is enabled and holds a single static frame (no timers) in
+  instant / reduced-motion mode, so tests never hang.
+- **Tap-to-zoom everywhere** — every card on the board zooms into the detail
+  modal even when you can't act on it. Cards whose tap triggers an action
+  (attack an opponent champion, activate your champion) fall back to zoom when
+  that action is unavailable (off-turn / no power); play-area rows with no action
+  zoom on tap directly. So a spectator or off-turn player can always inspect any
+  card, not only their own hand/market.
 
 ### Login / lobby screen (`network_lobby_screen.dart`)
 
