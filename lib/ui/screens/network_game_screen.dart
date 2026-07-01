@@ -1668,6 +1668,21 @@ class _NetworkCenterRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // On a narrow phone held in PORTRAIT, six cards in a single row are
+    // uncomfortably small. Re-flow the market into TWO ROWS OF THREE so each
+    // card is sized off screenWidth/3 (noticeably bigger). Landscape / tablet /
+    // desktop keep the single-row layout unchanged.
+    final isPortraitPhone = Responsive.isMobile(screenWidth) &&
+        MediaQuery.of(context).orientation == Orientation.portrait;
+
+    if (isPortraitPhone) {
+      return _buildPortraitGrid(context);
+    }
+    return _buildSingleRow(context);
+  }
+
+  /// Default single-row market: six cards across (landscape / tablet / desktop).
+  Widget _buildSingleRow(BuildContext context) {
     final usable = (screenWidth - 16).clamp(0.0, Responsive.maxContentWidth);
     final slot = usable / 6;
     final cardWidth = (slot - 8).clamp(46.0, 138.0);
@@ -1681,22 +1696,65 @@ class _NetworkCenterRow extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            for (final card in cards)
-              _MaybeDraggableMarketCard(
-                card: card,
-                cardWidth: cardWidth,
-                canDrag: onDragStarted != null,
-                isHighlighted: canAfford(card),
-                conditionsMet: conditionsMet?.call(card) ?? false,
-                onTap: () => onTapCard(card),
-                onLongPress: () => onLongPressCard(card),
-                onDragStarted: () => onDragStarted?.call(card),
-              ),
+            for (final card in cards) _marketCard(card, cardWidth),
           ],
         ),
       ),
     );
   }
+
+  /// Mobile-portrait market: two rows of three, each card sized off
+  /// screenWidth/3 so the cards are large and readable.
+  Widget _buildPortraitGrid(BuildContext context) {
+    const perRow = 3;
+    const hPad = 8.0; // outer horizontal padding on each side
+    const gap = 8.0; // gap between cards in a row
+    final usable = (screenWidth - hPad * 2).clamp(0.0, Responsive.maxContentWidth);
+    // Three cards + two inter-card gaps per row.
+    final slot = (usable - gap * (perRow - 1)) / perRow;
+    final cardWidth = slot.clamp(64.0, 180.0);
+
+    // Split the (up to 6) cards into rows of three.
+    final rows = <List<CardModel>>[];
+    for (var i = 0; i < cards.length; i += perRow) {
+      rows.add(cards.sublist(
+          i, (i + perRow).clamp(0, cards.length)));
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: hPad),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var r = 0; r < rows.length; r++) ...[
+            if (r > 0) const SizedBox(height: gap),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var c = 0; c < rows[r].length; c++) ...[
+                  if (c > 0) const SizedBox(width: gap),
+                  _marketCard(rows[r][c], cardWidth),
+                ],
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _marketCard(CardModel card, double cardWidth) =>
+      _MaybeDraggableMarketCard(
+        card: card,
+        cardWidth: cardWidth,
+        canDrag: onDragStarted != null,
+        isHighlighted: canAfford(card),
+        conditionsMet: conditionsMet?.call(card) ?? false,
+        onTap: () => onTapCard(card),
+        onLongPress: () => onLongPressCard(card),
+        onDragStarted: () => onDragStarted?.call(card),
+      );
 }
 
 /// A market card that is TAP-to-select and (on your turn) LONG-PRESS-to-drag
@@ -1815,27 +1873,15 @@ class _NetworkPlayField extends StatelessWidget {
   Widget build(BuildContext context) {
     final cardWidth = Responsive.compactCardWidth(screenWidth);
     final champHeight = cardWidth * (130 / 90) + 4;
+    // In mobile-portrait the play field is squeezed (the market takes two rows
+    // and the hand is prioritised). Drop the flexible Spacer for a fixed gap and
+    // make the content vertically scrollable so it never overflows its box.
+    final isPortraitPhone = Responsive.isMobile(screenWidth) &&
+        MediaQuery.of(context).orientation == Orientation.portrait;
 
-    return Stack(
+    final playColumn = Column(
+      mainAxisSize: isPortraitPhone ? MainAxisSize.min : MainAxisSize.max,
       children: [
-        // Drop-zone highlight while a card hovers over the play area.
-        if (isDropTarget)
-          Positioned.fill(
-            child: IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: BoardChrome.tealHighlight.withValues(alpha: 0.8),
-                    width: 2,
-                  ),
-                  color: BoardChrome.tealHighlight.withValues(alpha: 0.08),
-                ),
-              ),
-            ),
-          ),
-        Column(
-          children: [
             // Opponent champions row (just under the center row).
             if (opponentChampions.isNotEmpty && opponentId != null)
               Padding(
@@ -1920,7 +1966,10 @@ class _NetworkPlayField extends StatelessWidget {
                   ],
                 ),
               ),
-            const Spacer(),
+            if (isPortraitPhone)
+              const SizedBox(height: 6)
+            else
+              const Spacer(),
             // My champions + played-this-turn row, just above the hand. Centered
             // (like the official client) so it sits in the middle of the play
             // field rather than hugging the left edge over the End Turn column.
@@ -1985,7 +2034,35 @@ class _NetworkPlayField extends StatelessWidget {
                 ),
               ),
           ],
-        ),
+        );
+
+    return Stack(
+      children: [
+        // Drop-zone highlight while a card hovers over the play area.
+        if (isDropTarget)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: BoardChrome.tealHighlight.withValues(alpha: 0.8),
+                    width: 2,
+                  ),
+                  color: BoardChrome.tealHighlight.withValues(alpha: 0.08),
+                ),
+              ),
+            ),
+          ),
+        // In portrait, let the (top-aligned) content scroll if the squeezed play
+        // field is shorter than the champion rows — never overflow. In the wide
+        // layout the Spacer-based column fills the box exactly (unchanged).
+        if (isPortraitPhone)
+          Positioned.fill(
+            child: SingleChildScrollView(child: playColumn),
+          )
+        else
+          playColumn,
         if (actionMessage != null)
           Positioned(
             top: 6,
@@ -2163,6 +2240,14 @@ class _NetworkBottomZone extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isMobile = Responsive.isMobile(screenWidth);
+    // Mobile-portrait gets a re-flowed, space-efficient layout that stacks the
+    // controls above a full-width hand so the player's cards are prominent.
+    final isPortraitPhone = isMobile &&
+        MediaQuery.of(context).orientation == Orientation.portrait;
+
+    final child =
+        isPortraitPhone ? _buildPortrait(context) : _buildWide(context, isMobile);
+
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -2174,8 +2259,15 @@ class _NetworkBottomZone extends StatelessWidget {
           ],
         ),
       ),
-      padding: const EdgeInsets.fromLTRB(8, 2, 8, 6),
-      child: Row(
+      padding: EdgeInsets.fromLTRB(8, 2, 8, isPortraitPhone ? 4 : 6),
+      child: child,
+    );
+  }
+
+  /// Default landscape / tablet / desktop bottom zone: a left control column,
+  /// the power diamond, the hand fan, and a right control column.
+  Widget _buildWide(BuildContext context, bool isMobile) {
+    return Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // Left column: End Turn + resource chips + draw pile hex.
@@ -2348,7 +2440,166 @@ class _NetworkBottomZone extends StatelessWidget {
             ],
           ),
         ],
-      ),
+      );
+  }
+
+  /// Mobile-portrait bottom zone. Controls are compacted into two slim rows at
+  /// the top (action buttons + resource chips), then the hand fan spans the full
+  /// width flanked by the piles, so the player's HAND gets the most room.
+  Widget _buildPortrait(BuildContext context) {
+    // Row 1: primary actions. End Turn / Undo / Attack (or Play All) as compact
+    // beveled buttons, plus the acquisition pills when eligible.
+    final actionRow = Row(
+      children: [
+        Expanded(
+          child: BeveledButton(
+            label: 'End Turn',
+            onPressed: onEndTurn,
+            height: 34,
+            fontSize: 14,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: BeveledButton(
+            label: 'Undo',
+            onPressed: onUndo,
+            height: 34,
+            fontSize: 14,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: onAttack != null
+              ? BeveledButton(
+                  label: 'Attack (${me.powerPool})',
+                  onPressed: onAttack,
+                  height: 34,
+                  fontSize: 13,
+                )
+              : hasGuards
+                  ? const SizedBox(
+                      height: 34,
+                      child: Center(
+                        child: Text(
+                          'Guard blocks',
+                          style: TextStyle(
+                              color: Color(0xFFE8C45A),
+                              fontSize: 11,
+                              fontStyle: FontStyle.italic),
+                        ),
+                      ),
+                    )
+                  : const SizedBox(height: 34),
+        ),
+      ],
+    );
+
+    // Row 2: resource chips + power + Focus + acquisition pills, all in one
+    // compact, wrapping row.
+    final statusRow = Wrap(
+      spacing: 8,
+      runSpacing: 4,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        _StatChip(icon: ResourceIcon.health, value: me.health, fontSize: 13),
+        KeyedSubtree(
+          key: masteryAnchorKey,
+          child: _StatChip(
+              icon: ResourceIcon.mastery, value: me.mastery, fontSize: 13),
+        ),
+        KeyedSubtree(
+          key: gemAnchorKey,
+          child:
+              _StatChip(icon: ResourceIcon.gem, value: me.gemPool, fontSize: 13),
+        ),
+        KeyedSubtree(
+          key: powerAnchorKey,
+          child: _StatChip(
+              icon: ResourceIcon.power, value: me.powerPool, fontSize: 13),
+        ),
+        _FocusButton(onPressed: onFocus),
+        if (onOpenDestinyTray != null)
+          _AcquirePill(
+            icon: Icons.bolt,
+            label: 'Destinies',
+            onPressed: onOpenDestinyTray,
+          ),
+        if (onClaimDestiny != null)
+          _AcquirePill(
+            icon: Icons.auto_awesome,
+            label: 'Destiny',
+            onPressed: onClaimDestiny,
+          ),
+        if (onRecruitRelic != null)
+          _AcquirePill(
+            icon: Icons.diamond,
+            label: 'Relic',
+            onPressed: onRecruitRelic,
+          ),
+      ],
+    );
+
+    // Row 3: draw pile | hand fan (expanded, full width) | Play All + discard.
+    final handRow = Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        KeyedSubtree(
+          key: deckAnchorKey,
+          child: _PileHex(
+            count: me.drawPileCount,
+            style: _PileStyle.draw,
+            onTap: onTapDraw,
+          ),
+        ),
+        const SizedBox(width: 4),
+        Expanded(
+          child: CardFan(
+            cards: hand,
+            onCardTap: onCardTap,
+            onCardLongPress: onCardLongPress,
+            onDragStarted: onDragPlayStarted,
+            draggable: enabled,
+            selectedCardId: null,
+            conditionsMet: conditionsMet,
+          ),
+        ),
+        const SizedBox(width: 4),
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            BeveledButton(
+              label: 'Play All',
+              onPressed: onPlayAll,
+              style: BeveledStyle.green,
+              width: 72,
+              height: 46,
+              fontSize: 15,
+              radius: 14,
+            ),
+            const SizedBox(height: 4),
+            KeyedSubtree(
+              key: discardAnchorKey,
+              child: _PileHex(
+                count: me.discardCount,
+                style: _PileStyle.discard,
+                onTap: onTapDiscard,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        actionRow,
+        const SizedBox(height: 4),
+        statusRow,
+        const SizedBox(height: 4),
+        handRow,
+      ],
     );
   }
 }
