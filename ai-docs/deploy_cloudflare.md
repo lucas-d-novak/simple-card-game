@@ -124,8 +124,8 @@ From the repo root:
 
 ```bash
 flutter pub get
-flutter build web --release
-# → static files written to build/web/
+bash scripts/build_web.sh   # builds web + stamps version.json with the git SHA
+# → static files written to build/web/  (equivalent to `flutter build web --release`)
 ```
 
 `build/web/` is a self-contained static site (the compiled Flutter web app). It
@@ -134,6 +134,17 @@ the page host (§0), so the *same* build works on LAN or behind any domain.
 
 Rebuild this whenever you change client code; the static server (§3) just serves
 whatever is in `build/web/`.
+
+### Auto-refresh on redeploy (no manual cache clearing)
+
+`scripts/build_web.sh` stamps `build/web/version.json` with the current git SHA.
+The client (`web/index.html`) fetches `version.json` (cache-busted) on load, every
+30 s, and on tab focus; when the served SHA differs from the one the tab started
+with, it unregisters the service worker, clears caches, and hard-reloads **once**.
+So every connected client — fresh visitors and mid-session players — picks up a
+new deploy within ~30 s automatically. You can still run a plain
+`flutter build web --release`, but then `version.json` keeps its previous SHA and
+the auto-refresh won't trigger, so prefer the script for deploys.
 
 ---
 

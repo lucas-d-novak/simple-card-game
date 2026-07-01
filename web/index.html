@@ -42,19 +42,76 @@
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
-  <!-- Auto-refresh on new deploys: when an updated service worker takes over
-       (i.e. a newer build than the one cached in this browser), reload ONCE so
-       users always run the latest build without manually clearing cache. The
-       one-shot guard prevents a reload loop. -->
+  <!-- Deterministic auto-refresh on new deploys.
+
+       The Flutter service worker doesn't reliably activate on a plain refresh
+       (an updated SW sits in `waiting` until every tab closes), so a returning
+       user can keep running a stale cached build. Instead of relying on SW
+       activation, we POLL a tiny version stamp:
+
+         * The deploy step overwrites `version.json` with the new build's git SHA.
+         * On load we fetch it (cache-busted) and remember it as THIS session's
+           running build.
+         * We re-fetch on an interval, on tab focus, and on regaining network.
+           If the served build differs from the one we started with, a new
+           version has been deployed → we unregister the service worker, clear
+           all caches, and hard-reload ONCE.
+
+       This catches everyone within ~30s of a redeploy — fresh visitors AND
+       people mid-session — without any manual cache clearing. The one-shot
+       guard prevents a reload loop. -->
   <script>
-    if ('serviceWorker' in navigator) {
-      let reloadedForUpdate = false;
-      navigator.serviceWorker.addEventListener('controllerchange', function () {
-        if (reloadedForUpdate) return;
-        reloadedForUpdate = true;
-        window.location.reload();
-      });
-    }
+    (function () {
+      var runningBuild = null;      // the build this tab is actually running
+      var reloading = false;        // one-shot guard
+
+      function versionUrl() {
+        return 'version.json?ts=' + Date.now(); // bust every HTTP/SW cache
+      }
+
+      function hardReload() {
+        if (reloading) return;
+        reloading = true;
+        var done = function () { window.location.reload(); };
+        // Best-effort: drop the SW + caches so the reload fetches fresh assets.
+        var tasks = [];
+        try {
+          if ('serviceWorker' in navigator) {
+            tasks.push(navigator.serviceWorker.getRegistrations().then(function (rs) {
+              return Promise.all(rs.map(function (r) { return r.unregister(); }));
+            }).catch(function () {}));
+          }
+          if (window.caches && caches.keys) {
+            tasks.push(caches.keys().then(function (keys) {
+              return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+            }).catch(function () {}));
+          }
+        } catch (e) { /* ignore */ }
+        Promise.all(tasks).then(done, done);
+        // Fallback in case the promises never settle.
+        setTimeout(done, 1500);
+      }
+
+      function checkVersion() {
+        if (reloading) return;
+        fetch(versionUrl(), { cache: 'no-store' })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (j) {
+            if (!j || !j.build) return;
+            if (runningBuild === null) {
+              runningBuild = j.build;          // first load — record it
+            } else if (j.build !== runningBuild) {
+              hardReload();                    // a new build was deployed
+            }
+          })
+          .catch(function () { /* offline / transient — ignore */ });
+      }
+
+      checkVersion();
+      setInterval(checkVersion, 30000);        // poll every 30s
+      window.addEventListener('focus', checkVersion);
+      window.addEventListener('online', checkVersion);
+    })();
   </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
