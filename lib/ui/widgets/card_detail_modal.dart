@@ -216,12 +216,11 @@ class _CardDetailModalState extends State<CardDetailModal> {
             ),
           ),
 
-          // Primary context action — large glowing circular button on the
-          // MIDDLE-RIGHT side of the window (below the right nav chevron so they
-          // don't collide).
+          // Primary context action — large glowing circular button on the RIGHT
+          // side, about two-thirds up the card (above the centered nav chevron).
           if (action != null)
             Align(
-              alignment: const Alignment(0.82, 0.42),
+              alignment: const Alignment(0.82, -0.33),
               child: _CircularActionButton(
                 label: action.label,
                 enabled: action.enabled,
@@ -235,10 +234,10 @@ class _CardDetailModalState extends State<CardDetailModal> {
             ),
 
           // Secondary context action (when a card has two) — mirrored on the
-          // LEFT side.
+          // LEFT side, same ~two-thirds-up height.
           if (secondaryAction != null)
             Align(
-              alignment: const Alignment(-0.82, 0.42),
+              alignment: const Alignment(-0.82, -0.33),
               child: _CircularActionButton(
                 label: secondaryAction.label,
                 enabled: secondaryAction.enabled,
