@@ -1105,6 +1105,7 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
                         final turn = e['turn'] as int? ?? 0;
                         final who = view.nameFor(e['playerId'] as String?);
                         final msg = e['message'] as String? ?? '';
+                        final grantIcons = _logGrantIcons(e['grants']);
                         return Padding(
                           padding: const EdgeInsets.symmetric(vertical: 3),
                           child: Row(
@@ -1117,12 +1118,26 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
                                         color: Colors.white38, fontSize: 11)),
                               ),
                               Expanded(
-                                child: Text(
-                                  who.isEmpty ? msg : '$who $msg',
-                                  style: const TextStyle(
-                                      color: Color(0xFFE8EEF4),
-                                      fontSize: 13,
-                                      height: 1.3),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      who.isEmpty ? msg : '$who $msg',
+                                      style: const TextStyle(
+                                          color: Color(0xFFE8EEF4),
+                                          fontSize: 13,
+                                          height: 1.3),
+                                    ),
+                                    if (grantIcons.isNotEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 2),
+                                        child: Wrap(
+                                          spacing: 6,
+                                          runSpacing: 2,
+                                          children: grantIcons,
+                                        ),
+                                      ),
+                                  ],
                                 ),
                               ),
                             ],
@@ -1146,6 +1161,57 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
         );
       },
     );
+  }
+
+  /// Map an action-log entry's structured `grants` (a list of {kind, amount}
+  /// maps shipped by the engine's `LogResourceGrant`) to small resource-icon +
+  /// count widgets. Unknown kinds are skipped. Returns an empty list when there
+  /// are no grants.
+  List<Widget> _logGrantIcons(Object? rawGrants) {
+    if (rawGrants is! List) return const [];
+    ResourceIcon? iconFor(String kind) {
+      switch (kind) {
+        case 'gem':
+          return ResourceIcon.gem;
+        case 'power':
+          return ResourceIcon.power;
+        case 'mastery':
+          return ResourceIcon.mastery;
+        case 'health':
+          return ResourceIcon.health;
+        default:
+          return null;
+      }
+    }
+
+    final out = <Widget>[];
+    for (final g in rawGrants) {
+      if (g is! Map) continue;
+      final icon = iconFor((g['kind'] as String?) ?? '');
+      final amount = (g['amount'] as int?) ?? 0;
+      if (icon == null || amount <= 0) continue;
+      // Show one icon per unit up to a small cap, then "xN" for large grants so
+      // a big number doesn't blow out the row.
+      final capped = amount.clamp(1, 5);
+      out.add(Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var k = 0; k < capped; k++)
+            Padding(
+              padding: const EdgeInsets.only(right: 1),
+              child: ResourceIconWidget(icon, size: 13),
+            ),
+          if (amount > capped)
+            Padding(
+              padding: const EdgeInsets.only(left: 1),
+              child: Text('x$amount',
+                  style: const TextStyle(
+                      color: Color(0xFFC7D2DC), fontSize: 11)),
+            ),
+        ],
+      ));
+    }
+    return out;
   }
 
   /// Show what's left in YOUR draw pile — the CONTENTS, sorted alphabetically.

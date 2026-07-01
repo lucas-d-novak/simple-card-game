@@ -10,6 +10,29 @@ import 'package:simple_card_game/models/card_type.dart';
 import 'package:simple_card_game/models/faction.dart';
 import 'package:simple_card_game/models/player_state.dart';
 
+/// A structured resource gain attached to a [GameLogEntry] so the UI can render
+/// small resource icons (e.g. three gem icons for "+3 gems") beside the entry
+/// instead of parsing the message string.
+///
+/// PURE DART (no Flutter) so it lives in the engine. [kind] is one of
+/// `'gem'` / `'power'` / `'mastery'` / `'health'` — the same set the UI's
+/// `ResourceIcon` enum covers. Public-info-safe: these are the flat,
+/// unconditional grants of a card that was just played face-up, so the amounts
+/// were already implied by the (public) played card.
+class LogResourceGrant {
+  const LogResourceGrant(this.kind, this.amount);
+
+  final String kind;
+  final int amount;
+
+  Map<String, dynamic> toJson() => {'kind': kind, 'amount': amount};
+
+  factory LogResourceGrant.fromJson(Map<String, dynamic> j) => LogResourceGrant(
+        (j['kind'] as String?) ?? '',
+        (j['amount'] as int?) ?? 0,
+      );
+}
+
 /// One human-readable entry in the [GameService.actionLog] — a public game event
 /// (which turn it happened on, who did it, and a short description). Carries no
 /// hidden information.
@@ -19,6 +42,7 @@ class GameLogEntry {
     required this.playerId,
     required this.message,
     this.cardId,
+    this.grants = const [],
   });
 
   final int turn;
@@ -32,11 +56,19 @@ class GameLogEntry {
   /// leaks hidden info — only public actions carry a card id.
   final String? cardId;
 
+  /// Structured resource gains this event granted (gems / power / mastery /
+  /// health), so the UI can show small resource icons beside the entry. Empty
+  /// for events that granted no flat resources. Public-info-safe (see
+  /// [LogResourceGrant]).
+  final List<LogResourceGrant> grants;
+
   Map<String, dynamic> toJson() => {
         'turn': turn,
         if (playerId != null) 'playerId': playerId,
         'message': message,
         if (cardId != null) 'cardId': cardId,
+        if (grants.isNotEmpty)
+          'grants': [for (final g in grants) g.toJson()],
       };
 
   factory GameLogEntry.fromJson(Map<String, dynamic> j) => GameLogEntry(
@@ -44,6 +76,10 @@ class GameLogEntry {
         playerId: j['playerId'] as String?,
         message: (j['message'] as String?) ?? '',
         cardId: j['cardId'] as String?,
+        grants: [
+          for (final g in (j['grants'] as List? ?? const []))
+            LogResourceGrant.fromJson((g as Map).cast<String, dynamic>()),
+        ],
       );
 }
 
@@ -128,16 +164,53 @@ class GameService {
   /// Record a public game event. [playerId] is the actor (or null for system
   /// events like turn changes). [cardId] is the involved card, if any, so the
   /// shared-action playback can show a mini card face (public actions only).
-  void _log(String message, {String? playerId, String? cardId}) {
+  void _log(String message,
+      {String? playerId,
+      String? cardId,
+      List<LogResourceGrant> grants = const []}) {
     actionLog.add(GameLogEntry(
       turn: turnNumber,
       playerId: playerId,
       message: message,
       cardId: cardId,
+      grants: grants,
     ));
     if (actionLog.length > _maxLogEntries) {
       actionLog.removeRange(0, actionLog.length - _maxLogEntries);
     }
+  }
+
+  /// Best-effort read of the flat, unconditional resource grants ([GainGems /
+  /// Power / Mastery / HealthEffect]) in [effects], for the action-log's small
+  /// resource icons. Mirrors the UI's `resourceGrantsOf` but returns pure-Dart
+  /// [LogResourceGrant]s so the engine stays Flutter-free.
+  ///
+  /// Only always-on grants are counted; conditional / scaling / choose-one
+  /// effects are skipped (they'd need live state) so a shown icon is never wrong
+  /// — at most it under-reports (no icon for a conditional bonus). Amounts are
+  /// public (the played card is face-up), so this is hidden-info safe.
+  static List<LogResourceGrant> _resourceGrantsOf(List<CardEffect> effects) {
+    var gems = 0, power = 0, mastery = 0, health = 0;
+    for (final e in effects) {
+      switch (e) {
+        case GainGemsEffect(:final amount):
+          gems += amount;
+        case GainPowerEffect(:final amount):
+          power += amount;
+        case GainMasteryEffect(:final amount):
+          mastery += amount;
+        case GainHealthEffect(:final amount):
+          health += amount;
+        default:
+          break;
+      }
+    }
+    return [
+      if (gems > 0) LogResourceGrant('gem', gems),
+      if (power > 0) LogResourceGrant('power', power),
+      if (mastery > 0) LogResourceGrant('mastery', mastery),
+      if (health > 0) LogResourceGrant('health', health),
+    ];
   }
 
   /// Shared face-up supply of Destinies (Into the Horizon), up to
@@ -473,7 +546,9 @@ class GameService {
     _resolvePlayOrMastery(champion, player);
     _checkAllyAbility(champion, player);
     _log('activated ${champion.name}',
-        playerId: player.id, cardId: champion.id);
+        playerId: player.id,
+        cardId: champion.id,
+        grants: _resourceGrantsOf(champion.playEffects));
     return true;
   }
 
@@ -937,7 +1012,10 @@ class GameService {
     // Step 9: check ally ability
     _checkAllyAbility(card, player);
 
-    _log('played ${card.name}', playerId: player.id, cardId: card.id);
+    _log('played ${card.name}',
+        playerId: player.id,
+        cardId: card.id,
+        grants: _resourceGrantsOf(card.playEffects));
     return true;
   }
 
@@ -1047,7 +1125,11 @@ class GameService {
     target.discardPile.add(champion);
     _releaseUnderCards(target, champion.id);
 
-    _log('destroyed ${target.name}\'s ${champion.name}',
+    // Note the shield the champion absorbed (public: printed/buffed shield and
+    // the ignore-shield flag are board-visible). shieldNeeded is 0 when the
+    // attacker ignores shield this turn.
+    final shieldNote = shieldNeeded > 0 ? ' (shield $shieldNeeded absorbed)' : '';
+    _log('destroyed ${target.name}\'s ${champion.name}$shieldNote',
         playerId: currentPlayer.id, cardId: champion.id);
     return true;
   }
@@ -1074,7 +1156,13 @@ class GameService {
 
     // Guard check: target must have no guard champions
     final hasGuard = target.championsInPlay.any((c) => c.hasGuard);
-    if (hasGuard) return false;
+    if (hasGuard) {
+      // Public-info-safe: guard champions and their owner are visible on the
+      // board, so noting that a guard blocked the direct attack leaks nothing.
+      _log("${target.name}'s guard blocked the attack",
+          playerId: currentPlayer.id);
+      return false;
+    }
 
     if (currentPlayer.powerPool < amount) return false;
 
@@ -1384,7 +1472,9 @@ class GameService {
 
     _refillCenterRow();
     _log('fast-played ${card.name} for $price gems',
-        playerId: player.id, cardId: card.id);
+        playerId: player.id,
+        cardId: card.id,
+        grants: _resourceGrantsOf(card.playEffects));
     return true;
   }
 

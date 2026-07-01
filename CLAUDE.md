@@ -132,11 +132,19 @@ server/                                  # Authoritative multiplayer (pure-Dart,
   mobile. See [`lib/ui/CLAUDE.md`](lib/ui/CLAUDE.md) and
   [`ai-docs/responsive_ui_design.md`](ai-docs/responsive_ui_design.md).
 - **Action log** — `GameService.actionLog` (`List<GameLogEntry>`{turn, playerId?,
-  message}) recorded via the `_log()` helper for public events (play / recruit /
-  attack / focus / destroy / turn / win); bounded. Serialized by
-  `GameStateCodec` (encode/decode `actionLog`) and shipped (recent tail) per-view
-  in `server/lib/views.dart`'s `redactFor` as `actionLog`. The networked board's
-  **Log** button opens a newest-first sheet.
+  message, cardId?, grants}) recorded via the `_log()` helper for public events
+  (play / recruit / attack / focus / destroy / turn / win); bounded. Now also
+  notes **guard-blocked direct attacks** ("X's guard blocked the attack") and the
+  **shield a destroyed champion absorbed** ("… (shield N absorbed)"). Each
+  `played` / `activated` / `fast-played` entry additionally carries structured
+  `grants` (a pure-Dart `LogResourceGrant` list of {kind: gem/power/mastery/
+  health, amount}) — the card's flat, unconditional resource gains — so the UI
+  can render small resource icons instead of parsing the message string
+  (conditional / scaling grants are omitted, so an icon is never wrong). Serialized
+  by `GameStateCodec` (encode/decode `actionLog`, including `grants`) and shipped
+  (recent tail) per-view in `server/lib/views.dart`'s `redactFor` as `actionLog`
+  (grants are public — the played card is face-up). The networked board's **Log**
+  button opens a newest-first sheet that renders the grant icons.
 - **Draw-pile contents viewer** — `redactFor` ships the recipient's OWN draw pile
   as `drawPileContents` **sorted** (contents visible, ORDER hidden — anti-scry
   rule intact); opponents still get count only. The networked board's draw-pile
