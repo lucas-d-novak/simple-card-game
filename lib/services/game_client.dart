@@ -187,6 +187,15 @@ class GameClient extends ChangeNotifier {
 
   // ---- lobby actions ----
 
+  /// Clear a stale action error (e.g. a rejected `focus` from a just-finished
+  /// game) so it doesn't linger in the lobby UI after the game it belonged to.
+  void clearError() {
+    if (lastError != null) {
+      lastError = null;
+      notifyListeners();
+    }
+  }
+
   void listGames() => _send({'type': 'listGames'});
 
   /// Ask the server to resend our current game state. The server's `identify`

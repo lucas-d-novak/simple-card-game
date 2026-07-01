@@ -88,9 +88,9 @@
       "copies": 1,
       "playEffects": [],
       "art": "general_decurion.jpg",
-      "rawText": "Homodeus Champion. Cost 7, shield 7. Exhaust: Gain 3 (power). Mastery 20: Copy the effect of each Homodeus Ally you play or have played this turn.",
+      "rawText": "Homodeus Champion. Cost 7, shield 7. Exhaust: Gain 3 (gems). Mastery 20: Copy the effect of each Homodeus Ally you play or have played this turn.",
       "verified": false,
-      "notes": "Champion shield 7. Exhaust: gain 3 power -> playEffects. masteryThreshold 20. UNMODELED masteryBonus: 'Copy the effect of each Homodeus Ally you play or have played this turn' (copy mechanic) has no engine type; masteryBonus left empty. | [encode-gap] Mastery20 \"copy the effect of each Homodeus Ally played this turn\" (copy ALL, faction-filtered) not modeled -> unverified.",
+      "notes": "Champion shield 7. Exhaust: gain 3 power -> playEffects. masteryThreshold 20. UNMODELED masteryBonus: 'Copy the effect of each Homodeus Ally you play or have played this turn' (copy mechanic) has no engine type; masteryBonus left empty. | [encode-gap] Mastery20 \"copy the effect of each Homodeus Ally played this turn\" (copy ALL, faction-filtered) not modeled -> unverified. | FIX: Exhaust Gain 3 is a GEM (cyan), not power.",
       "set": "base",
       "cardType": "champion",
       "cost": 7,
@@ -100,7 +100,7 @@
       "activatedAbility": {
         "effects": [
           {
-            "type": "gainPower",
+            "type": "gainGems",
             "amount": 3
           }
         ]
@@ -306,14 +306,14 @@
       "copies": 3,
       "playEffects": [
         {
-          "type": "gainPower",
+          "type": "gainGems",
           "amount": 3
         }
       ],
       "art": "reactor_drone.jpg",
-      "rawText": "Homodeus Ally. Gain 3 (power).",
+      "rawText": "Homodeus Ally. Gain 3 (gems).",
       "verified": true,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 12: name='Reactor Drone', faction='Homodeus', amount=3. | art added from TTS spritesheet crop (effects pending verification). | VERIFIED from image. Homodeus Ally (regular). Play: gain 3 power.",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 12: name='Reactor Drone', faction='Homodeus', amount=3. | art added from TTS spritesheet crop (effects pending verification). | VERIFIED from image. Homodeus Ally (regular). Play: gain 3 power. | FIX: Gain 3 is a GEM (cyan), not power.",
       "set": "base",
       "cardType": "regular",
       "cost": 3,
@@ -743,7 +743,7 @@
           "then": [
             {
               "type": "gainPower",
-              "amount": 3
+              "amount": 6
             }
           ]
         }
@@ -751,7 +751,7 @@
       "art": "leshai_knight.jpg",
       "rawText": "Undergrowth Ally. MERCENARY. Cost 3. Gain 3 (power). Unify - Gain 6 (power) instead if you have played another Undergrowth Ally this turn or reveal one from your hand.",
       "verified": true,
-      "notes": "Undergrowth Mercenary. Gain 3 power; Unify: +3 more (=6 'instead') if you played another Undergrowth ally this turn or can reveal one from hand.",
+      "notes": "Undergrowth Mercenary. Gain 3 power; Unify: +3 more (=6 'instead') if you played another Undergrowth ally this turn or can reveal one from hand. | FIX: Unify value is 6 (art), was 3.",
       "set": "base",
       "cardType": "mercenary",
       "cost": 3,
@@ -945,7 +945,7 @@
       "copies": 3,
       "playEffects": [
         {
-          "type": "gainGems",
+          "type": "gainHealth",
           "amount": 3
         },
         {
@@ -956,16 +956,16 @@
           },
           "then": [
             {
-              "type": "gainGems",
+              "type": "gainPower",
               "amount": 5
             }
           ]
         }
       ],
       "art": "undergrowth_aspirant.jpg",
-      "rawText": "Undergrowth Ally. Cost 1. Gain 3 (gems). Unify - Gain 5 (gems) if you have played another Undergrowth Ally this turn or reveal one from your hand.",
+      "rawText": "Undergrowth Ally. Cost 1. Gain 3 (health). Unify - Gain 5 (power) if you have played another Undergrowth Ally this turn or reveal one from your hand.",
       "verified": true,
-      "notes": "Undergrowth Ally. Gain 3 gems; Unify: +5 gems (additive — printed art omits 'instead'; reviewer confirmed, rawText corrected).",
+      "notes": "Undergrowth Ally. Gain 3 gems; Unify: +5 gems (additive — printed art omits 'instead'; reviewer confirmed, rawText corrected). | FIX (user): first icon is HEALTH (green cross), Unify is POWER — was gems 3/5.",
       "set": "base",
       "cardType": "regular",
       "cost": 1,
@@ -1038,9 +1038,9 @@
       "copies": 1,
       "playEffects": [],
       "art": "additri_gaiamancer.jpg",
-      "rawText": "Undergrowth Champion. Cost 5, shield 5. Exhaust: Gain 2 (gems) and an additional 2 (gems) for each Undergrowth Ally you have played this turn.",
+      "rawText": "Undergrowth Champion. Cost 5, shield 5. Exhaust: Gain 2 (power) and an additional 2 (power) for each Undergrowth Ally you have played this turn.",
       "verified": true,
-      "notes": "Undergrowth Champion. Exhaust: gain 2 gems + 2 per Undergrowth ally played this turn. [approx] scaling uses perFactionCardPlayedThisTurn (counts ALL undergrowth cards played incl. champions); printed text says 'Ally' but engine has no Ally-keyword flag — slight over-count only if a non-Ally undergrowth champion is also played the same turn.",
+      "notes": "Undergrowth Champion. Exhaust: gain 2 gems + 2 per Undergrowth ally played this turn. [approx] scaling uses perFactionCardPlayedThisTurn (counts ALL undergrowth cards played incl. champions); printed text says 'Ally' but engine has no Ally-keyword flag — slight over-count only if a non-Ally undergrowth champion is also played the same turn. | FIX: icons are POWER (orange hexagon), not gems — user + art confirm; gainGems->gainPower, scalingResource gems->power.",
       "set": "base",
       "cardType": "champion",
       "cost": 5,
@@ -1049,12 +1049,12 @@
       "activatedAbility": {
         "effects": [
           {
-            "type": "gainGems",
+            "type": "gainPower",
             "amount": 2
           },
           {
             "type": "scalingResource",
-            "resource": "gems",
+            "resource": "power",
             "condition": "perFactionCardPlayedThisTurn",
             "perN": 2,
             "faction": "undergrowth"
@@ -1392,7 +1392,7 @@
           "then": [
             {
               "type": "gainPower",
-              "amount": 4
+              "amount": 6
             }
           ]
         }
@@ -1400,7 +1400,7 @@
       "art": "wraethe_skirmisher.jpg",
       "rawText": "Wraethe Ally. Cost 1. Gain 2 (power). Echo - Gain 6 (power) instead if there is a Wraethe card in your discard pile.",
       "verified": true,
-      "notes": "Wraethe Ally. Echo: gain 2 power, +4 more (=6 'instead') if a Wraethe card is in your discard pile.",
+      "notes": "Wraethe Ally. Echo: gain 2 power, +4 more (=6 'instead') if a Wraethe card is in your discard pile. | FIX: Echo value is 6 (art), was 4.",
       "set": "base",
       "cardType": "regular",
       "cost": 1,
@@ -1809,7 +1809,7 @@
       "copies": 2,
       "playEffects": [
         {
-          "type": "gainGems",
+          "type": "gainPower",
           "amount": 6
         },
         {
@@ -1827,9 +1827,9 @@
         }
       ],
       "art": "the_lost.jpg",
-      "rawText": "Wraethe Mercenary - Ally. Gain 6 (gems). If you are Ko Syn Wu, you may banish a card from your hand or discard pile.",
+      "rawText": "Wraethe Mercenary - Ally. Gain 6 (power). If you are Ko Syn Wu, you may banish a card from your hand or discard pile.",
       "verified": true,
-      "notes": "Wraethe Mercenary. Gain 6 gems; if Ko Syn Wu, may banish a hand/discard card (optionality approximated via deferred banish selection).",
+      "notes": "Wraethe Mercenary. Gain 6 gems; if Ko Syn Wu, may banish a hand/discard card (optionality approximated via deferred banish selection). | FIX: Gain 6 is POWER (red burst), not gems.",
       "set": "rotf",
       "cardType": "mercenary",
       "cost": 4,
@@ -1842,7 +1842,7 @@
       "copies": 1,
       "playEffects": [
         {
-          "type": "gainGems",
+          "type": "gainMastery",
           "amount": 1
         },
         {
@@ -1851,9 +1851,9 @@
         }
       ],
       "art": "slipstream_shard.jpg",
-      "rawText": "Aion Relic - Ally. Gain 1 (gem) and draw a card. Mastery 20: Rez takes an additional turn. This effect may only happen once per game.",
+      "rawText": "Aion Relic - Ally. Gain 1 (mastery) and draw a card. Mastery 20: Rez takes an additional turn. This effect may only happen once per game.",
       "verified": false,
-      "notes": "Faction group (non-player): Aion. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 66: name='Slipstream Shard', faction='Aion', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Aion Relic (Ally). Base gain 1 gem + draw 1 encoded; masteryThreshold 20 set. UNMODELED: mastery-20 'Rez takes an additional turn' (extra turn, character-identity, once-per-game). verified:false. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false.",
+      "notes": "Faction group (non-player): Aion. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 66: name='Slipstream Shard', faction='Aion', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Aion Relic (Ally). Base gain 1 gem + draw 1 encoded; masteryThreshold 20 set. UNMODELED: mastery-20 'Rez takes an additional turn' (extra turn, character-identity, once-per-game). verified:false. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false. | FIX: Gain 1 is MASTERY (gold octagon), not gems.",
       "group": "Aion",
       "set": "unknown",
       "cardType": "regular",
@@ -2081,16 +2081,16 @@
         }
       ],
       "art": "entropic_talons.jpg",
-      "rawText": "Undergrowth Relic - Ally. Draw two cards. Gain (power) for each (gem) you gain this turn. Mastery 20: Gain 10 (gems).",
+      "rawText": "Undergrowth Relic - Ally. Draw two cards. Gain (power) for each (gem) you gain this turn. Mastery 20: Gain 10 (health).",
       "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 74: name='Entropic Talons', faction='Undergrowth', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Relic (Ally). Base draw 2 encoded; mastery-20 bonus gain 10 gems encoded. UNMODELED: 'Gain power for each gem you gain this turn' (scaling). verified:false (base scaling unmodeled). | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false.",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 74: name='Entropic Talons', faction='Undergrowth', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Relic (Ally). Base draw 2 encoded; mastery-20 bonus gain 10 gems encoded. UNMODELED: 'Gain power for each gem you gain this turn' (scaling). verified:false (base scaling unmodeled). | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false. | FIX: Mastery-20 Gain 10 is HEALTH (green cross), not gems.",
       "set": "rotf",
       "cardType": "regular",
       "cost": 10,
       "masteryThreshold": 20,
       "masteryBonus": [
         {
-          "type": "gainGems",
+          "type": "gainHealth",
           "amount": 10
         }
       ],
@@ -2103,18 +2103,18 @@
       "copies": 1,
       "playEffects": [
         {
-          "type": "gainPower",
+          "type": "gainGems",
           "amount": 2
         },
         {
-          "type": "gainGems",
+          "type": "gainHealth",
           "amount": 2
         }
       ],
       "art": "panconscious_crown.jpg",
-      "rawText": "Undergrowth Relic - Ally. Gain 2 (power) and 2 (gems). Mastery 20: Unify - If you have played another Undergrowth Ally this turn or reveal one from your hand, gain 50 (power).",
+      "rawText": "Undergrowth Relic - Ally. Gain 2 (gems) and 2 (health). Mastery 20: Unify - If you have played another Undergrowth Ally this turn or reveal one from your hand, gain 50 (power).",
       "verified": true,
-      "notes": "Undergrowth Relic-Ally. Gain 2 power + 2 gems; Mastery20: Unify -> gain 50 power if Unify met. (masteryBonus additive, default.)",
+      "notes": "Undergrowth Relic-Ally. Gain 2 power + 2 gems; Mastery20: Unify -> gain 50 power if Unify met. (masteryBonus additive, default.) | FIX: base line is gems + HEALTH (green cross), was power + gems.",
       "set": "rotf",
       "cardType": "regular",
       "cost": 10,
@@ -2313,7 +2313,7 @@
       "copies": 2,
       "playEffects": [
         {
-          "type": "gainGems",
+          "type": "gainPower",
           "amount": 4
         },
         {
@@ -2323,9 +2323,9 @@
         }
       ],
       "art": "brute.jpg",
-      "rawText": "Aion Ally. Gain 4 (gems). Warp 2 - Fast-play any Ally in the Center Row with cost 2 or less for free.",
+      "rawText": "Aion Ally. Gain 4 (power). Warp 2 - Fast-play any Ally in the Center Row with cost 2 or less for free.",
       "verified": true,
-      "notes": "Faction group (non-player): Aion. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 82: name='Brute', faction='Aion', amount=2. | art added from TTS spritesheet crop (effects pending verification). | Aion Ally (regular). Base gain 4 gems encoded. UNMODELED: 'Warp 2 - Fast-play any Ally in the Center Row with cost 2 or less for free'. A grey '2' badge appears on art though type line reads 'Aion Ally'; badge meaning uncertain. verified:false. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false.",
+      "notes": "Faction group (non-player): Aion. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 82: name='Brute', faction='Aion', amount=2. | art added from TTS spritesheet crop (effects pending verification). | Aion Ally (regular). Base gain 4 gems encoded. UNMODELED: 'Warp 2 - Fast-play any Ally in the Center Row with cost 2 or less for free'. A grey '2' badge appears on art though type line reads 'Aion Ally'; badge meaning uncertain. verified:false. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false. | FIX: Gain 4 is POWER (red burst), not gems.",
       "group": "Aion",
       "set": "unknown",
       "cardType": "regular",
@@ -2700,7 +2700,7 @@
             ],
             [
               {
-                "type": "gainGems",
+                "type": "gainHealth",
                 "amount": 6
               }
             ]
@@ -2710,7 +2710,7 @@
       "art": "vinereaper.jpg",
       "rawText": "Vinereaper\nMercenary\nUndergrowth Ally\nChoose one:\n- Gain [damage][damage][damage][damage][damage][damage].\n- Gain [gem][gem][gem][gem][gem][gem].\n(Mastery 15) Do both instead.",
       "verified": true,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 93: name='Vinereaper', faction='Undergrowth', amount=1. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/vinereaper.jpg (first Gain is red damage 6, second is green gem 6); conf=high | [verify-fix] added Mastery 15 \"do both\" masteryBonus",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 93: name='Vinereaper', faction='Undergrowth', amount=1. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/vinereaper.jpg (first Gain is red damage 6, second is green gem 6); conf=high | [verify-fix] added Mastery 15 \"do both\" masteryBonus | FIX: 2nd choice icon is HEALTH (green cross), not gems.",
       "set": "saga",
       "chapter": 3,
       "ksOnly": true,
@@ -2723,7 +2723,7 @@
           "amount": 6
         },
         {
-          "type": "gainGems",
+          "type": "gainHealth",
           "amount": 6
         }
       ],
@@ -3529,7 +3529,7 @@
       "copies": 2,
       "playEffects": [
         {
-          "type": "gainGems",
+          "type": "gainHealth",
           "amount": 3
         },
         {
@@ -3538,7 +3538,7 @@
         },
         {
           "type": "scalingResource",
-          "resource": "gems",
+          "resource": "health",
           "condition": "perFactionCardPlayedThisTurn",
           "perN": 2,
           "faction": "undergrowth"
@@ -3552,9 +3552,9 @@
         }
       ],
       "art": "carnivorous_vine.jpg",
-      "rawText": "Undergrowth Mercenary - Ally. Gain 3 (gems) and 3 (power). Gain an additional 2 (gems) and 2 (power) for each other Undergrowth Ally you have played this turn.",
+      "rawText": "Undergrowth Mercenary - Ally. Gain 3 (health) and 3 (power). Gain an additional 2 (health) and 2 (power) for each other Undergrowth Ally you have played this turn.",
       "verified": true,
-      "notes": "Undergrowth Mercenary. Gain 3 gems + 3 power, plus 2 gems and 2 power per OTHER Undergrowth ally played this turn (scalingResource perFactionCardPlayedThisTurn skips source).",
+      "notes": "Undergrowth Mercenary. Gain 3 gems + 3 power, plus 2 gems and 2 power per OTHER Undergrowth ally played this turn (scalingResource perFactionCardPlayedThisTurn skips source). | FIX: green icon is HEALTH not gems (base+scaling).",
       "set": "ioh",
       "cardType": "mercenary",
       "cost": 4,
@@ -3567,9 +3567,9 @@
       "copies": 1,
       "playEffects": [],
       "art": "orm_madu.jpg",
-      "rawText": "Undergrowth Champion. Exhaust: Gain 7 (power). Then, if you have 50 (mastery), gain 1 (gem).",
+      "rawText": "Undergrowth Champion. Exhaust: Gain 7 (health). Then, if you have 50 (mastery), gain 1 (mastery).",
       "verified": true,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 156: name='Orm Madu', faction='Undergrowth', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Champion shield 7. UNMODELED: Exhaust activated ability ('Gain 7 power; if mastery 50, gain 1 gem'). verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false.",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 156: name='Orm Madu', faction='Undergrowth', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Champion shield 7. UNMODELED: Exhaust activated ability ('Gain 7 power; if mastery 50, gain 1 gem'). verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false. | FIX: Gain 7 is HEALTH (green cross), trailing gain 1 is MASTERY (gold starburst) — were power/gems.",
       "set": "ioh",
       "cardType": "champion",
       "cost": 7,
@@ -3578,7 +3578,7 @@
       "activatedAbility": {
         "effects": [
           {
-            "type": "gainPower",
+            "type": "gainHealth",
             "amount": 7
           },
           {
@@ -3589,7 +3589,7 @@
             },
             "then": [
               {
-                "type": "gainGems",
+                "type": "gainMastery",
                 "amount": 1
               }
             ]
@@ -3608,14 +3608,14 @@
           "amount": 5
         },
         {
-          "type": "gainGems",
+          "type": "gainMastery",
           "amount": 1
         }
       ],
       "art": "the_rotten.jpg",
-      "rawText": "Undergrowth Mercenary - Ally. Gain 5 (power) and 1 (gem).",
+      "rawText": "Undergrowth Mercenary - Ally. Gain 5 (power) and 1 (mastery).",
       "verified": true,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 157: name='The Rotten', faction='Undergrowth', amount=3. | art added from TTS spritesheet crop (effects pending verification). | VERIFIED from image. Undergrowth Mercenary, Ally. Play: gain 5 power and 1 gem. All maps to engine effects.",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 157: name='The Rotten', faction='Undergrowth', amount=3. | art added from TTS spritesheet crop (effects pending verification). | VERIFIED from image. Undergrowth Mercenary, Ally. Play: gain 5 power and 1 gem. All maps to engine effects. | FIX: 2nd icon is MASTERY (gold starburst), not gems.",
       "set": "ioh",
       "cardType": "mercenary",
       "cost": 3,
@@ -3890,9 +3890,9 @@
       "copies": 1,
       "playEffects": [],
       "art": "gian_shard_wyrm.jpg",
-      "rawText": "Undergrowth Champion. Exhaust: Gain 2 (power) and 2 (gems). Mastery 15: Gain 5 (power) and 5 (gems) instead.",
+      "rawText": "Undergrowth Champion. Exhaust: Gain 2 (power) and 2 (health). Mastery 15: Gain 5 (power) and 5 (health) instead.",
       "verified": true,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 169: name='Gian, Shard Wyrm', faction='Undergrowth', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Champion shield 5. UNMODELED: Exhaust activated ability ('Gain 2 power and 2 gems'; mastery 15 'Gain 5 and 5 instead'). verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false.",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 169: name='Gian, Shard Wyrm', faction='Undergrowth', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Champion shield 5. UNMODELED: Exhaust activated ability ('Gain 2 power and 2 gems'; mastery 15 'Gain 5 and 5 instead'). verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false. | FIX: 2nd icon per tier is HEALTH (green cross), not gems (verified from art).",
       "set": "rotf",
       "cardType": "champion",
       "cost": 6,
@@ -3905,7 +3905,7 @@
             "amount": 2
           },
           {
-            "type": "gainGems",
+            "type": "gainHealth",
             "amount": 2
           }
         ],
@@ -3916,7 +3916,7 @@
             "amount": 5
           },
           {
-            "type": "gainGems",
+            "type": "gainHealth",
             "amount": 5
           }
         ],
@@ -4245,9 +4245,9 @@
       "copies": 1,
       "playEffects": [],
       "art": "paradigm_shift.jpg",
-      "rawText": "Paradigm Shift\nCost: 5\nExhaust: If you have played an Order and Wraethe card this turn, gain [gem]1 (1 gem).",
+      "rawText": "Paradigm Shift\nCost: 5\nExhaust: If you have played an Order and Wraethe card this turn, gain 1 (mastery).",
       "verified": true,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 182: name='Paradigm Shift', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/paradigm_shift.jpg; conf=high",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 182: name='Paradigm Shift', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/paradigm_shift.jpg; conf=high | FIX: gain 1 is MASTERY (gold starburst), not gems.",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
@@ -4265,7 +4265,7 @@
             },
             "then": [
               {
-                "type": "gainGems",
+                "type": "gainMastery",
                 "amount": 1
               }
             ]

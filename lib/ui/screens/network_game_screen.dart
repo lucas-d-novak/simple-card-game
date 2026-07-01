@@ -1299,7 +1299,13 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
   Widget _board(GameClient client, _GameView view, double screenWidth) {
     final me = view.me;
     final opponent = view.firstOpponent;
-    final myTurn = client.isMyTurn;
+    // Once the game is over, no turn actions are legal — treat it as "not my
+    // turn" so every action affordance (Focus, Play All, Attack, etc.) is
+    // disabled. Otherwise a mastery win (which leaves it "your turn" with gems)
+    // keeps the Focus button live, and a stray tap sends `focus` to a finished
+    // game — the server rejects it with 'illegal action "focus"', which then
+    // lingers as a red error under the game name back in the lobby.
+    final myTurn = client.isMyTurn && !view.isGameOver;
     // Client-side condition context for the "bonus active now" yellow glow.
     // Only the recipient's own perspective glows (own hand / market cards).
     final condCtx = _conditionContext(me);
@@ -1339,7 +1345,12 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
           // Pop back to the lobby WITHOUT disconnecting, so the player can
           // switch to another of their games. The socket stays open; the lobby
           // listens to the same client and its Rejoin re-enters this game.
-          onBackToLobby: () => Navigator.of(context).maybePop(),
+          onBackToLobby: () {
+            // Clear any stale in-game action error (e.g. a rejected `focus`
+            // after a mastery win) so it doesn't linger in the lobby UI.
+            widget.client.clearError();
+            Navigator.of(context).maybePop();
+          },
           onShowLog: () => _showLog(view),
         ),
 
