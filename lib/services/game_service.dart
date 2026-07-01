@@ -1552,6 +1552,24 @@ class GameService {
         player.powerPool -= card.cost;
         if (player.powerPool < 0) player.powerPool = 0;
         return true;
+      case ScryDisposition.toHandLoseHealthEqualToCost:
+        // Mandatory: the revealed card always goes to hand and the controller
+        // loses HEALTH equal to its cost (ignores Guard). `keep` is ignored.
+        final card = player.drawPile.removeAt(index);
+        player.hand.add(card);
+        if (card.cost > 0) {
+          player.takeDamage(card.cost);
+          if (player.isEliminated) _cleanupEliminatedPlayer(player);
+          _checkGameOver();
+        }
+        return true;
+      case ScryDisposition.toHandOpponentsLoseHealthEqualToCost:
+        // Mandatory: the revealed card always goes to hand and ALL OPPONENTS
+        // lose HEALTH equal to its cost (the Mastery-20 variant; ignores Guard).
+        final card = player.drawPile.removeAt(index);
+        player.hand.add(card);
+        if (card.cost > 0) _applyOpponentHealthLoss(player, card.cost);
+        return true;
     }
   }
 
@@ -1708,9 +1726,22 @@ class GameService {
           // fastPlayFromCenter() separately after this effect.
           break;
         case ScryEffect():
-          // Requires UI peek + per-card choice — the player should call
-          // scryReveal() then scryResolve() separately after this effect.
-          break;
+          // The two "toHand*LoseHealthEqualToCost" dispositions are MANDATORY
+          // (no keep/discard choice) and resolve INLINE here — this is what
+          // makes oblivion_gatekeeper's Exhaust (and its Mastery-20 replacement
+          // via masteryBonusEffects) actually do something. The choice-based
+          // dispositions (drawOrDiscard/drawOrBanish/toHand/lose-POWER) still
+          // defer to the scryReveal()/scryResolve() UI flow (a no-op here).
+          switch (effect.disposition) {
+            case ScryDisposition.toHandLoseHealthEqualToCost:
+            case ScryDisposition.toHandOpponentsLoseHealthEqualToCost:
+              _resolveScryToHandLoseHealth(player, effect.disposition);
+            case ScryDisposition.drawOrDiscard:
+            case ScryDisposition.drawOrBanish:
+            case ScryDisposition.toHand:
+            case ScryDisposition.toHandLosePowerEqualToCost:
+              break;
+          }
         case TreatFactionAsEffect():
           // Turn-scoped: register the alias on the current player so faction
           // matching (ally checks + faction-filtered scaling/conditions) treats
@@ -2019,6 +2050,41 @@ class GameService {
       }
     }
     _checkGameOver();
+  }
+
+  /// Resolve the mandatory "reveal the top of your own deck, put it into your
+  /// hand, lose HEALTH equal to its gem cost" family (oblivion_gatekeeper).
+  /// [disposition] selects WHO loses the health:
+  ///  - [ScryDisposition.toHandLoseHealthEqualToCost]: the controller ([player]).
+  ///  - [ScryDisposition.toHandOpponentsLoseHealthEqualToCost]: all opponents
+  ///    (the Mastery-20 replacement — "all opponents lose health instead of
+  ///    you").
+  /// The revealed card ALWAYS goes to hand. Health loss is a raw subtraction and
+  /// "cannot be prevented by Guard" (guard only gates power-based attacks, which
+  /// this is not). A no-op with an empty draw pile.
+  void _resolveScryToHandLoseHealth(
+    PlayerState player,
+    ScryDisposition disposition,
+  ) {
+    if (player.drawPile.isEmpty) return;
+    // Top of the draw pile is the END of the list (mirrors scryReveal ordering).
+    final card = player.drawPile.removeLast();
+    player.hand.add(card);
+    final loss = card.cost;
+    if (loss <= 0) return;
+    switch (disposition) {
+      case ScryDisposition.toHandLoseHealthEqualToCost:
+        player.takeDamage(loss);
+        if (player.isEliminated) _cleanupEliminatedPlayer(player);
+        _checkGameOver();
+      case ScryDisposition.toHandOpponentsLoseHealthEqualToCost:
+        _applyOpponentHealthLoss(player, loss);
+      case ScryDisposition.drawOrDiscard:
+      case ScryDisposition.drawOrBanish:
+      case ScryDisposition.toHand:
+      case ScryDisposition.toHandLosePowerEqualToCost:
+        break;
+    }
   }
 
   /// Route [amount] of [resource] into the matching player pool. Negative or

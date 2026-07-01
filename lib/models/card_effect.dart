@@ -366,6 +366,20 @@ enum ScryDisposition {
   /// (Distinct from CenterScryDisposition.toHandLosePowerEqualToCost, which
   /// pulls from the CENTER/infinity deck.)
   toHandLosePowerEqualToCost,
+
+  /// Reveal the top card of YOUR OWN deck, put it into your hand, and the
+  /// controller loses HEALTH equal to its gem cost. Mandatory on reveal (no
+  /// keep/discard choice) and "cannot be prevented by Guard" — a pure resource
+  /// interaction with no targeting. Used by oblivion_gatekeeper's base Exhaust.
+  /// Resolves INLINE in `_resolveEffects` (mandatory dispositions do not need
+  /// the deferred scryReveal/scryResolve UI flow).
+  toHandLoseHealthEqualToCost,
+
+  /// Reveal the top card of YOUR OWN deck, put it into your hand, and ALL
+  /// OPPONENTS lose HEALTH equal to its gem cost instead of the controller.
+  /// Used by oblivion_gatekeeper's Mastery-20 replacement of the base Exhaust.
+  /// Resolves INLINE in `_resolveEffects` (mandatory; ignores Guard).
+  toHandOpponentsLoseHealthEqualToCost,
 }
 
 /// "Look at the top [count] card(s) of your deck; you may act on them, then
@@ -396,6 +410,12 @@ final class ScryEffect extends CardEffect {
       case ScryDisposition.toHandLosePowerEqualToCost:
         return 'Reveal the top of your deck, take it to hand, and lose power '
             'equal to its cost';
+      case ScryDisposition.toHandLoseHealthEqualToCost:
+        return 'Reveal the top of your deck, take it to hand, and lose health '
+            'equal to its cost (ignores Guard)';
+      case ScryDisposition.toHandOpponentsLoseHealthEqualToCost:
+        return 'Reveal the top of your deck, take it to hand; all opponents '
+            'lose health equal to its cost (ignores Guard)';
     }
   }
 }

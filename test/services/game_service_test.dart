@@ -2818,6 +2818,95 @@ void main() {
     });
   });
 
+  group('oblivion_gatekeeper Exhaust (scry to-hand, lose health = cost)', () {
+    // Wraethe Champion. Exhaust: reveal the top of your deck, put it into hand,
+    // YOU lose HEALTH equal to its gem cost (ignores Guard). Mastery 20: ALL
+    // OPPONENTS lose that health INSTEAD of you (a replacement).
+    CardModel gatekeeper() => const CardModel(
+          id: 'oblivion_gatekeeper',
+          name: 'Oblivion Gatekeeper',
+          faction: Faction.wraethe,
+          cost: 4,
+          cardType: CardType.champion,
+          shield: 5,
+          masteryThreshold: 20,
+          playEffects: [],
+          activatedAbility: ActivatedAbility(
+            effects: [
+              ScryEffect(
+                disposition: ScryDisposition.toHandLoseHealthEqualToCost,
+              ),
+            ],
+            masteryThreshold: 20,
+            replaces: true,
+            masteryBonusEffects: [
+              ScryEffect(
+                disposition:
+                    ScryDisposition.toHandOpponentsLoseHealthEqualToCost,
+              ),
+            ],
+          ),
+        );
+
+    test('below mastery 20: the CONTROLLER loses health = revealed cost', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      final opponent = game.players.firstWhere((p) => p.id != player.id);
+
+      player.hand.add(gatekeeper());
+      game.playCard('oblivion_gatekeeper');
+      player.mastery = 10; // below 20
+      final controllerHealth = player.health;
+      final opponentHealth = opponent.health;
+
+      // Put a cost-3 card on TOP of the draw pile (end of list).
+      player.drawPile.add(
+        const CardModel(id: 'revealed', name: 'Revealed', cost: 3, playEffects: []),
+      );
+      final handBefore = player.hand.length;
+
+      expect(game.useActivatedAbility('oblivion_gatekeeper'), true);
+
+      expect(player.hand.any((c) => c.id == 'revealed'), true,
+          reason: 'revealed card goes to hand');
+      expect(player.hand.length, handBefore + 1);
+      expect(player.drawPile.any((c) => c.id == 'revealed'), false);
+      expect(player.health, controllerHealth - 3,
+          reason: 'controller loses health = cost 3');
+      expect(opponent.health, opponentHealth,
+          reason: 'opponents untouched below mastery 20');
+    });
+
+    test('at mastery 20: ALL OPPONENTS lose health instead of the controller',
+        () {
+      final game = GameService(playerCount: 3, random: Random(7));
+      final player = game.currentPlayer;
+      final opponents =
+          game.players.where((p) => p.id != player.id).toList();
+
+      player.hand.add(gatekeeper());
+      game.playCard('oblivion_gatekeeper');
+      player.mastery = 20; // threshold met -> replacement path
+      final controllerHealth = player.health;
+      final opponentHealth = [for (final o in opponents) o.health];
+
+      player.drawPile.add(
+        const CardModel(id: 'revealed', name: 'Revealed', cost: 3, playEffects: []),
+      );
+
+      expect(game.useActivatedAbility('oblivion_gatekeeper'), true);
+
+      expect(player.hand.any((c) => c.id == 'revealed'), true,
+          reason: 'revealed card still goes to hand');
+      expect(player.health, controllerHealth,
+          reason: 'controller does NOT lose health at mastery 20');
+      for (var i = 0; i < opponents.length; i++) {
+        expect(opponents[i].health, opponentHealth[i] - 3,
+            reason: 'each opponent loses health = cost 3');
+      }
+    });
+  });
+
   // -------------------------------------------------------------------------
   // Engine Phase 2 — Wave 2 (self-contained leaf effects)
   // -------------------------------------------------------------------------
