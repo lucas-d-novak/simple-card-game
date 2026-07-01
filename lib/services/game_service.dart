@@ -1714,11 +1714,11 @@ class GameService {
   // -------------------------------------------------------------------------
 
   void _resolveInfinityShard(PlayerState player) {
-    // Always gain 1 Mastery first
-    player.addMastery(1);
+    // The Infinity Shard does NOT grant mastery — it only reads your current
+    // mastery to scale its power (and to check the instant win at 30+).
     final m = player.mastery;
 
-    // Check win AFTER adding mastery (playing at 29 → 30 = win)
+    // Instant win when played at mastery 30 or higher.
     if (m >= 30) {
       _gameOver = true;
       winnerId = player.id;
@@ -1726,7 +1726,7 @@ class GameService {
       return;
     }
 
-    // Power scales with mastery tier (evaluated after mastery gain)
+    // Power scales with current mastery tier
     int power;
     if (m >= 25) {
       power = 20;

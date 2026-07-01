@@ -1565,7 +1565,7 @@ void main() {
   });
 
   group('Infinity Shard scaling (Step 12)', () {
-    test('Infinity Shard gives 1 mastery and 0 power at mastery 0', () {
+    test('Infinity Shard gives NO mastery and 0 power at mastery 0', () {
       final game = GameService(playerCount: 2, random: Random(7));
       final player = game.currentPlayer;
       player.mastery = 0;
@@ -1580,12 +1580,12 @@ void main() {
       player.hand.add(shard);
 
       game.playCard('test_shard_0');
-      expect(player.mastery, 1);
+      expect(player.mastery, 0); // Shard no longer grants mastery
       expect(player.powerPool, 0);
       expect(player.gemPool, 0);
     });
 
-    test('Infinity Shard at mastery 4 bumps to 5 and gives 3 power (enters tier 5-9)', () {
+    test('Infinity Shard at mastery 4 stays 4 and gives 0 power (below tier 5)', () {
       final game = GameService(playerCount: 2, random: Random(7));
       final player = game.currentPlayer;
       player.mastery = 4;
@@ -1600,12 +1600,12 @@ void main() {
       player.hand.add(shard);
 
       game.playCard('test_shard_4');
-      expect(player.mastery, 5);
-      expect(player.powerPool, 3); // mastery evaluated after +1: 5 → tier 5-9
+      expect(player.mastery, 4); // no mastery gain → still below the 5-9 tier
+      expect(player.powerPool, 0);
       expect(player.gemPool, 0);
     });
 
-    test('Infinity Shard gives 1 mastery and 3 power at mastery 5', () {
+    test('Infinity Shard gives NO mastery and 3 power at mastery 5', () {
       final game = GameService(playerCount: 2, random: Random(7));
       final player = game.currentPlayer;
       player.mastery = 5;
@@ -1620,12 +1620,12 @@ void main() {
       player.hand.add(shard);
 
       game.playCard('test_shard_5');
-      expect(player.mastery, 6);
+      expect(player.mastery, 5);
       expect(player.powerPool, 3);
       expect(player.gemPool, 0);
     });
 
-    test('Infinity Shard gives 1 mastery and 6 power at mastery 10', () {
+    test('Infinity Shard gives NO mastery and 6 power at mastery 10', () {
       final game = GameService(playerCount: 2, random: Random(7));
       final player = game.currentPlayer;
       player.mastery = 10;
@@ -1640,12 +1640,12 @@ void main() {
       player.hand.add(shard);
 
       game.playCard('test_shard_10');
-      expect(player.mastery, 11);
+      expect(player.mastery, 10);
       expect(player.powerPool, 6);
       expect(player.gemPool, 0);
     });
 
-    test('Infinity Shard gives 1 mastery and 10 power at mastery 15', () {
+    test('Infinity Shard gives NO mastery and 10 power at mastery 15', () {
       final game = GameService(playerCount: 2, random: Random(7));
       final player = game.currentPlayer;
       player.mastery = 15;
@@ -1660,12 +1660,12 @@ void main() {
       player.hand.add(shard);
 
       game.playCard('test_shard_15');
-      expect(player.mastery, 16);
+      expect(player.mastery, 15);
       expect(player.powerPool, 10);
       expect(player.gemPool, 0);
     });
 
-    test('Infinity Shard gives 1 mastery and 15 power at mastery 20', () {
+    test('Infinity Shard gives NO mastery and 15 power at mastery 20', () {
       final game = GameService(playerCount: 2, random: Random(7));
       final player = game.currentPlayer;
       player.mastery = 20;
@@ -1680,12 +1680,12 @@ void main() {
       player.hand.add(shard);
 
       game.playCard('test_shard_20');
-      expect(player.mastery, 21);
+      expect(player.mastery, 20);
       expect(player.powerPool, 15);
       expect(player.gemPool, 0);
     });
 
-    test('Infinity Shard gives 1 mastery and 20 power at mastery 25', () {
+    test('Infinity Shard gives NO mastery and 20 power at mastery 25', () {
       final game = GameService(playerCount: 2, random: Random(7));
       final player = game.currentPlayer;
       player.mastery = 25;
@@ -1700,12 +1700,12 @@ void main() {
       player.hand.add(shard);
 
       game.playCard('test_shard_25');
-      expect(player.mastery, 26);
+      expect(player.mastery, 25);
       expect(player.powerPool, 20);
       expect(player.gemPool, 0);
     });
 
-    test('Infinity Shard at mastery 29 bumps to 30 and triggers instant win', () {
+    test('Infinity Shard at mastery 29 does NOT win (no mastery gain to 30)', () {
       final game = GameService(playerCount: 2, random: Random(7));
       final player = game.currentPlayer;
       player.mastery = 29;
@@ -1720,9 +1720,9 @@ void main() {
       player.hand.add(shard);
 
       game.playCard('test_shard_29');
-      expect(player.mastery, 30);
-      expect(game.isGameOver, true); // mastery 29 +1 = 30 → instant win
-      expect(game.winnerId, player.id);
+      expect(player.mastery, 29); // no +1, so no instant win at 29
+      expect(game.isGameOver, false);
+      expect(player.powerPool, 20); // 29 is in the 25+ power tier
     });
 
     test('Infinity Shard at mastery 30 causes instant win', () {
