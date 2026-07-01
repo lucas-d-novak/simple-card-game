@@ -3662,8 +3662,8 @@
       "playEffects": [],
       "art": "oblivion_gatekeeper.jpg",
       "rawText": "Wraethe Champion. Exhaust: Reveal the top card of your deck. You lose (health) equal to its (gem) cost and put it into your hand. This cannot be prevented by (Guard). Mastery 20: All opponents lose (health) instead of you.",
-      "verified": false,
-      "notes": "Wraethe Champion. Exhaust: reveal top of YOUR deck, take to hand, lose HEALTH = its gem cost (ignores Guard). | ADVERSARIAL VERIFY: re-read assets/cards/oblivion_gatekeeper.jpg at high zoom — the lost-resource icon is the GREEN HEALTH cross, NOT power. The earlier note 'Base now faithful via toHandLosePowerEqualToCost' was WRONG: the only own-deck scry disposition that loses-equal-to-cost is toHandLosePowerEqualToCost (loses POWER), and there is NO toHandLoseHealthEqualToCost disposition, so the encoded base loses the WRONG resource (power instead of health). rawText corrected to 'health'. [encode-gap] base 'lose health equal to cost' unmodellable (no health disposition); plus Mastery20 'all opponents lose health instead' (replace path) unmodeled -> verified:false.",
+      "verified": true,
+      "notes": "Wraethe Champion. Exhaust: reveal top of YOUR deck, take to hand, lose HEALTH = its gem cost (ignores Guard). Mastery 20: all opponents lose that health INSTEAD of you (a replacement). Confirmed from assets/cards/oblivion_gatekeeper.jpg — the lost-resource icon is the GREEN HEALTH cross, NOT power. Encoded via new mandatory scry dispositions toHandLoseHealthEqualToCost (base: controller loses health) and toHandOpponentsLoseHealthEqualToCost (Mastery-20 replacement: opponents lose health), resolved INLINE in GameService._resolveEffects/_resolveScryToHandLoseHealth; the activatedAbility uses masteryReplaces:true so the base health-loss is replaced at mastery >= 20. Previously the base used toHandLosePowerEqualToCost (lost the WRONG resource — power) and the Mastery-20 tier was unencoded (did nothing).",
       "set": "ioh",
       "cardType": "champion",
       "cost": 4,
@@ -3674,7 +3674,15 @@
         "effects": [
           {
             "type": "scry",
-            "disposition": "toHandLosePowerEqualToCost"
+            "disposition": "toHandLoseHealthEqualToCost"
+          }
+        ],
+        "masteryThreshold": 20,
+        "masteryReplaces": true,
+        "masteryBonusEffects": [
+          {
+            "type": "scry",
+            "disposition": "toHandOpponentsLoseHealthEqualToCost"
           }
         ]
       }
