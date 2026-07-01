@@ -19,6 +19,7 @@ import 'package:simple_card_game/ui/widgets/card_fan.dart';
 import 'package:simple_card_game/ui/widgets/choice_modal.dart';
 import 'package:simple_card_game/ui/widgets/destiny_tray.dart';
 import 'package:simple_card_game/ui/widgets/game_card_widget.dart';
+import 'package:simple_card_game/ui/widgets/played_this_turn_tray.dart';
 import 'package:simple_card_game/ui/widgets/resource_grant.dart';
 import 'package:simple_card_game/ui/widgets/resource_icons.dart';
 import 'package:simple_card_game/ui/widgets/scrollable_board.dart';
@@ -63,7 +64,6 @@ class _GameScreenState extends State<GameScreen>
   String? _selectedHandCardId;
   String? _actionMessage;
   bool _aiThinking = false;
-  String? _lastPlayedCardId;
 
   // ---- Fly-animation anchors (resolved to rects at animation time) ----------
   // Attached to the resource counters, piles, center row and play area so
@@ -115,7 +115,6 @@ class _GameScreenState extends State<GameScreen>
           ..phaseDelay = ai.phaseDelay;
       }
       _selectedHandCardId = null;
-      _lastPlayedCardId = null;
       _actionMessage = 'Undid last action';
     });
   }
@@ -210,7 +209,6 @@ class _GameScreenState extends State<GameScreen>
       _selectedHandCardId = null;
       if (success) {
         _actionMessage = 'Played ${card.name}';
-        _lastPlayedCardId = card.id;
       }
     });
     if (success) {
@@ -220,14 +218,6 @@ class _GameScreenState extends State<GameScreen>
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         _flyResourceGains(card, _playAreaKey);
-      });
-      // Clear the played highlight after a brief delay (scaled by speed;
-      // zero under instant / reduced motion).
-      final highlightDelay = AnimationTiming.of(context).phaseDelay;
-      Future.delayed(highlightDelay, () {
-        if (mounted) {
-          setState(() => _lastPlayedCardId = null);
-        }
       });
       _handlePostPlayEffects(card);
     }
@@ -407,7 +397,6 @@ class _GameScreenState extends State<GameScreen>
           _selectedHandCardId = null;
           if (success) {
             _actionMessage = 'Played ${card.name}';
-            _lastPlayedCardId = card.id;
           }
         });
       }
@@ -650,15 +639,20 @@ class _GameScreenState extends State<GameScreen>
 
   void _doAttackPlayer(String targetId) {
     _pushUndo();
+    final power = _game.currentPlayer.powerPool;
+    final target = _game.players.firstWhere((p) => p.id == targetId);
+    final landed = _game.attackPlayer(targetId, power);
     setState(() {
-      final power = _game.currentPlayer.powerPool;
-      final target = _game.players.firstWhere((p) => p.id == targetId);
-      if (_game.attackPlayer(targetId, power)) {
-        _actionMessage = 'Dealt $power damage to ${target.name}!';
-      } else {
-        _actionMessage = 'Cannot attack ${target.name} directly';
-      }
+      _actionMessage = landed
+          ? 'Dealt $power damage to ${target.name}!'
+          : 'Cannot attack ${target.name} directly';
     });
+    // A face attack is the last action of a turn (cards played, guards cleared),
+    // so delivering it also ENDS THE TURN — one action does both. Only when the
+    // attack actually landed and the game isn't already decided by it.
+    if (landed && !_game.isGameOver) {
+      _endTurn();
+    }
   }
 
   void _showAttackTargetDialog(List<dynamic> opponents) {
@@ -1106,14 +1100,12 @@ class _GameScreenState extends State<GameScreen>
                               canAttackChampions: currentPlayer.powerPool > 0,
                               onAttackChampion: (champ, ownerId) =>
                                   _attackChampion(champ, ownerId),
-                              playedCards: currentPlayer.playedThisTurn,
                               champions: currentPlayer.championsInPlay,
                               activatedChampionIds:
                                   currentPlayer.activatedChampions,
                               exhaustedChampionIds:
                                   currentPlayer.exhaustedChampions,
                               onActivateChampion: _openChampionDetail,
-                              lastPlayedCardId: _lastPlayedCardId,
                               actionMessage: _actionMessage,
                               screenWidth: screenWidth,
                               // Highlight the drop zone while a card hovers.
@@ -1131,6 +1123,12 @@ class _GameScreenState extends State<GameScreen>
                           _BottomZone(
                             player: currentPlayer,
                             screenWidth: screenWidth,
+                            // Running visual of the cards you've played this
+                            // turn — a small, scrollable strip above your stat
+                            // icons; fast-played cards carry red shading.
+                            playedThisTurn: currentPlayer.playedThisTurn,
+                            fastPlayedThisTurn:
+                                currentPlayer.fastPlayedThisTurn,
                             hand: currentPlayer.hand,
                             selectedCardId: _selectedHandCardId,
                             onCardTap: _openHandDetail,
@@ -1473,12 +1471,10 @@ class _PlayField extends StatelessWidget {
     required this.opponentId,
     required this.canAttackChampions,
     required this.onAttackChampion,
-    required this.playedCards,
     required this.champions,
     required this.activatedChampionIds,
     required this.exhaustedChampionIds,
     required this.onActivateChampion,
-    required this.lastPlayedCardId,
     required this.actionMessage,
     required this.screenWidth,
     this.isDropTarget = false,
@@ -1488,12 +1484,10 @@ class _PlayField extends StatelessWidget {
   final String? opponentId;
   final bool canAttackChampions;
   final void Function(CardModel champ, String ownerId) onAttackChampion;
-  final List<CardModel> playedCards;
   final List<CardModel> champions;
   final Set<String> activatedChampionIds;
   final Set<String> exhaustedChampionIds;
   final void Function(CardModel)? onActivateChampion;
-  final String? lastPlayedCardId;
   final String? actionMessage;
   final double screenWidth;
 
@@ -1554,8 +1548,9 @@ class _PlayField extends StatelessWidget {
                 ),
               ),
             const Spacer(),
-            // Your champions + played-this-turn row sit just above the hand.
-            if (champions.isNotEmpty || playedCards.isNotEmpty)
+            // Your champions row sits just above the hand. (Your played-this-
+            // turn cards live in the tray above your stat icons.)
+            if (champions.isNotEmpty)
               SizedBox(
                 height: cardWidth * (130 / 90) + 4,
                 child: ListView(
@@ -1607,25 +1602,6 @@ class _PlayField extends StatelessWidget {
                         ),
                         ),
                       ),
-                    for (final card in playedCards)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 4),
-                        child: AnimatedZoneList.wrap(
-                          id: card.id,
-                          child: AnimatedScale(
-                            scale: card.id == lastPlayedCardId ? 1.12 : 1.0,
-                            duration: AnimationTiming.of(context).cardMove,
-                            curve: Curves.easeOutBack,
-                            child: GameCardWidget(
-                              card: card,
-                              compact: true,
-                              showCost: false,
-                              width: cardWidth,
-                              isHighlighted: card.id == lastPlayedCardId,
-                            ),
-                          ),
-                        ),
-                      ),
                   ],
                 ),
               ),
@@ -1671,6 +1647,8 @@ class _BottomZone extends StatelessWidget {
   const _BottomZone({
     required this.player,
     required this.screenWidth,
+    required this.playedThisTurn,
+    required this.fastPlayedThisTurn,
     required this.hand,
     required this.selectedCardId,
     required this.onCardTap,
@@ -1703,6 +1681,12 @@ class _BottomZone extends StatelessWidget {
 
   final dynamic player; // PlayerState
   final double screenWidth;
+
+  /// Cards you played (normally) / fast-played this turn — rendered as a small,
+  /// scrollable strip above your stat icons ([PlayedThisTurnTray]).
+  final List<CardModel> playedThisTurn;
+  final List<CardModel> fastPlayedThisTurn;
+
   final List<CardModel> hand;
   final String? selectedCardId;
   final void Function(CardModel) onCardTap;
@@ -1755,7 +1739,17 @@ class _BottomZone extends StatelessWidget {
         ),
       ),
       padding: const EdgeInsets.fromLTRB(8, 2, 8, 6),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Running visual of this turn's plays, directly above the stat icons.
+          PlayedThisTurnTray(
+            playedCards: playedThisTurn,
+            fastPlayedCards: fastPlayedThisTurn,
+            screenWidth: screenWidth,
+          ),
+          Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // Left column: End Turn + resource chips + draw pile hex.
@@ -1904,6 +1898,8 @@ class _BottomZone extends StatelessWidget {
               ),
             ],
           ),
+        ],
+      ),
         ],
       ),
     );

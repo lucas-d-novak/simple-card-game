@@ -62,9 +62,9 @@
         }
       ],
       "art": "evokatus.jpg",
-      "rawText": "Homodeus Champion. Cost 4, shield 2. When you play this, draw a card. Exhaust: Gain 1 (gem) for each Homodeus Champion you have in play.",
+      "rawText": "Homodeus Champion. Cost 4, shield 2. When you play this, draw a card. Exhaust: Gain 1 (power) for each Homodeus Champion you have in play.",
       "verified": true,
-      "notes": "Champion shield 2. On-play: draw a card -> playEffects. UNMODELED: Exhaust 'Gain 1 (gem) for each Homodeus Champion you have in play' (gems scaling per-champion; conditionalPower models only POWER per champion, not gems), so the Exhaust gem-scaling is not encoded.",
+      "notes": "Champion shield 2. On-play: draw a card -> playEffects. UNMODELED: Exhaust 'Gain 1 (gem) for each Homodeus Champion you have in play' (gems scaling per-champion; conditionalPower models only POWER per champion, not gems); the Exhaust scaling is encoded as scalingResource. | FIX (art): Exhaust icon is RED POWER (verified assets/cards/evokatus.jpg), not gems — scalingResource resource gems->power.",
       "set": "base",
       "cardType": "champion",
       "cost": 4,
@@ -74,7 +74,7 @@
         "effects": [
           {
             "type": "scalingResource",
-            "resource": "gems",
+            "resource": "power",
             "condition": "perFactionChampionControlled",
             "faction": "homodeus"
           }
@@ -115,12 +115,25 @@
         {
           "type": "gainGems",
           "amount": 2
+        },
+        {
+          "type": "conditional",
+          "condition": {
+            "kind": "championsControlled",
+            "threshold": 1
+          },
+          "then": [
+            {
+              "type": "gainGems",
+              "amount": 2
+            }
+          ]
         }
       ],
       "art": "kiln_drone.jpg",
       "rawText": "Homodeus Ally. Cost 1. Gain 2 (gems). Inspire - Gain 4 (gems) instead if you have a Champion in play.",
       "verified": true,
-      "notes": "Ally (regular). Base: gain 2 gems -> playEffects. UNMODELED: Inspire 'Gain 4 (gems) instead if you have a Champion in play' (Inspire = conditional-on-controlling-a-champion replacement) has no engine type; only the base 2 gems encoded.",
+      "notes": "Ally (regular). Base: gain 2 gems. Inspire 'Gain 4 gems instead if you have a Champion in play' now encoded as conditional(championsControlled>=1) -> +2 gems ADDITIVE (2 base + 2 = 4 when a champion is in play), using the existing championsControlled condition.",
       "set": "base",
       "cardType": "regular",
       "cost": 1,
@@ -334,12 +347,25 @@
         {
           "type": "gainPower",
           "amount": 4
+        },
+        {
+          "type": "conditional",
+          "condition": {
+            "kind": "championsControlled",
+            "threshold": 1
+          },
+          "then": [
+            {
+              "type": "opponentLosesHealth",
+              "amount": 2
+            }
+          ]
         }
       ],
       "art": "venator_of_the_wastes.jpg",
       "rawText": "Homodeus Ally. MERCENARY. Cost 4. Gain 4 (power). Inspire - An enemy player loses 2 (health) if you have a Champion in play.",
       "verified": true,
-      "notes": "Mercenary, Homodeus Ally. Gain 4 power -> playEffects (red icon). UNMODELED: Inspire 'An enemy player loses 2 (health) if you have a Champion in play' (opponentLosesHealth gated on Inspire/control-a-champion condition) has no engine type for the condition; the 2 health-loss not encoded because it is conditional on Inspire.",
+      "notes": "Mercenary, Homodeus Ally. Gain 4 power (red icon). Inspire 'An enemy player loses 2 health if you have a Champion in play' now encoded as conditional(championsControlled>=1) -> opponentLosesHealth 2 (both the championsControlled condition and OpponentLosesHealthEffect already exist; prior note that the condition had 'no engine type' was stale). NOTE: the product-owner backlog listed Venator under 'defer (opponent-mastery-loss)', but the card is opponent-HEALTH-loss, which is expressible with existing effects — encoded here.",
       "set": "base",
       "cardType": "mercenary",
       "cost": 4,
@@ -565,14 +591,14 @@
           },
           "then": [
             {
-              "type": "gainGems",
+              "type": "gainMastery",
               "amount": 2
             }
           ]
         }
       ],
       "art": "order_initiate.jpg",
-      "rawText": "Order Ally. Cost 1. Gain 2 (gems). Dominion - Gain 2 (gems) if you have played and/or reveal from your hand a Homodeus, Undergrowth, AND Wraethe card this turn.",
+      "rawText": "Order Ally. Cost 1. Gain 2 (gems). Dominion - Gain 2 (mastery) if you have played and/or reveal from your hand a Homodeus, Undergrowth, AND Wraethe card this turn.",
       "verified": false,
       "notes": "Ally (regular). Base: gain 2 gems -> playEffects. UNMODELED: Dominion 'Gain 2 (gems) if you have played/revealed Homodeus, Undergrowth, AND Wraethe card this turn' has no engine type; the extra 2 gems not encoded. | [encode-gap] Dominion REVEAL-from-hand half not modeled; played-only approximation -> unverified.",
       "set": "base",
@@ -642,12 +668,12 @@
       "copies": 3,
       "playEffects": [
         {
-          "type": "gainGems",
+          "type": "gainMastery",
           "amount": 2
         }
       ],
       "art": "shard_abstractor.jpg",
-      "rawText": "Order Mercenary - Ally. Gain 2 (gems).",
+      "rawText": "Order Mercenary - Ally. Gain 2 (mastery).",
       "verified": true,
       "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 24: name='Shard Abstractor', faction='Order', amount=3. | art added from TTS spritesheet crop (effects pending verification). | VERIFIED from image. Order Mercenary, Ally. Play: gain 2 gems.",
       "set": "base",
@@ -695,12 +721,12 @@
       "copies": 1,
       "playEffects": [
         {
-          "type": "gainGems",
+          "type": "gainMastery",
           "amount": 5
         }
       ],
       "art": "the_grand_architect.jpg",
-      "rawText": "Order Mercenary - Ally. Gain 5 (gems).",
+      "rawText": "Order Mercenary - Ally. Gain 5 (mastery).",
       "verified": true,
       "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 26: name='The Grand Architect', faction='Order', amount=1. | art added from TTS spritesheet crop (effects pending verification). | VERIFIED from image. Order Mercenary, Ally. Play: gain 5 gems.",
       "set": "base",
@@ -829,7 +855,7 @@
       "copies": 1,
       "playEffects": [
         {
-          "type": "gainGems",
+          "type": "gainHealth",
           "amount": 10
         },
         {
@@ -840,14 +866,14 @@
           },
           "then": [
             {
-              "type": "gainGems",
+              "type": "gainPower",
               "amount": 10
             }
           ]
         }
       ],
       "art": "root_of_the_forest.jpg",
-      "rawText": "Undergrowth Ally. MERCENARY. Cost 7. Gain 10 (gems). Unify - Gain 10 (gems) if you have played another Undergrowth Ally this turn or reveal one from your hand.",
+      "rawText": "Undergrowth Ally. MERCENARY. Cost 7. Gain 10 (health). Unify - Gain 10 (power) if you have played another Undergrowth Ally this turn or reveal one from your hand.",
       "verified": true,
       "notes": "Undergrowth Mercenary. Gain 10 gems; Unify: +10 gems (additive, no 'instead') if Unify met.",
       "set": "base",
@@ -877,16 +903,16 @@
           },
           "then": [
             {
-              "type": "gainPower",
+              "type": "gainHealth",
               "amount": 6
             }
           ]
         }
       ],
       "art": "shardwood_guardian.jpg",
-      "rawText": "Undergrowth Ally. Cost 4. Gain 2 (power) and draw a card. Unify - Gain 6 (power) if you have played another Undergrowth Ally this turn or reveal one from your hand.",
+      "rawText": "Undergrowth Ally. Cost 4. Gain 2 (power) and draw a card. Unify - Gain 6 (health) if you have played another Undergrowth Ally this turn or reveal one from your hand.",
       "verified": true,
-      "notes": "Undergrowth Ally. Gain 2 power, draw a card; Unify: +6 power (additive) if Unify met.",
+      "notes": "Undergrowth Ally. Gain 2 power, draw a card; Unify: +6 health (additive) if Unify met. | FIX (art): base 'Gain 2' is RED POWER but the Unify 'Gain 6' is a GREEN HEALTH octagon (verified assets/cards/shardwood_guardian.jpg) — Unify gainPower 6 -> gainHealth 6.",
       "set": "base",
       "cardType": "regular",
       "cost": 4,
@@ -993,18 +1019,18 @@
       "masteryThreshold": 10,
       "playEffects": [
         {
-          "type": "gainGems",
+          "type": "gainMastery",
           "amount": 1
         }
       ],
       "masteryBonus": [
         {
-          "type": "gainGems",
+          "type": "gainHealth",
           "amount": 5
         }
       ],
       "art": "fungal_hermit.jpg",
-      "rawText": "Fungal Hermit\nMercenary\nUndergrowth Ally\nGain [gem].\n(Mastery 10) Gain [gem][gem][gem][gem][gem].\nThe Shards only focus the magic that is found readily throughout nature.",
+      "rawText": "Fungal Hermit\nMercenary\nUndergrowth Ally\nGain [mastery].\n(Mastery 10) Gain [health][health][health][health][health].\nThe Shards only focus the magic that is found readily throughout nature.",
       "verified": true,
       "notes": "Verified from card image. Mercenary, Undergrowth Ally. Play: gain 1 gem. Mastery 10+: gain 5 gems (the '10' badge on the bonus line read as a mastery threshold). cost/cardType/effects from image; copies=2 retained from BGG amount. set=base assumed (Undergrowth Core card); confirm. art filename references a photo to be added. | art added from TTS spritesheet crop (effects pending verification). | [hunt] src=Local printed card art assets/cards/fungal_hermit.jpg; conf=high",
       "chapter": 1
@@ -1091,16 +1117,16 @@
           },
           "then": [
             {
-              "type": "gainGems",
+              "type": "gainHealth",
               "amount": 3
             }
           ]
         }
       ],
       "art": "arach_devotees.jpg",
-      "rawText": "Undergrowth Ally. Cost 2. Draw a card. Unify - If you have played another Undergrowth Ally this turn or reveal one from your hand, Gain 3 (gems).",
+      "rawText": "Undergrowth Ally. Cost 2. Draw a card. Unify - If you have played another Undergrowth Ally this turn or reveal one from your hand, Gain 3 (health).",
       "verified": true,
-      "notes": "Undergrowth Ally. Draw a card; Unify: gain 3 gems if Unify met.",
+      "notes": "Undergrowth Ally. Draw a card; Unify: gain 3 health if Unify met. | FIX (art): Unify 'Gain 3' is a GREEN HEALTH octagon (verified assets/cards/arach_devotees.jpg), NOT a cyan gem — gainGems 3 -> gainHealth 3.",
       "set": "base",
       "cardType": "regular",
       "cost": 2,
@@ -1234,10 +1260,6 @@
       "copies": 3,
       "playEffects": [
         {
-          "type": "drawCards",
-          "count": 1
-        },
-        {
           "type": "conditional",
           "condition": {
             "kind": "factionCardInDiscard",
@@ -1249,12 +1271,16 @@
               "amount": 3
             }
           ]
+        },
+        {
+          "type": "drawCards",
+          "count": 1
         }
       ],
       "art": "pall_shades.jpg",
       "rawText": "Wraethe Ally. Cost 2. Echo - If there is a Wraethe card in your discard pile, gain 3 (power). Draw a card.",
       "verified": true,
-      "notes": "Wraethe Ally. Draw a card; Echo: +3 power if a Wraethe card is in your discard pile.",
+      "notes": "Wraethe Ally. Echo: +3 power if a Wraethe card is in your discard pile; then draw a card. | FIX: reordered playEffects to match the card (Echo clause FIRST, then Draw); was Draw-then-Echo.",
       "set": "base",
       "cardType": "regular",
       "cost": 2,
@@ -1367,7 +1393,7 @@
       "copies": 3,
       "playEffects": [
         {
-          "type": "gainGems",
+          "type": "gainMastery",
           "amount": 1
         },
         {
@@ -1376,9 +1402,9 @@
         }
       ],
       "art": "umbral_scourge.jpg",
-      "rawText": "Wraethe Mercenary - Ally. Gain 1 (gem). You may banish a card from your hand or discard pile.",
+      "rawText": "Wraethe Mercenary - Ally. Gain 1 (mastery). You may banish a card from your hand or discard pile.",
       "verified": true,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 50: name='Umbral Scourge', faction='Wraethe', amount=3. | art added from TTS spritesheet crop (effects pending verification). | VERIFIED from image. Wraethe Mercenary, Ally. Play: gain 1 gem, banish a card from hand or discard. All maps to engine effects.",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 50: name='Umbral Scourge', faction='Wraethe', amount=3. | art added from TTS spritesheet crop. | Wraethe Mercenary, Ally. Play: gain 1 mastery, banish a card from hand or discard. | FIX (art): 'Gain 1' is a GOLD MASTERY octagon (verified assets/cards/umbral_scourge.jpg, matches the gold mastery icon on anomaly_cleric/the_rotten), NOT a cyan gem — gainGems 1 -> gainMastery 1.",
       "set": "base",
       "cardType": "mercenary",
       "cost": 3,
@@ -3590,9 +3616,9 @@
       "copies": 1,
       "playEffects": [],
       "art": "orm_madu.jpg",
-      "rawText": "Undergrowth Champion. Exhaust: Gain 7 (health). Then, if you have 50 (mastery), gain 1 (mastery).",
+      "rawText": "Undergrowth Champion. Exhaust: Gain 7 (health). Then, if you have 50 (health), gain 1 (mastery).",
       "verified": true,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 156: name='Orm Madu', faction='Undergrowth', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Champion shield 7. UNMODELED: Exhaust activated ability ('Gain 7 power; if mastery 50, gain 1 gem'). verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false. | FIX: Gain 7 is HEALTH (green cross), trailing gain 1 is MASTERY (gold starburst) — were power/gems.",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 156: name='Orm Madu', faction='Undergrowth', amount=1. | art added from TTS spritesheet crop. | Champion shield 7. Exhaust: gain 7 health; if health >= 50 (the HP cap), gain 1 mastery. | FIX: Gain 7 is HEALTH (green cross), trailing gain 1 is MASTERY (gold starburst). | FIX (art, hi-res): the '50' condition icon is a GREEN HEALTH octagon (verified assets/cards/orm_madu.jpg), NOT mastery — condition masteryAtLeast 50 -> healthAtLeast 50 (ties to the 50-HP cap: at max health this triggers).",
       "set": "ioh",
       "cardType": "champion",
       "cost": 7,
@@ -3607,7 +3633,7 @@
           {
             "type": "conditional",
             "condition": {
-              "kind": "masteryAtLeast",
+              "kind": "healthAtLeast",
               "threshold": 50
             },
             "then": [

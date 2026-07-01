@@ -25,6 +25,7 @@ import 'package:simple_card_game/ui/widgets/faction_flame_backdrop.dart';
 import 'package:simple_card_game/ui/widgets/game_card_widget.dart';
 import 'package:simple_card_game/ui/widgets/opponent_bar_strip.dart';
 import 'package:simple_card_game/ui/widgets/game_log_line.dart';
+import 'package:simple_card_game/ui/widgets/played_this_turn_tray.dart';
 import 'package:simple_card_game/ui/widgets/resource_grant.dart';
 import 'package:simple_card_game/ui/widgets/resource_icons.dart';
 import 'package:simple_card_game/ui/widgets/scrollable_board.dart';
@@ -966,7 +967,12 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
   }
 
   void _doAttackPlayer(_PlayerView opponent, int power) {
+    // A face attack is the LAST thing a player does on their turn (they've
+    // already played / recruited / cleared guards), so delivering the attack
+    // also ENDS THE TURN — one press does both. End turn only AFTER the attack
+    // is committed to the server.
     widget.client.attackPlayer(opponent.id, power);
+    widget.client.endTurn();
     _flash('Dealt $power to ${opponent.name}');
   }
 
@@ -1001,8 +1007,8 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
           FilledButton(
             onPressed: () {
               Navigator.of(ctx).pop();
+              // _doAttackPlayer commits the attack AND ends the turn.
               _doAttackPlayer(opponent, power);
-              widget.client.endTurn();
             },
             style: FilledButton.styleFrom(
               backgroundColor: const Color(0xFF2E7D32),
@@ -1729,8 +1735,6 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
                     opponent?.champions ?? const [], champ, ownerId),
                 onZoomCard: _zoomOne,
                 myChampions: me.champions,
-                playedThisTurn: me.playedThisTurn,
-                myFastPlayedThisTurn: me.fastPlayedThisTurn,
                 opponentFastPlayedThisTurn:
                     opponent?.fastPlayedThisTurn ?? const [],
                 onActivateChampion: myTurn ? (c) => _onUseChampion(c) : null,
@@ -1755,6 +1759,14 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
           me: me,
           deckFaction: _dominantFaction(me),
           screenWidth: screenWidth,
+          // Running visual of the cards YOU have played this turn — a small,
+          // scrollable strip above your stat icons. Fast-played / warped cards
+          // (rendered with red shading in the tray) supersede the old greyed
+          // WARP tiles that used to live in the play area.
+          playedThisTurn: [for (final id in me.playedThisTurn) _card(id)],
+          fastPlayedThisTurn: [
+            for (final id in me.fastPlayedThisTurn) _card(id)
+          ],
           hand: [for (final id in me.hand) _card(id)],
           enabled: myTurn,
           onCardTap: zoomHand,
@@ -2933,8 +2945,6 @@ class _NetworkPlayField extends StatelessWidget {
     required this.onZoomEnemyChampion,
     required this.onZoomCard,
     required this.myChampions,
-    required this.playedThisTurn,
-    required this.myFastPlayedThisTurn,
     required this.opponentFastPlayedThisTurn,
     required this.onActivateChampion,
     required this.onZoomMyChampion,
@@ -2963,11 +2973,11 @@ class _NetworkPlayField extends StatelessWidget {
   /// Long-press a champion / played card → zoom it.
   final void Function(CardModel) onZoomCard;
   final List<_ChampionView> myChampions;
-  final List<String> playedThisTurn;
 
-  /// Card ids fast-played / warped this turn — rendered GREYED after the normal
-  /// played cards (they leave the game at end of turn, not to discard).
-  final List<String> myFastPlayedThisTurn;
+  /// Card ids the OPPONENT fast-played / warped this turn — rendered GREYED
+  /// after their normal played cards (they leave the game at end of turn). Your
+  /// OWN played + fast-played cards are shown in the [PlayedThisTurnTray] above
+  /// your stat icons instead, so they are NOT rendered here.
   final List<String> opponentFastPlayedThisTurn;
   final void Function(CardModel)? onActivateChampion;
 
@@ -2991,11 +3001,10 @@ class _NetworkPlayField extends StatelessWidget {
     final isPortraitPhone = Responsive.isMobile(screenWidth) &&
         MediaQuery.of(context).orientation == Orientation.portrait;
 
-    // On a mobile PORTRAIT phone, hide YOUR OWN just-played cards from the play
-    // area — the little tile popping in was distracting and redundant on a small
-    // screen (champions still show; the opponent's played row still shows so you
-    // can see their moves). Wider layouts keep the full played-this-turn row.
-    final myPlayed = isPortraitPhone ? const <String>[] : playedThisTurn;
+    // YOUR OWN played + fast-played cards are shown in the PlayedThisTurnTray
+    // above your stat icons (a scrollable small-card strip), NOT here — so the
+    // play field carries only your champions. The opponent's played row still
+    // shows below, so you can follow their moves live.
 
     final playColumn = Column(
       mainAxisSize: isPortraitPhone ? MainAxisSize.min : MainAxisSize.max,
@@ -3113,10 +3122,11 @@ class _NetworkPlayField extends StatelessWidget {
               const SizedBox(height: 6)
             else
               const Spacer(),
-            // My champions + played-this-turn row, just above the hand. Centered
-            // (like the official client) so it sits in the middle of the play
-            // field rather than hugging the left edge over the End Turn column.
-            if (myChampions.isNotEmpty || myPlayed.isNotEmpty)
+            // My champions row, just above the hand. Centered (like the official
+            // client) so it sits in the middle of the play field rather than
+            // hugging the left edge over the End Turn column. (My played-this-
+            // turn cards live in the tray above my stat icons.)
+            if (myChampions.isNotEmpty)
               SizedBox(
                 height: champHeight,
                 width: double.infinity,
@@ -3191,37 +3201,6 @@ class _NetworkPlayField extends StatelessWidget {
                                   ),
                                 ),
                             ],
-                          ),
-                        if (myChampions.isNotEmpty && myPlayed.isNotEmpty)
-                          const SizedBox(width: 8),
-                        for (final id in myPlayed)
-                          Padding(
-                            padding: const EdgeInsets.only(right: 4),
-                            child: AnimatedZoneList.wrap(
-                              id: id,
-                              child: GameCardWidget(
-                                card: cardFor(id),
-                                compact: true,
-                                showCost: false,
-                                width: cardWidth,
-                                onTap: () => onZoomCard(cardFor(id)),
-                                onLongPress: () => onZoomCard(cardFor(id)),
-                              ),
-                            ),
-                          ),
-                        // Fast-played / warped cards: greyed, since they leave
-                        // the game at end of turn (not discarded).
-                        for (final id in myFastPlayedThisTurn)
-                          Padding(
-                            padding: const EdgeInsets.only(right: 4),
-                            child: AnimatedZoneList.wrap(
-                              id: id,
-                              child: _GreyedPlayTile(
-                                card: cardFor(id),
-                                width: cardWidth,
-                                onTap: () => onZoomCard(cardFor(id)),
-                              ),
-                            ),
                           ),
                       ],
                     ),
@@ -3341,6 +3320,8 @@ class _NetworkBottomZone extends StatelessWidget {
     required this.me,
     required this.deckFaction,
     required this.screenWidth,
+    required this.playedThisTurn,
+    required this.fastPlayedThisTurn,
     required this.hand,
     required this.enabled,
     required this.onCardTap,
@@ -3381,6 +3362,12 @@ class _NetworkBottomZone extends StatelessWidget {
   /// behind the draw pile. [Faction.none] = neutral grey (all-starter deck).
   final Faction deckFaction;
   final double screenWidth;
+
+  /// Cards YOU played (normally) / fast-played this turn — rendered as a small,
+  /// scrollable strip above your stat icons ([PlayedThisTurnTray]).
+  final List<CardModel> playedThisTurn;
+  final List<CardModel> fastPlayedThisTurn;
+
   final List<CardModel> hand;
   final bool enabled;
   final void Function(CardModel) onCardTap;
@@ -3435,8 +3422,22 @@ class _NetworkBottomZone extends StatelessWidget {
     final isPortraitPhone = isMobile &&
         MediaQuery.of(context).orientation == Orientation.portrait;
 
-    final child =
+    final controls =
         isPortraitPhone ? _buildPortrait(context) : _buildWide(context, isMobile);
+
+    // The played-this-turn strip sits directly ABOVE the stat icons / controls.
+    final child = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        PlayedThisTurnTray(
+          playedCards: playedThisTurn,
+          fastPlayedCards: fastPlayedThisTurn,
+          screenWidth: screenWidth,
+        ),
+        controls,
+      ],
+    );
 
     return Container(
       decoration: BoxDecoration(
@@ -3916,10 +3917,11 @@ class _PrimaryActionButton extends StatelessWidget {
         fontSize: fontSize,
       );
     }
-    // Phase 3: hand empty, power available, a face is attackable → Attack.
+    // Phase 3: hand empty, power available, a face is attackable → Attack, which
+    // ALSO ends the turn (a face attack is the last action of a turn).
     if (handCount == 0 && powerPool > 0 && !hasGuards && onAttack != null) {
       return BeveledButton(
-        label: 'Attack ($powerPool)',
+        label: 'Attack + End Turn ($powerPool)',
         onPressed: onAttack,
         style: BeveledStyle.green,
         width: width,

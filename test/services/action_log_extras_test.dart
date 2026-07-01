@@ -125,10 +125,11 @@ void main() {
       expect(power.amount, 1);
     });
 
-    test('conditional / scaling grants are NOT counted (never a wrong icon)',
+    test('a conditional bonus that does NOT fire is not shown (delta = reality)',
         () {
       final game = GameService(playerCount: 2, random: Random(7));
       final me = game.currentPlayer;
+      // Both players at mastery 0 → not the (strict) highest → +5 does NOT fire.
       me.hand.add(_card(id: 'condy', playEffects: [
         const GainGemsEffect(1),
         const ConditionalEffect(
@@ -140,10 +141,45 @@ void main() {
 
       game.playCard('condy');
       final entry = game.actionLog.lastWhere((e) => e.cardId == 'condy');
-      // Only the flat +1 gem is counted; the conditional +5 is skipped.
+      // Only the realized +1 gem is shown; the un-fired conditional is not.
       expect(entry.grants.length, 1);
       expect(entry.grants.single.kind, 'gem');
       expect(entry.grants.single.amount, 1);
+    });
+
+    test('a conditional bonus that DOES fire is shown at its realized total', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final me = game.currentPlayer;
+      me.mastery = 5; // strictly highest → the +5 conditional fires
+      me.hand.add(_card(id: 'condy', playEffects: [
+        const GainGemsEffect(1),
+        const ConditionalEffect(
+          condition: GameCondition(
+              kind: GameConditionKind.highestMasteryAmongPlayers),
+          then: [GainGemsEffect(5)],
+        ),
+      ]));
+
+      game.playCard('condy');
+      final entry = game.actionLog.lastWhere((e) => e.cardId == 'condy');
+      // Delta captures the realized 1 + 5 = 6 gems (the old flat reader showed 1).
+      final gem = entry.grants.firstWhere((g) => g.kind == 'gem');
+      expect(gem.amount, 6);
+    });
+
+    test('a SCALING Infinity Shard logs its realized POWER (old reader skipped it)',
+        () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final me = game.currentPlayer;
+      // InfinityShardEffect is not a flat GainX, so the old static reader logged
+      // NOTHING. It grants power scaled by mastery tier (0 below mastery 5, 6 at
+      // mastery 10-14). At mastery 10 the delta reader captures the +6 power.
+      me.mastery = 10;
+      me.hand.add(_card(id: 'shard', playEffects: const [InfinityShardEffect()]));
+      game.playCard('shard');
+      final entry = game.actionLog.lastWhere((e) => e.cardId == 'shard');
+      final power = entry.grants.firstWhere((g) => g.kind == 'power');
+      expect(power.amount, 6);
     });
 
     test('grants round-trip through GameStateCodec', () {

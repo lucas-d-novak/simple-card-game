@@ -1,5 +1,12 @@
 # Card-mechanics backlog (product-owner spec, 2026-07-01)
 
+> **AUTHORITY RULE (owner-mandated):** The product owner's notes below are the
+> AUTHORITY. Agents have repeatedly MISREAD the printed card art / rawText — DO NOT
+> re-judge or "correct" a spec against the art. Implement the owner's stated intent
+> as written here. If the rawText disagrees, the rawText is wrong — fix the rawText to
+> match, don't override the owner. Only ask the owner if a note is genuinely ambiguous
+> about the mechanic itself (not about "the art shows X").
+
 Working spec for queued engine work. All items require `game_service.dart` (effect
 resolution) + `cards.json` (effect encoding), so they are serialized behind whatever
 agent currently owns `game_service.dart`. Read each card's `rawText` in
@@ -22,8 +29,10 @@ market (unmodeled). Goal: model their mechanics and bring them into the market.
 - **Breaker** (Aion) — missing the "when you recruit this …" on-recruit trigger.
 - **Stricture** (Prism champion) — NONE of its mechanics implemented. Model from rawText.
 - **Shard Cultist** (Prism ally) — NONE of its mechanics implemented. Model from rawText.
-- **Skry-77** (Prism ally) — Mastery-20 ability = "gain 2 mastery AND another player
-  loses 2 mastery" (currently wrong/absent).
+- **Skry-77** (Prism ally) — Mastery-20 ability has TWO effects: **you GAIN 2 mastery AND
+  a target/another player LOSES 2 mastery** (OWNER-CONFIRMED: "they lose two, you gain
+  two" — mastery, NOT health; current encoding is WRONG). Needs the NEW opponent-loses-
+  mastery effect (shared with Venator).
 
 ## B. General engine fixes
 - **Global 50-health cap** — a player's health can never exceed 50. Clamp all
@@ -43,9 +52,11 @@ the same mistake (esp. Order faction):
 - **Arach Devotees** — the Undergrowth trigger grants **health**, not gems.
 - **Fungal Hermit** — the base play effect grants **mastery** (not gems); its ADDITIONAL
   (mastery-threshold) effect grants **health**.
-- **Hounds of Volos** — the "if you are Volos" effect grants **power**, not gems (also a
-  character-conditional; see B3 "if your character is X" — Rez/Tetra/Volos share it).
+- **Hounds of Volos** — the "if you are Volos" effect grants **power**, not gems
+  (OWNER-CONFIRMED: power — fix both the effect AND the rawText, which currently say gems).
+  Also a character-conditional; see B3 "if your character is X".
 - **Evokatus** — its Exhaust ability grants **power**, not gems.
+- **Umbral Scourge** — grants **mastery**, not gems.
 - **Carnivorous Vine(s)** — the "gain an additional…" effect grants BOTH **+2 health AND
   +2 power** for EACH Undergrowth ally played this turn (a per-ally scaling effect on two
   resources at once — make sure the effect model can grant two resource types that both
@@ -61,10 +72,10 @@ the same mistake (esp. Order faction):
   power. (New scaling source: health-gained-this-turn.)
 - **Kiln Drones** — has a conditional "gain an additional **+4 gems** if you have a
   champion in play" that's missing/wrong. Encode the champion-in-play conditional +4 gems.
-- **Venator of the Wastes** — "if you have a champion in play" conditional that makes a
-  TARGET player **lose 2 mastery** (missing). (Same champion-in-play condition as Kiln
-  Drones; opponent-mastery-loss effect — see Skry-77 for the "another player loses
-  mastery" mechanic.)
+- **Venator of the Wastes** — "if you have a champion in play" conditional makes a TARGET
+  player **lose 2 MASTERY** (OWNER-CONFIRMED: mastery, NOT health — current encoding as
+  opponent-loses-HEALTH is WRONG). Needs a NEW opponent-loses-mastery effect type. (Same
+  champion-in-play condition as Kiln Drones.)
 This is a broader RESOURCE-TYPE transcription class (gems/mastery/health/power confused),
 not just gem→mastery. The fix agent should verify EVERY card's granted resource types
 against its `rawText` icons and fix all mismatches, not only the ones listed here.
@@ -73,6 +84,24 @@ For every fix in this section, look for OTHER cards with the same error and fix 
 ## B3. More card mechanics (engine + cards.json; read each rawText for authority)
 For EACH, also identify other cards where the same fix/mechanic applies.
 - **Querry Monk** — has a Mastery-10 ability that is NOT encoded. Encode it.
+- **General Decurion** — has a Mastery-20 ability that is NOT encoded. Encode it (read
+  rawText). (Also referenced by Drakonarius' "if you control General Decurion" passive.)
+- **Missing mastery-threshold abilities (encode from rawText):** **Fa Cu Tul** (Mastery
+  20), **Rue Bo Vai, the Transcendent** (Mastery 10), **The World Piercer** (Mastery 20),
+  **Zara Ra, Soulflayer** (Mastery 10 = banish UP TO TWO cards).
+- **The Dispossessed** — has a return-from-discard effect that's missing (reuse the
+  existing `ReturnFromDiscardEffect`/`returnFromDiscard` path).
+- **Cinder Scars** — "if you have played ANOTHER Cinder Scars this turn" conditional
+  (needs a "count of same-named card played this turn" condition; check
+  `cardsPlayedThisTurn`).
+- **Pall Shades** — its two mechanics are in the WRONG ORDER; reorder them to match the
+  card.
+- **Li Hin, the Shattered** — has a "can't be attacked" ability, BUT it can still be
+  DESTROYED by other card effects (cannotBeAttacked variant that does NOT block
+  DestroyChampionEffect — group with the Drakonarius/Raidian/Zetta cannotBeAttacked work).
+- **The Heart of Nothing** — conditional: you DRAW MORE next turn if you dealt enough
+  UNPREVENTED (unblocked) damage this turn (uses `unblockedDamageThisTurn`; grants a
+  next-turn draw bonus — needs a deferred/next-turn draw modifier).
 - **Nexus, Datic Hunter** — missing an "if you are Tetra" (character-conditional) effect.
 - **Raidian, Cloud Master** — missing "cannot be attacked by players with LESS mastery
   than you" effect (a conditional cannotBeAttacked keyed to relative mastery).

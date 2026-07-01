@@ -275,6 +275,27 @@ class GameService {
     ];
   }
 
+  /// The ACTUAL positive resource deltas the actor gained since the snapshot
+  /// (gems/power/mastery/health), as log grants. Unlike [_resourceGrantsOf]
+  /// (which statically reads only flat GainX effects and misses scaling /
+  /// conditional / mastery-bonus / ally grants), this measures what really
+  /// happened — so e.g. an Infinity Shard's tier-scaled power+mastery, or a
+  /// conditional bonus that actually fired, shows the correct icons. The actor's
+  /// resource totals and the played card are public, so this is hidden-info safe.
+  static List<LogResourceGrant> _grantsSince(
+      PlayerState p, int gem0, int power0, int mastery0, int health0) {
+    final gems = p.gemPool - gem0;
+    final power = p.powerPool - power0;
+    final mastery = p.mastery - mastery0;
+    final health = p.health - health0;
+    return [
+      if (gems > 0) LogResourceGrant('gem', gems),
+      if (power > 0) LogResourceGrant('power', power),
+      if (mastery > 0) LogResourceGrant('mastery', mastery),
+      if (health > 0) LogResourceGrant('health', health),
+    ];
+  }
+
   /// Shared face-up supply of Destinies (Into the Horizon), up to
   /// [maxDestinyRow]. Empty unless a `destinySupply` was passed to the
   /// constructor. NOT auto-refilled when a Destiny is claimed.
@@ -622,12 +643,16 @@ class GameService {
     if (player.activatedChampions.contains(championId)) return false;
 
     player.activatedChampions.add(championId);
+    final gem0 = player.gemPool,
+        power0 = player.powerPool,
+        mastery0 = player.mastery,
+        health0 = player.health;
     _resolvePlayOrMastery(champion, player);
     _checkAllyAbility(champion, player);
     _log('activated ${champion.name}',
         playerId: player.id,
         cardId: champion.id,
-        grants: _resourceGrantsOf(champion.playEffects));
+        grants: _grantsSince(player, gem0, power0, mastery0, health0));
     return true;
   }
 
@@ -1136,6 +1161,13 @@ class GameService {
     // champions and mercenaries, in play order.
     player.cardsPlayedThisTurn.add(card);
 
+    // Measure the ACTUAL resources this play grants (captures scaling /
+    // conditional / mastery-bonus / ally grants a static read would miss).
+    final gem0 = player.gemPool,
+        power0 = player.powerPool,
+        mastery0 = player.mastery,
+        health0 = player.health;
+
     // Resolve play effects (or, for masteryReplaces cards at threshold, the
     // mastery bonus INSTEAD; otherwise the additive mastery bonus on top).
     _resolvePlayOrMastery(card, player, choiceIndex: choiceIndex);
@@ -1146,7 +1178,7 @@ class GameService {
     _log('played ${card.name}',
         playerId: player.id,
         cardId: card.id,
-        grants: _resourceGrantsOf(card.playEffects));
+        grants: _grantsSince(player, gem0, power0, mastery0, health0));
     return true;
   }
 
@@ -1658,6 +1690,10 @@ class GameService {
     // per-turn scaling and ally checks see it.
     player.playedThisTurn.add(card);
     player.cardsPlayedThisTurn.add(card);
+    final gem0 = player.gemPool,
+        power0 = player.powerPool,
+        mastery0 = player.mastery,
+        health0 = player.health;
     _resolvePlayOrMastery(card, player);
     _checkAllyAbility(card, player);
 
@@ -1676,7 +1712,7 @@ class GameService {
     _log('warped ${card.name}',
         playerId: player.id,
         cardId: card.id,
-        grants: _resourceGrantsOf(card.playEffects));
+        grants: _grantsSince(player, gem0, power0, mastery0, health0));
     return true;
   }
 
@@ -1708,9 +1744,14 @@ class GameService {
     player.gemPool -= price;
     centerRow.removeAt(index);
 
-    // Play immediately (mirrors the warp path's zone bookkeeping).
+    // Play immediately (mirrors the warp path's zone bookkeeping). Snapshot
+    // AFTER the cost was paid so the gem delta shows only what the card grants.
     player.playedThisTurn.add(card);
     player.cardsPlayedThisTurn.add(card);
+    final gem0 = player.gemPool,
+        power0 = player.powerPool,
+        mastery0 = player.mastery,
+        health0 = player.health;
     _resolvePlayOrMastery(card, player);
     _checkAllyAbility(card, player);
 
@@ -1726,7 +1767,7 @@ class GameService {
     _log('fast-played ${card.name} for $price gems',
         playerId: player.id,
         cardId: card.id,
-        grants: _resourceGrantsOf(card.playEffects));
+        grants: _grantsSince(player, gem0, power0, mastery0, health0));
     return true;
   }
 
