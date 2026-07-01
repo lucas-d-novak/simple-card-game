@@ -133,22 +133,25 @@ class _CardDetailModalState extends State<CardDetailModal> {
           // panel directly BELOW it, so the full effect text is readable and its
           // encoding is easy to verify against the printed card art.
           Center(
-            child: GestureDetector(
-              // Absorb taps on the card/panel so they don't dismiss.
-              onTap: () {},
+            child: SingleChildScrollView(
               // Bound the content to the viewport and let it scroll if the card
               // + rules panel are taller than the screen (portrait phones), so
               // it never overflows off-screen. The horizontal padding keeps the
               // scrim tappable on the sides to dismiss.
-              child: SingleChildScrollView(
-                padding: EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: size.height * 0.06,
-                ),
-                child: Column(
+              padding: EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: size.height * 0.06,
+              ),
+              child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
+                  // Tapping the card artwork exits the zoom (like tapping the
+                  // scrim). The rules panel below stays tap-absorbing so the
+                  // text can be read/selected without dismissing.
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => Navigator.of(context).maybePop(),
+                    child: Container(
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(14),
                       boxShadow: [
@@ -170,6 +173,7 @@ class _CardDetailModalState extends State<CardDetailModal> {
                       card: card,
                       width: cardWidth,
                     ),
+                  ),
                   ),
                   if (rulesLines.isNotEmpty) ...[
                     const SizedBox(height: 12),
@@ -208,7 +212,6 @@ class _CardDetailModalState extends State<CardDetailModal> {
                     ),
                   ],
                 ],
-              ),
               ),
             ),
           ),

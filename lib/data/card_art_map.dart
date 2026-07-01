@@ -40,13 +40,12 @@ String? getCardArtAsset(String cardName) {
 /// art assignments for the invented catalog cards (grouped by faction below).
 const _artMap = <String, String>{
   // --- Core / starter --------------------------------------------------------
-  // NOTE: The 4 starter cards (Crystal, Blaster, Infinity Shard, Shard Reactor)
-  // intentionally have NO art-map entry. The bundled `crystal.jpg` /
-  // `blaster.jpg` / `shard-reactor.jpg` / `infinity-shard.jpg` files are
-  // misleading stock photos (a rocky coastline, a garden path, etc.), so these
-  // factionless starters deliberately fall through to the procedural neutral
-  // [CardArt], which draws a recognizable themed glyph per card name (a faceted
-  // gem, an energy bolt, a reactor core, an infinity/shard motif).
+  // The 4 starter cards now use their REAL printed art (the old stock-photo
+  // placeholders were replaced with proper card scans at these paths).
+  'crystal': 'assets/cards/crystal.jpg',
+  'blaster': 'assets/cards/blaster.jpg',
+  'shard-reactor': 'assets/cards/shard-reactor.jpg',
+  'infinity-shard': 'assets/cards/infinity-shard.jpg',
   'infinity-engine-fragment': 'assets/cards/infinity-engine.jpg',
 
   // --- Homodeus (gold) — exact + thematic ------------------------------------
@@ -114,6 +113,10 @@ const _artMap = <String, String>{
 /// Set of bundled `assets/cards/*.jpg` filenames, used for automatic
 /// normalised-name resolution (step 2 in [getCardArtAsset]).
 const _assetFiles = <String>{
+  'crystal.jpg',
+  'blaster.jpg',
+  'shard-reactor.jpg',
+  'infinity-shard.jpg',
   'blood-ritualist.jpg',
   'chaos-imp.jpg',
   'dark-summoner.jpg',
@@ -129,8 +132,4 @@ const _assetFiles = <String>{
   'shield-bearer.jpg',
   'universal-soldier.jpg',
   'vine-guardian.jpg',
-  // The starter placeholders (crystal.jpg / blaster.jpg / shard-reactor.jpg /
-  // infinity-shard.jpg) are deliberately omitted here so the auto name-match
-  // does NOT resolve the factionless starters back to their misleading stock
-  // photos. They render via procedural neutral [CardArt] instead.
 };

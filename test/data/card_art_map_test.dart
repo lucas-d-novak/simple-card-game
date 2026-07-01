@@ -3,33 +3,27 @@ import 'package:simple_card_game/data/card_art_map.dart';
 import 'package:simple_card_game/data/starter_deck.dart';
 
 void main() {
-  group('starter cards no longer resolve to misleading placeholder photos', () {
-    // The four factionless starter cards previously mapped to stock-photo
-    // placeholders (crystal.jpg = rocky coastline, infinity-shard.jpg = garden
-    // path, etc.). They must now fall through to procedural [CardArt] so the
-    // board shows a themed glyph instead of the wrong photo.
-    const starters = ['Crystal', 'Blaster', 'Infinity Shard', 'Shard Reactor'];
+  group('starter cards resolve to their real printed art', () {
+    // The four factionless starter cards now use their real card scans (the old
+    // stock-photo placeholders were replaced at these paths), so they resolve to
+    // an art asset rather than falling through to procedural [CardArt].
+    const expected = {
+      'Crystal': 'assets/cards/crystal.jpg',
+      'Blaster': 'assets/cards/blaster.jpg',
+      'Infinity Shard': 'assets/cards/infinity-shard.jpg',
+      'Shard Reactor': 'assets/cards/shard-reactor.jpg',
+    };
 
-    for (final name in starters) {
-      test('$name has no art asset (falls to procedural art)', () {
-        expect(getCardArtAsset(name), isNull,
-            reason: '$name should fall through to procedural CardArt, not a '
-                'placeholder photo');
+    expected.forEach((name, path) {
+      test('$name resolves to $path', () {
+        expect(getCardArtAsset(name), path);
       });
-    }
+    });
 
-    test('the misleading placeholder jpgs are never returned for any starter',
-        () {
-      const placeholders = {
-        'assets/cards/crystal.jpg',
-        'assets/cards/blaster.jpg',
-        'assets/cards/shard-reactor.jpg',
-        'assets/cards/infinity-shard.jpg',
-      };
+    test('every starter in the built deck resolves to a real art asset', () {
       for (final card in buildStarterDeck('p1')) {
-        final asset = getCardArtAsset(card.name);
-        expect(placeholders.contains(asset), isFalse,
-            reason: '${card.name} must not resolve to a placeholder photo');
+        expect(getCardArtAsset(card.name), isNotNull,
+            reason: '${card.name} should resolve to its real card art');
       }
     });
   });

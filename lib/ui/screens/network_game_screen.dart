@@ -58,12 +58,14 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
   /// Rehydrated card models from the latest state's `cards` dictionary, by id.
   Map<String, CardModel> _cards = const {};
 
-  /// A deferred target-selection prompt queued by a card we just played. It runs
-  /// on the NEXT server state (not synchronously after [GameClient.playCard],
-  /// which only sends a message) so the picker reads the POST-play state — e.g.
-  /// the just-played card is already out of hand, opponents' champions reflect
-  /// the play, etc. Cleared once fired.
-  VoidCallback? _pendingSelection;
+  /// Deferred target-selection prompts queued by cards/abilities we just played.
+  /// They run on SUBSEQUENT server states (not synchronously after
+  /// [GameClient.playCard], which only sends a message) so each picker reads the
+  /// POST-action state — e.g. the just-played card is already out of hand,
+  /// opponents' champions reflect the play, etc. One picker drains per server
+  /// state update, so a multi-card action (Play All / Exhaust All) that carries
+  /// several deferred effects prompts for each in order.
+  final List<VoidCallback> _pendingSelections = <VoidCallback>[];
 
   // ---- Fly-animation anchors (see board_animator.dart) ----------------------
   final GlobalKey _gemAnchorKey = GlobalKey(debugLabel: 'netGemAnchor');
@@ -122,10 +124,12 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
 
   void _onChanged() {
     _syncCards();
-    // Fire any deferred selection now that the post-play state has arrived.
-    final pending = _pendingSelection;
-    if (pending != null) {
-      _pendingSelection = null;
+    // Fire the NEXT deferred selection now that the post-action state has
+    // arrived. Drain one per server update so a chain (Play All with several
+    // banish cards) prompts each in order — the next fires after this one's
+    // follow-up action resolves.
+    if (_pendingSelections.isNotEmpty) {
+      final pending = _pendingSelections.removeAt(0);
       // Schedule after this frame so the modal opens over the updated board.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) pending();
@@ -293,6 +297,24 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
   void _queuePostPlayEffects(CardModel card) =>
       _queueDeferredSelection(card, card.playEffects);
 
+  /// Play All — send the server's one-shot `playAllCards`, but FIRST capture the
+  /// hand (in play order) so every card that carries a deferred effect (banish /
+  /// scrap / destroy / return) queues its target picker. The server resolves
+  /// those effects as no-ops awaiting a follow-up action, so without this the
+  /// prompts would silently never appear (e.g. Shadow Apostle's "banish a card
+  /// from hand or discard" when played via Play All instead of one at a time).
+  /// Cards are captured NOW because after playAllCards the hand is empty.
+  void _onPlayAll(_PlayerView me) {
+    final toPrompt = <CardModel>[
+      for (final id in me.hand)
+        if (_hasDeferredEffect(_card(id).playEffects)) _card(id),
+    ];
+    widget.client.playAllCards();
+    for (final card in toPrompt) {
+      _queueDeferredSelection(card, card.playEffects);
+    }
+  }
+
   /// Queue a deferred target picker for the first deferred effect in [effects]
   /// (a card's playEffects, or a champion's activated-ability effects), with
   /// [source] as the effect's source card for condition evaluation.
@@ -303,12 +325,12 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
   /// a Champion" must be evaluated against the fresh POST-action redacted view
   /// (the one that reflects what the engine actually did).
   void _queueDeferredSelection(CardModel source, List<CardEffect> effects) {
-    _pendingSelection = () {
+    _pendingSelections.add(() {
       final me = _view?.me;
       final ctx = me != null ? _conditionContext(me) : null;
       final picker = _deferredPickerFor(effects, source, ctx);
       if (picker != null) picker();
-    };
+    });
   }
 
   /// Walks a list of effects (recursing into `ConditionalEffect.then` and
@@ -636,48 +658,68 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
     );
   }
 
-  void _onMyChampionTap(CardModel champ) {
-    widget.client.activateChampion(champ.id);
-    _flash('Activated ${champ.name}');
-    // Activating a champion re-resolves its play effects, which may include a
-    // deferred target picker (banish / return / destroy) — queue it too.
-    _queueDeferredSelection(champ, champ.playEffects);
-  }
-
-  void _onExhaustChampion(CardModel champ) {
-    widget.client.useActivatedAbility(champ.id);
-    _flash('Exhausted ${champ.name}');
-    // The Exhaust ability's effects can be deferred-selection (e.g. Aedifex's
-    // "Put a Champion from your discard pile into your hand" =
-    // returnFromDiscard, which needs a card pick). Queue that picker; without it
-    // the Exhaust silently does nothing.
+  /// Use a champion — a SINGLE action from the player's point of view. It fires
+  /// the champion's free once-per-turn activation (its play effects) AND, if the
+  /// champion has an Exhaust-gated ability, that too, all at once. They are not
+  /// separate button presses: tapping "Use" does everything the champion can do
+  /// this turn. Each part's deferred target picker (banish / return / destroy)
+  /// is queued in order so multi-target champions still prompt correctly.
+  ///
+  /// [view] carries this champion's per-turn activated/exhausted flags so we
+  /// only fire the parts that haven't been used yet (re-using is a server no-op,
+  /// but this keeps the flash message accurate).
+  void _onUseChampion(CardModel champ, {_ChampionView? view}) {
+    final canActivate =
+        champ.playEffects.isNotEmpty && (view == null || !view.activated);
     final ability = champ.activatedAbility;
-    if (ability != null) _queueDeferredSelection(champ, ability.effects);
+    final canExhaust = ability != null && (view == null || !view.exhausted);
+
+    if (canActivate) {
+      widget.client.activateChampion(champ.id);
+      _queueDeferredSelection(champ, champ.playEffects);
+    }
+    if (canExhaust) {
+      widget.client.useActivatedAbility(champ.id);
+      _queueDeferredSelection(champ, ability.effects);
+    }
+    if (canActivate || canExhaust) _flash('Used ${champ.name}');
   }
 
-  /// "Exhaust All" — the champion-side equivalent of Play All. Fires the Exhaust
-  /// ability of every champion that HAS one and isn't already exhausted, in
-  /// board order. Abilities with no target resolve immediately; the FIRST one
-  /// that needs a target selection queues its picker (the pending-selection slot
-  /// holds one at a time — the player can re-tap remaining champions after).
+  /// "Use All" — the champion-side equivalent of Play All. Uses EVERY champion
+  /// that still has something to do this turn, in board order, via the merged
+  /// [_onUseChampion] (free activation + Exhaust ability together). Each part's
+  /// deferred target picker is queued and drains one per server state, so
+  /// multi-target champions still prompt in order.
   void _onExhaustAll(_GameView view) {
     final me = view.me;
     var fired = 0;
     for (final champ in me.champions) {
-      if (champ.exhausted) continue;
       final card = _card(champ.id);
-      final ability = card.activatedAbility;
-      if (ability == null) continue;
-      widget.client.useActivatedAbility(champ.id);
+      final hasUnusedActivation =
+          card.playEffects.isNotEmpty && !champ.activated;
+      final hasUnusedAbility =
+          card.activatedAbility != null && !champ.exhausted;
+      if (!hasUnusedActivation && !hasUnusedAbility) continue;
+      _onUseChampion(card, view: champ);
       fired++;
-      // Queue a picker only for the FIRST ability that actually needs a target,
-      // so a no-target ability doesn't waste the single pending slot and a
-      // later target-needing one doesn't overwrite an already-queued prompt.
-      if (_pendingSelection == null && _hasDeferredEffect(ability.effects)) {
-        _queueDeferredSelection(card, ability.effects);
-      }
     }
-    if (fired > 0) _flash('Exhausted $fired champion${fired == 1 ? '' : 's'}');
+    if (fired > 0) _flash('Used $fired champion${fired == 1 ? '' : 's'}');
+  }
+
+  /// Count of my champions that still have anything to do this turn (an unused
+  /// free activation and/or an unused Exhaust ability) — drives the primary
+  /// button's "Use" phase (the champion equivalent of Play All).
+  int _usableChampionCount(_GameView view) {
+    var n = 0;
+    for (final champ in view.me.champions) {
+      final card = _card(champ.id);
+      final hasUnusedActivation =
+          card.playEffects.isNotEmpty && !champ.activated;
+      final hasUnusedAbility =
+          card.activatedAbility != null && !champ.exhausted;
+      if (hasUnusedActivation || hasUnusedAbility) n++;
+    }
+    return n;
   }
 
   /// Whether [effects] contains any deferred-selection effect (banish / scrap /
@@ -704,20 +746,10 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
     return false;
   }
 
-  /// Count of my champions that can still be Exhausted this turn (have an
-  /// activated ability and aren't exhausted) — drives the button's Exhaust phase.
-  int _exhaustableCount(_GameView view) {
-    var n = 0;
-    for (final champ in view.me.champions) {
-      if (!champ.exhausted && _card(champ.id).activatedAbility != null) n++;
-    }
-    return n;
-  }
-
-  /// Open the zoom modal for one of MY champions, offering its two distinct
-  /// actions: "Activate" (free, re-resolves play effects, once/turn) and —
-  /// only when the card has an Exhaust-gated [CardModel.activatedAbility] —
-  /// "Exhaust" (disabled once the champion is exhausted). Only enabled on your
+  /// Open the zoom modal for one of MY champions, offering a SINGLE "Use" action
+  /// that fires its free activation and its Exhaust ability together (they are
+  /// not separate presses). Labelled "Use" when it has an Exhaust ability,
+  /// "Activate" for a champion with only free play effects. Only enabled on your
   /// turn.
   void _zoomMyChampion(List<_ChampionView> champs, _ChampionView champ) {
     final cards = [for (final c in champs) _card(c.id)];
@@ -727,26 +759,23 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
     _zoom(
       cards,
       index < 0 ? 0 : index,
+      // A champion is a SINGLE action: "Use" fires its free activation AND its
+      // Exhaust ability together (they are not separate presses). One button,
+      // labelled by what the champion does — plain "Use" when it has an Exhaust
+      // ability, "Activate" for a champion with only free play effects.
       actionFor: (card) {
-        // "Activate" re-resolves the champion's PLAY effects (a free once-per-
-        // turn re-trigger). A champion with no play effects (e.g. Aedifex, whose
-        // only ability is Exhaust-gated) has nothing to Activate — hide it so the
-        // modal shows just the Exhaust action, not a useless button.
-        if (card.playEffects.isEmpty) return null;
+        final hasPlay = card.playEffects.isNotEmpty;
+        final hasAbility = card.activatedAbility != null;
+        if (!hasPlay && !hasAbility) return null;
         final view = byId[card.id];
+        // Already spent this turn if everything it can do is done.
+        final activatedDone = !hasPlay || (view?.activated ?? false);
+        final exhaustDone = !hasAbility || (view?.exhausted ?? false);
+        final spent = activatedDone && exhaustDone;
         return CardDetailAction(
-          label: 'Activate',
-          enabled: myTurn && (view == null || !view.activated),
-          onPressed: () => _onMyChampionTap(card),
-        );
-      },
-      secondaryActionFor: (card) {
-        if (card.activatedAbility == null) return null;
-        final view = byId[card.id];
-        return CardDetailAction(
-          label: 'Exhaust',
-          enabled: myTurn && (view == null || !view.exhausted),
-          onPressed: () => _onExhaustChampion(card),
+          label: hasAbility ? 'Use' : 'Activate',
+          enabled: myTurn && !spent,
+          onPressed: () => _onUseChampion(card, view: view),
         );
       },
     );
@@ -983,8 +1012,11 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
   void _showDrawPile(_PlayerView me) {
     final cards = [for (final id in me.drawPileContents) _card(id)]
       ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    final who = me.characterDisplayName;
     _showPileSheet(
-      title: 'Your draw pile (${me.drawPileCount})',
+      title: who != null
+          ? "$who's draw pile (${me.drawPileCount})"
+          : 'Your draw pile (${me.drawPileCount})',
       cards: cards,
       emptyNote: me.drawPileCount == 0
           ? 'Your draw pile is empty.'
@@ -1138,10 +1170,14 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
           // Floating fullscreen affordance — a big, always-reachable icon button
           // pinned to the bottom-right of the board on web MOBILE widths, where
           // the small top-bar toggle is easy to miss and can sit under the
-          // centered opponent pill. Tapping it hides the browser address bar /
-          // chrome via the Fullscreen API. Web-only (hidden on native via the
-          // isSupported gate) and only on narrow layouts where chrome hurts most.
+          // centered opponent pill. On browsers with a working Fullscreen API
+          // (desktop, Android Chrome) it hides the address bar / chrome; on iOS
+          // Safari — which has NO working fullscreen API — it instead opens
+          // "Add to Home Screen" instructions (the only way to go chrome-free on
+          // iPhone/iPad). Hidden entirely when already running as an installed
+          // standalone PWA (already fullscreen) and on native.
           if (Fullscreen.instance.isSupported &&
+              !Fullscreen.instance.isStandalone &&
               Responsive.isMobile(MediaQuery.of(context).size.width))
             const Positioned(
               right: 10,
@@ -1272,7 +1308,7 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
                 onZoomCard: _zoomOne,
                 myChampions: me.champions,
                 playedThisTurn: me.playedThisTurn,
-                onActivateChampion: myTurn ? _onMyChampionTap : null,
+                onActivateChampion: myTurn ? (c) => _onUseChampion(c) : null,
                 onZoomMyChampion: (champ) =>
                     _zoomMyChampion(me.champions, champ),
                 actionMessage: _actionMessage,
@@ -1303,8 +1339,8 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
           // Undo is gated on the server-sent canUndo flag (your turn AND a
           // same-turn snapshot exists); null disables the button.
           onUndo: client.canUndo ? client.undo : null,
-          onPlayAll: myTurn && me.hand.isNotEmpty ? client.playAllCards : null,
-          exhaustableCount: myTurn ? _exhaustableCount(view) : 0,
+          onPlayAll: myTurn && me.hand.isNotEmpty ? () => _onPlayAll(me) : null,
+          exhaustableCount: myTurn ? _usableChampionCount(view) : 0,
           onExhaustAll: myTurn ? () => _onExhaustAll(view) : null,
           onAttack: canAttackPlayer
               ? () => _onAttackPlayer(opponent, me.powerPool)
@@ -1449,10 +1485,33 @@ class _PlayerView {
     required this.relicOptions,
     required this.relicRecruited,
     required this.unblockedDamageThisTurn,
+    required this.character,
   });
 
   final String id;
   final String name;
+
+  /// This player's Character (enum name, e.g. `koSynWu`), or null if none was
+  /// chosen. Public info — shipped by the server's `redactFor`. Use
+  /// [characterDisplayName] for a human-readable form.
+  final String? character;
+
+  /// Human-readable Character name (e.g. `koSynWu` → "Ko Syn Wu"), or null when
+  /// no Character is set.
+  String? get characterDisplayName {
+    final c = character;
+    if (c == null || c.isEmpty) return null;
+    // Split camelCase into words and title-case each.
+    final words = c.replaceAllMapped(
+      RegExp(r'(?<=[a-z])(?=[A-Z])'),
+      (_) => ' ',
+    );
+    return words
+        .split(' ')
+        .where((w) => w.isNotEmpty)
+        .map((w) => w[0].toUpperCase() + w.substring(1))
+        .join(' ');
+  }
   final int health;
   final int mastery;
   final int gemPool;
@@ -1534,6 +1593,7 @@ class _PlayerView {
       relicOptions:
           (p['relicOptions'] as List?)?.cast<String>() ?? const <String>[],
       relicRecruited: p['relicRecruited'] == true,
+      character: p['character'] as String?,
     );
   }
 }
@@ -1642,8 +1702,11 @@ class _NetworkTopBar extends StatelessWidget {
                           style: TextStyle(
                               fontSize: 12, fontWeight: FontWeight.bold)),
                     ),
-                    // Fullscreen toggle — web only (no-op/hidden on native).
-                    if (Fullscreen.instance.isSupported)
+                    // Fullscreen toggle — web only (no-op/hidden on native),
+                    // hidden when already an installed standalone PWA. On iOS
+                    // Safari it opens install instructions instead of toggling.
+                    if (Fullscreen.instance.isSupported &&
+                        !Fullscreen.instance.isStandalone)
                       const _FullscreenButton(),
                   ],
                 ),
@@ -1696,9 +1759,116 @@ class _NetworkTopBar extends StatelessWidget {
   }
 }
 
+/// Handle a tap on any fullscreen affordance: on browsers with a working
+/// Fullscreen API, toggle it; on iOS Safari (no working API), show "Add to Home
+/// Screen" instructions — the only route to a chrome-free view on iPhone/iPad.
+void _handleFullscreenTap(BuildContext context) {
+  if (Fullscreen.instance.shouldOfferInstall) {
+    _showAddToHomeScreenSheet(context);
+  } else {
+    Fullscreen.instance.toggle();
+  }
+}
+
+/// A bottom sheet explaining how to install the app to the home screen for a
+/// true fullscreen (no address bar) experience on iOS Safari, where the browser
+/// Fullscreen API does nothing.
+void _showAddToHomeScreenSheet(BuildContext context) {
+  showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: const Color(0xFF0E2236),
+    isScrollControlled: true,
+    builder: (ctx) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Go fullscreen',
+              style: TextStyle(
+                color: BoardChrome.goldText,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              "iPhone and iPad Safari don't allow apps to go fullscreen from a "
+              "button. To play with no address bar, add this game to your Home "
+              "Screen — it then opens as a full-screen app:",
+              style: TextStyle(color: Colors.white70, fontSize: 14, height: 1.4),
+            ),
+            const SizedBox(height: 16),
+            _stepRow(1, Icons.ios_share,
+                "Tap the Share button in Safari's toolbar."),
+            const SizedBox(height: 10),
+            _stepRow(2, Icons.add_box_outlined,
+                'Choose "Add to Home Screen".'),
+            const SizedBox(height: 10),
+            _stepRow(3, Icons.rocket_launch_outlined,
+                'Open the game from its new Home Screen icon — fullscreen.'),
+            const SizedBox(height: 20),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFFBFD8E8),
+                ),
+                child: const Text('Got it'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+Widget _stepRow(int n, IconData icon, String text) {
+  return Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Container(
+        width: 26,
+        height: 26,
+        alignment: Alignment.center,
+        decoration: const BoxDecoration(
+          color: Color(0xFF14405E),
+          shape: BoxShape.circle,
+        ),
+        child: Text(
+          '$n',
+          style: const TextStyle(
+            color: Color(0xFFEAF4FB),
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+      const SizedBox(width: 12),
+      Icon(icon, color: BoardChrome.tealHighlight, size: 20),
+      const SizedBox(width: 10),
+      Expanded(
+        child: Text(
+          text,
+          style: const TextStyle(
+            color: Color(0xFFEAF4FB),
+            fontSize: 14,
+            height: 1.35,
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
 /// A web-only fullscreen toggle for the top bar. Shows enter/exit-fullscreen
-/// icons and flips the browser Fullscreen state. Hidden on native (the parent
-/// only builds it when `Fullscreen.instance.isSupported`).
+/// icons and flips the browser Fullscreen state (or, on iOS Safari, opens
+/// install instructions). Hidden on native (the parent only builds it when
+/// `Fullscreen.instance.isSupported`).
 class _FullscreenButton extends StatefulWidget {
   const _FullscreenButton();
 
@@ -1709,10 +1879,16 @@ class _FullscreenButton extends StatefulWidget {
 class _FullscreenButtonState extends State<_FullscreenButton> {
   @override
   Widget build(BuildContext context) {
+    // iOS Safari can't toggle fullscreen — offer install instructions instead.
+    final offerInstall = Fullscreen.instance.shouldOfferInstall;
     final full = Fullscreen.instance.isFullscreen;
-    final icon = Icon(full ? Icons.fullscreen_exit : Icons.fullscreen, size: 16);
-    void toggle() {
-      Fullscreen.instance.toggle();
+    final iconData = offerInstall
+        ? Icons.ios_share
+        : (full ? Icons.fullscreen_exit : Icons.fullscreen);
+    final label = offerInstall ? 'Fullscreen' : (full ? 'Exit' : 'Fullscreen');
+    final icon = Icon(iconData, size: 16);
+    void onTap() {
+      _handleFullscreenTap(context);
       // Rebuild after the browser applies the change so the icon updates.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) setState(() {});
@@ -1725,17 +1901,19 @@ class _FullscreenButtonState extends State<_FullscreenButton> {
     final iconOnly = Responsive.isMobile(MediaQuery.of(context).size.width);
     if (iconOnly) {
       return IconButton(
-        onPressed: toggle,
+        onPressed: onTap,
         icon: icon,
         color: const Color(0xFFBFD8E8),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         constraints: const BoxConstraints(minWidth: 44, minHeight: 40),
         visualDensity: VisualDensity.compact,
-        tooltip: full ? 'Exit fullscreen' : 'Fullscreen',
+        tooltip: offerInstall
+            ? 'How to go fullscreen'
+            : (full ? 'Exit fullscreen' : 'Fullscreen'),
       );
     }
     return TextButton.icon(
-      onPressed: toggle,
+      onPressed: onTap,
       style: TextButton.styleFrom(
         foregroundColor: const Color(0xFFBFD8E8),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -1743,7 +1921,7 @@ class _FullscreenButtonState extends State<_FullscreenButton> {
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
       icon: icon,
-      label: Text(full ? 'Exit' : 'Fullscreen',
+      label: Text(label,
           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
     );
   }
@@ -1766,10 +1944,16 @@ class _FloatingFullscreenButton extends StatefulWidget {
 class _FloatingFullscreenButtonState extends State<_FloatingFullscreenButton> {
   @override
   Widget build(BuildContext context) {
+    final offerInstall = Fullscreen.instance.shouldOfferInstall;
     final full = Fullscreen.instance.isFullscreen;
+    final iconData = offerInstall
+        ? Icons.ios_share
+        : (full ? Icons.fullscreen_exit : Icons.fullscreen);
     return Semantics(
       button: true,
-      label: full ? 'Exit fullscreen' : 'Enter fullscreen',
+      label: offerInstall
+          ? 'How to go fullscreen'
+          : (full ? 'Exit fullscreen' : 'Enter fullscreen'),
       child: Material(
         color: const Color(0xFF14405E),
         shape: CircleBorder(
@@ -1783,7 +1967,7 @@ class _FloatingFullscreenButtonState extends State<_FloatingFullscreenButton> {
         child: InkWell(
           customBorder: const CircleBorder(),
           onTap: () {
-            Fullscreen.instance.toggle();
+            _handleFullscreenTap(context);
             // Rebuild after the browser applies the change so the icon flips.
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) setState(() {});
@@ -1792,7 +1976,7 @@ class _FloatingFullscreenButtonState extends State<_FloatingFullscreenButton> {
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Icon(
-              full ? Icons.fullscreen_exit : Icons.fullscreen,
+              iconData,
               size: 26,
               color: const Color(0xFFEAF4FB),
             ),
@@ -3039,11 +3223,11 @@ class _PrimaryActionButton extends StatelessWidget {
         fontSize: fontSize,
       );
     }
-    // Phase 2: hand empty, champions still ready to Exhaust → Exhaust (the
-    // champion-side "play all").
+    // Phase 2: hand empty, champions still have something to do → Use (the
+    // champion-side "play all" — activates + exhausts each in one go).
     if (handCount == 0 && exhaustableCount > 0 && onExhaustAll != null) {
       return BeveledButton(
-        label: 'Exhaust',
+        label: 'Use',
         onPressed: onExhaustAll,
         style: BeveledStyle.green,
         width: width,

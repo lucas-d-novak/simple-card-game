@@ -9,6 +9,15 @@ class _StubFullscreen implements Fullscreen {
   bool get isSupported => false;
 
   @override
+  bool get fullscreenApiWorks => false;
+
+  @override
+  bool get isStandalone => false;
+
+  @override
+  bool get shouldOfferInstall => false;
+
+  @override
   bool get isFullscreen => false;
 
   @override
