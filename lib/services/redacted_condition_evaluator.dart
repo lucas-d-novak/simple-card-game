@@ -20,6 +20,7 @@ class RedactedConditionContext {
     required this.championIds,
     required this.mastery,
     required this.unblockedDamageThisTurn,
+    this.health = 0,
   });
 
   /// id → CardModel for every visible card (from the redacted `cards` dict).
@@ -40,6 +41,9 @@ class RedactedConditionContext {
 
   /// The recipient's current mastery.
   final int mastery;
+
+  /// The recipient's current health (public info). Used by `healthAtLeast`.
+  final int health;
 
   /// Unblocked damage the recipient dealt this turn.
   final int unblockedDamageThisTurn;
@@ -174,6 +178,9 @@ bool _evaluate(
 
     case GameConditionKind.masteryAtLeast:
       return ctx.mastery >= c.threshold;
+
+    case GameConditionKind.healthAtLeast:
+      return ctx.health >= c.threshold;
 
     case GameConditionKind.sameFactionCountPlayed:
       final f = c.faction ?? source.faction;

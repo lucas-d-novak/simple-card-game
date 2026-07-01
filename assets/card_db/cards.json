@@ -894,28 +894,34 @@
       "copies": 2,
       "playEffects": [
         {
-          "type": "gainPower",
+          "type": "gainHealth",
           "amount": 4
         },
         {
           "type": "drawCards",
           "count": 1
+        },
+        {
+          "type": "conditional",
+          "condition": {
+            "kind": "healthAtLeast",
+            "threshold": 50
+          },
+          "then": [
+            {
+              "type": "gainPower",
+              "amount": 6
+            }
+          ]
         }
       ],
       "art": "furrowing_elemental.jpg",
-      "rawText": "Undergrowth Ally. Gain 4 (power) and draw a card. If you have 50 (mastery), gain 6 (power).",
+      "rawText": "Undergrowth Ally. Gain 4 (health) and draw a card. If you have 50 (health), gain 6 (power).",
       "verified": true,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 33: name='Furrowing Elemental', faction='Undergrowth', amount=2. | art added from TTS spritesheet crop (effects pending verification). | VERIFIED from image. Undergrowth Ally (regular). Play: gain 4 power, draw 1. 'If you have 50 mastery' read as masteryThreshold 50 with bonus gain 6 power (additive). All maps to engine effects.",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 33: name='Furrowing Elemental', faction='Undergrowth', amount=2. | art added from TTS spritesheet crop (effects pending verification). | VERIFIED from image. Undergrowth Ally (regular). Play: gain 4 power, draw 1. 'If you have 50 mastery' read as masteryThreshold 50 with bonus gain 6 power (additive). All maps to engine effects. | FIX (user+art): first gain is HEALTH (green cross) not power; condition is HEALTH 50 (not mastery); bonus 6 POWER. Uses new healthAtLeast condition.",
       "set": "base",
       "cardType": "regular",
       "cost": 5,
-      "masteryThreshold": 50,
-      "masteryBonus": [
-        {
-          "type": "gainPower",
-          "amount": 6
-        }
-      ],
       "chapter": 1
     },
     {

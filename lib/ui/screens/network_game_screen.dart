@@ -943,6 +943,7 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
       discardIds: me.discard,
       championIds: [for (final c in me.champions) c.id],
       mastery: me.mastery,
+      health: me.health,
       unblockedDamageThisTurn: me.unblockedDamageThisTurn,
     );
   }

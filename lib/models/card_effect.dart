@@ -833,6 +833,10 @@ enum GameConditionKind {
   /// The player's mastery is at least `threshold`.
   masteryAtLeast,
 
+  /// The player's current health is at least `threshold` (e.g. Furrowing
+  /// Elemental's "if you have 50 health, gain 6 power").
+  healthAtLeast,
+
   /// At least `threshold` cards of the SAME faction (the source card's faction,
   /// or `faction` when set) have been played this turn (counting the source).
   sameFactionCountPlayed,
@@ -950,6 +954,8 @@ class GameCondition {
         return 'if you control $threshold+ $f champions';
       case GameConditionKind.masteryAtLeast:
         return 'if your mastery is $threshold+';
+      case GameConditionKind.healthAtLeast:
+        return 'if your health is $threshold+';
       case GameConditionKind.sameFactionCountPlayed:
         return 'if you have played $threshold+ same-faction cards this turn';
       case GameConditionKind.isCharacter:

@@ -2217,6 +2217,8 @@ class GameService {
         return count >= c.threshold;
       case GameConditionKind.masteryAtLeast:
         return player.mastery >= c.threshold;
+      case GameConditionKind.healthAtLeast:
+        return player.health >= c.threshold;
       case GameConditionKind.sameFactionCountPlayed:
         final f = c.faction ?? source?.faction;
         if (f == null || f == Faction.none) return false;
