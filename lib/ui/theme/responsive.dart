@@ -57,12 +57,15 @@ class Responsive {
     }
   }
 
-  /// Card width used for cards in the hand / center row, scaled by screen size.
+  /// Card width used for cards in the hand, scaled by screen size. The hand is
+  /// the player's primary interaction zone, so these are the LARGEST cards on the
+  /// board — at least as big as the center row — matching the official client
+  /// where your hand reads clearly as full card faces.
   static double handCardWidth(double availableWidth) => value(
         availableWidth,
-        mobile: 84,
-        tablet: 104,
-        desktop: 118,
+        mobile: 100,
+        tablet: 132,
+        desktop: 152,
       );
 
   /// Card width for compact cards (champions / played-this-turn).

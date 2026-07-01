@@ -194,18 +194,41 @@ class GameCardWidget extends StatelessWidget {
               ),
 
               // ---- Rules text (lower box) ------------------------------
-              // The widget only overlays its OWN rules text for cards that fall
-              // back to PROCEDURAL art (no real art asset). Real painted card art
-              // — whether from the DB `art` field or the name→file art map —
-              // already has the rules printed on the face, so overlaying widget
-              // text would double-print and look cramped. And even for
-              // procedural cards, only render the text when the card is large
-              // enough to read it (the zoom modal).
-              if (!_hasArtAsset(card) && cardWidth >= rulesTextMinWidth)
+              // ALWAYS overlay the card's own rules text (when the card is large
+              // enough to read it), rendered over a semi-opaque dark scrim at the
+              // bottom of the art so it stays legible over ANY art — including
+              // real painted crops that may or may not show their own text. This
+              // guarantees a player can read what every card does on the board
+              // (critical for following an opponent's turn); the zoom modal still
+              // shows the full text. The scrim also visually anchors the text.
+              if (cardWidth >= rulesTextMinWidth && _rulesLines(card, compact).isNotEmpty)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: cardHeight * 0.54,
+                  bottom: 0,
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withValues(alpha: 0.0),
+                            Colors.black.withValues(alpha: 0.72),
+                            Colors.black.withValues(alpha: 0.82),
+                          ],
+                          stops: const [0.0, 0.28, 1.0],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              if (cardWidth >= rulesTextMinWidth && _rulesLines(card, compact).isNotEmpty)
                 Positioned(
                   left: 4 * scale,
                   right: (22 * scale).clamp(16.0, 30.0) + 4 * scale,
-                  top: cardHeight * 0.56,
+                  top: cardHeight * 0.6,
                   bottom: 3 * scale,
                   child: ClipRect(
                     child: Column(
@@ -219,9 +242,12 @@ class GameCardWidget extends StatelessWidget {
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                color: const Color(0xFFE8EEF4),
+                                color: const Color(0xFFF2F6FA),
                                 fontSize: (7.5 * scale).clamp(6, 10.5),
                                 height: 1.15,
+                                shadows: const [
+                                  Shadow(color: Colors.black, blurRadius: 2),
+                                ],
                               ),
                             ),
                           ),
@@ -301,15 +327,6 @@ int? _primaryValue(CardModel card) {
 /// which has empty [CardModel.playEffects]) therefore still render their ability
 /// text instead of a blank info area. Compact cards show one line; full cards
 /// up to three.
-/// Whether [card] resolves to a real painted art asset (DB `art` field or the
-/// name→file art map) rather than procedural art. Mirrors `_CardArtArea`'s
-/// resolution. When true, the painted art already shows the card's rules, so the
-/// widget must not overlay its own (double-printed, cramped) rules text.
-bool _hasArtAsset(CardModel card) {
-  if (card.art != null && card.art!.isNotEmpty) return true;
-  return getCardArtAsset(card.name) != null;
-}
-
 List<String> _rulesLines(CardModel card, bool compact) {
   final lines = [for (final e in card.playEffects) e.description];
 

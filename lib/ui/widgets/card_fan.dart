@@ -91,7 +91,7 @@ class _CardFanState extends State<CardFan> {
         final selectedLift = cardWidth * 0.22;
         // Vertical room: card + lift headroom + a little for the arc/label.
         final fanHeight =
-            (cardHeight + selectedLift + 36).clamp(140.0, 280.0).toDouble();
+            (cardHeight + selectedLift + 36).clamp(140.0, 340.0).toDouble();
 
         // Calculate card overlap based on available width.
         final totalCardWidth = cardCount * cardWidth;

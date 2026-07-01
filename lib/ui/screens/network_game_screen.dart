@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:simple_card_game/data/database/card_serialization.dart';
 import 'package:simple_card_game/models/card_effect.dart';
 import 'package:simple_card_game/models/card_model.dart';
+import 'package:simple_card_game/models/card_type.dart';
 import 'package:simple_card_game/services/game_client.dart';
 import 'package:simple_card_game/services/redacted_condition_evaluator.dart';
 import 'package:simple_card_game/ui/theme/board_chrome.dart';
@@ -401,6 +402,38 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
   void _onCenterTap(CardModel card) {
     widget.client.buyCard(card.id);
     _flash('Recruiting ${card.name}…');
+  }
+
+  void _onFastPlayMercenary(CardModel card) {
+    widget.client.fastPlayMercenary(card.id);
+    _flash('Fast-playing ${card.name}…');
+  }
+
+  /// Open the market card-detail popup for [card] (SELECT it). Offers Recruit
+  /// (buy → discard) and, for Mercenaries only, Fast Play (pay + play now, then
+  /// removed). Reached by TAPPING a market card; dragging a card to the play
+  /// field recruits it directly instead.
+  void _openMarketDetail(List<CardModel> centerCards, CardModel card) {
+    final myTurn = widget.client.isMyTurn;
+    final gems = _view?.me.gemPool ?? 0;
+    final i = centerCards.indexWhere((x) => x.id == card.id);
+    _zoom(
+      centerCards,
+      i < 0 ? 0 : i,
+      actionFor: (c) => CardDetailAction(
+        label: 'Recruit',
+        enabled: myTurn && gems >= c.cost,
+        onPressed: () => _onCenterTap(c),
+      ),
+      secondaryActionFor: (c) {
+        if (c.cardType != CardType.mercenary) return null;
+        return CardDetailAction(
+          label: 'Fast Play',
+          enabled: myTurn && gems >= c.cost,
+          onPressed: () => _onFastPlayMercenary(c),
+        );
+      },
+    );
   }
 
   void _onMyChampionTap(CardModel champ) {
@@ -843,26 +876,19 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
         ),
 
         // ---- Center row (market) ------------------------------------------
+        // Gesture model: TAP a card → SELECT it (open the detail popup with
+        // Recruit, plus Fast Play for mercenaries). DRAG a card into the play
+        // field → recruit it (mirrors drag-from-hand = play). See the popup
+        // wiring below and the market DragTarget on the play field.
         Builder(builder: (context) {
           final centerCards = [for (final id in view.centerRow) _card(id)];
           return _NetworkCenterRow(
             cards: centerCards,
             canAfford: (c) => myTurn && me.gemPool >= c.cost,
-            onTapCard: myTurn ? _onCenterTap : (_) {},
-            // Long-press a market card → zoom the whole row, with a Recruit
-            // action wired to buy when affordable on your turn.
-            onLongPressCard: (c) {
-              final i = centerCards.indexWhere((x) => x.id == c.id);
-              _zoom(
-                centerCards,
-                i < 0 ? 0 : i,
-                actionFor: (card) => CardDetailAction(
-                  label: 'Recruit',
-                  enabled: myTurn && me.gemPool >= card.cost,
-                  onPressed: () => _onCenterTap(card),
-                ),
-              );
-            },
+            onTapCard: (c) => _openMarketDetail(centerCards, c),
+            onLongPressCard: (c) => _openMarketDetail(centerCards, c),
+            // Long-press begins a drag; dropping on the play field recruits it.
+            onDragStarted: myTurn ? (_) {} : null,
             conditionsMet: conditionsMet,
             screenWidth: screenWidth,
           );
@@ -870,28 +896,40 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
       ],
 
       // ---- Play field ----------------------------------------------------
-      // Drop a dragged hand card here (drag-to-play) to play it. Only an
-      // active turn accepts drops.
-      field: DragTarget<CardModel>(
+      // Two overlaid DragTargets with DISTINCT payload types so drops never
+      // cross-fire:
+      //   * outer DragTarget<_MarketCardDrag> — a MARKET card dragged here is
+      //     RECRUITED (drag-to-recruit).
+      //   * inner DragTarget<CardModel>       — a HAND card dragged here is
+      //     PLAYED (drag-to-play).
+      field: DragTarget<_MarketCardDrag>(
         onWillAcceptWithDetails: (_) => myTurn,
-        onAcceptWithDetails: (details) => _playHandCard(details.data),
-        builder: (context, candidate, rejected) {
-          return _NetworkPlayField(
-            opponentChampions: opponent?.champions ?? const [],
-            opponentPlayedThisTurn: opponent?.playedThisTurn ?? const [],
-            opponentName: opponent?.name,
-            opponentId: opponent?.id,
-            cardFor: _card,
-            canAttackChampions: myTurn && me.powerPool > 0,
-            onAttackChampion: _onOpponentChampionTap,
-            onZoomCard: _zoomOne,
-            myChampions: me.champions,
-            playedThisTurn: me.playedThisTurn,
-            onActivateChampion: myTurn ? _onMyChampionTap : null,
-            onZoomMyChampion: (champ) => _zoomMyChampion(me.champions, champ),
-            actionMessage: _actionMessage,
-            screenWidth: screenWidth,
-            isDropTarget: candidate.isNotEmpty,
+        onAcceptWithDetails: (details) => _onCenterTap(details.data.card),
+        builder: (context, marketCandidate, _) {
+          return DragTarget<CardModel>(
+            onWillAcceptWithDetails: (_) => myTurn,
+            onAcceptWithDetails: (details) => _playHandCard(details.data),
+            builder: (context, candidate, rejected) {
+              return _NetworkPlayField(
+                opponentChampions: opponent?.champions ?? const [],
+                opponentPlayedThisTurn: opponent?.playedThisTurn ?? const [],
+                opponentName: opponent?.name,
+                opponentId: opponent?.id,
+                cardFor: _card,
+                canAttackChampions: myTurn && me.powerPool > 0,
+                onAttackChampion: _onOpponentChampionTap,
+                onZoomCard: _zoomOne,
+                myChampions: me.champions,
+                playedThisTurn: me.playedThisTurn,
+                onActivateChampion: myTurn ? _onMyChampionTap : null,
+                onZoomMyChampion: (champ) =>
+                    _zoomMyChampion(me.champions, champ),
+                actionMessage: _actionMessage,
+                screenWidth: screenWidth,
+                isDropTarget:
+                    candidate.isNotEmpty || marketCandidate.isNotEmpty,
+              );
+            },
           );
         },
       ),
@@ -1412,6 +1450,15 @@ class _MiniCount extends StatelessWidget {
   }
 }
 
+/// Drag payload for a market card being dragged toward the play field to be
+/// recruited. A DISTINCT type from a hand-card drag (raw [CardModel]) so the
+/// play field's two DragTargets never cross-fire: a market drag only triggers
+/// the recruit target, a hand drag only the play target.
+class _MarketCardDrag {
+  const _MarketCardDrag(this.card);
+  final CardModel card;
+}
+
 /// Center row — 6 market cards, sized to fit the row width (mirrors
 /// game_screen.dart's _CenterRow).
 class _NetworkCenterRow extends StatelessWidget {
@@ -1421,6 +1468,7 @@ class _NetworkCenterRow extends StatelessWidget {
     required this.onTapCard,
     required this.onLongPressCard,
     required this.screenWidth,
+    this.onDragStarted,
     this.conditionsMet,
   });
 
@@ -1428,6 +1476,10 @@ class _NetworkCenterRow extends StatelessWidget {
   final bool Function(CardModel) canAfford;
   final void Function(CardModel) onTapCard;
   final void Function(CardModel) onLongPressCard;
+
+  /// Fired when a market card begins being dragged (long-press). Null disables
+  /// dragging (off-turn). Dropping on the play field recruits the card.
+  final void Function(CardModel)? onDragStarted;
   final double screenWidth;
 
   /// Returns true for a market card whose conditional bonus is active now (paints
@@ -1450,18 +1502,84 @@ class _NetworkCenterRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             for (final card in cards)
-              GameCardWidget(
-                key: ValueKey(card.id),
+              _MaybeDraggableMarketCard(
                 card: card,
-                onTap: () => onTapCard(card),
-                onLongPress: () => onLongPressCard(card),
+                cardWidth: cardWidth,
+                canDrag: onDragStarted != null,
                 isHighlighted: canAfford(card),
                 conditionsMet: conditionsMet?.call(card) ?? false,
-                width: cardWidth,
+                onTap: () => onTapCard(card),
+                onLongPress: () => onLongPressCard(card),
+                onDragStarted: () => onDragStarted?.call(card),
               ),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// A market card that is TAP-to-select and (on your turn) LONG-PRESS-to-drag
+/// (drop on the play field → recruit). Mirrors the hand's [_DraggableHandCard]:
+/// when draggable, the long-press begins the drag, so the card's own onLongPress
+/// popup is suppressed (tap still opens the popup).
+class _MaybeDraggableMarketCard extends StatelessWidget {
+  const _MaybeDraggableMarketCard({
+    required this.card,
+    required this.cardWidth,
+    required this.canDrag,
+    required this.isHighlighted,
+    required this.conditionsMet,
+    required this.onTap,
+    required this.onLongPress,
+    required this.onDragStarted,
+  });
+
+  final CardModel card;
+  final double cardWidth;
+  final bool canDrag;
+  final bool isHighlighted;
+  final bool conditionsMet;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
+  final VoidCallback onDragStarted;
+
+  @override
+  Widget build(BuildContext context) {
+    final resting = GameCardWidget(
+      key: ValueKey(card.id),
+      card: card,
+      onTap: onTap,
+      // When draggable, long-press starts the drag (not the popup); tap still
+      // opens the popup. Off-turn, long-press falls back to the popup.
+      onLongPress: canDrag ? null : onLongPress,
+      isHighlighted: isHighlighted,
+      conditionsMet: conditionsMet,
+      width: cardWidth,
+    );
+
+    if (!canDrag) return resting;
+
+    final feedback = Material(
+      color: Colors.transparent,
+      child: Transform.scale(
+        scale: 1.1,
+        child: GameCardWidget(
+          card: card,
+          isHighlighted: true,
+          showCost: false,
+          width: cardWidth,
+        ),
+      ),
+    );
+
+    return LongPressDraggable<_MarketCardDrag>(
+      data: _MarketCardDrag(card),
+      dragAnchorStrategy: childDragAnchorStrategy,
+      onDragStarted: onDragStarted,
+      feedback: feedback,
+      childWhenDragging: Opacity(opacity: 0.3, child: resting),
+      child: resting,
     );
   }
 }
@@ -1610,7 +1728,9 @@ class _NetworkPlayField extends StatelessWidget {
                 ),
               ),
             const Spacer(),
-            // My champions + played-this-turn row, just above the hand.
+            // My champions + played-this-turn row, just above the hand. Centered
+            // (like the official client) so it sits in the middle of the play
+            // field rather than hugging the left edge over the End Turn column.
             if (myChampions.isNotEmpty || playedThisTurn.isNotEmpty)
               SizedBox(
                 height: champHeight,
