@@ -4,11 +4,24 @@ import 'package:simple_card_game/services/game_client.dart';
 import 'package:simple_card_game/ui/screens/network_game_screen.dart';
 
 /// Widget coverage for the three network-layer features on the in-game board:
-///  - the top-right FORFEIT button + its "Are you sure?" confirm dialog,
+///  - the FORFEIT button (now nested INSIDE the game-log sheet) + its
+///    "Are you sure?" confirm dialog,
 ///  - the read-only SPECTATING chrome (no Forfeit button, SPECTATING badge),
 ///  - the server-restart heads-up banner on an unexpected disconnect.
 void main() {
   setUpAll(TestWidgetsFlutterBinding.ensureInitialized);
+
+  /// Open the game-log popout (the Forfeit control lives inside it now). We
+  /// invoke the Log button's handler directly: in the headless test harness the
+  /// ScrollableBoard centers its content, so the top-bar Log button overlaps the
+  /// centered opponent pill and a pixel tap lands on the pill. Invoking
+  /// onPressed exercises the same code path the real tap runs.
+  Future<void> openLog(WidgetTester tester) async {
+    tester
+        .widget<TextButton>(find.byKey(const ValueKey('gameLogButton')))
+        .onPressed!();
+    await tester.pumpAndSettle();
+  }
 
   /// A minimal in-progress 2-player redacted state. `_PlayerView.parse` only
   /// needs each player's `id`; the rest default.
@@ -47,10 +60,15 @@ void main() {
     return client;
   }
 
-  testWidgets('a seated player sees a Forfeit button that confirms before '
-      'ending the game', (tester) async {
+  testWidgets('a seated player finds Forfeit INSIDE the log sheet; it confirms '
+      'before ending the game', (tester) async {
     await pump(tester, you: 'p0');
 
+    // Not in the top bar anymore.
+    expect(find.byKey(const ValueKey('forfeitGameButton')), findsNothing);
+
+    // Open the log popout — the Forfeit control lives there now.
+    await openLog(tester);
     final forfeitBtn = find.byKey(const ValueKey('forfeitGameButton'));
     expect(forfeitBtn, findsOneWidget);
 
@@ -68,7 +86,9 @@ void main() {
     expect(find.text('Forfeit game?'), findsNothing);
 
     // Confirm path closes the dialog (sends forfeit — a no-op without a socket).
-    await tester.tap(forfeitBtn);
+    // The log sheet closed on tap, so re-open it to reach Forfeit again.
+    await openLog(tester);
+    await tester.tap(find.byKey(const ValueKey('forfeitGameButton')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('forfeitConfirmButton')));
     await tester.pumpAndSettle();
@@ -82,7 +102,12 @@ void main() {
     await pump(tester, you: '', spectating: true);
 
     expect(find.text('SPECTATING'), findsOneWidget);
+    // Even inside the log sheet, a spectator gets no Forfeit control.
+    await openLog(tester);
     expect(find.byKey(const ValueKey('forfeitGameButton')), findsNothing);
+    // Close the sheet again so the rest of the board assertions see it.
+    await tester.tap(find.text('CLOSE'));
+    await tester.pumpAndSettle();
     // Not the spectator's turn → the End Turn control is absent/disabled.
     expect(find.text('YOUR TURN'), findsNothing);
     expect(tester.takeException(), isNull);

@@ -1270,7 +1270,10 @@ class GameService {
     // the ignore-shield flag are board-visible). shieldNeeded is 0 when the
     // attacker ignores shield this turn.
     final shieldNote = shieldNeeded > 0 ? ' (shield $shieldNeeded absorbed)' : '';
-    _log('destroyed ${target.name}\'s ${champion.name}$shieldNote',
+    // Reference the victim by SEAT ID (`p0`), not PlayerState.name: the UI's
+    // shared log renderer (and the server's name rewrite) resolves seat ids to
+    // real player names, so the line reads with usernames on both boards.
+    _log('destroyed ${target.id}\'s ${champion.name}$shieldNote',
         playerId: currentPlayer.id, cardId: champion.id);
     return true;
   }
@@ -1300,7 +1303,7 @@ class GameService {
     if (hasGuard) {
       // Public-info-safe: guard champions and their owner are visible on the
       // board, so noting that a guard blocked the direct attack leaks nothing.
-      _log("${target.name}'s guard blocked the attack",
+      _log("${target.id}'s guard blocked the attack",
           playerId: currentPlayer.id);
       return false;
     }
@@ -1310,7 +1313,7 @@ class GameService {
     final attackerId = currentPlayer.id;
     currentPlayer.powerPool -= amount;
     target.takeDamage(amount);
-    _log('dealt $amount damage to ${target.name}', playerId: attackerId);
+    _log('dealt $amount damage to ${target.id}', playerId: attackerId);
 
     // Publish a structured "last damage" event so every client (attacker AND
     // victim) can play the SAME attack animation once, keyed off the bumped seq.
@@ -2752,12 +2755,12 @@ class GameService {
     if (_gameOver) {
       if (winnerId != null) {
         final w = players.firstWhere((p) => p.id == winnerId);
-        _log('${w.name} wins!');
+        _log('${w.id} wins!');
       }
       return;
     }
 
-    _log('— Turn $turnNumber: ${currentPlayer.name} —');
+    _log('— Turn $turnNumber: ${currentPlayer.id} —');
     startTurn();
   }
 

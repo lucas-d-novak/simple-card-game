@@ -69,6 +69,44 @@ void main() {
     });
   });
 
+  group('Action log — player references use SEAT IDS (name-resolvable)', () {
+    // The UI's shared log renderer (and the server name rewrite) resolve engine
+    // seat ids (`p0`) to real player names. So messages that reference a player
+    // must embed the SEAT ID, never the raw PlayerState.name — otherwise the
+    // networked board shows "Player 2" instead of the lobby username.
+    test('direct-attack damage references the victim by seat id', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final attacker = game.currentPlayer;
+      final victim = game.players.firstWhere((p) => p.id != attacker.id);
+      attacker.powerPool = 5;
+
+      game.attackPlayer(victim.id, 3);
+      final entry =
+          game.actionLog.lastWhere((e) => e.message.contains('damage to'));
+      expect(entry.message, 'dealt 3 damage to ${victim.id}');
+      expect(entry.message, isNot(contains(victim.name)));
+    });
+
+    test('turn header references the current player by seat id', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      game.endTurn(); // advances the turn → logs a header for the next player
+      final header =
+          game.actionLog.lastWhere((e) => e.message.contains('Turn'));
+      expect(header.message, '— Turn 1: ${game.currentPlayer.id} —');
+    });
+
+    test('win message references the winner by seat id', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      // Eliminate p0; ending the (eliminated) player's turn advances to the sole
+      // survivor and logs the win via _advanceTurn.
+      game.players[0].health = 0;
+      game.endTurn();
+      expect(game.isGameOver, isTrue);
+      final win = game.actionLog.lastWhere((e) => e.message.contains('wins!'));
+      expect(win.message, '${game.winnerId} wins!');
+    });
+  });
+
   group('Action log — resource grant icons data (TASK 3)', () {
     test('a played card records its flat resource grants', () {
       final game = GameService(playerCount: 2, random: Random(7));

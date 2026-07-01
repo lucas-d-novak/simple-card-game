@@ -1108,7 +1108,7 @@
     },
     {
       "id": "taur_archpriest",
-      "name": "Taur, Archpriest",
+      "name": "Taur, Arachpriest",
       "faction": "undergrowth",
       "copies": 1,
       "playEffects": [],
@@ -1483,6 +1483,7 @@
     },
     {
       "id": "crimson_operative",
+      "ksOnly": true,
       "name": "Crimson Operative",
       "faction": "none",
       "copies": 1,
@@ -1550,6 +1551,7 @@
     },
     {
       "id": "concussio_and_mirus",
+      "ksOnly": true,
       "name": "Concussio and Mirus",
       "faction": "homodeus",
       "copies": 1,
@@ -1644,6 +1646,7 @@
     },
     {
       "id": "nexus_datic_hunter",
+      "ksOnly": true,
       "name": "Nexus, Datic Hunter",
       "faction": "order",
       "copies": 1,
@@ -1668,6 +1671,7 @@
     },
     {
       "id": "shard_cultist",
+      "ksOnly": true,
       "name": "Shard Cultist",
       "faction": "none",
       "copies": 2,
@@ -1685,6 +1689,7 @@
     },
     {
       "id": "stricture",
+      "ksOnly": true,
       "name": "Stricture",
       "faction": "none",
       "copies": 1,
@@ -1703,6 +1708,7 @@
     },
     {
       "id": "chlorophyte_guardian",
+      "ksOnly": true,
       "name": "Chlorophyte Guardian",
       "faction": "undergrowth",
       "copies": 1,
@@ -1778,6 +1784,7 @@
     },
     {
       "id": "spirit_leech",
+      "ksOnly": true,
       "name": "Spirit Leech",
       "faction": "wraethe",
       "copies": 1,
@@ -2612,7 +2619,7 @@
     },
     {
       "id": "keeper_of_datic_vessels",
-      "name": "Keeper of datic Vessels",
+      "name": "Keeper of Datic Vessels",
       "faction": "order",
       "copies": 1,
       "playEffects": [
@@ -2741,7 +2748,7 @@
     },
     {
       "id": "isa_tel_tor_the_axe",
-      "name": "Isa Tel Tor, the Axe",
+      "name": "Isa Tel Tor, The Axe",
       "faction": "wraethe",
       "copies": 1,
       "playEffects": [],

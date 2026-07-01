@@ -24,6 +24,7 @@ import 'package:simple_card_game/ui/widgets/destiny_tray.dart';
 import 'package:simple_card_game/ui/widgets/faction_flame_backdrop.dart';
 import 'package:simple_card_game/ui/widgets/game_card_widget.dart';
 import 'package:simple_card_game/ui/widgets/opponent_bar_strip.dart';
+import 'package:simple_card_game/ui/widgets/game_log_line.dart';
 import 'package:simple_card_game/ui/widgets/resource_grant.dart';
 import 'package:simple_card_game/ui/widgets/resource_icons.dart';
 import 'package:simple_card_game/ui/widgets/scrollable_board.dart';
@@ -1246,9 +1247,6 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
                       itemBuilder: (_, i) {
                         final e = entries[i];
                         final turn = e['turn'] as int? ?? 0;
-                        final who = view.nameFor(e['playerId'] as String?);
-                        final msg = e['message'] as String? ?? '';
-                        final grantIcons = _logGrantIcons(e['grants']);
                         return Padding(
                           padding: const EdgeInsets.symmetric(vertical: 3),
                           child: Row(
@@ -1260,27 +1258,17 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
                                     style: const TextStyle(
                                         color: Colors.white38, fontSize: 11)),
                               ),
+                              // The ONE shared log renderer: actor name + inline
+                              // resource icons (grants AND the recruit/Focus cost
+                              // words), on a single wrapping line (no newline
+                              // break). Seat ids resolve to usernames via
+                              // view.nameFor.
                               Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      who.isEmpty ? msg : '$who $msg',
-                                      style: const TextStyle(
-                                          color: Color(0xFFE8EEF4),
-                                          fontSize: 13,
-                                          height: 1.3),
-                                    ),
-                                    if (grantIcons.isNotEmpty)
-                                      Padding(
-                                        padding: const EdgeInsets.only(top: 2),
-                                        child: Wrap(
-                                          spacing: 6,
-                                          runSpacing: 2,
-                                          children: grantIcons,
-                                        ),
-                                      ),
-                                  ],
+                                child: GameLogLine(
+                                  message: e['message'] as String? ?? '',
+                                  actorId: e['playerId'] as String?,
+                                  grants: LogGrant.fromRaw(e['grants']),
+                                  nameOf: view.nameFor,
                                 ),
                               ),
                             ],
@@ -1290,13 +1278,35 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
                     ),
                   ),
                 const SizedBox(height: 6),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () => Navigator.of(ctx).pop(),
-                    child: const Text('CLOSE',
-                        style: TextStyle(color: Color(0xFF5FD0E6))),
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Forfeit now lives HERE (moved out of the top bar). A
+                    // spectator isn't a player and can't forfeit, and a finished
+                    // game has nothing to forfeit — hidden in both cases.
+                    if (!widget.client.spectating && !view.isGameOver)
+                      TextButton.icon(
+                        key: const ValueKey('forfeitGameButton'),
+                        onPressed: () {
+                          Navigator.of(ctx).pop(); // close the log sheet first
+                          _confirmForfeit();
+                        },
+                        style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFFE57373),
+                        ),
+                        icon: const Icon(Icons.flag, size: 16),
+                        label: const Text('Forfeit',
+                            style: TextStyle(
+                                fontSize: 13, fontWeight: FontWeight.bold)),
+                      )
+                    else
+                      const SizedBox.shrink(),
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      child: const Text('CLOSE',
+                          style: TextStyle(color: Color(0xFF5FD0E6))),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -1304,57 +1314,6 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
         );
       },
     );
-  }
-
-  /// Map an action-log entry's structured `grants` (a list of {kind, amount}
-  /// maps shipped by the engine's `LogResourceGrant`) to small resource-icon +
-  /// count widgets. Unknown kinds are skipped. Returns an empty list when there
-  /// are no grants.
-  List<Widget> _logGrantIcons(Object? rawGrants) {
-    if (rawGrants is! List) return const [];
-    ResourceIcon? iconFor(String kind) {
-      switch (kind) {
-        case 'gem':
-          return ResourceIcon.gem;
-        case 'power':
-          return ResourceIcon.power;
-        case 'mastery':
-          return ResourceIcon.mastery;
-        case 'health':
-          return ResourceIcon.health;
-        default:
-          return null;
-      }
-    }
-
-    final out = <Widget>[];
-    for (final g in rawGrants) {
-      if (g is! Map) continue;
-      final icon = iconFor((g['kind'] as String?) ?? '');
-      final amount = (g['amount'] as int?) ?? 0;
-      if (icon == null || amount <= 0) continue;
-      // Show one icon per unit up to a small cap, then "xN" for large grants so
-      // a big number doesn't blow out the row.
-      final capped = amount.clamp(1, 5);
-      out.add(Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (var k = 0; k < capped; k++)
-            Padding(
-              padding: const EdgeInsets.only(right: 1),
-              child: ResourceIconWidget(icon, size: 13),
-            ),
-          if (amount > capped)
-            Padding(
-              padding: const EdgeInsets.only(left: 1),
-              child: Text('x$amount',
-                  style: const TextStyle(
-                      color: Color(0xFFC7D2DC), fontSize: 11)),
-            ),
-        ],
-      ));
-    }
-    return out;
   }
 
   /// Show what's left in YOUR draw pile — the CONTENTS, sorted alphabetically.
@@ -1673,11 +1632,6 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
             Navigator.of(context).maybePop();
           },
           onShowLog: () => _showLog(view),
-          // A spectator can't forfeit (not a player); only a seated player and
-          // only while the game is live.
-          onForfeit: (!widget.client.spectating && !view.isGameOver)
-              ? _confirmForfeit
-              : null,
           spectating: widget.client.spectating,
         ),
 
@@ -2166,7 +2120,6 @@ class _NetworkTopBar extends StatelessWidget {
     required this.myTurn,
     required this.onBackToLobby,
     required this.onShowLog,
-    required this.onForfeit,
     required this.spectating,
   });
 
@@ -2176,12 +2129,9 @@ class _NetworkTopBar extends StatelessWidget {
   /// Pop back to the lobby without tearing down the connection.
   final VoidCallback onBackToLobby;
 
-  /// Open the scrollable game log.
+  /// Open the scrollable game log. The Forfeit control now lives INSIDE that
+  /// log sheet (see [_NetworkGameScreenState._showLog]).
   final VoidCallback onShowLog;
-
-  /// Forfeit (close out) the game — the operator control. Null for a spectator
-  /// (a watcher isn't a player and can't end the game), which hides the button.
-  final VoidCallback? onForfeit;
 
   /// True when this client is WATCHING (read-only) rather than playing — the
   /// turn badge reads "SPECTATING" instead of "YOUR TURN"/"WAITING".
@@ -2220,6 +2170,7 @@ class _NetworkTopBar extends StatelessWidget {
                               fontSize: 12, fontWeight: FontWeight.bold)),
                     ),
                     TextButton.icon(
+                      key: const ValueKey('gameLogButton'),
                       onPressed: onShowLog,
                       style: TextButton.styleFrom(
                         foregroundColor: const Color(0xFFBFD8E8),
@@ -2257,27 +2208,8 @@ class _NetworkTopBar extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Forfeit game — the operator "close out this test game"
-                    // control, pinned TOP-RIGHT. Confirms before ending. Hidden
-                    // for spectators (onForfeit == null).
-                    if (onForfeit != null) ...[
-                      TextButton.icon(
-                        key: const ValueKey('forfeitGameButton'),
-                        onPressed: onForfeit,
-                        style: TextButton.styleFrom(
-                          foregroundColor: const Color(0xFFE57373),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        icon: const Icon(Icons.flag, size: 16),
-                        label: const Text('Forfeit',
-                            style: TextStyle(
-                                fontSize: 12, fontWeight: FontWeight.bold)),
-                      ),
-                      const SizedBox(width: 4),
-                    ],
+                    // (The Forfeit control moved OUT of the top bar and now
+                    // lives inside the game-log sheet — see _showLog.)
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 5),

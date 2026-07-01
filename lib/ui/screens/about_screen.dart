@@ -159,6 +159,24 @@ class AboutScreen extends StatelessWidget {
               ),
             ),
           ),
+          // Back-to-lobby affordance, pinned top-left (this screen has no
+          // AppBar, so there's no automatic back arrow). Popping this pushed
+          // route returns to the lobby.
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 4, left: 8),
+                child: IconButton(
+                  key: const ValueKey('aboutBackButton'),
+                  tooltip: 'Back',
+                  onPressed: () => Navigator.of(context).maybePop(),
+                  icon: const Icon(Icons.arrow_back),
+                  color: const Color(0xFFBFD8E8),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
