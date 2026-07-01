@@ -25,7 +25,7 @@ cards.json  ──(CardDatabase.load)──►  CardRecord  ──.model──�
 ```
 
 The DB is now the **live content source**: `lib/data/market_deck.dart` builds the
-in-game market (96 unique in-scope cards, 163 total copies via real per-card
+in-game market (88 unique in-scope cards, 155 total copies via real per-card
 `copies`) and the SEPARATE Destiny supply (29 cards) directly from these records
 and injects them into `GameService`.
 
@@ -140,12 +140,12 @@ See `schema.json` `definitions.effect` for the full list. Quick reference:
 
 > `cards.json` currently holds **183 entries**, of which **142 are in-scope** and
 > **41** are out-of-scope co-op/boss cards flagged `outOfScope: true` (excluded
-> from the verification target). **All 101 verified entries are in-scope**
+> from the verification target). **All 102 verified entries are in-scope**
 > (`verified: true`); the remaining in-scope cards still need their fields
 > confirmed against the physical cards before flipping `verified: true`. No
 > in-scope card is left blank — every in-scope entry is encoded.
 
-> **Verification status (why 101/142, not higher).** The 41 remaining unverified
+> **Verification status (why 102/142, not higher).** The 40 remaining unverified
 > in-scope cards were adversarially re-checked against their card art:
 > **0 flipped to `verified: true`.** Each carries a genuinely **unmodellable**
 > mechanic the current `CardEffect` vocabulary can't express (variable shields,

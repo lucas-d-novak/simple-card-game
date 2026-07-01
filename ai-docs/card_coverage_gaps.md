@@ -1,5 +1,12 @@
 # Card Coverage Gap List
 
+> **SUPERSEDED (historical snapshot).** This file's per-card tables no longer
+> match `cards.json`, and its "pending the activated-ability engine" framing is
+> false — the activated-ability engine, `cannotBeAttacked`, `copyPlayedCard`,
+> scaling resources, and the health-loss scry dispositions all SHIPPED. For live
+> coverage use the generated [`assets/card_db/COVERAGE.md`](../assets/card_db/COVERAGE.md)
+> and `dart run tool/validate_card_db.dart`. Kept only as a dated record.
+
 _Originally auto-generated from `assets/card_db/cards.json`. Tracks cards still missing effect information or encoded effects._
 
 > **Stale snapshot — see the live `COVERAGE.md`.** The per-card tables (sections A

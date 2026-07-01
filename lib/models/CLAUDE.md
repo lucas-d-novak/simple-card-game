@@ -70,8 +70,11 @@ Used for ally ability matching and visual theming (colors, art patterns).
 - `claimedDestinies` (List\<CardModel\>) — Destinies this player has claimed from the shared Destiny row (a persistent per-player zone; NOT reset between turns)
 - `exhaustedDestinies` (Set\<String\>) — ids of claimed Destinies whose per-turn ability has been used this turn (`GameService.useDestinyAbility`); cleared in `resetTurnResources()`
 - `relicOptions` (List\<CardModel\>) — the Character's set-aside relic choices, available to recruit once (see `GameService.recruitRelic` and `lib/data/character_relics.dart`)
+- `fastPlayedThisTurn` (List\<CardModel\>) — cards WARPED / fast-played this turn: they stay VISIBLE in the play area (rendered greyed by the UI) for the rest of the turn, then leave the game (moved to removed-from-game by `cleanupTurn()`, NOT discarded). Shipped in the redacted view so both players can see them.
+- `cardsUnderChampion` (Map\<String, List\<CardModel\>\>) — cards tucked face-down under a champion (`cardsUnderCount(id)` helper); count-only in redacted views.
+- `cardsPlayedThisTurn` (List\<CardModel\>) — the play-history list scaling/conditional effects read (appended in `playCard`/fast-play; includes warped cards so play-history scaling still counts them); cleared each turn.
 - `isEliminated` — true when health <= 0
-- `cleanupTurn()` — moves regular cards to discard, returns mercenaries for removal
+- `cleanupTurn()` — moves regular cards to discard, returns mercenaries for removal, sweeps `fastPlayedThisTurn` to removed-from-game
 - `resetTurnResources()` — zeros gem and power pools, clears `focusedThisTurn`, `activatedChampions`, `exhaustedChampions`, `exhaustedDestinies`
 
 ## Extending

@@ -30,9 +30,11 @@ Fragments of Boundlessness is a competitive deck-building game where players acq
 
 ## 3. Setup
 
-1. Each player takes one **starter deck** of 10 cards:
+1. Each player takes one **starter deck** of 10 cards (as built by
+   [`lib/data/starter_deck.dart`](../lib/data/starter_deck.dart)):
    - 7 Crystals (each provides 1 Gem)
-   - 2 Blaster cards (each provides 1 Power)
+   - 1 Blaster (provides 1 Power)
+   - 1 Shard Reactor (Gem ramp, scales with Mastery)
    - 1 Infinity Shard (unique card -- starts in deck, not separate)
 2. Each player sets their **Health to 50** and **Mastery to 0**.
 3. Shuffle the main Infinity Deck and place it face down as the draw pile.
@@ -158,7 +160,7 @@ A player's turn consists of the following phases:
 
 There are **four factions** in the base game, each with a distinct color and mechanical identity:
 
-### 9a. Homodeus (Blue)
+### 9a. Homodeus (Gold)
 - **Theme**: Technology, knowledge, transcendence
 - **Mechanical identity**: Mastery generation, card draw, deck manipulation
 - **Strengths**: Fastest path to high Mastery, card advantage
@@ -170,7 +172,7 @@ There are **four factions** in the base game, each with a distinct color and mec
 - **Strengths**: High Power output, fast elimination
 - **Ally ability theme**: Bonus Power, forcing opponents to discard or lose health
 
-### 9c. Order of the New Dawn (Gold/Yellow)
+### 9c. Order of the New Dawn (Blue)
 - **Theme**: Healing, defense, unity
 - **Mechanical identity**: Health gain, shields, defensive Champions
 - **Strengths**: Survivability, healing to outlast opponents
@@ -275,7 +277,7 @@ Each player's starting 10-card deck:
 
 > **Disclaimer**: This card list is reconstructed from training data memory. Card names, costs, and effects are as accurate as possible but some details may have minor inaccuracies. Cards are organized by faction and then by cost.
 
-### 15a. Homodeus (Blue) Cards
+### 15a. Homodeus (Gold) Cards
 
 | Name | Cost | Type | Effect | Ally Ability | Mastery Bonus | Shield |
 |------|------|------|--------|-------------|---------------|--------|
@@ -312,7 +314,7 @@ Each player's starting 10-card deck:
 | Death Bringer | 7 | Regular | Gain 6 Power | - | Mastery 15+: Gain 4 additional Power | - |
 | Apocalypse | 8 | Mercenary | Gain 12 Power | - | Mastery 15+: Gain 6 additional Power | - |
 
-### 15c. Order of the New Dawn (Gold/Yellow) Cards
+### 15c. Order of the New Dawn (Blue) Cards
 
 | Name | Cost | Type | Effect | Ally Ability | Mastery Bonus | Shield |
 |------|------|------|--------|-------------|---------------|--------|
@@ -469,7 +471,7 @@ Some cards in the Infinity Deck have no faction affiliation:
   - You can split Power among multiple opponents and/or their Champions.
   - The game ends when only one player remains (or someone triggers the Infinity Shard at 30+ Mastery).
   - Eliminated players are fully removed from the game.
-  - The first player still draws fewer cards on their first turn.
+  - (Historical: the physical "first player draws fewer cards" rule. THIS IMPLEMENTATION uses the staggered-mastery variant in §3 instead — the first player does NOT draw fewer cards; see `GameService._initializeGame`.)
 - **Political dynamics**: Multiplayer adds negotiation and politics -- players may choose to gang up on a Mastery leader or leave a weakened player alone.
 
 ---
@@ -489,9 +491,9 @@ The Infinity Deck (main market deck) contains approximately **128 cards**. Cards
 ### Approximate Faction Distribution
 | Faction | Estimated Card Count in Deck |
 |---------|------------------------------|
-| Homodeus (Blue) | ~30 cards |
+| Homodeus (Gold) | ~30 cards |
 | Wraethe (Red) | ~30 cards |
-| Order of New Dawn (Gold) | ~30 cards |
+| Order of New Dawn (Blue) | ~30 cards |
 | Undergrowth (Green) | ~30 cards |
 | Neutral/Factionless | ~8 cards |
 | **Total** | **~128 cards** |

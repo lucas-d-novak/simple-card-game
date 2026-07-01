@@ -71,7 +71,7 @@ Builds the game's live supplies **from the authoritative database**, not the
 cost-bucket formula and not the legacy hardcoded catalog:
 
 - `buildMarketDeckFromDatabase(db)` → `List<MarketCard>` — the center-deck
-  (market) supply. **96 unique in-scope cards** (163 total copies), each carrying
+  (market) supply. **88 unique in-scope cards** (155 total copies), each carrying
   its REAL printed `copies` count from `cards.json`. Excludes starters,
   out-of-scope cards, cards with no modellable effect, and the separate Destiny /
   Aion-group supplies. Injected into `GameService` (constructor `marketDeck:`),
@@ -81,6 +81,14 @@ cost-bucket formula and not the legacy hardcoded catalog:
   Injected via `GameService` constructor `destinySupply:`; the engine deals six
   face-up into `destinyRow` and the rest into the cascade `destinyDeck`. Never
   part of the market.
+- `buildRelicCardsFromDatabase(db)` → `Map<String, CardModel>` — the Relics-of-
+  the-Future lookup (id → model for the 8 relic ids in `characterRelicIds`).
+  Injected via `GameService` constructor `relicCards:`. These relics are
+  recruited one-of-two for free at Mastery 10 — they are **excluded from the
+  market** (`buildMarketDeckFromDatabase` skips the relic ids), which is why the
+  market is **88 unique / 155 copies**, not 96/163. The Flutter setup screen and
+  the multiplayer server both inject this (and assign each seat a Character with a
+  relic pair) so the Mastery-10 relic popup actually appears.
 
 ### character_relics.dart
 
@@ -126,18 +134,31 @@ filtering by faction), `conditionalPower` (`condition`:
 the four `conditionalPower` conditions plus `perFactionCardInDiscard`/
 `perFactionChampionControlled`/`perFactionCardPlayedThisTurn`/
 `perAllyWithShieldPlayedThisTurn`; optional `perN` (default 1) and `faction`),
-`conditional` (`condition`: a `GameCondition` object with a `kind` (incl.
-`unblockedDamageAtLeast` — `threshold` = unblocked damage dealt this turn) +
-optional `threshold`/`faction`/`factions`/`parity`/`cardType`/`maxCost`/`character`;
-`then`: effects resolved only when the condition holds),
+`conditional` (`condition`: a `GameCondition` object with a `kind` — one of the
+**18 `GameConditionKind` values**, incl. `masteryAtLeast`, `healthAtLeast`
+(threshold = your current health), `highestMasteryAmongPlayers` (strict mastery
+lead over all others), `unblockedDamageAtLeast`, `factionAllyPlayedOrInHand`,
+`factionCardInDiscard`, `oddCostCardsPlayed`/`evenCostCardsPlayed`, `isCharacter`,
+… — plus optional
+`threshold`/`faction`/`factions`/`parity`/`cardType`/`maxCost`/`character`;
+`then`: effects resolved only when the condition holds. The full enum is the
+source of truth — see `GameConditionKind` in `card_effect.dart` and the enum in
+[`assets/card_db/schema.json`](../../assets/card_db/schema.json)),
 `addStaticModifier` (`kind`: `shieldBuff`/`cardCostReduction`/`cannotBeAttacked`/
 `recruitToTopOfDeck`; optional `amount`/`faction`/`cardType`; adds a persistent
 board-wide [StaticModifier] to the player — rest-of-game lifetime),
 `opponentDraws`/`opponentDiscards` (`count`: each OTHER player draws/discards N),
 `copyPlayedCard` (deferred-selection: `filter` `any`/`nonChampion`; re-resolves a
 played card's effects via `GameService.copyPlayedCard`; copy-cards and
-`infinityShard` are excluded), `centerDeckScry` (deferred-selection: `disposition`
-`acquire`/`toHandLosePowerEqualToCost`; reveals the top of the CENTER deck via
+`infinityShard` are excluded), `scry` (reveal the top of YOUR OWN deck;
+`disposition` is a `ScryDisposition`: the choice-based `drawOrDiscard` /
+`drawOrBanish` / `toHand` (deferred via `GameService.scryReveal`/`scryResolve`),
+OR the MANDATORY, resolve-inline `toHandLosePowerEqualToCost` /
+`toHandLoseHealthEqualToCost` (you lose that resource = the revealed card's cost)
+/ `toHandOpponentsLoseHealthEqualToCost` (all opponents lose it instead — Oblivion
+Gatekeeper's Mastery-20 replacement); the inline ones ignore Guard),
+`centerDeckScry` (deferred-selection: `disposition` `acquire`/
+`toHandLosePowerEqualToCost`; reveals the top of the CENTER deck via
 `GameService.centerDeckScryReveal`/`centerDeckScryResolve`),
 `infinityShard`, `chooseOne` (`choices`: array of effect groups). `gainMoney`
 is legacy and not part of the Fragments of Boundlessness database.

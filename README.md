@@ -13,8 +13,8 @@ Fragments of Boundlessness orchestrator implementing multiplayer turns, all **31
 `CardEffect` types, champions/guard/ally abilities, mastery, banish/scrap, the
 Character Focus action (gem→mastery), the Destiny system, Relics, and the
 Infinity Shard win condition. Card identity comes from a JSON card database
-([`assets/card_db/cards.json`](assets/card_db/cards.json), **183 cards**; 101 of
-the 142 in-scope cards verified so far). The live market (96 in-scope cards) and
+([`assets/card_db/cards.json`](assets/card_db/cards.json), **183 cards**; 102 of
+the 142 in-scope cards verified so far). The live market (88 in-scope cards) and
 the separate Destiny supply (29 cards) are built from that database via
 [`lib/data/market_deck.dart`](lib/data/market_deck.dart).
 
@@ -210,9 +210,9 @@ flutter test test/screenshot_test.dart --update-goldens
 
 ### Tests
 
-The Flutter suite has **563 engine tests** (run with `flutter test --exclude-tags golden`)
+The Flutter suite has **608 engine tests** (run with `flutter test --exclude-tags golden`)
 plus **8 golden screenshot tests** (run locally with plain `flutter test`). The
-server package has **46 server tests** (`cd server && dart test`) covering state
+server package has **52 server tests** (`cd server && dart test`) covering state
 redaction, action authorization, lobby flow, undo, reconnect/resync, persistence,
 and player-stats/telemetry capture. Highlights:
 
@@ -239,7 +239,7 @@ The `android/`, `ios/`, and `web/` folders are the main product targets. The des
 The authoritative source of card data is the JSON database in
 [`assets/card_db/`](assets/card_db/README.md):
 
-- [`cards.json`](assets/card_db/cards.json) — the 183-card database (142 in-scope, 101 verified; 41 out-of-scope co-op/boss), one entry per unique card. The 41 remaining unverified in-scope cards were adversarially re-checked against art and **0 flipped** — each has a genuinely unmodellable mechanic (variable shields, reveal-from-hand, per-resource scaling, etc.), so raising coverage now requires **engine work** (new effect types), not data entry.
+- [`cards.json`](assets/card_db/cards.json) — the 183-card database (142 in-scope, 102 verified; 41 out-of-scope co-op/boss), one entry per unique card. The 40 remaining unverified in-scope cards were adversarially re-checked against art and **0 flipped** — each has a genuinely unmodellable mechanic (variable shields, reveal-from-hand, per-resource scaling, etc.), so raising coverage now requires **engine work** (new effect types), not data entry.
 - [`schema.json`](assets/card_db/schema.json) — the per-field contract (`set`, `faction`, `group`, `cardType`, `cost`, `playEffects`, `art`, `verified`, and more).
 - [`README.md`](assets/card_db/README.md) — the data-entry workflow (phone photos + OCR → structured fields).
 

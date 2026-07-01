@@ -213,8 +213,8 @@ fix must clear **both** a mechanical gate and an adversarial-review gate:
 
 ```bash
 flutter analyze                       # static analysis clean
-flutter test --exclude-tags golden    # the 563 engine/UI tests CI runs
-cd server && dart test                # 46 server tests
+flutter test --exclude-tags golden    # the 608 engine/UI tests CI runs
+cd server && dart test                # 52 server tests
 dart run tool/validate_card_db.dart   # if cards.json changed
 ```
 

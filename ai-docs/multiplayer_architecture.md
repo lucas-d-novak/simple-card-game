@@ -464,6 +464,20 @@ unredacted hand or deck order.
 >   already used this turn, so the client's **Destiny ability tray**
 >   (`showDestinyTray`) can grey out spent Destinies. Claimed Destinies are public;
 >   their per-turn exhaustion is surfaced here.
+> - **Lobby usernames, not seat ids.** `redactFor` takes a seat-id→username
+>   `names` map (built by `GameSession` from `playerIds` in seat order) and ships
+>   each player's `name` as their **lobby username** (the engine's immutable seat
+>   `id` — `p0`.. — stays the identity used for turn/winner *matching*, but is
+>   never the *display* string). `_namifyMessage` also rewrites seat ids embedded
+>   INSIDE action-log messages ("destroyed p0's champion", "p0 wins!") to
+>   usernames. `winnerId` on the wire stays the seat id (the client resolves it to
+>   a player + name); the lobby separately records the winning **username** +
+>   `winType` via `GameSession.winnerLobbyId` for the past-games summary.
+> - **`fastPlayedThisTurn`** — public card ids that were warped / fast-played this
+>   turn; they stay visible (greyed) in the play area until end of turn, when they
+>   leave the game. **`lastDamage`** — a `{seq, fromId, toId, fromName, toName,
+>   amount}` event for the most recent direct player-attack, so both the attacker
+>   and the victim animate the same damage flash (fires once per `seq`).
 
 > **Anti-cheat note (expanded in [§8](#8-security--anti-cheat)):** redaction is
 > not a UI nicety, it is the primary anti-cheat. A modified client cannot reveal
@@ -1079,7 +1093,7 @@ broadcast **no** state (nothing changed).
 ## Appendix B — Why this is low-risk
 
 The risky part of a card game is the rules engine, and **it already exists, is
-tested (563 engine tests + 46 server tests), is deterministic, and is pure Dart.** This architecture adds
+tested (608 engine tests + 52 server tests), is deterministic, and is pure Dart.** This architecture adds
 exactly three new responsibilities around that proven core: (1) a courier
 (WebSocket + envelope), (2) a redaction filter (the security boundary), and (3) a
 lobby + store. None of them re-implement a single game rule. That separation is

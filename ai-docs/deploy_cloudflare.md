@@ -211,7 +211,7 @@ On a healthy start you'll see lines like:
 ```
 Access token REQUIRED (clients must present SHARDS_ACCESS_TOKEN).
 Origin allowlist: https://play.example.com
-Loaded card DB: 183 records, 96 unique market cards, 29 Destinies (separate supply).
+Loaded card DB: 183 records, 88 unique market cards, 29 Destinies (separate supply), 8 relics.
 Player-stats telemetry enabled.
 Persistence enabled at data (no games to restore).
 Shards server listening on ws://0.0.0.0:8080
@@ -471,7 +471,7 @@ https://play.example.com
 The token is just an env var. To rotate:
 
 1. Restart the server with a new `SHARDS_ACCESS_TOKEN` (e.g.
-   `SHARDS_ACCESS_TOKEN=alpha-9F4L ./build/shards-server 8080`).
+   `SHARDS_ACCESS_TOKEN=alpha-9F4L dart run bin/server.dart 8080`).
 2. Existing connections that re-identify with the old code are rejected
    (`4001`); the client **auto-reprompts** for the code on rejection.
 3. Tell invitees the new code. If a client has the old code saved, it offers
@@ -504,7 +504,7 @@ restart (below).
 ### Updating the deploy
 
 1. `flutter build web --release` (if client changed) and/or rebuild the server
-   exe (`dart compile exe ...`).
+   server via `dart run bin/server.dart` after `dart pub get` — do NOT `dart compile exe` (see §4: sqlite3 build hooks make the compiled exe fail).
 2. Stop the server (in-flight games are persisted; clients see a brief
    disconnect — forgiving for turn-based).
 3. Swap the static files / binary, restart. Clients reconnect and resync.

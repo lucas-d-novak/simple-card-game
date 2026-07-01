@@ -10,13 +10,13 @@ Build a playable digital version of Fragments of Boundlessness with all core mec
 
 ```bash
 flutter pub get              # install dependencies
-flutter test                 # run all tests (563 + 8 goldens)
+flutter test                 # run all tests (608 + 8 goldens)
 flutter run -d windows       # run on Windows
 flutter run -d chrome        # run in browser
 flutter analyze              # static analysis
 
 # Multiplayer server (pure Dart, reuses the engine):
-cd server && dart pub get && dart test       # 46 server tests
+cd server && dart pub get && dart test       # 52 server tests
 cd server && dart run bin/server.dart 8080   # run the WebSocket server
 # Optional env: SHARDS_ACCESS_TOKEN (shared-secret auth gate), SHARDS_ALLOWED_ORIGINS
 # (WS origin allowlist), SHARDS_STATS_DB (telemetry SQLite path, default server/data/stats.db)
@@ -43,7 +43,7 @@ lib/
 ├── data/
 │   ├── card_definitions.dart           # Legacy hardcoded catalog (55 unique cards)
 │   ├── card_art_map.dart               # Card name → asset image path mapping (fallback when CardModel.art is unset)
-│   ├── market_deck.dart                # buildMarketDeckFromDatabase (96 in-scope market cards) + buildDestinySupplyFromDatabase (29 destinies)
+│   ├── market_deck.dart                # buildMarketDeckFromDatabase (88 in-scope market cards) + buildDestinySupplyFromDatabase (29 destinies)
 │   ├── character_relics.dart           # Character/relic recruitment options (recruitRelic supply)
 │   ├── starter_deck.dart               # 10-card starter deck builder
 │   └── database/                       # JSON-backed authoritative card DB
@@ -110,7 +110,7 @@ server/                                  # Authoritative multiplayer (pure-Dart,
   (`dart run tool/validate_card_db.dart`).
 - **Market & Destiny supplies** — [`lib/data/market_deck.dart`](lib/data/market_deck.dart):
   the center deck is built from the authoritative DB via
-  `buildMarketDeckFromDatabase` (96 in-scope market cards, with real printed
+  `buildMarketDeckFromDatabase` (88 in-scope market cards, with real printed
   per-card `copies` counts — NOT a cost-bucket formula, NOT only the legacy
   `card_definitions.dart`). Destinies are a SEPARATE supply built by
   `buildDestinySupplyFromDatabase` (29 cards), excluded from the market; the
@@ -265,11 +265,22 @@ server/                                  # Authoritative multiplayer (pure-Dart,
 | Card play animations (scale + highlight) | Done | `game_screen.dart` |
 | Board fly-animations (deck→market, resource pips, recruit→discard) | Done | `board_animator.dart`, `fly_overlay.dart` |
 | Legacy demo catalog (55 unique cards) | Done | `card_definitions.dart` |
-| Authoritative card DB (183 cards, 101/142 in-scope verified, 41 out-of-scope) | In progress | `assets/card_db/cards.json` |
+| Authoritative card DB (183 cards, 102/142 in-scope verified, 41 out-of-scope) | In progress | `assets/card_db/cards.json` |
 | Card-verify adversarial re-check (41 unverified re-audited, 0 flipped) | Done | `assets/card_db/cards.json` |
 | Engine Phase 2 + 3 (31 effect types) | Done | `card_effect.dart`, `game_service.dart` |
 | Game-state serialization (multiplayer snapshot) | Done | `game_state_codec.dart` |
 | Authoritative multiplayer server (Phase 0/1) | Done | `server/` |
+| Relics DB-built + wired (server + setup); recruited at Mastery 10, not bought | Done | `market_deck.dart` (`buildRelicCardsFromDatabase`), `server/bin/server.dart`, `game_setup_screen.dart` |
+| Lobby usernames in redacted views (namebars, log, winner, deck label) | Done | `server/lib/views.dart` (`names`/`displayName`/`_namifyMessage`), `game_session.dart` (`winnerLobbyId`) |
+| Past-games summary + winner in the lobby | Done | `network_lobby_screen.dart`, `lobby.dart` |
+| Version-poll auto-refresh on redeploy (git-SHA stamp) | Done | `scripts/build_web.sh`, `web/version.json`, `web/index.html` |
+| `healthAtLeast` + `highestMasteryAmongPlayers` conditions | Done | `card_effect.dart`, `game_service.dart` |
+| Health-loss scry dispositions (`toHandLoseHealthEqualToCost` / `...OpponentsLose...`) | Done | `card_effect.dart`, `game_service.dart` (Oblivion Gatekeeper) |
+| Fast-played / warped cards stay visible (greyed) + `warped` log verb | Done | `player_state.dart` (`fastPlayedThisTurn`), `network_game_screen.dart` (`_GreyedPlayTile`) |
+| Action-log resource-grant icons + guard/shield-prevention notes | Done | `game_service.dart`, `resource_grant.dart` |
+| Affordable-market blue glow + edge-fade scroll rows | Done | `game_card_widget.dart`, `network_game_screen.dart` (`_EdgeFadeScroll`) |
+| Direct-attack warning when opponent has killable champions | Done | `network_game_screen.dart` |
+| `cannotBeAttacked` exempts its own source champion (Zetta attackable) | Done | `game_service.dart` |
 
 ## Factions
 
@@ -283,18 +294,18 @@ server/                                  # Authoritative multiplayer (pure-Dart,
 ## Testing
 
 ```bash
-flutter test                              # all tests (563 + 8 goldens)
-flutter test --exclude-tags golden        # what CI runs (563)
+flutter test                              # all tests (608 + 8 goldens)
+flutter test --exclude-tags golden        # what CI runs (608)
 flutter test test/services/               # game service + deck service + AI tests
 flutter test test/data/                   # card db, codecs, serialization, starter deck
 flutter test test/models/                 # model-level tests
 flutter test test/widget_test.dart        # legacy widget tests
 flutter test test/screenshot_test.dart --update-goldens  # regenerate screenshots
 bash scripts/generate_report.sh           # generate visual QA report (HTML)
-cd server && dart test                    # 46 server tests (redaction + auth + lobby + undo + reconnect + persistence + stats)
+cd server && dart test                    # 52 server tests (redaction + auth + lobby + undo + reconnect + persistence + stats)
 ```
 
-- **563 engine tests** (+ 8 goldens, + 46 server tests) across game mechanics,
+- **608 engine tests** (+ 8 goldens, + 52 server tests) across game mechanics,
   models, data, codecs/serialization, AI, widgets, and the multiplayer server
 - Tests use deterministic `Random` injection (`Random(7)`, `ZeroRandom`)
 - Game service tests cover: initialization, all 31 effect types, buying, turn cycling, champions, guard, ally abilities, mastery thresholds (additive + replace), banish/scrap, infinity shard scaling, combat, win conditions, Character Focus, Destiny (claim/use/cascade) and Relics, Phase 2/3 board conditions, and integration scenarios. Serialization tests round-trip a full mid-game snapshot (including the action log). Server tests assert hidden-info redaction (including draw-pile contents sorted/order-hidden and the action-log tail), action authorization, per-turn undo, reconnect/resync/multi-game lobby flow, JSON/SQLite persistence across a restart, and the player-stats/telemetry capture.
@@ -314,7 +325,7 @@ See [`test/CLAUDE.md`](test/CLAUDE.md).
 
 1. `lib/services/game_service.dart` — all game mechanics (the brain)
 2. `lib/models/card_effect.dart` — sealed effect hierarchy, 31 types (the vocabulary)
-3. `assets/card_db/cards.json` — authoritative 183-card DB (the content; 101/142 in-scope verified, 41 out-of-scope). Legacy `lib/data/card_definitions.dart` (55 cards) still drives the live demo.
+3. `assets/card_db/cards.json` — authoritative 183-card DB (the content; 102/142 in-scope verified, 41 out-of-scope). Legacy `lib/data/card_definitions.dart` (55 cards) still drives the live demo.
 4. `test/services/game_service_test.dart` — mechanic tests (the spec)
 5. `lib/ui/screens/game_screen.dart` — game board UI
 6. `lib/services/ai_service.dart` — AI opponent logic
@@ -331,7 +342,8 @@ Cross-referenced. The mechanics doc is source of truth for game rules.
 - [`ai-docs/implementation_plan_review.md`](ai-docs/implementation_plan_review.md) — Peer review of v5 plan, all issues addressed in v6.
 - [`ai-docs/animation_system_design.md`](ai-docs/animation_system_design.md) — Design (5 iterations) behind the 3-speed animation system (`lib/ui/theme/animation_timing.dart`).
 - [`ai-docs/responsive_ui_design.md`](ai-docs/responsive_ui_design.md) — Design (5 iterations) behind the responsive breakpoints (`lib/ui/theme/responsive.dart`).
-- [`ai-docs/engine_gaps.md`](ai-docs/engine_gaps.md) — Catalogue of unmodeled competitive-multiplayer card mechanics the current `CardEffect` vocabulary can't express, plus a phased plan to extend the engine.
+- [`ai-docs/bug_patterns.md`](ai-docs/bug_patterns.md) — **Field guide to the recurring bug SHAPES** from the alpha bug-bash (resource-icon transcription errors, deferred-effect pickers, seat-id-vs-username leaks, stale deploy, rules-model gaps) and how to catch each class proactively. Read this before fixing a card-data or "nothing happened when I clicked" bug.
+- [`ai-docs/engine_gaps.md`](ai-docs/engine_gaps.md) — **(Historical)** Catalogue of unmodeled card mechanics the ORIGINAL 14-effect vocabulary couldn't express, plus the phased plan to extend the engine. Phases 1–3 have largely landed (31 effect types now) — see `card_effect.dart` + [`engine_phase2_plan.md`](ai-docs/engine_phase2_plan.md)/[`engine_phase3_plan.md`](ai-docs/engine_phase3_plan.md) for what shipped.
 - [`ai-docs/engine_phase2_plan.md`](ai-docs/engine_phase2_plan.md) / [`ai-docs/engine_phase3_plan.md`](ai-docs/engine_phase3_plan.md) — the Phase 2 (14→31 effect types) and Phase 3 (final gap families) engine-extension designs.
 - [`ai-docs/multiplayer_architecture.md`](ai-docs/multiplayer_architecture.md) — **Authoritative-server multiplayer design** (transport, action protocol, hidden-info redaction, access-token auth + origin allowlist, status probe, wss `/ws` routing, lobby, Pi/Cloudflare-Tunnel deploy, phased rollout). Phase 0/1 implemented in `server/`.
 - [`ai-docs/player_stats_design.md`](ai-docs/player_stats_design.md) — design of the hidden-info-safe player-stats / ML-decision telemetry SQLite store (`server/lib/stats_store.dart`).

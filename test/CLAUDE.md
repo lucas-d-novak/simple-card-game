@@ -4,9 +4,9 @@ Test suite covering game logic and UI behavior.
 
 ## Totals
 
-- **563 engine tests** — run with `flutter test --exclude-tags golden` (what CI runs).
+- **608 engine tests** — run with `flutter test --exclude-tags golden` (what CI runs).
 - **8 golden screenshot tests** — tagged `golden`, run locally with plain `flutter test`.
-- **46 server tests** — the separate `server/` Dart package; run with
+- **52 server tests** — the separate `server/` Dart package; run with
   `cd server && dart test`. Cover state redaction (hidden hands / deck order; the
   recipient's OWN draw-pile contents shipped SORTED — contents visible, order
   hidden; the trailing `actionLog` tail; the `cards` dictionary shipped to
@@ -74,8 +74,8 @@ Widget/integration tests that pump the full `DeckDrawApp` and interact via tap. 
 flutter test                              # all tests (incl. goldens) — run locally
 flutter test test/services/               # just service tests
 flutter test test/widget_test.dart         # just widget tests
-flutter test --exclude-tags golden        # what CI runs (skips goldens) — 563 tests
-cd server && dart test                    # the 46 server tests (redaction / auth / undo / reconnect / persistence / lobby / stats telemetry)
+flutter test --exclude-tags golden        # what CI runs (skips goldens) — 608 tests
+cd server && dart test                    # the 52 server tests (redaction / auth / undo / reconnect / persistence / lobby / stats telemetry)
 ```
 
 ## Golden screenshot tests (the `golden` tag)

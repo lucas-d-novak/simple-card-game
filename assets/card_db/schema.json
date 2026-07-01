@@ -338,13 +338,15 @@
             "championsControlled",
             "championsOfFactionControlled",
             "masteryAtLeast",
+            "healthAtLeast",
             "sameFactionCountPlayed",
             "isCharacter",
             "unblockedDamageAtLeast",
             "factionAllyPlayedOrInHand",
             "factionCardInDiscard",
             "oddCostCardsPlayed",
-            "evenCostCardsPlayed"
+            "evenCostCardsPlayed",
+            "highestMasteryAmongPlayers"
           ],
           "description": "Which predicate to evaluate."
         },

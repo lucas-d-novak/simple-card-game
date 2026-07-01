@@ -1,5 +1,11 @@
 # Flutter Deck Drawing Demo – Architecture & Step‑by‑Step Guide
 
+> **OBSOLETE (historical).** This describes an early single-file `moneyValue`
+> deck-draw demo that does NOT reflect the current architecture (the engine uses
+> gems/power/mastery via a sealed `CardEffect` hierarchy — see
+> [`lib/models/CLAUDE.md`](../lib/models/CLAUDE.md) and
+> [`lib/services/CLAUDE.md`](../lib/services/CLAUDE.md)). Kept for reference only.
+
 This guide shows a **minimal Flutter app** where a single player taps a button to draw cards from a deck.
 
 - Tech: Flutter

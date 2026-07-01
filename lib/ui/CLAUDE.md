@@ -56,22 +56,37 @@ and `board_chrome.dart` were added as part of that pass.
 
 ## Key interactions
 
-The gesture model is **tap-to-act, long-press-to-zoom**: a tap performs the
-card's primary action directly, a long-press opens the zoom modal
-(`card_detail_modal.dart`) where the same context action is also available
-alongside full text.
+**Two boards, two gesture models.** They differ — don't assume one applies to
+the other:
 
-- **Tap card in hand** → selects (raises it up, shows "TAP TO PLAY" label). **Tap again** → plays it.
-- **Long-press any card** → opens the **zoom modal** with full effect text and a
-  context action button (Recruit / Play / Activate / Exhaust — depends on where
-  the card lives). Swipe/page between cards in the same zone.
-- **PLAY ALL** → plays all hand cards left to right (does NOT auto-attack)
-- **ATTACK** → spends all power attacking opponent (shows target picker in
-  multiplayer); the button shows the damage it will deal
-- **Tap opponent champion** → attacks that champion (costs shield value in power)
-- **Tap your champion** → activates it (free, once per turn, shows green checkmark
-  when done); a champion with an Exhaust ability also exposes an "Exhaust" action
-  in its zoom modal
+- **Networked board (`network_game_screen.dart`) — tap-to-ZOOM, drag-to-act:**
+  a **tap** (or long-press) on ANY card opens the zoom modal
+  (`card_detail_modal.dart`, its context-action buttons sit ~2/3 up the card:
+  primary right, secondary left). To actually play/recruit you **drag** the card
+  into the play field (hand card → play; market card → recruit; dragging a
+  *mercenary* → opens the zoom's Recruit / Fast Play choice instead of silently
+  recruiting). This is the primary board and the one players use.
+- **Local/solo board (`game_screen.dart`) — tap-to-ACT:** tap a hand card to
+  select (raises it, "TAP TO PLAY"), tap again to play; long-press zooms.
+
+Shared affordances (both boards):
+
+- **PLAY ALL** → plays all hand cards left to right (does NOT auto-attack); queues
+  any deferred target pickers (banish / recruit / …) for the played cards.
+- **ATTACK** → spends all power attacking the opponent (target picker in 3-4p).
+  On the networked board, if the opponent still has a champion your power could
+  destroy, a **warning dialog** ("Your opponent still has champions in play!" —
+  Cancel / End Turn) fires first.
+- **Champions are a SINGLE action.** The zoom's champion button is labelled
+  **"Exhaust"** (when the champion has an Exhaust-gated `activatedAbility`) or
+  **"Activate"** (play-effects-only). Firing it does the free once-per-turn
+  activation AND the Exhaust ability together — they are not separate presses.
+  "Use All" (the champion-side Play All) does this for every champion. A green
+  check marks an activated champion; a moon marks an exhausted one.
+- **Tap an opponent champion** → zoom modal with an **Attack** action (costs the
+  champion's shield in power).
+- **UNDO** → reverts the last in-turn action; the undo stack snapshots engine
+  state via `GameStateCodec` and is cleared on END TURN (no cross-turn undo).
 - **UNDO** → reverts the last in-turn action; the undo stack snapshots engine
   state via `GameStateCodec` and is cleared on END TURN (no cross-turn undo)
 - **END TURN** → ends turn (unspent power is lost per rules)
@@ -99,15 +114,35 @@ scroll rather than overflow.
   card you own (draw pile + hand + discard + played + champions; neutral
   starters excluded, ties broken by a fixed faction order) — computed by
   `_dominantFaction` on the board state — so you can read your own identity at a
-  glance (the same info a card like Chlorophyte Guardian keys off). It gently
-  flickers when motion is enabled and holds a single static frame (no timers) in
-  instant / reduced-motion mode, so tests never hang.
+  glance (the same info a card like Chlorophyte Guardian keys off). The colour is
+  **locked in once** (cached per player in `_dominantFactionCache` on the first
+  non-neutral result) so it does NOT shift as cards move between zones during the
+  game — a player is one faction leader, one flame colour. It gently flickers
+  when motion is enabled and holds a single static frame (no timers) in instant /
+  reduced-motion mode, so tests never hang.
 - **Tap-to-zoom everywhere** — every card on the board zooms into the detail
-  modal even when you can't act on it. Cards whose tap triggers an action
-  (attack an opponent champion, activate your champion) fall back to zoom when
-  that action is unavailable (off-turn / no power); play-area rows with no action
-  zoom on tap directly. So a spectator or off-turn player can always inspect any
-  card, not only their own hand/market.
+  modal even when you can't act on it. So a spectator or off-turn player can
+  always inspect any card, not only their own hand/market.
+- **Draw/discard pile sheets are labelled by Character** — tapping your draw or
+  discard pile titles the sheet with your Character's display name (e.g. "Ko Syn
+  Wu's draw pile"), via `characterDisplayName`.
+- **Fast-played / warped cards stay visible, greyed** — a mercenary/warp card
+  that leaves the game at end of turn (rather than going to discard) is rendered
+  by `_GreyedPlayTile` (desaturated + a small "WARP" badge) in the play area, so
+  you can see it was played. Fed by the view's `fastPlayedThisTurn`.
+- **Edge-fade scroll** (`_EdgeFadeScroll`) — the horizontally-scrolling
+  champion / played rows get a pronounced left/right gradient fade (ShaderMask)
+  on whichever edge has cards clipped off-screen, so it's obvious there's more to
+  scroll to.
+- **Own-play ticker suppressed in portrait** — the `ActionPlaybackOverlay` drop-
+  down ticker narrates opponent plays; on a mobile-portrait phone it hides YOUR
+  OWN plays (they were distracting/redundant on a small screen).
+- **Direct-attack warning** — pressing Attack when the opponent still has a
+  killable champion opens a Cancel / End Turn confirm before spending all power
+  on the face.
+- **Fullscreen toggle** — a web-only top-bar `_FullscreenButton` + a floating
+  `_FloatingFullscreenButton` on mobile widths (hidden where the browser
+  Fullscreen API doesn't work, e.g. iOS Safari).
 
 ### Login / lobby screen (`network_lobby_screen.dart`)
 
@@ -122,6 +157,13 @@ scroll rather than overflow.
   [`token_storage.dart`](../services/token_storage.dart) (a conditional-import
   shim — `token_storage_web.dart` uses `dart:html`, `token_storage_stub.dart` is
   the non-web no-op), with a **"Forget saved code"** control to clear them.
+- **Past-games summary** — a **"Past games (N)"** link
+  (`ValueKey('pastGamesButton')`) opens a scrollable sheet of finished games with
+  who won (Infinity Shard / elimination / draw). Active games stay in the main
+  list; completed ones move here. Fed by the lobby summary's `winnerId`/`winType`.
+- **About link** — a persistent **ABOUT** button
+  (`ValueKey('lobbyAboutButton')`) opens the fan-made / non-commercial credits
+  page from both the login and in-lobby states.
 
 ## Card widget features
 
@@ -131,7 +173,9 @@ scroll rather than overflow.
   printed effect text (full text lives in the zoom modal) for a cleaner board;
   cards without art still show effect descriptions in the info area
 - Badges: shield value, GUARD, MERC, faction abbreviation
-- Gold glow highlight when selected or affordable
+- **Affordable glow** — a bright BLUE glow + border on a market card you can buy
+  right now (affordable on your turn); a distinct action prompt from the gold
+  selection accent and the amber conditional glow.
 - **Conditional glow** — an amber glow on hand/market cards whose
   `ConditionalEffect` predicate currently holds (the `conditionsMet` flag). The
   caller computes it from the engine's `GameService.conditionsSatisfied(card)`

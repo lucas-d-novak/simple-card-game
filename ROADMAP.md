@@ -43,14 +43,14 @@ captured so they aren't lost. Grouped by area.
 
 ## Card data / faithfulness
 
-- **Faithful base-game deck (88 cards)** — the market currently ships ~96
-  in-scope cards / 163 copies (base + some expansion content) because the DB's
-  `set` tagging is lossy. Per-card `copies` (pip) counts are correct; the *total*
-  is larger than a single retail base game. Correct the `set` column against the
-  BGG chapter list to offer an exact 88-card base mode.
-- **Verify the remaining unverified cards** — ~41 in-scope cards are encoded but
-  not yet human-confirmed against the printed card; raise verified coverage above
-  the current ~71%.
+- **Faithful base-game deck (88 cards)** — the market currently ships **88
+  unique in-scope cards / 155 copies** (base + some expansion content) because
+  the DB's `set` tagging is lossy. Per-card `copies` (pip) counts are correct;
+  the *total* is larger than a single retail base game. Correct the `set` column
+  against the BGG chapter list to offer an exact base mode.
+- **Verify the remaining unverified cards** — **40 in-scope cards** (of 142) are
+  encoded but not yet human-confirmed against the printed card; raise verified
+  coverage above the current **~72%** (102/142).
 
 ## Community / bug intake
 
