@@ -1135,6 +1135,21 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
                 ),
               ),
             ),
+          // Floating fullscreen affordance — a big, always-reachable icon button
+          // pinned to the bottom-right of the board on web MOBILE widths, where
+          // the small top-bar toggle is easy to miss and can sit under the
+          // centered opponent pill. Tapping it hides the browser address bar /
+          // chrome via the Fullscreen API. Web-only (hidden on native via the
+          // isSupported gate) and only on narrow layouts where chrome hurts most.
+          if (Fullscreen.instance.isSupported &&
+              Responsive.isMobile(MediaQuery.of(context).size.width))
+            const Positioned(
+              right: 10,
+              bottom: 10,
+              child: SafeArea(
+                child: _FloatingFullscreenButton(),
+              ),
+            ),
         ],
       ),
       ),
@@ -1695,23 +1710,95 @@ class _FullscreenButtonState extends State<_FullscreenButton> {
   @override
   Widget build(BuildContext context) {
     final full = Fullscreen.instance.isFullscreen;
+    final icon = Icon(full ? Icons.fullscreen_exit : Icons.fullscreen, size: 16);
+    void toggle() {
+      Fullscreen.instance.toggle();
+      // Rebuild after the browser applies the change so the icon updates.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+    }
+
+    // On narrow (mobile) widths, drop the text label so the button can't be
+    // clipped in the crowded top-left cluster (the floating bottom-right button
+    // is the primary mobile affordance). Wider layouts keep the labelled button.
+    final iconOnly = Responsive.isMobile(MediaQuery.of(context).size.width);
+    if (iconOnly) {
+      return IconButton(
+        onPressed: toggle,
+        icon: icon,
+        color: const Color(0xFFBFD8E8),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        constraints: const BoxConstraints(minWidth: 44, minHeight: 40),
+        visualDensity: VisualDensity.compact,
+        tooltip: full ? 'Exit fullscreen' : 'Fullscreen',
+      );
+    }
     return TextButton.icon(
-      onPressed: () {
-        Fullscreen.instance.toggle();
-        // Rebuild after the browser applies the change so the icon updates.
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) setState(() {});
-        });
-      },
+      onPressed: toggle,
       style: TextButton.styleFrom(
         foregroundColor: const Color(0xFFBFD8E8),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         minimumSize: Size.zero,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
-      icon: Icon(full ? Icons.fullscreen_exit : Icons.fullscreen, size: 16),
+      icon: icon,
       label: Text(full ? 'Exit' : 'Fullscreen',
           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+    );
+  }
+}
+
+/// A prominent, floating fullscreen toggle pinned to the corner of the board on
+/// web mobile widths. Big circular tap target so it's easy to hit on a phone;
+/// tapping it enters/exits browser fullscreen (hiding the address bar / chrome)
+/// and flips its enter/exit icon. Hidden on native and on wider layouts (the
+/// parent only builds it when `Fullscreen.instance.isSupported` on a mobile
+/// width — the labelled top-bar button covers desktop/tablet).
+class _FloatingFullscreenButton extends StatefulWidget {
+  const _FloatingFullscreenButton();
+
+  @override
+  State<_FloatingFullscreenButton> createState() =>
+      _FloatingFullscreenButtonState();
+}
+
+class _FloatingFullscreenButtonState extends State<_FloatingFullscreenButton> {
+  @override
+  Widget build(BuildContext context) {
+    final full = Fullscreen.instance.isFullscreen;
+    return Semantics(
+      button: true,
+      label: full ? 'Exit fullscreen' : 'Enter fullscreen',
+      child: Material(
+        color: const Color(0xFF14405E),
+        shape: CircleBorder(
+          side: BorderSide(
+            color: BoardChrome.tealHighlight.withValues(alpha: 0.8),
+            width: 1.5,
+          ),
+        ),
+        elevation: 4,
+        shadowColor: Colors.black54,
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: () {
+            Fullscreen.instance.toggle();
+            // Rebuild after the browser applies the change so the icon flips.
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) setState(() {});
+            });
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Icon(
+              full ? Icons.fullscreen_exit : Icons.fullscreen,
+              size: 26,
+              color: const Color(0xFFEAF4FB),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
