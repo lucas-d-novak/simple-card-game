@@ -649,6 +649,40 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
     if (ability != null) _queueDeferredSelection(champ, ability.effects);
   }
 
+  /// "Exhaust All" — the champion-side equivalent of Play All. Fires the Exhaust
+  /// ability of every champion that HAS one and isn't already exhausted, in
+  /// board order. Abilities with no target resolve immediately; the FIRST one
+  /// that needs a target selection queues its picker (the pending-selection slot
+  /// holds one at a time — the player can re-tap remaining champions after).
+  void _onExhaustAll(_GameView view) {
+    final me = view.me;
+    var fired = 0;
+    for (final champ in me.champions) {
+      if (champ.exhausted) continue;
+      final card = _card(champ.id);
+      final ability = card.activatedAbility;
+      if (ability == null) continue;
+      widget.client.useActivatedAbility(champ.id);
+      fired++;
+      // Queue the deferred picker only for the first ability that needs one, so
+      // multiple target prompts don't overwrite each other's pending slot.
+      if (_pendingSelection == null) {
+        _queueDeferredSelection(card, ability.effects);
+      }
+    }
+    if (fired > 0) _flash('Exhausted $fired champion${fired == 1 ? '' : 's'}');
+  }
+
+  /// Count of my champions that can still be Exhausted this turn (have an
+  /// activated ability and aren't exhausted) — drives the button's Exhaust phase.
+  int _exhaustableCount(_GameView view) {
+    var n = 0;
+    for (final champ in view.me.champions) {
+      if (!champ.exhausted && _card(champ.id).activatedAbility != null) n++;
+    }
+    return n;
+  }
+
   /// Open the zoom modal for one of MY champions, offering its two distinct
   /// actions: "Activate" (free, re-resolves play effects, once/turn) and —
   /// only when the card has an Exhaust-gated [CardModel.activatedAbility] —
@@ -1195,6 +1229,8 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
           // same-turn snapshot exists); null disables the button.
           onUndo: client.canUndo ? client.undo : null,
           onPlayAll: myTurn && me.hand.isNotEmpty ? client.playAllCards : null,
+          exhaustableCount: myTurn ? _exhaustableCount(view) : 0,
+          onExhaustAll: myTurn ? () => _onExhaustAll(view) : null,
           onAttack: canAttackPlayer
               ? () => _onAttackPlayer(opponent, me.powerPool)
               : null,
@@ -2121,18 +2157,13 @@ class _NetworkPlayField extends StatelessWidget {
                                           showCost: false,
                                           width: cardWidth,
                                           isHighlighted: !champ.activated,
-                                          // Tap activates on your turn ONLY when
-                                          // the champion has play effects to
-                                          // re-trigger; otherwise (e.g. Aedifex —
-                                          // Exhaust-only) tap zooms to reach its
-                                          // Exhaust ability. Off-turn, tap zooms.
-                                          onTap: (onActivateChampion != null &&
-                                                  cardFor(champ.id)
-                                                      .playEffects
-                                                      .isNotEmpty)
-                                              ? () => onActivateChampion!(
-                                                  cardFor(champ.id))
-                                              : () => onZoomMyChampion(champ),
+                                          // Tap ALWAYS opens the zoom window
+                                          // (with Activate/Exhaust actions) — no
+                                          // long-press needed. Activating /
+                                          // playing is done by dragging the card
+                                          // into the play area, or via the zoom
+                                          // window's buttons.
+                                          onTap: () => onZoomMyChampion(champ),
                                           onLongPress: () =>
                                               onZoomMyChampion(champ),
                                         ),
@@ -2323,6 +2354,8 @@ class _NetworkBottomZone extends StatelessWidget {
     required this.onEndTurn,
     required this.onUndo,
     required this.onPlayAll,
+    required this.exhaustableCount,
+    required this.onExhaustAll,
     required this.onAttack,
     required this.hasGuards,
     required this.onTapDraw,
@@ -2369,6 +2402,12 @@ class _NetworkBottomZone extends StatelessWidget {
   /// Undo last action this turn. Null when unavailable (off-turn / no history).
   final VoidCallback? onUndo;
   final VoidCallback? onPlayAll;
+
+  /// Count of champions still Exhaustable this turn — surfaces the Exhaust phase.
+  final int exhaustableCount;
+
+  /// Exhaust ALL ready champions (the champion-side Play All). Null off-turn.
+  final VoidCallback? onExhaustAll;
   final VoidCallback? onAttack;
   final bool hasGuards;
   final VoidCallback onTapDraw;
@@ -2551,9 +2590,11 @@ class _NetworkBottomZone extends StatelessWidget {
                 ),
               _PrimaryActionButton(
                 handCount: hand.length,
+                exhaustableCount: exhaustableCount,
                 powerPool: me.powerPool,
                 hasGuards: hasGuards,
                 onPlayAll: onPlayAll,
+                onExhaustAll: onExhaustAll,
                 onAttack: onAttack,
                 onEndTurn: onEndTurn,
                 width: isMobile ? 96 : 132,
@@ -2659,9 +2700,11 @@ class _NetworkBottomZone extends StatelessWidget {
           children: [
             _PrimaryActionButton(
               handCount: hand.length,
+              exhaustableCount: exhaustableCount,
               powerPool: me.powerPool,
               hasGuards: hasGuards,
               onPlayAll: onPlayAll,
+              onExhaustAll: onExhaustAll,
               onAttack: onAttack,
               onEndTurn: onEndTurn,
               width: 84,
@@ -2796,8 +2839,9 @@ class _AcquirePill extends StatelessWidget {
 }
 
 /// The single morphing PRIMARY action button that walks the player through the
-/// turn in order: **Play All** (while cards remain in hand) → **Attack (N)**
-/// (hand empty, power available, opponent not fully guard-blocked) → **End
+/// turn in order: **Play All** (cards in hand) → **Exhaust** (un-exhausted
+/// champions with abilities remain — the champion-side equivalent of Play All)
+/// → **Attack (N)** (power available, opponent not fully guard-blocked) → **End
 /// Turn**. Recruiting from the market and attacking champions stay free at any
 /// time via their own taps — this button only ever advances the MAIN sequence.
 ///
@@ -2807,9 +2851,11 @@ class _AcquirePill extends StatelessWidget {
 class _PrimaryActionButton extends StatelessWidget {
   const _PrimaryActionButton({
     required this.handCount,
+    required this.exhaustableCount,
     required this.powerPool,
     required this.hasGuards,
     required this.onPlayAll,
+    required this.onExhaustAll,
     required this.onAttack,
     required this.onEndTurn,
     required this.width,
@@ -2818,6 +2864,10 @@ class _PrimaryActionButton extends StatelessWidget {
   });
 
   final int handCount;
+
+  /// How many champions can still be Exhausted this turn (have an activated
+  /// ability and aren't exhausted). > 0 surfaces the Exhaust phase.
+  final int exhaustableCount;
   final int powerPool;
 
   /// True when every living opponent's face is behind a guard (so a face attack
@@ -2825,6 +2875,7 @@ class _PrimaryActionButton extends StatelessWidget {
   final bool hasGuards;
 
   final VoidCallback? onPlayAll;
+  final VoidCallback? onExhaustAll;
   final VoidCallback? onAttack;
   final VoidCallback? onEndTurn;
   final double width;
@@ -2844,7 +2895,19 @@ class _PrimaryActionButton extends StatelessWidget {
         fontSize: fontSize,
       );
     }
-    // Phase 2: hand empty, power available, a face is attackable → Attack.
+    // Phase 2: hand empty, champions still ready to Exhaust → Exhaust (the
+    // champion-side "play all").
+    if (handCount == 0 && exhaustableCount > 0 && onExhaustAll != null) {
+      return BeveledButton(
+        label: 'Exhaust',
+        onPressed: onExhaustAll,
+        style: BeveledStyle.green,
+        width: width,
+        height: height,
+        fontSize: fontSize,
+      );
+    }
+    // Phase 3: hand empty, power available, a face is attackable → Attack.
     if (handCount == 0 && powerPool > 0 && !hasGuards && onAttack != null) {
       return BeveledButton(
         label: 'Attack ($powerPool)',
@@ -2855,7 +2918,7 @@ class _PrimaryActionButton extends StatelessWidget {
         fontSize: fontSize,
       );
     }
-    // Phase 3: nothing left to do in sequence → End Turn.
+    // Phase 4: nothing left to do in sequence → End Turn.
     return BeveledButton(
       label: 'End Turn',
       onPressed: onEndTurn,
