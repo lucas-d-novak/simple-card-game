@@ -296,8 +296,16 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
         // The chosen branch may carry a deferred-selection effect (e.g. Datic
         // Inquisitors' "recruit a card cost 6 or less for free"). Queue a picker
         // for the SELECTED branch's effects — without this the chosen effect
-        // (recruit / banish / etc.) silently never resolves.
-        if (index >= 0 && index < choose.choices.length) {
+        // (recruit / banish / etc.) silently never resolves. But ONLY queue when
+        // the chosen branch actually needs a picker: a plain branch such as
+        // "draw 2 cards" has nothing deferred, so queuing a no-op entry would
+        // leave a stale pending selection that drains (and steals its drain slot)
+        // on the next server state. When the branch has nothing deferred this
+        // behaves exactly like a normal play — the card leaves the hand and no
+        // lingering picker appears.
+        if (index >= 0 &&
+            index < choose.choices.length &&
+            _hasDeferredEffect(choose.choices[index])) {
           _queueDeferredSelection(card, choose.choices[index]);
         }
       });
@@ -2270,11 +2278,19 @@ class _NetworkCenterRow extends StatelessWidget {
     return _buildSingleRow(context);
   }
 
+  /// Market cards are rendered ~10% SHORTER than the width-derived size the
+  /// six-across / three-across layout would otherwise pick, freeing vertical room
+  /// for the played-this-turn tray below. Height tracks width via the card aspect
+  /// (170/120), so scaling the width feeding the market [GameCardWidget]s by this
+  /// factor shrinks the HEIGHT by the same ~10% without distorting the card. Hand
+  /// and champion/played cards are unaffected.
+  static const double _marketHeightShrink = 0.9;
+
   /// Default single-row market: six cards across (landscape / tablet / desktop).
   Widget _buildSingleRow(BuildContext context) {
     final usable = (screenWidth - 16).clamp(0.0, Responsive.maxContentWidth);
     final slot = usable / 6;
-    final cardWidth = (slot - 8).clamp(46.0, 138.0);
+    final cardWidth = (slot - 8).clamp(46.0, 138.0) * _marketHeightShrink;
     final rowHeight = cardWidth * (170 / 120) + 4;
 
     return Padding(
@@ -2301,7 +2317,7 @@ class _NetworkCenterRow extends StatelessWidget {
     final usable = (screenWidth - hPad * 2).clamp(0.0, Responsive.maxContentWidth);
     // Three cards + two inter-card gaps per row.
     final slot = (usable - gap * (perRow - 1)) / perRow;
-    final cardWidth = slot.clamp(64.0, 180.0);
+    final cardWidth = slot.clamp(64.0, 180.0) * _marketHeightShrink;
 
     // Split the (up to 6) cards into rows of three.
     final rows = <List<CardModel>>[];
