@@ -921,8 +921,65 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
   }
 
   void _onAttackPlayer(_PlayerView opponent, int power) {
+    // If the opponent still has champion(s) this attack's power could destroy,
+    // warn before spending it all on the face — the player may have meant to
+    // clear a champion first. Cancel returns them to the board (so they can tap
+    // a champion to attack); "End Turn" commits the direct attack.
+    final killable = opponent.champions.any((c) => power >= _card(c.id).shield);
+    if (killable) {
+      _confirmDirectAttack(opponent, power);
+      return;
+    }
+    _doAttackPlayer(opponent, power);
+  }
+
+  void _doAttackPlayer(_PlayerView opponent, int power) {
     widget.client.attackPlayer(opponent.id, power);
     _flash('Dealt $power to ${opponent.name}');
+  }
+
+  /// Warn that the opponent still has champions in play before a direct attack
+  /// spends all power on the player. Cancel (left) dismisses so they can pick a
+  /// champion to attack; End Turn (right) commits the direct attack and ends the
+  /// turn.
+  void _confirmDirectAttack(_PlayerView opponent, int power) {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF12283F),
+        title: const Text(
+          'Your opponent still has champions in play!',
+          style: TextStyle(color: Color(0xFFE8C45A), fontSize: 16),
+        ),
+        content: const Text(
+          'Attacking now spends all your power on the player. Cancel to attack a '
+          'champion instead, or End Turn to deal the damage directly.',
+          style: TextStyle(color: Color(0xFFD6E4F0), fontSize: 13, height: 1.35),
+        ),
+        actionsAlignment: MainAxisAlignment.spaceBetween,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFFBFD8E8),
+            ),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _doAttackPlayer(opponent, power);
+              widget.client.endTurn();
+            },
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF2E7D32),
+            ),
+            child: const Text('End Turn'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _onFocus() {
