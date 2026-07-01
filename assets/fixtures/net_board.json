@@ -1,0 +1,822 @@
+{
+  "stateVersion": 1,
+  "you": "p0",
+  "currentPlayerIndex": 0,
+  "turnNumber": 2,
+  "isGameOver": false,
+  "canUndo": false,
+  "centerRow": [
+    "thorn_zealot_1",
+    "general_decurion_0",
+    "mining_drones_0",
+    "shadow_apostle_1",
+    "thorn_zealot_0",
+    "shard_abstractor_0"
+  ],
+  "infinityDeckCount": 149,
+  "removedFromGame": [],
+  "destinyRow": [
+    "war_bound",
+    "the_agony_of_choice",
+    "one_mind_one_army",
+    "blood_for_blood",
+    "true_leader",
+    "stolen_future"
+  ],
+  "destinyDeckCount": 23,
+  "actionLog": [
+    {
+      "turn": 1,
+      "playerId": "p0",
+      "message": "played Crystal"
+    },
+    {
+      "turn": 1,
+      "playerId": "p0",
+      "message": "played Infinity Shard"
+    },
+    {
+      "turn": 1,
+      "playerId": "p0",
+      "message": "played Crystal"
+    },
+    {
+      "turn": 1,
+      "playerId": "p0",
+      "message": "played Crystal"
+    },
+    {
+      "turn": 1,
+      "playerId": "p0",
+      "message": "played Shard Reactor"
+    },
+    {
+      "turn": 1,
+      "playerId": "p0",
+      "message": "recruited Optio Crusher for 5 gems"
+    },
+    {
+      "turn": 1,
+      "playerId": "p0",
+      "message": "ended their turn"
+    },
+    {
+      "turn": 1,
+      "message": "— Turn 1: Player 2 —"
+    },
+    {
+      "turn": 1,
+      "playerId": "p1",
+      "message": "played Crystal"
+    },
+    {
+      "turn": 1,
+      "playerId": "p1",
+      "message": "played Crystal"
+    },
+    {
+      "turn": 1,
+      "playerId": "p1",
+      "message": "played Crystal"
+    },
+    {
+      "turn": 1,
+      "playerId": "p1",
+      "message": "played Crystal"
+    },
+    {
+      "turn": 1,
+      "playerId": "p1",
+      "message": "played Crystal"
+    },
+    {
+      "turn": 1,
+      "playerId": "p1",
+      "message": "recruited Evokatus for 4 gems"
+    },
+    {
+      "turn": 1,
+      "playerId": "p1",
+      "message": "recruited Undergrowth Aspirant for 1 gems"
+    },
+    {
+      "turn": 1,
+      "playerId": "p1",
+      "message": "ended their turn"
+    },
+    {
+      "turn": 2,
+      "message": "— Turn 2: Player 1 —"
+    }
+  ],
+  "players": [
+    {
+      "id": "p0",
+      "name": "Player 1",
+      "health": 50,
+      "mastery": 1,
+      "gemPool": 0,
+      "powerPool": 0,
+      "unblockedDamageThisTurn": 0,
+      "ignoresShieldThisTurn": false,
+      "focusedThisTurn": false,
+      "eliminated": false,
+      "claimedDestinies": [],
+      "canClaimAnotherDestiny": true,
+      "exhaustedDestinies": [],
+      "relicOptions": [],
+      "relicRecruited": false,
+      "hand": [
+        "p0_crystal_3",
+        "p0_blaster_0",
+        "p0_crystal_4",
+        "p0_crystal_1",
+        "p0_crystal_5",
+        "aetherbreaker_0"
+      ],
+      "handCount": 6,
+      "drawPileCount": 0,
+      "drawPileContents": [],
+      "discardPile": [
+        "optio_crusher_0",
+        "p0_crystal_0",
+        "p0_shard",
+        "p0_crystal_6",
+        "p0_crystal_2",
+        "p0_reactor"
+      ],
+      "championsInPlay": [
+        {
+          "id": "torian_commandos_0",
+          "exhausted": false,
+          "activated": false,
+          "underCount": 0
+        }
+      ],
+      "playedThisTurn": [
+        "undergrowth_aspirant_1",
+        "panconscious_crown_0"
+      ],
+      "staticModifiers": []
+    },
+    {
+      "id": "p1",
+      "name": "Player 2",
+      "health": 50,
+      "mastery": 0,
+      "gemPool": 0,
+      "powerPool": 0,
+      "unblockedDamageThisTurn": 0,
+      "ignoresShieldThisTurn": false,
+      "focusedThisTurn": false,
+      "eliminated": false,
+      "claimedDestinies": [],
+      "canClaimAnotherDestiny": true,
+      "exhaustedDestinies": [],
+      "relicRecruited": false,
+      "handCount": 5,
+      "drawPileCount": 0,
+      "discardPile": [
+        "evokatus_0",
+        "undergrowth_aspirant_2",
+        "p1_crystal_0",
+        "p1_crystal_1",
+        "p1_crystal_6",
+        "p1_crystal_5",
+        "p1_crystal_4"
+      ],
+      "championsInPlay": [
+        {
+          "id": "numeri_drones_1",
+          "exhausted": false,
+          "activated": false,
+          "underCount": 0
+        }
+      ],
+      "playedThisTurn": [],
+      "staticModifiers": []
+    }
+  ],
+  "cards": {
+    "thorn_zealot_1": {
+      "id": "thorn_zealot_1",
+      "name": "Thorn Zealot",
+      "cost": 3,
+      "playEffects": [
+        {
+          "type": "drawCards",
+          "count": 1
+        },
+        {
+          "type": "conditional",
+          "condition": {
+            "kind": "factionAllyPlayedOrInHand",
+            "faction": "undergrowth"
+          },
+          "then": [
+            {
+              "type": "destroyChampion",
+              "all": false
+            }
+          ]
+        }
+      ],
+      "faction": "undergrowth",
+      "art": "thorn_zealot.jpg"
+    },
+    "general_decurion_0": {
+      "id": "general_decurion_0",
+      "name": "General Decurion",
+      "cost": 7,
+      "faction": "homodeus",
+      "cardType": "champion",
+      "shield": 7,
+      "masteryThreshold": 20,
+      "activatedAbility": {
+        "effects": [
+          {
+            "type": "gainPower",
+            "amount": 3
+          }
+        ]
+      },
+      "art": "general_decurion.jpg"
+    },
+    "mining_drones_0": {
+      "id": "mining_drones_0",
+      "name": "Mining Drones",
+      "cost": 2,
+      "playEffects": [
+        {
+          "type": "gainGems",
+          "amount": 1
+        },
+        {
+          "type": "drawCards",
+          "count": 1
+        }
+      ],
+      "faction": "homodeus",
+      "art": "mining_drones.jpg"
+    },
+    "shadow_apostle_1": {
+      "id": "shadow_apostle_1",
+      "name": "Shadow Apostle",
+      "cost": 2,
+      "playEffects": [
+        {
+          "type": "gainPower",
+          "amount": 2
+        },
+        {
+          "type": "banishCard",
+          "source": "handOrDiscard"
+        }
+      ],
+      "faction": "wraethe",
+      "cardType": "mercenary",
+      "art": "shadow_apostle.jpg"
+    },
+    "thorn_zealot_0": {
+      "id": "thorn_zealot_0",
+      "name": "Thorn Zealot",
+      "cost": 3,
+      "playEffects": [
+        {
+          "type": "drawCards",
+          "count": 1
+        },
+        {
+          "type": "conditional",
+          "condition": {
+            "kind": "factionAllyPlayedOrInHand",
+            "faction": "undergrowth"
+          },
+          "then": [
+            {
+              "type": "destroyChampion",
+              "all": false
+            }
+          ]
+        }
+      ],
+      "faction": "undergrowth",
+      "art": "thorn_zealot.jpg"
+    },
+    "shard_abstractor_0": {
+      "id": "shard_abstractor_0",
+      "name": "Shard Abstractor",
+      "cost": 3,
+      "playEffects": [
+        {
+          "type": "gainGems",
+          "amount": 2
+        }
+      ],
+      "faction": "order",
+      "cardType": "mercenary",
+      "art": "shard_abstractor.jpg"
+    },
+    "war_bound": {
+      "id": "war_bound",
+      "name": "War Bound",
+      "cost": 0,
+      "activatedAbility": {
+        "effects": [
+          {
+            "type": "conditional",
+            "condition": {
+              "kind": "championsControlled",
+              "threshold": 2
+            },
+            "then": [
+              {
+                "type": "gainPower",
+                "amount": 4
+              }
+            ]
+          }
+        ]
+      },
+      "art": "war_bound.jpg"
+    },
+    "the_agony_of_choice": {
+      "id": "the_agony_of_choice",
+      "name": "The Agony of Choice",
+      "cost": 0,
+      "activatedAbility": {
+        "effects": [
+          {
+            "type": "conditional",
+            "condition": {
+              "kind": "distinctFactionsPlayed",
+              "threshold": 3
+            },
+            "then": [
+              {
+                "type": "gainPower",
+                "amount": 4
+              }
+            ]
+          }
+        ]
+      },
+      "art": "the_agony_of_choice.jpg"
+    },
+    "one_mind_one_army": {
+      "id": "one_mind_one_army",
+      "name": "One Mind, One Army",
+      "cost": 5,
+      "playEffects": [
+        {
+          "type": "addStaticModifier",
+          "kind": "shieldBuff",
+          "amount": 2,
+          "cardType": "champion"
+        }
+      ],
+      "art": "one_mind_one_army.jpg"
+    },
+    "blood_for_blood": {
+      "id": "blood_for_blood",
+      "name": "Blood for Blood",
+      "cost": 0,
+      "playEffects": [
+        {
+          "type": "conditional",
+          "condition": {
+            "kind": "unblockedDamageAtLeast",
+            "threshold": 5
+          },
+          "then": [
+            {
+              "type": "banishCard",
+              "source": "playedThisTurn"
+            }
+          ]
+        }
+      ],
+      "art": "blood_for_blood.jpg"
+    },
+    "true_leader": {
+      "id": "true_leader",
+      "name": "True Leader",
+      "cost": 0,
+      "activatedAbility": {
+        "effects": [
+          {
+            "type": "conditional",
+            "condition": {
+              "kind": "sameFactionCountPlayed",
+              "threshold": 3
+            },
+            "then": [
+              {
+                "type": "gainMastery",
+                "amount": 2
+              }
+            ]
+          }
+        ]
+      },
+      "art": "true_leader.jpg"
+    },
+    "stolen_future": {
+      "id": "stolen_future",
+      "name": "Stolen Future",
+      "cost": 0,
+      "masteryThreshold": 10,
+      "activatedAbility": {
+        "effects": [
+          {
+            "type": "selfBanish"
+          }
+        ],
+        "masteryThreshold": 10
+      },
+      "art": "stolen_future.jpg"
+    },
+    "p0_crystal_3": {
+      "id": "p0_crystal_3",
+      "name": "Crystal",
+      "cost": 0,
+      "playEffects": [
+        {
+          "type": "gainGems",
+          "amount": 1
+        }
+      ]
+    },
+    "p0_blaster_0": {
+      "id": "p0_blaster_0",
+      "name": "Blaster",
+      "cost": 0,
+      "playEffects": [
+        {
+          "type": "gainPower",
+          "amount": 1
+        }
+      ]
+    },
+    "p0_crystal_4": {
+      "id": "p0_crystal_4",
+      "name": "Crystal",
+      "cost": 0,
+      "playEffects": [
+        {
+          "type": "gainGems",
+          "amount": 1
+        }
+      ]
+    },
+    "p0_crystal_1": {
+      "id": "p0_crystal_1",
+      "name": "Crystal",
+      "cost": 0,
+      "playEffects": [
+        {
+          "type": "gainGems",
+          "amount": 1
+        }
+      ]
+    },
+    "p0_crystal_5": {
+      "id": "p0_crystal_5",
+      "name": "Crystal",
+      "cost": 0,
+      "playEffects": [
+        {
+          "type": "gainGems",
+          "amount": 1
+        }
+      ]
+    },
+    "aetherbreaker_0": {
+      "id": "aetherbreaker_0",
+      "name": "Aetherbreaker",
+      "cost": 4,
+      "playEffects": [
+        {
+          "type": "gainPower",
+          "amount": 4
+        }
+      ],
+      "faction": "wraethe",
+      "cardType": "mercenary",
+      "masteryThreshold": 10,
+      "masteryBonus": [
+        {
+          "type": "gainPower",
+          "amount": 8
+        }
+      ],
+      "art": "aetherbreaker.jpg"
+    },
+    "optio_crusher_0": {
+      "id": "optio_crusher_0",
+      "name": "Optio Crusher",
+      "cost": 5,
+      "faction": "homodeus",
+      "cardType": "champion",
+      "shield": 4,
+      "activatedAbility": {
+        "effects": [
+          {
+            "type": "gainPower",
+            "amount": 3
+          }
+        ],
+        "masteryThreshold": 10,
+        "masteryBonusEffects": [
+          {
+            "type": "gainPower",
+            "amount": 5
+          }
+        ],
+        "masteryReplaces": true
+      },
+      "art": "optio_crusher.jpg"
+    },
+    "p0_crystal_0": {
+      "id": "p0_crystal_0",
+      "name": "Crystal",
+      "cost": 0,
+      "playEffects": [
+        {
+          "type": "gainGems",
+          "amount": 1
+        }
+      ]
+    },
+    "p0_shard": {
+      "id": "p0_shard",
+      "name": "Infinity Shard",
+      "cost": 0,
+      "playEffects": [
+        {
+          "type": "infinityShard"
+        }
+      ]
+    },
+    "p0_crystal_6": {
+      "id": "p0_crystal_6",
+      "name": "Crystal",
+      "cost": 0,
+      "playEffects": [
+        {
+          "type": "gainGems",
+          "amount": 1
+        }
+      ]
+    },
+    "p0_crystal_2": {
+      "id": "p0_crystal_2",
+      "name": "Crystal",
+      "cost": 0,
+      "playEffects": [
+        {
+          "type": "gainGems",
+          "amount": 1
+        }
+      ]
+    },
+    "p0_reactor": {
+      "id": "p0_reactor",
+      "name": "Shard Reactor",
+      "cost": 0,
+      "playEffects": [
+        {
+          "type": "gainGems",
+          "amount": 2
+        },
+        {
+          "type": "conditional",
+          "condition": {
+            "kind": "masteryAtLeast",
+            "threshold": 5
+          },
+          "then": [
+            {
+              "type": "gainGems",
+              "amount": 1
+            }
+          ]
+        },
+        {
+          "type": "conditional",
+          "condition": {
+            "kind": "masteryAtLeast",
+            "threshold": 15
+          },
+          "then": [
+            {
+              "type": "gainGems",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    },
+    "torian_commandos_0": {
+      "id": "torian_commandos_0",
+      "name": "Torian Commandos",
+      "cost": 3,
+      "playEffects": [
+        {
+          "type": "gainGems",
+          "amount": 2
+        },
+        {
+          "type": "gainPower",
+          "amount": 2
+        }
+      ],
+      "faction": "homodeus",
+      "cardType": "champion",
+      "shield": 4,
+      "art": "torian_commandos.jpg"
+    },
+    "undergrowth_aspirant_1": {
+      "id": "undergrowth_aspirant_1",
+      "name": "Undergrowth Aspirant",
+      "cost": 1,
+      "playEffects": [
+        {
+          "type": "gainGems",
+          "amount": 3
+        },
+        {
+          "type": "conditional",
+          "condition": {
+            "kind": "factionAllyPlayedOrInHand",
+            "faction": "undergrowth"
+          },
+          "then": [
+            {
+              "type": "gainGems",
+              "amount": 5
+            }
+          ]
+        }
+      ],
+      "faction": "undergrowth",
+      "art": "undergrowth_aspirant.jpg"
+    },
+    "panconscious_crown_0": {
+      "id": "panconscious_crown_0",
+      "name": "Panconscious Crown",
+      "cost": 10,
+      "playEffects": [
+        {
+          "type": "gainPower",
+          "amount": 2
+        },
+        {
+          "type": "gainGems",
+          "amount": 2
+        }
+      ],
+      "faction": "undergrowth",
+      "masteryThreshold": 20,
+      "masteryBonus": [
+        {
+          "type": "conditional",
+          "condition": {
+            "kind": "factionAllyPlayedOrInHand",
+            "faction": "undergrowth"
+          },
+          "then": [
+            {
+              "type": "gainPower",
+              "amount": 50
+            }
+          ]
+        }
+      ],
+      "art": "panconscious_crown.jpg"
+    },
+    "evokatus_0": {
+      "id": "evokatus_0",
+      "name": "Evokatus",
+      "cost": 4,
+      "playEffects": [
+        {
+          "type": "drawCards",
+          "count": 1
+        }
+      ],
+      "faction": "homodeus",
+      "cardType": "champion",
+      "shield": 2,
+      "activatedAbility": {
+        "effects": [
+          {
+            "type": "scalingResource",
+            "resource": "gems",
+            "condition": "perFactionChampionControlled",
+            "faction": "homodeus"
+          }
+        ]
+      },
+      "art": "evokatus.jpg"
+    },
+    "undergrowth_aspirant_2": {
+      "id": "undergrowth_aspirant_2",
+      "name": "Undergrowth Aspirant",
+      "cost": 1,
+      "playEffects": [
+        {
+          "type": "gainGems",
+          "amount": 3
+        },
+        {
+          "type": "conditional",
+          "condition": {
+            "kind": "factionAllyPlayedOrInHand",
+            "faction": "undergrowth"
+          },
+          "then": [
+            {
+              "type": "gainGems",
+              "amount": 5
+            }
+          ]
+        }
+      ],
+      "faction": "undergrowth",
+      "art": "undergrowth_aspirant.jpg"
+    },
+    "p1_crystal_0": {
+      "id": "p1_crystal_0",
+      "name": "Crystal",
+      "cost": 0,
+      "playEffects": [
+        {
+          "type": "gainGems",
+          "amount": 1
+        }
+      ]
+    },
+    "p1_crystal_1": {
+      "id": "p1_crystal_1",
+      "name": "Crystal",
+      "cost": 0,
+      "playEffects": [
+        {
+          "type": "gainGems",
+          "amount": 1
+        }
+      ]
+    },
+    "p1_crystal_6": {
+      "id": "p1_crystal_6",
+      "name": "Crystal",
+      "cost": 0,
+      "playEffects": [
+        {
+          "type": "gainGems",
+          "amount": 1
+        }
+      ]
+    },
+    "p1_crystal_5": {
+      "id": "p1_crystal_5",
+      "name": "Crystal",
+      "cost": 0,
+      "playEffects": [
+        {
+          "type": "gainGems",
+          "amount": 1
+        }
+      ]
+    },
+    "p1_crystal_4": {
+      "id": "p1_crystal_4",
+      "name": "Crystal",
+      "cost": 0,
+      "playEffects": [
+        {
+          "type": "gainGems",
+          "amount": 1
+        }
+      ]
+    },
+    "numeri_drones_1": {
+      "id": "numeri_drones_1",
+      "name": "Numeri Drones",
+      "cost": 3,
+      "faction": "homodeus",
+      "cardType": "champion",
+      "shield": 5,
+      "activatedAbility": {
+        "effects": [
+          {
+            "type": "gainGems",
+            "amount": 1
+          }
+        ]
+      },
+      "art": "numeri_drones.jpg"
+    }
+  }
+}

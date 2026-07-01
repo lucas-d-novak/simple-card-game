@@ -7,6 +7,7 @@ import 'package:simple_card_game/ui/screens/game_screen.dart';
 import 'package:simple_card_game/ui/screens/game_setup_screen.dart';
 import 'package:simple_card_game/ui/screens/home_screen.dart';
 import 'package:simple_card_game/ui/screens/about_screen.dart';
+import 'package:simple_card_game/ui/screens/net_board_fixture_screen.dart';
 import 'package:simple_card_game/ui/screens/network_auto_screen.dart';
 import 'package:simple_card_game/ui/screens/network_lobby_screen.dart';
 import 'package:simple_card_game/ui/screens/online_lobby_screen.dart';
@@ -55,6 +56,11 @@ class FragmentsOfBoundlessnessApp extends StatelessWidget {
         gameService: GameService(playerCount: 2, random: Random(seed)),
         debugOpenModal: params['modal'],
       );
+    } else if (params.containsKey('netboard')) {
+      // Dev-only visual-iteration harness: the real NetworkGameScreen rendered
+      // from a canned redacted-state fixture (no server). See
+      // net_board_fixture_screen.dart.
+      home = NetBoardFixtureScreen(fixture: params['fixture'] ?? 'net_board');
     } else if (params.containsKey('lobby')) {
       home = const OnlineLobbyScreen();
     } else if (params.containsKey('online')) {

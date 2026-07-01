@@ -24,7 +24,6 @@
 build/
 flutter_*.png
 coverage/
-lib/generated_plugin_registrant.dart
 
 # Android
 **/android/.gradle/

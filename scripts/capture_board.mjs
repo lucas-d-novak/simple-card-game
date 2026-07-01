@@ -60,7 +60,8 @@ async function main() {
       await new Promise((r) => setTimeout(r, 500));
     }
     if (!ready) console.warn('WARN: Flutter view not detected; capturing anyway.');
-    await new Promise((r) => setTimeout(r, 1500));
+    // Give the board a beat to lay out AND decode/paint card-art images.
+    await new Promise((r) => setTimeout(r, 3500));
 
     const { data } = await Page.captureScreenshot({ format: 'png', fromSurface: true });
     mkdirSync(dirname(outPath), { recursive: true });
