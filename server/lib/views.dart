@@ -110,13 +110,22 @@ Map<String, dynamic> redactFor(
     // card shuffled back into a draw pile) has its cardId STRIPPED here, so the
     // wire never carries an id the recipient couldn't otherwise resolve. The
     // message text is unchanged (the card name was already public when logged).
+    // Rewrite seat ids (`p0`) to usernames in BOTH the actor field and the
+    // message text (some engine messages embed a target/winner seat name, e.g.
+    // "destroyed p0's champion", "p0 wins!"), so the log reads with real names.
     'actionLog': [
       for (final e in game.actionLog.length > 80
           ? game.actionLog.sublist(game.actionLog.length - 80)
           : game.actionLog)
-        (e.cardId != null && !cards.containsKey(e.cardId))
-            ? (e.toJson()..remove('cardId'))
-            : e.toJson(),
+        () {
+          final j = (e.cardId != null && !cards.containsKey(e.cardId))
+              ? (e.toJson()..remove('cardId'))
+              : e.toJson();
+          if (j['message'] is String) {
+            j['message'] = _namifyMessage(j['message'] as String, names);
+          }
+          return j;
+        }(),
     ],
     'players': [
       for (final p in game.players)
@@ -125,6 +134,27 @@ Map<String, dynamic> redactFor(
     // Full card definitions for every visible card, by id.
     'cards': cards,
   };
+}
+
+/// Replace engine seat ids (`p0`, `p1`, …) with lobby usernames in a log
+/// message, so lines that embed a target/winner seat name ("destroyed p0's
+/// champion", "p0 wins!") read with real names. Word-boundary matched so a seat
+/// id is only swapped as a standalone token (e.g. never inside another word).
+/// Longer ids are replaced first so `p10` isn't partially matched by `p1`.
+String _namifyMessage(String message, Map<String, String> names) {
+  if (names.isEmpty) return message;
+  final seatIds = names.keys.toList()
+    ..sort((a, b) => b.length.compareTo(a.length));
+  var out = message;
+  for (final seatId in seatIds) {
+    final name = names[seatId]!;
+    if (name == seatId) continue;
+    out = out.replaceAllMapped(
+      RegExp('(?<![A-Za-z0-9])${RegExp.escape(seatId)}(?![A-Za-z0-9])'),
+      (_) => name,
+    );
+  }
+  return out;
 }
 
 Map<String, dynamic> _redactPlayer(

@@ -4623,9 +4623,9 @@
       "copies": 1,
       "playEffects": [],
       "art": "strategic_mastermind.jpg",
-      "rawText": "Strategic Mastermind\nCost: 5\nExhaust: If you have [mastery]40 (40 mastery) or more, draw a card.",
+      "rawText": "Strategic Mastermind\nCost: 5\nExhaust: If you have [health]40 (40 health) or more, draw a card.",
       "verified": true,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 195: name='Strategic Mastermind', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/strategic_mastermind.jpg; conf=high",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 195: name='Strategic Mastermind', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/strategic_mastermind.jpg; conf=high | FIX (user+art): condition is HEALTH 40 (green cross), not mastery.",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,
@@ -4635,7 +4635,7 @@
           {
             "type": "conditional",
             "condition": {
-              "kind": "masteryAtLeast",
+              "kind": "healthAtLeast",
               "threshold": 40
             },
             "then": [
