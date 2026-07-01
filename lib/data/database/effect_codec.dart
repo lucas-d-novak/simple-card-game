@@ -108,6 +108,8 @@ CardEffect decodeEffect(Map<String, dynamic> json) {
       return DrawCardsEffect(_int(json, 'count'));
     case 'opponentLosesHealth':
       return OpponentLosesHealthEffect(_int(json, 'amount'));
+    case 'opponentLosesMastery':
+      return OpponentLosesMasteryEffect(_int(json, 'amount'));
     case 'allPlayersLoseHealth':
       return AllPlayersLoseHealthEffect(_int(json, 'amount'));
     case 'banishCard':
@@ -152,6 +154,22 @@ CardEffect decodeEffect(Map<String, dynamic> json) {
         faction: filter == ReturnFilter.faction
             ? _faction(json['faction'] as String?)
             : null,
+        self: (json['self'] as bool?) ?? false,
+        all: (json['all'] as bool?) ?? false,
+      );
+    case 'returnFromDiscardToDeckTop':
+      final filter = _returnFilter(json['filter'] as String?);
+      return ReturnFromDiscardToDeckTopEffect(
+        filter: filter,
+        faction: filter == ReturnFilter.faction
+            ? _faction(json['faction'] as String?)
+            : null,
+      );
+    case 'mill':
+      return MillEffect(_int(json, 'count'));
+    case 'recruitToHand':
+      return RecruitToHandEffect(
+        character: _character(json['character'] as String?),
       );
     case 'conditionalPower':
       return ConditionalPowerEffect(_powerCondition(json['condition'] as String?));
@@ -250,6 +268,8 @@ Map<String, dynamic> encodeEffect(CardEffect effect) {
       return {'type': 'drawCards', 'count': effect.count};
     case OpponentLosesHealthEffect():
       return {'type': 'opponentLosesHealth', 'amount': effect.amount};
+    case OpponentLosesMasteryEffect():
+      return {'type': 'opponentLosesMastery', 'amount': effect.amount};
     case AllPlayersLoseHealthEffect():
       return {'type': 'allPlayersLoseHealth', 'amount': effect.amount};
     case BanishCardEffect():
@@ -295,6 +315,21 @@ Map<String, dynamic> encodeEffect(CardEffect effect) {
         'type': 'returnFromDiscard',
         'filter': effect.filter.name,
         if (effect.faction != null) 'faction': effect.faction!.name,
+        if (effect.self) 'self': true,
+        if (effect.all) 'all': true,
+      };
+    case ReturnFromDiscardToDeckTopEffect():
+      return {
+        'type': 'returnFromDiscardToDeckTop',
+        'filter': effect.filter.name,
+        if (effect.faction != null) 'faction': effect.faction!.name,
+      };
+    case MillEffect():
+      return {'type': 'mill', 'count': effect.count};
+    case RecruitToHandEffect():
+      return {
+        'type': 'recruitToHand',
+        if (effect.character != null) 'character': effect.character!.name,
       };
     case ConditionalPowerEffect():
       return {'type': 'conditionalPower', 'condition': effect.condition.name};

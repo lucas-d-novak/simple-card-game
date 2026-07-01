@@ -179,6 +179,14 @@ class PlayerState {
     }
   }
 
+  /// Lose [amount] mastery, floored at 0 (mastery can never go negative).
+  /// Used by opponent-loses-mastery effects (venator_of_the_wastes, skry_77).
+  void loseMastery(int amount) {
+    if (amount > 0) {
+      mastery = (mastery - amount).clamp(0, mastery);
+    }
+  }
+
   void takeDamage(int amount) {
     health -= amount;
   }

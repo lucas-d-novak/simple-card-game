@@ -172,6 +172,7 @@
             "gainHealth",
             "drawCards",
             "opponentLosesHealth",
+            "opponentLosesMastery",
             "allPlayersLoseHealth",
             "banishCard",
             "scrapFromCenterRow",
@@ -183,6 +184,9 @@
             "scry",
             "destroyChampion",
             "returnFromDiscard",
+            "returnFromDiscardToDeckTop",
+            "mill",
+            "recruitToHand",
             "chooseOne",
             "conditionalPower",
             "scalingResource",
@@ -200,7 +204,8 @@
           ]
         },
         "amount": { "type": "integer", "description": "For gain*/opponentLosesHealth/allPlayersLoseHealth." },
-        "count": { "type": "integer", "description": "For drawCards (cards to draw) and scry (top cards to reveal)." },
+        "count": { "type": "integer", "description": "For drawCards (cards to draw), scry (top cards to reveal), and mill (top cards of your own deck to move to discard)." },
+        "character": { "type": "string", "enum": ["decima", "tetra", "volos", "rez", "koSynWu", "chroma"], "description": "For recruitToHand: optional Character gate — the on-recruit 'put into hand' trigger only fires if the recruiting player IS this Character (nexus_datic_hunter = tetra; breaker omits it)." },
         "source": {
           "type": "string",
           "enum": ["hand", "discard", "handOrDiscard", "playedThisTurn", "centerDeck"],
@@ -208,7 +213,11 @@
         },
         "all": {
           "type": "boolean",
-          "description": "For destroyChampion: if true, destroy ALL enemy champions instead of a single target."
+          "description": "For destroyChampion: if true, destroy ALL enemy champions instead of a single target. For returnFromDiscard: if true, return ALL matching cards from discard to hand at once, inline/no selection (the_world_piercer Mastery-20)."
+        },
+        "self": {
+          "type": "boolean",
+          "description": "For returnFromDiscard: if true, return THIS card (the source, matched by name) from discard to hand, inline/no selection (the_dispossessed)."
         },
         "maxCost": {
           "type": "integer",
@@ -243,7 +252,7 @@
         "filter": {
           "type": "string",
           "enum": ["any", "champion", "mercenary", "faction", "nonChampion"],
-          "description": "For returnFromDiscard: which discard-pile cards are eligible to return (any/champion/mercenary/faction). For copyPlayedCard: which played cards may be copied (any/nonChampion)."
+          "description": "For returnFromDiscard / returnFromDiscardToDeckTop: which discard-pile cards are eligible to return (any/champion/mercenary/faction). For copyPlayedCard: which played cards may be copied (any/nonChampion)."
         },
         "kind": {
           "type": "string",
@@ -352,6 +361,7 @@
             "factionCardInDiscard",
             "oddCostCardsPlayed",
             "evenCostCardsPlayed",
+            "sameNamePlayedThisTurn",
             "highestMasteryAmongPlayers"
           ],
           "description": "Which predicate to evaluate."

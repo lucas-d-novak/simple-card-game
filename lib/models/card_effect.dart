@@ -109,6 +109,22 @@ final class OpponentLosesHealthEffect extends CardEffect {
       'Target opponent loses $amount health';
 }
 
+/// Target opponent(s) lose [amount] MASTERY (floored at 0). The mastery version
+/// of [OpponentLosesHealthEffect]: a raw mastery subtraction against every living
+/// opponent, applied via `GameService._applyOpponentMasteryLoss`. Cannot be
+/// prevented by shield/guard (mastery is not health). Cards:
+/// venator_of_the_wastes ("an enemy player loses 2 mastery if you have a Champion
+/// in play") and skry_77 (Mastery-20: "you gain 2 mastery AND an enemy player
+/// loses 2 mastery").
+final class OpponentLosesMasteryEffect extends CardEffect {
+  const OpponentLosesMasteryEffect(this.amount);
+
+  final int amount;
+
+  @override
+  String get description => 'Target opponent loses $amount mastery';
+}
+
 /// Every player in the game (INCLUDING the current/controlling player) loses
 /// [amount] health directly. Cannot be prevented by shield/guard — it is a raw
 /// health subtraction applied to all players simultaneously (e.g. bound_for_life
@@ -255,6 +271,8 @@ final class ReturnFromDiscardEffect extends CardEffect {
   const ReturnFromDiscardEffect({
     this.filter = ReturnFilter.any,
     this.faction,
+    this.self = false,
+    this.all = false,
   });
 
   final ReturnFilter filter;
@@ -262,20 +280,100 @@ final class ReturnFromDiscardEffect extends CardEffect {
   /// Required faction when [filter] is [ReturnFilter.faction]; otherwise null.
   final Faction? faction;
 
+  /// When true, return THIS card (the resolving source card) from discard back
+  /// to hand — a SELF return, resolved INLINE (no target selection). Matches by
+  /// the source card's NAME (market copies share a name but get per-copy ids), so
+  /// a discarded copy of the same card is returned. Used by the_dispossessed
+  /// ("you may return this from your discard pile to your hand"). A no-op if no
+  /// copy of the source is in the discard pile.
+  final bool self;
+
+  /// When true, return ALL matching cards from discard to hand at once, resolved
+  /// INLINE (no target selection). Used by the_world_piercer's Mastery-20 ("return
+  /// all Mercenaries from your discard pile"). Ignored when [self] is true.
+  final bool all;
+
   @override
   String get description {
+    if (self) return 'Return this from your discard pile to your hand';
+    final scope = all ? 'all' : 'a';
     switch (filter) {
       case ReturnFilter.any:
-        return 'Return a card from your discard pile to your hand';
+        return 'Return $scope card${all ? 's' : ''} from your discard pile to '
+            'your hand';
       case ReturnFilter.champion:
-        return 'Return a champion from your discard pile to your hand';
+        return 'Return $scope champion${all ? 's' : ''} from your discard pile '
+            'to your hand';
       case ReturnFilter.mercenary:
-        return 'Return a mercenary from your discard pile to your hand';
+        return 'Return $scope mercenary${all ? 's' : ''} from your discard pile '
+            'to your hand';
       case ReturnFilter.faction:
         final f = faction?.name ?? 'faction';
-        return 'Return a $f card from your discard pile to your hand';
+        return 'Return $scope $f card${all ? 's' : ''} from your discard pile to '
+            'your hand';
     }
   }
+}
+
+/// Return a card from your own discard pile to the TOP of your DECK (it becomes
+/// your next draw), rather than to your hand. Deferred-selection: a no-op in
+/// `_resolveEffects`; the player calls [GameService.returnFromDiscardToDeckTop]
+/// with the chosen card id. The [filter]/[faction] restrict eligibility exactly
+/// like [ReturnFromDiscardEffect]. Card: dash ("fetch an Aion card from your
+/// discard pile and put it on top of your deck", resolved BEFORE its draw).
+///
+/// NOTE: "Aion" is a catalog GROUP, not a playable [Faction], so the engine
+/// cannot filter to Aion cards; dash uses [ReturnFilter.any].
+final class ReturnFromDiscardToDeckTopEffect extends CardEffect {
+  const ReturnFromDiscardToDeckTopEffect({
+    this.filter = ReturnFilter.any,
+    this.faction,
+  });
+
+  final ReturnFilter filter;
+  final Faction? faction;
+
+  @override
+  String get description =>
+      'Return a card from your discard pile to the top of your deck';
+}
+
+/// "Mill the top [count] card(s) of your OWN deck" — move them from the top of
+/// your draw pile straight to your discard pile (no reveal/choice). Immediate:
+/// resolved inline in `_resolveEffects`. Reshuffles discard into the draw pile if
+/// the draw pile runs short (mirrors `_drawCards`), milling as many as available.
+/// Card: legion_carrier ("mill the top 3 cards of your deck").
+final class MillEffect extends CardEffect {
+  const MillEffect(this.count);
+
+  final int count;
+
+  @override
+  String get description =>
+      'Mill the top $count ${count == 1 ? 'card' : 'cards'} of your deck';
+}
+
+/// On-RECRUIT trigger: "when you recruit this, put it into your hand" (instead of
+/// the default discard pile). NOT resolved at play time — a no-op in
+/// `_resolveEffects`. Instead `GameService.buyCard` / `recruitFromCenter` scan the
+/// recruited card's `playEffects` for this effect and, if present (and the
+/// optional [character] gate is satisfied by the recruiting player), route the
+/// card to hand. Cards: breaker (unconditional) and nexus_datic_hunter
+/// (gated on [Character.tetra] — "if you are Tetra, put this into your hand when
+/// you Recruit it"). The optional [character] reuses the same player-Character
+/// identity check as [GameConditionKind.isCharacter].
+final class RecruitToHandEffect extends CardEffect {
+  const RecruitToHandEffect({this.character});
+
+  /// When set, the on-recruit-to-hand trigger only fires if the recruiting
+  /// player IS this Character. Null = always fires.
+  final Character? character;
+
+  @override
+  String get description => character == null
+      ? 'When you recruit this, put it into your hand'
+      : 'If you are ${character!.name}, put this into your hand when you '
+          'recruit it';
 }
 
 // ---------------------------------------------------------------------------
@@ -965,6 +1063,12 @@ enum GameConditionKind {
   /// advanced_medicine.
   evenCostCardsPlayed,
 
+  /// At least `threshold` OTHER cards with the SAME NAME as the source card have
+  /// been played this turn (the source itself is EXCLUDED). Used by cinder_scars
+  /// ("if you play or have played ANOTHER Cinder Scars this turn"). Matches by
+  /// `name` so market copies (which share a name but get per-copy ids) count.
+  sameNamePlayedThisTurn,
+
   /// The controlling player has STRICTLY more mastery than EVERY other
   /// (non-eliminated) player — a sole mastery lead. `threshold` is ignored.
   /// Used by cloud_oracles ("if you have more mastery than all other players,
@@ -1060,6 +1164,9 @@ class GameCondition {
         return 'if you have played $threshold+ odd-cost cards this turn';
       case GameConditionKind.evenCostCardsPlayed:
         return 'if you have played $threshold+ even-cost cards this turn';
+      case GameConditionKind.sameNamePlayedThisTurn:
+        return 'if you have played $threshold+ other copies of this card '
+            'this turn';
       case GameConditionKind.highestMasteryAmongPlayers:
         return 'if you have more mastery than all other players';
     }

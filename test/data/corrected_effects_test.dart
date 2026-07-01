@@ -106,11 +106,14 @@ void main() {
       expect(conditional.then.whereType<GainGemsEffect>().single.amount, 2);
     });
 
-    test('Venator encodes the Inspire opponent-health-loss (champion in play)', () {
+    test('Venator encodes the Inspire opponent-MASTERY-loss (champion in play)',
+        () {
+      // OWNER-CONFIRMED 2026-07-01: Venator's Inspire drains MASTERY, not health.
       final conditional =
           db.byId('venator_of_the_wastes')!.model.playEffects.whereType<ConditionalEffect>().single;
       expect(conditional.condition.kind, GameConditionKind.championsControlled);
-      expect(conditional.then.whereType<OpponentLosesHealthEffect>().single.amount, 2);
+      expect(conditional.then.whereType<OpponentLosesMasteryEffect>().single.amount, 2);
+      expect(conditional.then.whereType<OpponentLosesHealthEffect>(), isEmpty);
     });
   });
 }

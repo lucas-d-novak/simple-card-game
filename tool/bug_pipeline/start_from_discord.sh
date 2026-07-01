@@ -66,6 +66,13 @@ while IFS= read -r msg; do
   IS_BOT="$(jq -r '.author.bot // false' <<<"${msg}")"
   CONTENT="$(jq -r '.content // ""' <<<"${msg}")"
   AUTHOR="$(jq -r '.author.username // "unknown"' <<<"${msg}")"
+  # Source Discord ref (so the reply-back step can find the exact post later):
+  #   channelId = where the message lives (message's channel_id, else the channel
+  #               we're reading); messageId = the post; threadId = set if this
+  #               message spawned a thread / is a forum post (post replies INTO it).
+  MSG_CHANNEL="$(jq -r '.channel_id // ""' <<<"${msg}")"
+  [[ -z "${MSG_CHANNEL}" ]] && MSG_CHANNEL="${DISCORD_BUGREPORTS_CHANNEL_ID}"
+  THREAD_ID="$(jq -r '.thread.id // ""' <<<"${msg}")"
 
   NEWEST="${MID}"   # advance watermark even for skipped chatter, so we don't rescan it
 
@@ -79,9 +86,12 @@ while IFS= read -r msg; do
   # agent that splits expected/repro is a TODO.)
   REPORT_FILE="${TMP_REPORTS}/disc-${MID}.json"
   jq -n --arg id "disc-${MID}" --arg who "${AUTHOR}" --arg txt "${CONTENT}" \
+    --arg cid "${MSG_CHANNEL}" --arg mid "${MID}" --arg tid "${THREAD_ID}" \
     '{reportId:$id, source:"discord", reporter:$who,
       title:($txt|split("\n")[0]|.[0:80]), summary:$txt,
-      expected:"", repro:[], gameId:null, attachments:[], rawText:$txt}' \
+      expected:"", repro:[], gameId:null, attachments:[], rawText:$txt,
+      discord:{channelId:$cid, messageId:$mid,
+               threadId:(if $tid=="" then null else $tid end)}}' \
     > "${REPORT_FILE}"
 
   if [[ "${DRY_RUN}" == "1" ]]; then

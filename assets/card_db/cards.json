@@ -356,16 +356,16 @@
           },
           "then": [
             {
-              "type": "opponentLosesHealth",
+              "type": "opponentLosesMastery",
               "amount": 2
             }
           ]
         }
       ],
       "art": "venator_of_the_wastes.jpg",
-      "rawText": "Homodeus Ally. MERCENARY. Cost 4. Gain 4 (power). Inspire - An enemy player loses 2 (health) if you have a Champion in play.",
+      "rawText": "Homodeus Ally. MERCENARY. Cost 4. Gain 4 (power). Inspire - An enemy player loses 2 (mastery) if you have a Champion in play.",
       "verified": true,
-      "notes": "Mercenary, Homodeus Ally. Gain 4 power (red icon). Inspire 'An enemy player loses 2 health if you have a Champion in play' now encoded as conditional(championsControlled>=1) -> opponentLosesHealth 2 (both the championsControlled condition and OpponentLosesHealthEffect already exist; prior note that the condition had 'no engine type' was stale). NOTE: the product-owner backlog listed Venator under 'defer (opponent-mastery-loss)', but the card is opponent-HEALTH-loss, which is expressible with existing effects — encoded here.",
+      "notes": "Mercenary, Homodeus Ally. Gain 4 power. Inspire 'An enemy player loses 2 MASTERY if you have a Champion in play' — OWNER-CONFIRMED mastery (not health); encoded as conditional(championsControlled>=1) -> opponentLosesMastery 2 (new effect type).",
       "set": "base",
       "cardType": "mercenary",
       "cost": 4,
@@ -1676,7 +1676,12 @@
       "name": "Nexus, Datic Hunter",
       "faction": "order",
       "copies": 1,
-      "playEffects": [],
+      "playEffects": [
+        {
+          "type": "recruitToHand",
+          "character": "tetra"
+        }
+      ],
       "art": "nexus_datic_hunter.jpg",
       "rawText": "Nexus, Datic Hunter\nOrder Champion\n[health][health][health][health]\nIf you are Tetra, put this into your hand when you Recruit it.\nExhaust: Gain [mastery][mastery].",
       "verified": false,
@@ -1793,14 +1798,14 @@
           },
           "then": [
             {
-              "type": "gainGems",
+              "type": "gainPower",
               "amount": 5
             }
           ]
         }
       ],
       "art": "hounds_of_volos.jpg",
-      "rawText": "Undergrowth Mercenary - Ally. Gain 5 (gems). If you are Volos, gain 5 (gems).",
+      "rawText": "Undergrowth Mercenary - Ally. Gain 5 (gems). If you are Volos, gain 5 (power).",
       "verified": true,
       "notes": "Undergrowth Mercenary. Gain 5 gems; if Volos, gain 5 more gems (both icons green — reviewer confirmed against art; prior 'power' correction was wrong).",
       "set": "rotf",
@@ -2092,7 +2097,7 @@
         }
       ],
       "art": "skry_77.jpg",
-      "rawText": "Prism Relic - Ally\nAn enemy player loses [3 health] and you gain [3 health].\n(Mastery 20) Take [2 health] from an enemy player.",
+      "rawText": "Prism Relic - Ally\nAn enemy player loses [3 health] and you gain [3 health].\n(Mastery 20) You gain [2 mastery] and an enemy player loses [2 mastery].",
       "verified": true,
       "notes": "Faction group (non-player): Prism. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 73: name='Skry-77', faction='Prism', amount=1. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/skry_77.jpg (original publisher, 2024); conf=high",
       "group": "Prism",
@@ -2103,11 +2108,11 @@
       "masteryThreshold": 20,
       "masteryBonus": [
         {
-          "type": "opponentLosesHealth",
+          "type": "gainMastery",
           "amount": 2
         },
         {
-          "type": "gainHealth",
+          "type": "opponentLosesMastery",
           "amount": 2
         }
       ]
@@ -2224,12 +2229,24 @@
       "art": "the_world_piercer.jpg",
       "rawText": "Wraethe Relic - Ally. Gain 2 (power). Return a Mercenary from your discard pile to your hand. Mastery 20: Return all Mercenaries from your discard pile to your hand.",
       "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 77: name='The World Piercer', faction='Wraethe', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Relic-Ally. Return-Mercenary-from-discard NOT an engine effect; only the gain encoded. '2' icon read as gems; confirm. | EFFECTS PASS B: image read. CORRECTION: 'Gain 2' is POWER (red icon), not gems. Base gain 2 power encoded. UNMODELED: 'Return a Mercenary from discard to hand' (return-from-discard) and mastery-20 return-all. verified:false. | [encode-gap] Mastery20 \"return ALL Mercenaries from discard\" (return-all) not modeled -> unverified.",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 77: name='The World Piercer', faction='Wraethe', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Relic-Ally. Return-Mercenary-from-discard NOT an engine effect; only the gain encoded. '2' icon read as gems; confirm. | EFFECTS PASS B: image read. CORRECTION: 'Gain 2' is POWER (red icon), not gems. Base gain 2 power encoded. UNMODELED: 'Return a Mercenary from discard to hand' (return-from-discard) and mastery-20 return-all. verified:false. | [encode-gap] Mastery20 \"return ALL Mercenaries from discard\" (return-all) not modeled -> unverified. | Mastery-20 encoded as masteryReplaces masteryBonus [gainPower 2, returnFromDiscard mercenary all] so at M20 you return ALL Mercenaries at once.",
       "set": "rotf",
       "cardType": "regular",
       "cost": 10,
       "masteryThreshold": 20,
-      "chapter": 2
+      "chapter": 2,
+      "masteryBonus": [
+        {
+          "type": "gainPower",
+          "amount": 2
+        },
+        {
+          "type": "returnFromDiscard",
+          "filter": "mercenary",
+          "all": true
+        }
+      ],
+      "masteryReplaces": true
     },
     {
       "id": "aion_egressor",
@@ -2335,6 +2352,9 @@
       "copies": 1,
       "playEffects": [
         {
+          "type": "recruitToHand"
+        },
+        {
           "type": "fastPlayFromCenter",
           "alliesOnly": true
         }
@@ -2405,6 +2425,10 @@
       "faction": "none",
       "copies": 2,
       "playEffects": [
+        {
+          "type": "returnFromDiscardToDeckTop",
+          "filter": "any"
+        },
         {
           "type": "drawCards",
           "count": 1
@@ -3465,10 +3489,14 @@
         {
           "type": "gainGems",
           "amount": 2
+        },
+        {
+          "type": "mill",
+          "count": 3
         }
       ],
       "art": "legion_carrier.jpg",
-      "rawText": "Homodeus Ally. Gain 2 (gems). You may reveal the top 3 cards of your deck. Put up to one Champion revealed this way into your hand and the rest into your discard pile.",
+      "rawText": "Homodeus Ally. Gain 2 (gems). Mill the top 3 cards of your deck.",
       "verified": false,
       "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 150: name='Legion Carrier', faction='Homodeus', amount=2. | art added from TTS spritesheet crop (effects pending verification). | Base gain 2 gems encoded. UNMODELED: 'reveal top 3, put up to one revealed Champion into hand, rest into discard'. verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false.",
       "set": "ioh",
@@ -3679,6 +3707,18 @@
         {
           "type": "drawCards",
           "count": 1
+        },
+        {
+          "type": "conditional",
+          "condition": {
+            "kind": "sameNamePlayedThisTurn"
+          },
+          "then": [
+            {
+              "type": "gainPower",
+              "amount": 3
+            }
+          ]
         }
       ],
       "art": "cinder_scars.jpg",
@@ -3739,6 +3779,20 @@
         {
           "type": "gainPower",
           "amount": 3
+        },
+        {
+          "type": "conditional",
+          "condition": {
+            "kind": "alliesOfFactionPlayed",
+            "faction": "wraethe"
+          },
+          "then": [
+            {
+              "type": "returnFromDiscard",
+              "filter": "any",
+              "self": true
+            }
+          ]
         }
       ],
       "art": "the_dispossessed.jpg",

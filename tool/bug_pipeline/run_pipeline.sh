@@ -53,6 +53,15 @@ run_agent() {
 # Extract the first ```json … ``` fenced block from stdin (agent output).
 extract_json() { awk '/^```json/{f=1;next} /^```/{if(f)exit} f'; }
 
+# Reply back on the source Discord post that its bug was picked up. Best-effort:
+# discord_reply.sh never hard-crashes (guards its own preconditions), and we add
+# `|| true` so a notification hiccup can't fail the run. PR number is the last
+# path segment of the PR URL.
+notify_reporter() {
+  local pr_url="$1"; local pr_num="${pr_url##*/}"
+  bash "${HERE}/discord_reply.sh" "${REPORT_FILE}" "${pr_num}" "${pr_url}" || true
+}
+
 # ---- preflight guards -------------------------------------------------------
 [[ -f "${PAUSE_FILE}" ]] && die "PAUSE_FILE present (${PAUSE_FILE}) — pipeline is paused. Remove it to resume."
 command -v jq  >/dev/null || die "jq not found"
@@ -139,6 +148,8 @@ if [[ "${MECH}" == "green" && "${VERDICT}" == "confirmed" && "${AUTO_MERGE}" == 
   echo $(( MERGES_TODAY + 1 )) > "${CAP_FILE}"
   MERGED_SHA="$(cd "${REPO_ROOT}" && git fetch --quiet origin "${TARGET_BRANCH}" && git rev-parse --short "origin/${TARGET_BRANCH}")"
   status "🔧 fix merged: ${PR_URL} (${MERGED_SHA})"
+  # Reply on the reporter's Discord post that a fix landed.
+  notify_reporter "${PR_URL}"
   # ---- 7. deploy trigger ----------------------------------------------------
   bash "${HERE}/deploy_trigger.sh" "${MERGED_SHA}" && status "🚀 ${REPORT_ID} is live (${MERGED_SHA})."
 else
@@ -148,6 +159,8 @@ else
   [[ "${MERGES_TODAY}" -ge "${MAX_AUTO_MERGES_PER_DAY}" ]] && REASON="daily auto-merge cap reached"
   PR_URL="$(cd "${WORKTREE}" && gh pr create --draft --base "${TARGET_BRANCH}" --head "${BRANCH}" --title "fix: ${TITLE} (${REPORT_ID})" --body "${PR_BODY}" --label needs-human 2>/dev/null || cd "${WORKTREE}" && gh pr create --draft --base "${TARGET_BRANCH}" --head "${BRANCH}" --title "fix: ${TITLE} (${REPORT_ID})" --body "${PR_BODY}")"
   status "📝 draft PR for a human (${REASON}): ${PR_URL}"
+  # Even for a draft PR, let the reporter know their bug was picked up.
+  notify_reporter "${PR_URL}"
 fi
 
 log "done: ${REPORT_ID}"

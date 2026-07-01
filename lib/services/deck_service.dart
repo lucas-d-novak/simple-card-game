@@ -229,6 +229,7 @@ class DeckService {
         case GainMasteryEffect():
         case GainHealthEffect():
         case OpponentLosesHealthEffect():
+        case OpponentLosesMasteryEffect():
         case AllPlayersLoseHealthEffect():
         case BanishCardEffect():
         case ScrapFromCenterRowEffect():
@@ -240,6 +241,9 @@ class DeckService {
         case ScryEffect():
         case DestroyChampionEffect():
         case ReturnFromDiscardEffect():
+        case ReturnFromDiscardToDeckTopEffect():
+        case MillEffect():
+        case RecruitToHandEffect():
         case ChooseOneEffect():
         case ConditionalPowerEffect():
         case ScalingResourceEffect():

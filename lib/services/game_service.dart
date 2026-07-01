@@ -901,6 +901,21 @@ class GameService {
     return true;
   }
 
+  /// Whether [card] carries an on-recruit "put into hand" trigger
+  /// ([RecruitToHandEffect]) whose optional Character gate is satisfied by
+  /// [player]. Scanned by [buyCard] / [recruitFromCenter] to route a freshly
+  /// recruited card to hand instead of the discard pile (breaker unconditional;
+  /// nexus_datic_hunter gated on [Character.tetra]).
+  bool _recruitsToHand(CardModel card, PlayerState player) {
+    for (final e in card.playEffects) {
+      if (e is RecruitToHandEffect &&
+          (e.character == null || player.character == e.character)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   // -------------------------------------------------------------------------
   // Opponent draw / discard (Engine Phase 2, wave 5a — Family 13)
   // -------------------------------------------------------------------------
@@ -1214,7 +1229,13 @@ class GameService {
     centerRow.removeAt(rowIndex);
     // numeri_drones / anomaly_cleric: a pending "next recruit" redirect may
     // route this card directly into play or to hand instead of the discard pile.
-    if (!_applyPendingRecruitRedirect(buyer, card)) {
+    // breaker / nexus_datic_hunter: an on-recruit "put into hand" trigger routes
+    // it to hand (takes precedence over the default discard destination).
+    if (_applyPendingRecruitRedirect(buyer, card)) {
+      // routed into play / to hand by the pending redirect
+    } else if (_recruitsToHand(card, buyer)) {
+      buyer.hand.add(card);
+    } else {
       buyer.discardPile.add(card);
     }
     _refillCenterRow();
@@ -1646,6 +1667,9 @@ class GameService {
       // numeri_drones / anomaly_cleric: a pending "next recruit" redirect placed
       // this card directly into play or into hand (and consumed itself). A
       // pending redirect takes precedence over the maglev top-of-deck modifier.
+    } else if (_recruitsToHand(card, player)) {
+      // breaker / nexus_datic_hunter: on-recruit "put into hand" trigger.
+      player.hand.add(card);
     } else if (modifierToTop) {
       player.drawPile.add(card);
     } else {
@@ -1907,6 +1931,29 @@ class GameService {
     return true;
   }
 
+  /// Return a card from the current player's discard pile to the TOP of their
+  /// draw pile (it becomes their next draw), fulfilling a
+  /// [ReturnFromDiscardToDeckTopEffect] after target selection. Mirrors
+  /// [returnFromDiscard] but the destination is the deck top, not the hand. The
+  /// top of the draw pile is the END of the list (drawn via removeLast), so the
+  /// card is appended. Used by dash. Returns true if returned.
+  bool returnFromDiscardToDeckTop(
+    String cardId, {
+    ReturnFilter filter = ReturnFilter.any,
+    Faction? faction,
+  }) {
+    final player = currentPlayer;
+    final index = player.discardPile.indexWhere((c) => c.id == cardId);
+    if (index == -1) return false;
+
+    final card = player.discardPile[index];
+    if (!_matchesReturnFilter(card, filter, faction)) return false;
+
+    player.discardPile.removeAt(index);
+    player.drawPile.add(card);
+    return true;
+  }
+
   bool _matchesReturnFilter(
     CardModel card,
     ReturnFilter filter,
@@ -1949,6 +1996,8 @@ class GameService {
           _drawCards(player, effect.count);
         case OpponentLosesHealthEffect():
           _applyOpponentHealthLoss(player, effect.amount);
+        case OpponentLosesMasteryEffect():
+          _applyOpponentMasteryLoss(player, effect.amount);
         case AllPlayersLoseHealthEffect():
           _applyAllPlayersHealthLoss(player, effect.amount);
         case ChooseOneEffect():
@@ -1993,8 +2042,26 @@ class GameService {
           // same way BanishCardEffect defers to banishCard().
           break;
         case ReturnFromDiscardEffect():
-          // Requires card selection — the player should call
+          if (effect.self) {
+            // Self-return (the_dispossessed): return a discarded copy of the
+            // SOURCE card (matched by name) to hand, inline — no selection.
+            _returnSelfFromDiscard(player, sourceCard);
+          } else if (effect.all) {
+            // Return ALL matching cards (the_world_piercer Mastery-20), inline.
+            _returnAllFromDiscard(player, effect.filter, effect.faction);
+          }
+          // Otherwise requires card selection — the player calls
           // returnFromDiscard() separately after this effect.
+          break;
+        case ReturnFromDiscardToDeckTopEffect():
+          // Requires card selection — the player should call
+          // returnFromDiscardToDeckTop() separately after this effect (dash).
+          break;
+        case MillEffect():
+          _millTopCards(player, effect.count);
+        case RecruitToHandEffect():
+          // On-RECRUIT trigger, not a play effect — a no-op here. buyCard /
+          // recruitFromCenter consult it to route the recruited card to hand.
           break;
         case BanishCardEffect():
           // Requires card selection — auto-banish not possible without target.
@@ -2338,6 +2405,65 @@ class GameService {
     _checkGameOver();
   }
 
+  /// Apply [amount] of MASTERY loss to every living opponent of [attacker]
+  /// (floored at 0). The mastery analogue of [_applyOpponentHealthLoss]: like
+  /// the direct health-loss effects it hits ALL opponents (per the multiplayer
+  /// convention) and cannot be prevented by shield/guard. Used by
+  /// [OpponentLosesMasteryEffect] (venator_of_the_wastes, skry_77). Losing
+  /// mastery never eliminates a player, so no cleanup/game-over check is needed.
+  void _applyOpponentMasteryLoss(PlayerState attacker, int amount) {
+    if (amount <= 0) return;
+    for (final player in players) {
+      if (player.id != attacker.id && !player.isEliminated) {
+        player.loseMastery(amount);
+      }
+    }
+  }
+
+  /// Mill the top [count] cards of [player]'s own draw pile straight to their
+  /// discard pile (legion_carrier). Reshuffles the discard into the draw pile if
+  /// the draw pile empties mid-mill (mirrors [_drawCards]); mills as many as are
+  /// available. Top of the draw pile is the END of the list (removeLast).
+  void _millTopCards(PlayerState player, int count) {
+    for (int i = 0; i < count; i++) {
+      if (player.drawPile.isEmpty && player.discardPile.isNotEmpty) {
+        player.drawPile.addAll(player.discardPile);
+        player.discardPile.clear();
+        player.drawPile.shuffle(_random);
+      }
+      if (player.drawPile.isEmpty) break;
+      player.discardPile.add(player.drawPile.removeLast());
+    }
+  }
+
+  /// Return a discarded copy of [sourceCard] (matched by NAME — market copies
+  /// share a name but get per-copy ids) from [player]'s discard pile to their
+  /// hand. Inline self-return for the_dispossessed. Returns the FIRST matching
+  /// copy; a no-op if none is in discard.
+  void _returnSelfFromDiscard(PlayerState player, CardModel? sourceCard) {
+    if (sourceCard == null) return;
+    final index =
+        player.discardPile.indexWhere((c) => c.name == sourceCard.name);
+    if (index == -1) return;
+    player.hand.add(player.discardPile.removeAt(index));
+  }
+
+  /// Return ALL cards in [player]'s discard pile matching [filter]/[faction] to
+  /// their hand at once (the_world_piercer Mastery-20). Inline — no selection.
+  void _returnAllFromDiscard(
+    PlayerState player,
+    ReturnFilter filter,
+    Faction? faction,
+  ) {
+    final matched = player.discardPile
+        .where((c) => _matchesReturnFilter(c, filter, faction))
+        .toList();
+    for (final card in matched) {
+      player.discardPile.remove(card);
+      player.hand.add(card);
+    }
+  }
+
   /// Apply [amount] of direct health loss to EVERY player including [source]
   /// (the controlling player). Bypasses guard/shield — a raw subtraction.
   /// Mirrors the elimination/cleanup/game-over handling of
@@ -2627,6 +2753,13 @@ class GameService {
       case GameConditionKind.evenCostCardsPlayed:
         final count = _countPlayedThisTurn(
             player, source, (card) => card.cost.isEven);
+        return count >= c.threshold;
+      case GameConditionKind.sameNamePlayedThisTurn:
+        // Count OTHER cards with the same NAME as the source played this turn
+        // (the source itself is excluded by _countPlayedThisTurn). cinder_scars.
+        if (source == null) return false;
+        final count = _countPlayedThisTurn(
+            player, source, (card) => card.name == source.name);
         return count >= c.threshold;
       case GameConditionKind.highestMasteryAmongPlayers:
         // Strictly greater than every other non-eliminated player's mastery.

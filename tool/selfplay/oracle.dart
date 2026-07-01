@@ -437,6 +437,9 @@ class Oracle {
         case ResetChampionEffect():
         case DestroyChampionEffect():
         case ReturnFromDiscardEffect():
+        case ReturnFromDiscardToDeckTopEffect():
+        case MillEffect():
+        case RecruitToHandEffect():
         case RecruitFromCenterEffect():
         case FastPlayFromCenterEffect():
         case ScryEffect():
@@ -457,6 +460,7 @@ class Oracle {
         // --- Opponent-targeting effects: zero actor delta, but they CHANGE
         //     opponent state, which the conservation/health invariants cover.
         case OpponentLosesHealthEffect():
+        case OpponentLosesMasteryEffect():
         case OpponentDrawsEffect():
         case OpponentDiscardsEffect():
           break;

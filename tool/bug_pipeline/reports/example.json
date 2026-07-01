@@ -12,5 +12,10 @@
   ],
   "gameId": null,
   "attachments": [],
-  "rawText": "the champion that protects my other champions kept protecting them even after it died"
+  "rawText": "the champion that protects my other champions kept protecting them even after it died",
+  "discord": {
+    "channelId": "111111111111111111",
+    "messageId": "222222222222222222",
+    "threadId": null
+  }
 }

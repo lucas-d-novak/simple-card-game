@@ -47,10 +47,28 @@ DEPLOY_HTTP_TOKEN="${DEPLOY_HTTP_TOKEN:-}"       # shared secret sent as a beare
 
 # --- Discord ingestion (for start_from_discord.sh, the on-demand trigger) -----
 # A bot token with "Read Message History" on the bug-reports channel, and the
-# channel id. Used ONLY to READ reports on demand (least privilege — the bot
-# needs no repo/shell access). Leave empty until you stand up the bot.
+# channel id. Used to READ reports on demand AND (for the reply-back step below)
+# to POST a "picked up in PR #N" notice on the reporter's post — so the bot now
+# also needs "Send Messages" (and "Send Messages in Threads" for forum posts).
+# Still no repo/shell access. Leave empty until you stand up the bot.
 DISCORD_BOT_TOKEN="${DISCORD_BOT_TOKEN:-}"
 DISCORD_BUGREPORTS_CHANNEL_ID="${DISCORD_BUGREPORTS_CHANNEL_ID:-}"
+
+# --- Discord reply-back (notify the reporter when a PR is opened/merged) ------
+# After a PR is opened (draft) or merged, discord_reply.sh posts a comment back
+# on the ORIGINAL Discord post (captured as report.discord.{channelId,messageId,
+# threadId} at intake): a normal message gets a reply referencing it; a forum/
+# thread post gets a message posted into the thread. Best-effort — a missing
+# token/ref or an API error logs one line and never fails the pipeline.
+#   DISCORD_REPLY_ENABLED  1 = notify (default), 0 = never post replies.
+#   DISCORD_REPLY_TEMPLATE message text; {number} and {url} are substituted.
+DISCORD_REPLY_ENABLED="${DISCORD_REPLY_ENABLED:-1}"
+# (assigned in two steps: a literal '}' inside ${VAR:-default} would close the
+#  expansion early and mangle the template.)
+DISCORD_REPLY_TEMPLATE="${DISCORD_REPLY_TEMPLATE:-}"
+[[ -z "${DISCORD_REPLY_TEMPLATE}" ]] && DISCORD_REPLY_TEMPLATE='🔧 Potentially addressed in PR #{number} — {url}'
+# Discord REST base (override only for testing/mocking).
+DISCORD_API_BASE="${DISCORD_API_BASE:-https://discord.com/api/v10}"
 
 # --- Discord status posting (optional; Phase 1+) -----------------------------
 # When set, the runner POSTs status back to the report's thread. Empty = quiet.

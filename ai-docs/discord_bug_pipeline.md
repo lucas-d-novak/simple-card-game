@@ -131,9 +131,28 @@ is even worth an investigation agent.
   "repro": ["play Limiter Drones", "no picker appears"],
   "gameId": "cozy-otter-42",               // optional, used to find the server log
   "attachments": ["<screenshot url>"],
-  "rawText": "…original message…"
+  "rawText": "…original message…",
+  "discord": {                             // SOURCE REF — so we can reply to the
+    "channelId": "<channel id>",           //   exact post later (§7c reply-back)
+    "messageId": "<message id>",           // the player's post
+    "threadId": null                       // set iff the post is a forum/thread
+  }
 }
 ```
+
+**Source tracking (`discord` block).** `start_from_discord.sh` captures the source
+Discord reference at intake and persists it in the report JSON:
+
+- `channelId` — the channel the message lives in (the message's own `channel_id`,
+  falling back to `DISCORD_BUGREPORTS_CHANNEL_ID`).
+- `messageId` — the player's message id (also the basis of `reportId`).
+- `threadId` — `null` for a normal channel message; set to the thread id when the
+  post spawned a thread or is a **forum post** (a forum post *is* a thread whose
+  first message is the post). This is what lets the reply-back step (§7c) post
+  into the right place.
+
+Non-Discord (`source: "manual"`) reports simply omit the block (or leave it null);
+the reply-back step then no-ops gracefully.
 
 **Stage 2 — Triage (gate).** A cheap agent (or rules + a small model) decides:
 
@@ -343,6 +362,50 @@ pings the Pi to pull + rebuild + swap in the new `build/web`. Two ways to wire i
 Recommended for the alpha: **push-based trigger, pull-based fallback** — the merge
 fires an immediate rebuild, and a slow cron backstops it if the hook is missed.
 Either way the client cache-bust (already built) does the rest.
+
+---
+
+## 7c. Reply-back step (notify the reporter their bug was picked up)
+
+Closing the human loop: when the pipeline opens (draft) **or** merges a PR that may
+address a Discord-sourced bug, it posts a comment back on the **original Discord
+post** so the reporter is notified — e.g.
+
+```
+🔧 Potentially addressed in PR #123 — https://github.com/<owner>/<repo>/pull/123
+```
+
+This is implemented by [`tool/bug_pipeline/discord_reply.sh`](../tool/bug_pipeline/discord_reply.sh),
+called from `run_pipeline.sh` right after the PR is created in **both** branches
+(the auto-merged path and the draft-PR-for-a-human path), passing the PR number +
+URL and the report file (which carries the `discord` source ref from §2).
+
+**Two post shapes, two endpoints** (both `POST …/channels/{id}/messages`):
+
+- **Normal channel message** (`threadId` null) → reply *referencing* the player's
+  message: POST to `channelId` with a `message_reference` pointing at `messageId`
+  (`fail_if_not_exists:false`, so a deleted post degrades to a plain message
+  instead of erroring). The notice threads directly off their report.
+- **Forum / thread post** (`threadId` set) → post the notice *into the thread*
+  (POST to `threadId`), which is where a forum post's conversation lives.
+
+**Fail-graceful, always.** Notifying the reporter is a nicety, never a gate. A
+missing `DISCORD_BOT_TOKEN`, a missing/blank Discord ref (e.g. a `manual` report),
+a disabled toggle, or any Discord API error logs **one clear line and exits 0** —
+it can never hard-crash the fix pipeline (the caller also adds `|| true`).
+
+**Config vars** (see `config.example.sh`):
+
+| Var | Meaning |
+|---|---|
+| `DISCORD_BOT_TOKEN` | Reused from ingestion; the reply-back step means the bot now also needs **Send Messages** (and **Send Messages in Threads** for forum posts) in the bug-reports channel. |
+| `DISCORD_REPLY_ENABLED` | `1` = post replies (default); `0` = never. |
+| `DISCORD_REPLY_TEMPLATE` | Message text; `{number}` and `{url}` are substituted. Default: `🔧 Potentially addressed in PR #{number} — {url}`. |
+| `DISCORD_API_BASE` | Discord REST base (override only for testing/mocking). |
+
+**Privacy note (ties to §6.4/§6.7):** the reply contains only the public PR link +
+number — no server snapshots, hidden game state, or secrets. The reporter's Discord
+identity stays on Discord; nothing about them is written to the repo.
 
 ---
 

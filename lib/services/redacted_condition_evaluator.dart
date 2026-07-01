@@ -213,6 +213,12 @@ bool _evaluate(
       return _countPlayed(source, ctx, (card) => card.cost.isEven) >=
           c.threshold;
 
+    case GameConditionKind.sameNamePlayedThisTurn:
+      // Card names in the played list are public, so this is evaluable
+      // client-side (excludes the source via _countPlayed).
+      return _countPlayed(source, ctx, (card) => card.name == source.name) >=
+          c.threshold;
+
     // --- Not evaluable from redacted data → no glow (never guess). ---
     // gemParityCardsPlayed and filteredCardsPlayed COULD be derived, but the
     // engine excludes the source for parity in a way that needs the unfiltered
