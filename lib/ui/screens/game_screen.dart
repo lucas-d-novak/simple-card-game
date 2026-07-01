@@ -11,6 +11,7 @@ import 'package:simple_card_game/ui/theme/board_chrome.dart';
 import 'package:simple_card_game/ui/theme/faction_colors.dart';
 import 'package:simple_card_game/ui/theme/game_theme.dart';
 import 'package:simple_card_game/ui/theme/responsive.dart';
+import 'package:simple_card_game/ui/widgets/animated_zone.dart';
 import 'package:simple_card_game/ui/widgets/beveled_button.dart';
 import 'package:simple_card_game/ui/widgets/board_animator.dart';
 import 'package:simple_card_game/ui/widgets/card_detail_modal.dart';
@@ -1510,14 +1511,17 @@ class _PlayField extends StatelessWidget {
                       for (final champ in opponentChampions)
                         Padding(
                           padding: const EdgeInsets.only(right: 4),
-                          child: GameCardWidget(
-                            card: champ as CardModel,
-                            compact: true,
-                            width: cardWidth,
-                            isHighlighted: canAttackChampions,
-                            onTap: canAttackChampions
-                                ? () => onAttackChampion(champ, opponentId!)
-                                : null,
+                          child: AnimatedZoneList.wrap(
+                            id: (champ as CardModel).id,
+                            child: GameCardWidget(
+                              card: champ,
+                              compact: true,
+                              width: cardWidth,
+                              isHighlighted: canAttackChampions,
+                              onTap: canAttackChampions
+                                  ? () => onAttackChampion(champ, opponentId!)
+                                  : null,
+                            ),
                           ),
                         ),
                     ],
@@ -1535,7 +1539,9 @@ class _PlayField extends StatelessWidget {
                     for (final card in champions)
                       Padding(
                         padding: const EdgeInsets.only(right: 4),
-                        child: Stack(
+                        child: AnimatedZoneList.wrap(
+                          id: card.id,
+                          child: Stack(
                           children: [
                             GameCardWidget(
                               card: card,
@@ -1564,20 +1570,24 @@ class _PlayField extends StatelessWidget {
                               ),
                           ],
                         ),
+                        ),
                       ),
                     for (final card in playedCards)
                       Padding(
                         padding: const EdgeInsets.only(right: 4),
-                        child: AnimatedScale(
-                          scale: card.id == lastPlayedCardId ? 1.12 : 1.0,
-                          duration: AnimationTiming.of(context).cardMove,
-                          curve: Curves.easeOutBack,
-                          child: GameCardWidget(
-                            card: card,
-                            compact: true,
-                            showCost: false,
-                            width: cardWidth,
-                            isHighlighted: card.id == lastPlayedCardId,
+                        child: AnimatedZoneList.wrap(
+                          id: card.id,
+                          child: AnimatedScale(
+                            scale: card.id == lastPlayedCardId ? 1.12 : 1.0,
+                            duration: AnimationTiming.of(context).cardMove,
+                            curve: Curves.easeOutBack,
+                            child: GameCardWidget(
+                              card: card,
+                              compact: true,
+                              showCost: false,
+                              width: cardWidth,
+                              isHighlighted: card.id == lastPlayedCardId,
+                            ),
                           ),
                         ),
                       ),
