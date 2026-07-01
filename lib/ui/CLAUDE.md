@@ -23,8 +23,11 @@ ui/
 │   ├── card_fan.dart               # Fan-of-cards hand display
 │   ├── card_art.dart               # Procedural canvas art (faction patterns) fallback
 │   ├── scrollable_board.dart       # Landscape scrollable board container
-│   ├── resource_bar.dart           # Health/mastery/gems/power bar
+│   ├── resource_bar.dart           # Health/mastery/gems/power bar (+ optional fly anchors)
 │   ├── resource_icons.dart         # Custom-painted gem/power/mastery/health/shield icons
+│   ├── board_animator.dart         # Overlay-based fly-animation system (BoardAnimator façade)
+│   ├── fly_overlay.dart            # FlyingWidget primitive (source→dest rect tween)
+│   ├── resource_grant.dart         # Reads simple resource grants off a card's effects (for pips)
 │   ├── beveled_button.dart         # Beveled action button (official-client styling)
 │   └── playing_card_widget.dart    # Legacy card widget
 └── theme/
@@ -195,6 +198,37 @@ pending timers, no `pumpAndSettle` flakiness) without any setup.
 
 Call sites in `game_screen.dart` use `AnimationTiming.of(context).cardMove` /
 `.phaseDelay` for card moves and phase pacing.
+
+## Board fly-animation system (`widgets/board_animator.dart`)
+
+A reusable, overlay-based "fly" system that telegraphs board ACTIONS with motion
+(a card flying deck→market on refill, resource pips flying from a played card to
+their counters, a recruited card flying market→discard, a Focus gem→mastery pip).
+
+- **`BoardAnimatorScope`** — wraps a board subtree; inserts its OWN `Overlay` so
+  transient flights render above the board. Both boards wrap their root `Stack`
+  in it (`game_screen.dart`, `network_game_screen.dart`).
+- **`BoardAnimator.of(context)`** — the façade. `flyCard(fromKey:, toKey:, …)`
+  tweens a faction-tinted mini card between two anchors; `flyResource(fromKey:,
+  toKey:, icon:, count:)` fires `count` staggered resource pips. Rect variants
+  (`flyCardRects` / `flyResourceRects`) take pre-resolved rects. `rectOf(key)`
+  resolves a `GlobalKey`'s global rect.
+- **`FlyingWidget`** (`fly_overlay.dart`) — the primitive: an `AnimationController`
+  that positions a child from a source global rect to a dest rect (scale / fade /
+  optional arc), then removes its `OverlayEntry`.
+- **`resourceGrantsOf(effects)`** (`resource_grant.dart`) — best-effort read of a
+  card's simple resource gains (`GainGems/Power/Mastery/HealthEffect`) so the
+  boards know which pips to fly. Conditional/scaling/choose-one effects are
+  skipped (they need live state) — never a WRONG pip, just no pip.
+- **Anchors** — `GlobalKey`s tag the resource counters, deck/discard piles, the
+  center row and the play area (via `KeyedSubtree`). `ResourceBar` and the boards'
+  bottom zones take optional anchor-key params; null = un-anchored (no-op).
+- **Instant mode** — `BoardAnimator.of` resolves `AnimationTiming.of(context)`;
+  when instant (tests / reduced-motion / `instant` speed) or no scope is present,
+  the animator is a **no-op**: it spawns NOTHING and calls each `onComplete`
+  synchronously (mirrors `shard_win_overlay.dart`). Tests pump the boards with no
+  `AnimationSettings`, so they stay deterministic (no pending timers). Coverage:
+  `test/ui/board_animator_test.dart` + `test/ui/board_animation_smoke_test.dart`.
 
 ## Responsive helper (`theme/responsive.dart`)
 
