@@ -410,13 +410,12 @@
         }
       ],
       "art": "command_seer.jpg",
-      "rawText": "Order Champion (Ally). Gain 2 (gems).",
+      "rawText": "Order Ally. Gain 2 (gems).",
       "verified": true,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 16: name='Command Seer', faction='Order', amount=2. | art added from TTS spritesheet crop (effects pending verification). | VERIFIED from image. Champion shield 5, Order, Ally. On-deploy: gain 2 gems. (Type line reads 'Order Ally' but card has a shield '5' badge = champion.)",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 16: name='Command Seer', faction='Order', amount=2. | art added from TTS spritesheet crop (effects pending verification). | VERIFIED from image. Champion shield 5, Order, Ally. On-deploy: gain 2 gems. (Type line reads 'Order Ally' but card has a shield '5' badge = champion.) | FIX: user confirms NOT a champion — type line reads \"Order Ally\"; set cardType=regular, removed shield.",
       "set": "base",
-      "cardType": "champion",
+      "cardType": "regular",
       "cost": 4,
-      "shield": 5,
       "chapter": 1
     },
     {
@@ -1717,9 +1716,9 @@
         }
       ],
       "art": "chlorophyte_guardian.jpg",
-      "rawText": "Chlorophyte Guardian\nUndergrowth Champion\n[health][health][health][health]\nWhen you play this, draw a card. If you are Volos, draw an additional card.\nExhaust: Gain [gem][gem][gem].",
+      "rawText": "Chlorophyte Guardian\nUndergrowth Champion\n[health][health][health][health]\nWhen you play this, draw a card. If you are Volos, draw an additional card.\nExhaust: Gain [health][health][health].",
       "verified": true,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 62: name='Chlorophyte Guardian', faction='Undergrowth', amount=1. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/chlorophyte_guardian.jpg (shield shown as green health/cross icon value 4); conf=high",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 62: name='Chlorophyte Guardian', faction='Undergrowth', amount=1. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/chlorophyte_guardian.jpg (shield shown as green health/cross icon value 4); conf=high | FIX: Exhaust grants 3 HEALTH (green cross), not gems — corrected from card art.",
       "set": "saga",
       "chapter": 2,
       "cost": 4,
@@ -1728,7 +1727,7 @@
       "activatedAbility": {
         "effects": [
           {
-            "type": "gainGems",
+            "type": "gainHealth",
             "amount": 3
           }
         ]

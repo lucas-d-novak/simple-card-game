@@ -19,6 +19,8 @@ CardDatabase _db() => CardDatabase.fromJsonString('''
      "playEffects": [{"type": "gainPower", "amount": 2}]},
     {"id": "crystal", "name": "Crystal", "cost": 0,
      "playEffects": [{"type": "gainGems", "amount": 1}]},
+    {"id": "praetorian_01", "name": "Praetorian-01", "cost": 4, "copies": 1,
+     "playEffects": [{"type": "gainPower", "amount": 3}]},
     {"id": "boss_thing", "name": "Boss", "outOfScope": true,
      "playEffects": [{"type": "gainPower", "amount": 9}]}
   ]
@@ -42,8 +44,19 @@ void main() {
           reason: 'Aion-group cards are a separate supply, not the market');
       expect(ids, isNot(contains('crystal')),
           reason: 'starter cards are never in the market');
+      expect(ids, isNot(contains('praetorian_01')),
+          reason: 'relics are recruited at Mastery 10, never in the market');
       expect(ids, isNot(contains('boss_thing')),
           reason: 'out-of-scope cards are excluded');
+    });
+
+    test('buildRelicCardsFromDatabase returns only relic cards, keyed by id',
+        () {
+      final relics = buildRelicCardsFromDatabase(_db());
+      expect(relics.keys, contains('praetorian_01'));
+      expect(relics['praetorian_01']!.name, 'Praetorian-01');
+      expect(relics.keys, isNot(contains('kiln_drone')));
+      expect(relics.length, 1, reason: 'only the one relic in this test DB');
     });
 
     test('the Destiny supply contains ONLY Destiny/DestinyDeck cards', () {

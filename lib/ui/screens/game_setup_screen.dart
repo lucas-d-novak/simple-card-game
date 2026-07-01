@@ -33,6 +33,10 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
   /// dealt into the shared face-up Destiny row. Null until loaded.
   List<CardModel>? _destinySupply;
 
+  /// Relic card lookup (id → CardModel) so each player's Character gets its two
+  /// set-aside relics (recruited one-of-two at Mastery 10). Null until loaded.
+  Map<String, CardModel>? _relicCards;
+
   @override
   void initState() {
     super.initState();
@@ -41,9 +45,10 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
         setState(() {
           _marketDeck = buildMarketDeckFromDatabase(db);
           _destinySupply = buildDestinySupplyFromDatabase(db);
+          _relicCards = buildRelicCardsFromDatabase(db);
         });
       }
-    }).catchError((_) {/* fall back to legacy market, no destinies */});
+    }).catchError((_) {/* fall back to legacy market, no destinies/relics */});
   }
 
   /// Per-player Character selection (null = "None"). Index = player index;
@@ -77,6 +82,7 @@ class _GameSetupScreenState extends State<GameSetupScreen> {
       characters: _characters.take(_playerCount).toList(),
       marketDeck: _marketDeck,
       destinySupply: _destinySupply,
+      relicCards: _relicCards,
     );
     AiService? aiService;
     if (_vsAi && _playerCount == 2) {

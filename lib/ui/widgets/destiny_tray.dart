@@ -35,6 +35,7 @@ Future<void> showDestinyTray(
   BuildContext context, {
   required List<DestinyEntry> entries,
   required void Function(String destinyId) onUse,
+  void Function(CardModel card)? onZoom,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -81,6 +82,12 @@ Future<void> showDestinyTray(
                             Navigator.of(ctx).pop();
                             onUse(entry.card.id);
                           },
+                          onZoom: onZoom == null
+                              ? null
+                              : () {
+                                  Navigator.of(ctx).pop();
+                                  onZoom(entry.card);
+                                },
                         ),
                     ],
                   ),
@@ -104,10 +111,14 @@ Future<void> showDestinyTray(
 }
 
 class _DestinyTile extends StatelessWidget {
-  const _DestinyTile({required this.entry, required this.onUse});
+  const _DestinyTile({required this.entry, required this.onUse, this.onZoom});
 
   final DestinyEntry entry;
   final VoidCallback onUse;
+
+  /// Tap the mini card to zoom it (always available, even when the Destiny's
+  /// ability can't be used right now). Null disables the zoom gesture.
+  final VoidCallback? onZoom;
 
   @override
   Widget build(BuildContext context) {
@@ -137,10 +148,15 @@ class _DestinyTile extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Mini card preview.
+          // Mini card preview — tap to zoom (works even when not usable).
           Opacity(
             opacity: entry.exhausted ? 0.55 : 1.0,
-            child: GameCardWidget(card: card, width: 84),
+            child: GameCardWidget(
+              card: card,
+              width: 84,
+              onTap: onZoom,
+              onLongPress: onZoom,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(

@@ -1,3 +1,4 @@
+import 'package:simple_card_game/data/character_relics.dart';
 import 'package:simple_card_game/data/database/card_database.dart';
 import 'package:simple_card_game/models/card_model.dart';
 
@@ -32,6 +33,15 @@ const _starterIds = {
 ///    as a playable supply; excluded so they don't pollute the center deck.
 const _nonMarketGroups = {'Destiny', 'DestinyDeck', 'Aion', 'Prism'};
 
+/// Relic card ids (Relics of the Future). Relics are set aside beside each
+/// player and recruited ONE-of-two for free at Mastery 10 — they are a separate
+/// per-character supply and must NEVER be shuffled into the shared center deck.
+/// Derived from [characterRelicIds] so this stays in sync with the single
+/// source of truth for relic pairings.
+final Set<String> _relicIds = {
+  for (final pair in characterRelicIds.values) ...pair,
+};
+
 /// True when [group] denotes a Destiny card (the Into-the-Horizon supply).
 bool _isDestinyGroup(String? group) =>
     group == 'Destiny' || group == 'DestinyDeck';
@@ -53,6 +63,7 @@ List<MarketCard> buildMarketDeckFromDatabase(CardDatabase db) {
   for (final record in db.records) {
     if (record.outOfScope) continue;
     if (_starterIds.contains(record.id)) continue;
+    if (_relicIds.contains(record.id)) continue; // recruited at Mastery 10, not bought
     if (_nonMarketGroups.contains(record.group)) continue; // separate supplies
     if (record.model.playEffects.isEmpty &&
         record.model.activatedAbility == null) {
@@ -61,6 +72,22 @@ List<MarketCard> buildMarketDeckFromDatabase(CardDatabase db) {
     }
     final copies = record.copies <= 0 ? 1 : record.copies;
     out.add(MarketCard(template: record.model, copies: copies));
+  }
+  return out;
+}
+
+/// Build the RELIC card lookup (id → [CardModel]) from a loaded [CardDatabase] —
+/// the Relics of the Future cards named in [characterRelicIds]. Injected into
+/// `GameService(relicCards:)` so each player whose Character has a relic pair
+/// gets those two set aside in `PlayerState.relicOptions` at setup (recruited
+/// one-of-two for free at Mastery 10). Relics are NEVER in the market
+/// (see [buildMarketDeckFromDatabase]).
+Map<String, CardModel> buildRelicCardsFromDatabase(CardDatabase db) {
+  final out = <String, CardModel>{};
+  for (final record in db.records) {
+    if (_relicIds.contains(record.id)) {
+      out[record.id] = record.model;
+    }
   }
   return out;
 }

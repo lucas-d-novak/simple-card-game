@@ -6,8 +6,19 @@ import 'package:shards_server/game_session.dart';
 import 'package:shards_server/stats_store.dart';
 import 'package:simple_card_game/data/database/game_state_codec.dart';
 import 'package:simple_card_game/data/market_deck.dart';
+import 'package:simple_card_game/models/card_effect.dart' show Character;
 import 'package:simple_card_game/models/card_model.dart';
 import 'package:simple_card_game/services/game_service.dart';
+
+/// Characters with a confirmed relic pair (see character_relics.dart). Seats are
+/// assigned round-robin from this list so every player can recruit a relic at
+/// Mastery 10. rez / chroma are excluded (no confirmed relic pair).
+const List<Character> _relicCharacters = [
+  Character.decima,
+  Character.tetra,
+  Character.volos,
+  Character.koSynWu,
+];
 
 enum GameStatus { waiting, started, complete }
 
@@ -58,13 +69,20 @@ class Lobby {
   Lobby({
     List<MarketCard>? marketDeck,
     List<CardModel>? destinySupply,
+    Map<String, CardModel>? relicCards,
     StatsStore? stats,
   })  : _marketDeck = marketDeck,
         _destinySupply = destinySupply,
+        _relicCards = relicCards,
         _stats = stats ?? StatsStore.disabled();
 
   final List<MarketCard>? _marketDeck;
   final List<CardModel>? _destinySupply;
+
+  /// Relic card lookup (id → CardModel), built once at startup. When non-null,
+  /// each seat is assigned a Character and its two relics are set aside for the
+  /// Mastery-10 recruit. Null → no characters/relics (legacy behaviour).
+  final Map<String, CardModel>? _relicCards;
 
   /// Telemetry sink shared by every session this lobby starts. Defaults to a
   /// DISABLED (no-op) store so an unconfigured Lobby behaves exactly as before.
@@ -166,10 +184,21 @@ class Lobby {
   GameSession? startGame(String gameId) {
     final g = _games[gameId];
     if (g == null || g.status != GameStatus.waiting || !g.isFull) return null;
+    // Assign each seat a distinct Character that has a confirmed relic pair, so
+    // relics are recruitable at Mastery 10. Only used when relic cards were
+    // loaded; otherwise no characters (legacy behaviour, no relic options).
+    final characters = _relicCards == null
+        ? null
+        : [
+            for (var i = 0; i < g.players.length; i++)
+              _relicCharacters[i % _relicCharacters.length],
+          ];
     final svc = GameService(
       playerCount: g.players.length,
+      characters: characters,
       marketDeck: _marketDeck,
       destinySupply: _destinySupply,
+      relicCards: _relicCards,
     );
     // The engine names seats p0..pN (both PlayerState.id and .name are final);
     // GameSession owns the lobby-player-id <-> seat-id mapping for both

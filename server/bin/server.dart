@@ -116,13 +116,16 @@ void main(List<String> args) async {
   final dbFile = File('../assets/card_db/cards.json');
   List<MarketCard>? marketDeck;
   List<CardModel>? destinySupply;
+  Map<String, CardModel>? relicCards;
   if (dbFile.existsSync()) {
     final db = CardDatabase.fromJsonString(dbFile.readAsStringSync());
     marketDeck = buildMarketDeckFromDatabase(db);
     destinySupply = buildDestinySupplyFromDatabase(db);
+    relicCards = buildRelicCardsFromDatabase(db);
     stdout.writeln('Loaded card DB: ${db.records.length} records, '
         '${marketDeck.length} unique market cards, '
-        '${destinySupply.length} Destinies (separate supply).');
+        '${destinySupply.length} Destinies (separate supply), '
+        '${relicCards.length} relics.');
   } else {
     stdout.writeln('WARNING: ${dbFile.path} not found — '
         'falling back to the legacy hardcoded market.');
@@ -138,6 +141,7 @@ void main(List<String> args) async {
   _lobby = Lobby(
     marketDeck: marketDeck,
     destinySupply: destinySupply,
+    relicCards: relicCards,
     stats: _stats,
   );
 

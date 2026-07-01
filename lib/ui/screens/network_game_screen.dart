@@ -879,9 +879,17 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
     showDestinyTray(
       context,
       entries: entries,
+      onZoom: (card) => _zoomOne(card),
       onUse: (destinyId) {
+        final card = _card(destinyId);
         widget.client.useDestinyAbility(destinyId);
         _flash('Used Destiny ability');
+        // A Destiny ability can carry a deferred-selection effect (e.g. Forged
+        // in Flame's "banish a card in your hand or discard pile", nested in a
+        // Conditional). Queue its target picker on the next server state, just
+        // like champion abilities — without this the Use silently does nothing.
+        final ability = card.activatedAbility;
+        if (ability != null) _queueDeferredSelection(card, ability.effects);
       },
     );
   }
@@ -2246,6 +2254,12 @@ class _NetworkPlayField extends StatelessWidget {
     final isPortraitPhone = Responsive.isMobile(screenWidth) &&
         MediaQuery.of(context).orientation == Orientation.portrait;
 
+    // On a mobile PORTRAIT phone, hide YOUR OWN just-played cards from the play
+    // area — the little tile popping in was distracting and redundant on a small
+    // screen (champions still show; the opponent's played row still shows so you
+    // can see their moves). Wider layouts keep the full played-this-turn row.
+    final myPlayed = isPortraitPhone ? const <String>[] : playedThisTurn;
+
     final playColumn = Column(
       mainAxisSize: isPortraitPhone ? MainAxisSize.min : MainAxisSize.max,
       children: [
@@ -2352,7 +2366,7 @@ class _NetworkPlayField extends StatelessWidget {
             // My champions + played-this-turn row, just above the hand. Centered
             // (like the official client) so it sits in the middle of the play
             // field rather than hugging the left edge over the End Turn column.
-            if (myChampions.isNotEmpty || playedThisTurn.isNotEmpty)
+            if (myChampions.isNotEmpty || myPlayed.isNotEmpty)
               SizedBox(
                 height: champHeight,
                 width: double.infinity,
@@ -2413,9 +2427,9 @@ class _NetworkPlayField extends StatelessWidget {
                                 ),
                             ],
                           ),
-                        if (myChampions.isNotEmpty && playedThisTurn.isNotEmpty)
+                        if (myChampions.isNotEmpty && myPlayed.isNotEmpty)
                           const SizedBox(width: 8),
-                        for (final id in playedThisTurn)
+                        for (final id in myPlayed)
                           Padding(
                             padding: const EdgeInsets.only(right: 4),
                             child: AnimatedZoneList.wrap(

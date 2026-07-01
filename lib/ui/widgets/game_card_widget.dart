@@ -5,7 +5,6 @@ import 'package:simple_card_game/models/card_model.dart';
 import 'package:simple_card_game/models/card_type.dart';
 import 'package:simple_card_game/models/faction.dart';
 import 'package:simple_card_game/ui/theme/animation_timing.dart';
-import 'package:simple_card_game/ui/theme/board_chrome.dart';
 import 'package:simple_card_game/ui/theme/faction_colors.dart';
 import 'package:simple_card_game/ui/widgets/card_art.dart';
 import 'package:simple_card_game/ui/widgets/resource_icons.dart';
@@ -86,8 +85,8 @@ class GameCardWidget extends StatelessWidget {
           ),
           boxShadow: [
             // Yellow/amber "conditions active right now" glow — additive, so a
-            // card can be both affordable (teal) AND have its bonus active
-            // (amber). Painted first so it sits under the teal/affordable glow.
+            // card can be both affordable (blue) AND have its bonus active
+            // (amber). Painted first so it sits under the affordable glow.
             if (conditionsMet)
               BoxShadow(
                 color: const Color(0xFFFFC53D).withValues(alpha: 0.85),
@@ -95,10 +94,13 @@ class GameCardWidget extends StatelessWidget {
                 spreadRadius: 1.5,
               ),
             if (isHighlighted)
+              // Bright BLUE "you can buy this now" glow (affordable on your
+              // turn). Blue so it reads as an action prompt distinct from the
+              // gold selected/condition accents.
               BoxShadow(
-                color: BoardChrome.tealHighlight.withValues(alpha: 0.7),
-                blurRadius: 12 * scale,
-                spreadRadius: 1,
+                color: const Color(0xFF49B4FF).withValues(alpha: 0.9),
+                blurRadius: 16 * scale,
+                spreadRadius: 2,
               )
             else if (!conditionsMet)
               BoxShadow(
@@ -107,12 +109,19 @@ class GameCardWidget extends StatelessWidget {
                 offset: const Offset(0, 3),
               ),
           ],
+          // Border precedence: amber (condition active) → blue (affordable) →
+          // none. A glowing blue border marks a card you can buy right now.
           border: conditionsMet
               ? Border.all(
                   color: const Color(0xFFFFD666),
                   width: 1.5 * scale.clamp(0.7, 1.4),
                 )
-              : null,
+              : isHighlighted
+                  ? Border.all(
+                      color: const Color(0xFF6FD0FF),
+                      width: 1.6 * scale.clamp(0.7, 1.4),
+                    )
+                  : null,
         ),
         padding: EdgeInsets.all(2.0 * scale.clamp(0.7, 1.3)),
         child: ClipRRect(
