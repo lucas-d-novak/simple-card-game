@@ -83,6 +83,57 @@ class GameLogEntry {
       );
 }
 
+/// A structured record of the MOST RECENT direct player-vs-player damage event.
+///
+/// Set by [GameService.attackPlayer] every time one player deals direct combat
+/// damage to another (the guard-blocked / zero-damage paths do NOT set it). It
+/// exists so every client — attacker AND victim — can render the SAME damage
+/// animation deterministically from a single shipped event, rather than each
+/// side re-deriving it from the action-log text.
+///
+/// Everything here is PUBLIC information: the attacker, the victim, and the
+/// amount of a direct attack are all visible on the board (health totals are
+/// public scalars), so shipping this leaks nothing hidden.
+///
+/// [seq] is a monotonic counter bumped on each new event; the UI uses it as a
+/// high-water mark so the animation fires exactly ONCE per event (and survives
+/// undo/resync without replaying).
+class LastDamageEvent {
+  const LastDamageEvent({
+    required this.seq,
+    required this.fromId,
+    required this.toId,
+    required this.amount,
+  });
+
+  /// Monotonic sequence number (1-based). Distinguishes one damage event from
+  /// the next even when from/to/amount repeat.
+  final int seq;
+
+  /// Engine seat id of the attacker (e.g. `p0`).
+  final String fromId;
+
+  /// Engine seat id of the victim (e.g. `p1`).
+  final String toId;
+
+  /// Damage dealt.
+  final int amount;
+
+  Map<String, dynamic> toJson() => {
+        'seq': seq,
+        'fromId': fromId,
+        'toId': toId,
+        'amount': amount,
+      };
+
+  factory LastDamageEvent.fromJson(Map<String, dynamic> j) => LastDamageEvent(
+        seq: (j['seq'] as int?) ?? 0,
+        fromId: (j['fromId'] as String?) ?? '',
+        toId: (j['toId'] as String?) ?? '',
+        amount: (j['amount'] as int?) ?? 0,
+      );
+}
+
 /// Orchestrates a Fragments of Boundlessness game: turn lifecycle, effect resolution,
 /// market management, and multi-player turn rotation.
 class GameService {
@@ -238,12 +289,29 @@ class GameService {
   /// elimination win in a long game).
   String? winType;
 
+  /// The most recent direct player-vs-player damage event (see
+  /// [LastDamageEvent]), or null before any direct attack. Set by
+  /// [attackPlayer]; shipped in the redacted view so every client can play the
+  /// same attack animation once. Its [LastDamageEvent.seq] is a high-water mark
+  /// the UI uses to fire the animation exactly once per event.
+  LastDamageEvent? lastDamage;
+  int _damageSeq = 0;
+
   PlayerState get currentPlayer => players[currentPlayerIndex];
   bool get isGameOver => _gameOver;
 
   /// Restore the game-over flag from a snapshot. Only the serialization codec
   /// should call this; normal play sets it via [_checkGameOver].
   void restoreGameOver(bool value) => _gameOver = value;
+
+  /// Restore the last-damage event from a snapshot, keeping the internal
+  /// sequence counter monotonic so a resumed game keeps issuing higher seqs.
+  /// Only the serialization codec should call this; normal play sets it in
+  /// [attackPlayer].
+  void restoreLastDamage(LastDamageEvent event) {
+    lastDamage = event;
+    if (event.seq > _damageSeq) _damageSeq = event.seq;
+  }
 
   /// Whether the current player may take an action. False once the game is over
   /// or the current player has been eliminated — the latter can happen mid-turn
@@ -1172,9 +1240,20 @@ class GameService {
 
     if (currentPlayer.powerPool < amount) return false;
 
+    final attackerId = currentPlayer.id;
     currentPlayer.powerPool -= amount;
     target.takeDamage(amount);
-    _log('dealt $amount damage to ${target.name}', playerId: currentPlayer.id);
+    _log('dealt $amount damage to ${target.name}', playerId: attackerId);
+
+    // Publish a structured "last damage" event so every client (attacker AND
+    // victim) can play the SAME attack animation once, keyed off the bumped seq.
+    // Public info (attacker/victim/amount are all board-visible).
+    lastDamage = LastDamageEvent(
+      seq: ++_damageSeq,
+      fromId: attackerId,
+      toId: target.id,
+      amount: amount,
+    );
 
     // Record unblocked damage dealt this turn (guard already ruled out above),
     // for GameConditionKind.unblockedDamageAtLeast (e.g. blood_for_blood).

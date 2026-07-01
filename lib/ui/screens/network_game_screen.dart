@@ -19,6 +19,7 @@ import 'package:simple_card_game/ui/widgets/board_animator.dart';
 import 'package:simple_card_game/ui/widgets/card_detail_modal.dart';
 import 'package:simple_card_game/ui/widgets/card_fan.dart';
 import 'package:simple_card_game/ui/widgets/choice_modal.dart';
+import 'package:simple_card_game/ui/widgets/damage_flash_overlay.dart';
 import 'package:simple_card_game/ui/widgets/destiny_tray.dart';
 import 'package:simple_card_game/ui/widgets/faction_flame_backdrop.dart';
 import 'package:simple_card_game/ui/widgets/game_card_widget.dart';
@@ -1451,6 +1452,32 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
                 ),
               ),
             ),
+          // Attack-damage flash: a big red "-N" + "<Attacker> hit <Victim> for N"
+          // centered over the board, fired ONCE per new direct-damage event. Both
+          // the attacker's and the victim's screens render the SAME event (the
+          // server ships a single structured `lastDamage`); the caption reads
+          // "… hit YOU for N" for the victim. Suppressed once the game is over so
+          // it never overlaps the win flourish.
+          if (state != null &&
+              !(_GameView.parse(state, client.playerId).isGameOver) &&
+              _GameView.parse(state, client.playerId).lastDamage != null)
+            Positioned.fill(
+              child: SafeArea(
+                child: Builder(
+                  builder: (context) {
+                    final view = _GameView.parse(state, client.playerId);
+                    final dmg = view.lastDamage!;
+                    return DamageFlashOverlay(
+                      seq: dmg.seq,
+                      amount: dmg.amount,
+                      attackerName: dmg.fromName,
+                      victimName: dmg.toName,
+                      isVictim: dmg.toId == view.meId,
+                    );
+                  },
+                ),
+              ),
+            ),
           // Floating fullscreen affordance — a big, always-reachable icon button
           // pinned to the bottom-right of the board on web MOBILE widths, where
           // the small top-bar toggle is easy to miss and can sit under the
@@ -1697,6 +1724,7 @@ class _GameView {
     required this.winnerId,
     required this.winType,
     required this.actionLog,
+    required this.lastDamage,
   });
 
   final List<_PlayerView> players;
@@ -1716,6 +1744,12 @@ class _GameView {
 
   /// Public action log (recent tail), each entry {turn, playerId?, message}.
   final List<Map<String, dynamic>> actionLog;
+
+  /// The most recent direct player-vs-player damage event
+  /// ({seq, fromId, toId, fromName, toName, amount}), or null if no direct
+  /// attack has happened yet. Drives the attack animation; `seq` is the
+  /// high-water mark so it fires once per event.
+  final _DamageView? lastDamage;
 
   _PlayerView get me =>
       players.firstWhere((p) => p.id == meId, orElse: () => players.first);
@@ -1756,6 +1790,10 @@ class _GameView {
         for (final e in (state['actionLog'] as List? ?? const []))
           (e as Map).cast<String, dynamic>(),
       ],
+      lastDamage: state['lastDamage'] == null
+          ? null
+          : _DamageView.parse(
+              (state['lastDamage'] as Map).cast<String, dynamic>()),
     );
   }
 
@@ -1767,6 +1805,35 @@ class _GameView {
     }
     return playerId;
   }
+}
+
+/// A parsed direct-damage event from the redacted state's `lastDamage`.
+@immutable
+class _DamageView {
+  const _DamageView({
+    required this.seq,
+    required this.fromId,
+    required this.toId,
+    required this.fromName,
+    required this.toName,
+    required this.amount,
+  });
+
+  final int seq;
+  final String fromId;
+  final String toId;
+  final String fromName;
+  final String toName;
+  final int amount;
+
+  static _DamageView parse(Map<String, dynamic> j) => _DamageView(
+        seq: (j['seq'] as int?) ?? 0,
+        fromId: (j['fromId'] as String?) ?? '',
+        toId: (j['toId'] as String?) ?? '',
+        fromName: (j['fromName'] as String?) ?? (j['fromId'] as String?) ?? '',
+        toName: (j['toName'] as String?) ?? (j['toId'] as String?) ?? '',
+        amount: (j['amount'] as int?) ?? 0,
+      );
 }
 
 /// One player's public (+ own-hand) redacted slice.

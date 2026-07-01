@@ -210,6 +210,34 @@ void main() {
             reason: "opponent hand card $id must NOT be in p0's dictionary");
       }
     });
+
+    test('lastDamage is absent before any attack, then shipped to BOTH the '
+        'attacker AND the victim (public info) with names resolved', () {
+      final game = GameService(playerCount: 2);
+      final names = {'p0': 'Alice', 'p1': 'Bob'};
+
+      // No direct attack yet → no lastDamage key at all.
+      final before = redactFor(game, 'p0', stateVersion: 1, names: names);
+      expect(before.containsKey('lastDamage'), isFalse);
+
+      // p0 attacks p1 for 4.
+      game.currentPlayer.powerPool = 5;
+      expect(game.attackPlayer('p1', 4), isTrue);
+
+      // The SAME structured event reaches both the attacker and the victim.
+      for (final recipient in ['p0', 'p1']) {
+        final view =
+            redactFor(game, recipient, stateVersion: 2, names: names);
+        final dmg = view['lastDamage'] as Map;
+        expect(dmg['seq'], isA<int>());
+        expect(dmg['seq'], greaterThan(0));
+        expect(dmg['fromId'], 'p0');
+        expect(dmg['toId'], 'p1');
+        expect(dmg['fromName'], 'Alice');
+        expect(dmg['toName'], 'Bob');
+        expect(dmg['amount'], 4);
+      }
+    });
   });
 
   group('GameSession — action authorization', () {

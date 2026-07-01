@@ -131,6 +131,18 @@ server/                                  # Authoritative multiplayer (pure-Dart,
   `ScreenClass` (mobile / tablet / desktop) + width breakpoints for browser and
   mobile. See [`lib/ui/CLAUDE.md`](lib/ui/CLAUDE.md) and
   [`ai-docs/responsive_ui_design.md`](ai-docs/responsive_ui_design.md).
+- **Attack-damage flash** — when a player deals DIRECT damage to another,
+  `GameService.attackPlayer` publishes a structured `GameService.lastDamage`
+  (`LastDamageEvent` {seq, fromId, toId, amount}, monotonic `seq`). It is
+  round-tripped by `GameStateCodec` and shipped PUBLICLY by
+  [`server/lib/views.dart`](server/lib/views.dart)'s `redactFor` as `lastDamage`
+  ({seq, fromId, toId, fromName, toName, amount} — attacker/victim/amount are all
+  board-visible, so nothing hidden leaks). The networked board renders
+  [`DamageFlashOverlay`](lib/ui/widgets/damage_flash_overlay.dart) — a big red
+  **-N** plus "<Attacker> hit <Victim> for N" (the victim's own screen reads "…
+  hit YOU for N") — firing exactly ONCE per new `seq` (high-water mark) so BOTH
+  the attacker and the victim see the SAME event. Instant/reduced-motion mode
+  renders nothing and schedules no timers (tests never hang).
 - **Action log** — `GameService.actionLog` (`List<GameLogEntry>`{turn, playerId?,
   message, cardId?, grants}) recorded via the `_log()` helper for public events
   (play / recruit / attack / focus / destroy / turn / win); bounded. Now also

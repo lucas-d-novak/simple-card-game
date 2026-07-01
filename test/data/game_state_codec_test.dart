@@ -331,5 +331,45 @@ void main() {
       expect(restored.useDestinyAbility('war_bound'), isTrue);
       expect(restored.currentPlayer.powerPool, 4);
     });
+
+    test('lastDamage event round-trips through the codec', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      // Give the active player power and attack the opponent directly.
+      game.currentPlayer.powerPool = 5;
+      final targetId = game.players[1].id;
+      expect(game.attackPlayer(targetId, 4), isTrue);
+
+      // The engine published a structured lastDamage event.
+      expect(game.lastDamage, isNotNull);
+      expect(game.lastDamage!.amount, 4);
+      expect(game.lastDamage!.fromId, game.players[0].id);
+      expect(game.lastDamage!.toId, targetId);
+      final originalSeq = game.lastDamage!.seq;
+      expect(originalSeq, greaterThan(0));
+
+      final json = jsonEncode(GameStateCodec.encode(game));
+      final restored =
+          GameStateCodec.decode(jsonDecode(json) as Map<String, dynamic>);
+
+      expect(restored.lastDamage, isNotNull);
+      expect(restored.lastDamage!.seq, originalSeq);
+      expect(restored.lastDamage!.fromId, game.players[0].id);
+      expect(restored.lastDamage!.toId, targetId);
+      expect(restored.lastDamage!.amount, 4);
+
+      // The sequence counter stayed monotonic across restore: the next direct
+      // attack issues a STRICTLY HIGHER seq (so the client's high-water mark
+      // still fires the animation once).
+      restored.currentPlayer.powerPool = 3;
+      expect(restored.attackPlayer(restored.players[1].id, 2), isTrue);
+      expect(restored.lastDamage!.seq, greaterThan(originalSeq));
+    });
+
+    test('no lastDamage key emitted before any direct attack', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      expect(game.lastDamage, isNull);
+      final encoded = GameStateCodec.encode(game);
+      expect(encoded.containsKey('lastDamage'), isFalse);
+    });
   });
 }
