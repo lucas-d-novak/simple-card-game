@@ -135,6 +135,8 @@ class GameStateCodec {
       'drawPile': _refs(dict, p.drawPile),
       'discardPile': _refs(dict, p.discardPile),
       'playedThisTurn': _refs(dict, p.playedThisTurn),
+      if (p.fastPlayedThisTurn.isNotEmpty)
+        'fastPlayedThisTurn': _refs(dict, p.fastPlayedThisTurn),
       'championsInPlay': _refs(dict, p.championsInPlay),
       'cardsUnderChampion': {
         for (final entry in p.cardsUnderChampion.entries)
@@ -188,6 +190,7 @@ class GameStateCodec {
     p.drawPile.addAll(zone(json['drawPile']));
     p.discardPile.addAll(zone(json['discardPile']));
     p.playedThisTurn.addAll(zone(json['playedThisTurn']));
+    p.fastPlayedThisTurn.addAll(zone(json['fastPlayedThisTurn']));
     p.championsInPlay.addAll(zone(json['championsInPlay']));
     final under = (json['cardsUnderChampion'] as Map? ?? const {})
         .cast<String, dynamic>();

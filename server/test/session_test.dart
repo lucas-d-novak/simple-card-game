@@ -266,6 +266,28 @@ void main() {
       expect(res.accepted, isTrue);
       expect(session.game.players[seat].powerPool, 5,
           reason: 'effect resolved');
+      // Kept VISIBLE (greyed) in the play area this turn — not yet removed, and
+      // never in discard. Exposed to the client via fastPlayedThisTurn.
+      expect(
+          session.game.players[seat].fastPlayedThisTurn
+              .any((c) => c.id == 'merc_x'),
+          isTrue);
+      expect(session.game.removedFromGame.any((c) => c.id == 'merc_x'), isFalse);
+      expect(session.game.players[seat].discardPile.any((c) => c.id == 'merc_x'),
+          isFalse);
+
+      // The redacted view lists the id and dictionaries the card so the UI can
+      // render a greyed tile. redactFor matches on the ENGINE seat id (p0/p1).
+      final seatId = session.game.players[seat].id;
+      final view = redactFor(session.game, seatId, stateVersion: 1);
+      final me = (view['players'] as List)
+          .cast<Map>()
+          .firstWhere((p) => p['id'] == seatId);
+      expect((me['fastPlayedThisTurn'] as List), contains('merc_x'));
+      expect((view['cards'] as Map).containsKey('merc_x'), isTrue);
+
+      // At end of turn it leaves the game (mercenary), never discarded.
+      session.game.endTurn();
       expect(session.game.removedFromGame.any((c) => c.id == 'merc_x'), isTrue,
           reason: 'mercenary removed from game, not to discard');
       expect(session.game.players[seat].discardPile.any((c) => c.id == 'merc_x'),

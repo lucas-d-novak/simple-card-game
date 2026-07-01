@@ -30,6 +30,7 @@ Map<String, dynamic> _playerSig(PlayerState p) => {
       'drawPile': p.drawPile.map((c) => c.id).toList(),
       'discardPile': p.discardPile.map((c) => c.id).toList(),
       'playedThisTurn': p.playedThisTurn.map((c) => c.id).toList(),
+      'fastPlayedThisTurn': p.fastPlayedThisTurn.map((c) => c.id).toList(),
       'championsInPlay': p.championsInPlay.map((c) => c.id).toList(),
       'cardsUnderChampion': {
         for (final e in p.cardsUnderChampion.entries)
@@ -155,6 +156,11 @@ void main() {
       game.currentPlayer.cardsUnderChampion['inject_champ'] = [
         const CardModel(id: 'tucked', name: 'Tucked', cost: 1, playEffects: []),
       ];
+      // Warp a card from the center row so fastPlayedThisTurn is non-empty and
+      // its round-trip is exercised.
+      game.centerRow.add(const CardModel(
+          id: 'warp_me', name: 'Warp Me', cost: 1, playEffects: []));
+      game.fastPlayFromCenter('warp_me');
 
       final before = _gameSig(game);
 
@@ -169,6 +175,9 @@ void main() {
       // The under-card survived.
       expect(restored.players[0].cardsUnderChampion['inject_champ']!.single.id,
           'tucked');
+      // The fast-played/warped card survived (kept visible this turn).
+      expect(restored.players[0].fastPlayedThisTurn.map((c) => c.id),
+          contains('warp_me'));
       // The static modifier survived.
       expect(restored.players[0].staticModifiers.single.kind,
           StaticModifierKind.shieldBuff);

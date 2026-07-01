@@ -67,6 +67,9 @@ Map<String, dynamic> redactFor(
     registerAll(p.discardPile); // discards are public
     registerAll(p.championsInPlay); // champions are public
     registerAll(p.playedThisTurn); // played-this-turn is public
+    // Fast-played / warped cards, kept visible (greyed) in the play area for the
+    // rest of the turn. Public — they were played face-up.
+    registerAll(p.fastPlayedThisTurn);
     // Claimed Destinies are public (face-up beside their owner).
     registerAll(p.claimedDestinies);
     // Relic OPTIONS are private to their owner: the two set-aside relics are a
@@ -216,6 +219,12 @@ Map<String, dynamic> _redactPlayer(
         },
     ],
     'playedThisTurn': _ids(p.playedThisTurn),
+    // Cards fast-played / warped this turn (free warp or paid mercenary
+    // fast-play). They were removed-from-game rules-wise but are kept VISIBLE in
+    // the play area this turn so the player can see they were played and why they
+    // aren't in discard. The UI should render these tiles GREYED OUT. Public
+    // (they were played face-up); the ids are dictionaried in `cards` above.
+    'fastPlayedThisTurn': _ids(p.fastPlayedThisTurn),
     'staticModifiers': [
       for (final m in p.staticModifiers)
         {

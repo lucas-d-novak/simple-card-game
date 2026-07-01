@@ -70,6 +70,21 @@ class PlayerState {
   final List<CardModel> playedThisTurn = [];
   final List<CardModel> championsInPlay = [];
 
+  /// Cards that were FAST-PLAYED / WARPED this turn — either a free warp
+  /// ([GameService.fastPlayFromCenter]) or a paid mercenary fast-play
+  /// ([GameService.payAndFastPlayFromCenter]). Per the warp / mercenary rules
+  /// these cards are removed from the game (NOT discarded) at end of turn, but
+  /// the player should still SEE that they were played. Keeping them here lets
+  /// the UI render them in the play area, greyed out, for the rest of the turn.
+  ///
+  /// These cards are deliberately NOT in [playedThisTurn] (so end-of-turn
+  /// cleanup does not send them to discard) but ARE in [cardsPlayedThisTurn]
+  /// (their play-history / ally contribution still counts). At end of turn
+  /// [cleanupTurn] moves them to the game's removed-from-game zone and clears
+  /// this list. Cleared here (not by [resetTurnResources]) so the engine can
+  /// scoop them into removed-from-game first.
+  final List<CardModel> fastPlayedThisTurn = [];
+
   /// Cards tucked UNDER a champion (Engine Phase 2 wave 5b — Family 13), keyed
   /// by the champion's id. Populated by [TuckUnderChampionEffect] (carmine_eclipse
   /// fast-play-under, paradigm_the_archivist "put an Ally under this", gene_scavs
@@ -179,21 +194,29 @@ class PlayerState {
     exhaustedDestinies.clear();
   }
 
-  /// Moves regular played cards to discard pile and returns mercenaries
-  /// (for removal from the game). Clears [playedThisTurn].
-  /// Does NOT move champions — they persist in [championsInPlay].
+  /// Moves regular played cards to discard pile and returns the cards to be
+  /// REMOVED FROM THE GAME — end-of-turn mercenaries (from [playedThisTurn])
+  /// plus every card fast-played / warped this turn (from [fastPlayedThisTurn],
+  /// which stayed visible in the play area). Clears both [playedThisTurn] and
+  /// [fastPlayedThisTurn]. Does NOT move champions — they persist in
+  /// [championsInPlay].
   List<CardModel> cleanupTurn() {
-    final List<CardModel> mercenaries = [];
+    final List<CardModel> removed = [];
 
     for (final card in playedThisTurn) {
       if (card.cardType == CardType.mercenary) {
-        mercenaries.add(card);
+        removed.add(card);
       } else {
         discardPile.add(card);
       }
     }
     playedThisTurn.clear();
 
-    return mercenaries;
+    // Fast-played / warped cards were kept visible (greyed) during the turn;
+    // now they leave the game (never to discard).
+    removed.addAll(fastPlayedThisTurn);
+    fastPlayedThisTurn.clear();
+
+    return removed;
   }
 }
