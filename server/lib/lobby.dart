@@ -48,6 +48,14 @@ class LobbyGame {
   GameStatus status = GameStatus.waiting;
   GameSession? session;
 
+  /// The LOBBY player id of the winner, once the game is complete (null while
+  /// in progress, or on a draw / no-winner). Set at the complete transition so
+  /// the lobby's past-games summary can show who won.
+  String? winnerId;
+
+  /// How the game was won — 'mastery' | 'elimination' | 'draw' | null.
+  String? winType;
+
   bool get isFull => players.length >= seats;
 
   Map<String, dynamic> toSummary() => {
@@ -57,6 +65,8 @@ class LobbyGame {
         'seats': seats,
         'players': players,
         'status': status.name,
+        if (winnerId != null) 'winnerId': winnerId,
+        if (winType != null) 'winType': winType,
         if (session != null) 'currentPlayerIndex': session!.game.currentPlayerIndex,
       };
 }

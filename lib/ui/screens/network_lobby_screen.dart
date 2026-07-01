@@ -307,7 +307,10 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
   }
 
   Widget _lobbyPanel(GameClient client) {
-    final games = client.lobby;
+    // Active games (waiting / in-progress) show in the main list; finished games
+    // move to the scrollable "Past games" summary reachable via a link.
+    final games = [for (final g in client.lobby) if (!g.isComplete) g];
+    final pastGames = [for (final g in client.lobby) if (g.isComplete) g];
     return Card(
       color: const Color(0xFF12283F),
       child: Padding(
@@ -363,8 +366,133 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
                       itemBuilder: (_, i) => _gameTile(client, games[i]),
                     ),
             ),
+            // Link to the scrollable past-games summary (who won). Only shown
+            // once at least one game has finished.
+            if (pastGames.isNotEmpty)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  key: const ValueKey('pastGamesButton'),
+                  onPressed: () => _showPastGames(pastGames),
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFFBFD8E8),
+                  ),
+                  icon: const Icon(Icons.history, size: 16),
+                  label: Text('Past games (${pastGames.length})',
+                      style: const TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.bold)),
+                ),
+              ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// A scrollable bottom-sheet summary of finished games and who won.
+  void _showPastGames(List<LobbyGameSummary> past) {
+    // Newest first (games are appended in creation order; reverse to surface the
+    // most recently finished at the top).
+    final games = past.reversed.toList();
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF0E2236),
+      isScrollControlled: true,
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Past games',
+                  style: TextStyle(
+                    color: Color(0xFFE8C45A),
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(ctx).size.height * 0.6,
+                  ),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [for (final g in games) _pastGameTile(g)],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    child: const Text('CLOSE',
+                        style: TextStyle(color: Color(0xFF5FD0E6))),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _pastGameTile(LobbyGameSummary g) {
+    final winner = g.winnerId;
+    final String outcome;
+    if (winner != null && winner.isNotEmpty) {
+      final how = g.winType == 'mastery'
+          ? ' (Infinity Shard)'
+          : g.winType == 'elimination'
+              ? ' (elimination)'
+              : '';
+      outcome = '$winner won$how';
+    } else {
+      outcome = 'Draw / no winner';
+    }
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF14304A),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            winner != null ? Icons.emoji_events : Icons.handshake,
+            size: 18,
+            color: const Color(0xFFE8C45A),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(g.name,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold)),
+                const SizedBox(height: 2),
+                Text(outcome,
+                    style: const TextStyle(
+                        color: Color(0xFF9FE7C9), fontSize: 13)),
+                Text('players: ${g.players.join(", ")}',
+                    style: const TextStyle(
+                        color: Colors.white54, fontSize: 11)),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

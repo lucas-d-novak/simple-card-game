@@ -17,6 +17,8 @@ class LobbyGameSummary {
     required this.seats,
     required this.players,
     required this.status,
+    this.winnerId,
+    this.winType,
   });
 
   final String id;
@@ -28,6 +30,16 @@ class LobbyGameSummary {
   final List<String> players;
   final String status; // waiting | started | complete
 
+  /// Winner's player id once the game is complete (null while in progress or on
+  /// a draw). Used by the lobby's past-games summary.
+  final String? winnerId;
+
+  /// How it was won — 'mastery' | 'elimination' | 'draw' | null.
+  final String? winType;
+
+  /// Whether this game has finished (past game).
+  bool get isComplete => status == 'complete';
+
   factory LobbyGameSummary.fromJson(Map<String, dynamic> j) =>
       LobbyGameSummary(
         id: j['id'] as String,
@@ -36,6 +48,8 @@ class LobbyGameSummary {
         seats: (j['seats'] as int?) ?? 2,
         players: [for (final p in (j['players'] as List? ?? const [])) p as String],
         status: (j['status'] as String?) ?? 'waiting',
+        winnerId: j['winnerId'] as String?,
+        winType: j['winType'] as String?,
       );
 }
 

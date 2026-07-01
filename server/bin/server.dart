@@ -369,10 +369,15 @@ void _dispatch(
       // label onto every decision in this game. Guarded so it fires once.
       if (session.game.isGameOver && g!.status != GameStatus.complete) {
         g.status = GameStatus.complete;
+        // Record who won on the lobby game so the past-games summary can show it.
+        final winner = _winnerLobbyId(session);
+        final wType = winTypeOf(session.game);
+        g.winnerId = winner;
+        g.winType = wType;
         _stats.recordGameEnd(
           gameId: g.id,
-          winnerId: _winnerLobbyId(session),
-          winType: winTypeOf(session.game),
+          winnerId: winner,
+          winType: wType,
           turns: session.game.turnNumber,
         );
       }
