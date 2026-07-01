@@ -2580,12 +2580,13 @@
       "art": "synthetica_artifex.jpg",
       "rawText": "Synthetica Artifex\nHomodeus Ally\nChoose one:\n- Gain [gem][gem][gem].\n- Each enemy player loses [health].\n(Mastery 15) Do both instead.",
       "verified": true,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 89: name='Synthetica Artifex', faction='Homodeus', amount=1. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/synthetica_artifex.jpg (Ally with no Champion/Mercenary type line -> regular; shield badge value 2); conf=high | [encode-gap] Homodeus Ally; choose-one (3 gems OR each enemy loses 1 health) and Mastery 15 'do both' (replace) encoded. rawText '[health]' had no number; assumed 1. Remaining approximation: 'each ENEMY player loses health' is modeled as single-target opponentLosesHealth (no all-enemies variant of OpponentLosesHealth exists; allPlayersLoseHealth would also hit self).",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 89: name='Synthetica Artifex', faction='Homodeus', amount=1. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/synthetica_artifex.jpg (Ally with no Champion/Mercenary type line -> regular; shield badge value 2); conf=high | [encode-gap] Homodeus Ally; choose-one (3 gems OR each enemy loses 1 health) and Mastery 15 'do both' (replace) encoded. rawText '[health]' had no number; assumed 1. Remaining approximation: 'each ENEMY player loses health' is modeled as single-target opponentLosesHealth (no all-enemies variant of OpponentLosesHealth exists; allPlayersLoseHealth would also hit self). | [fix] Added shield: 2 (printed shield badge value 2, verified from assets/cards/synthetica_artifex.jpg; was previously null/unset). chooseOne playEffects and Mastery-15 'do both' (masteryBonus + masteryReplaces) confirmed correct against art.",
       "set": "saga",
       "chapter": 3,
       "ksOnly": true,
       "cost": 4,
       "cardType": "regular",
+      "shield": 2,
       "masteryBonus": [
         {
           "type": "gainGems",
