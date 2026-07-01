@@ -3,6 +3,7 @@ import 'package:simple_card_game/data/database/card_serialization.dart';
 import 'package:simple_card_game/models/card_effect.dart';
 import 'package:simple_card_game/models/card_model.dart';
 import 'package:simple_card_game/models/card_type.dart';
+import 'package:simple_card_game/services/fullscreen.dart';
 import 'package:simple_card_game/services/game_client.dart';
 import 'package:simple_card_game/services/redacted_condition_evaluator.dart';
 import 'package:simple_card_game/ui/theme/board_chrome.dart';
@@ -1321,6 +1322,9 @@ class _NetworkTopBar extends StatelessWidget {
                           style: TextStyle(
                               fontSize: 12, fontWeight: FontWeight.bold)),
                     ),
+                    // Fullscreen toggle — web only (no-op/hidden on native).
+                    if (Fullscreen.instance.isSupported)
+                      const _FullscreenButton(),
                   ],
                 ),
               ),
@@ -1368,6 +1372,41 @@ class _NetworkTopBar extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// A web-only fullscreen toggle for the top bar. Shows enter/exit-fullscreen
+/// icons and flips the browser Fullscreen state. Hidden on native (the parent
+/// only builds it when `Fullscreen.instance.isSupported`).
+class _FullscreenButton extends StatefulWidget {
+  const _FullscreenButton();
+
+  @override
+  State<_FullscreenButton> createState() => _FullscreenButtonState();
+}
+
+class _FullscreenButtonState extends State<_FullscreenButton> {
+  @override
+  Widget build(BuildContext context) {
+    final full = Fullscreen.instance.isFullscreen;
+    return TextButton.icon(
+      onPressed: () {
+        Fullscreen.instance.toggle();
+        // Rebuild after the browser applies the change so the icon updates.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) setState(() {});
+        });
+      },
+      style: TextButton.styleFrom(
+        foregroundColor: const Color(0xFFBFD8E8),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      icon: Icon(full ? Icons.fullscreen_exit : Icons.fullscreen, size: 16),
+      label: Text(full ? 'Exit' : 'Fullscreen',
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
     );
   }
 }
