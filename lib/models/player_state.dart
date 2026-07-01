@@ -124,6 +124,16 @@ class PlayerState {
   /// "exhaust your character card"). Cleared each turn by [resetTurnResources].
   bool focusedThisTurn = false;
 
+  /// A pending, SINGLE-USE redirect for the NEXT matching card this player
+  /// recruits this turn (numeri_drones "put the next Homodeus Champion you
+  /// recruit this turn directly into play"; anomaly_cleric Mastery-10 "put the
+  /// next card you recruit this turn into your hand"). Installed by
+  /// [RedirectNextRecruitEffect]; consumed (set back to null) by the first
+  /// matching recruit in `GameService.buyCard` / `recruitFromCenter`. Cleared
+  /// each turn by [resetTurnResources] so an unused redirect never leaks into a
+  /// later turn.
+  RedirectNextRecruitEffect? pendingRecruitRedirect;
+
   // --- Destiny system (Into the Horizon expansion) --------------------------
 
   /// Destinies this player has CLAIMED. This is a NEW PERSISTENT zone that sits
@@ -188,6 +198,9 @@ class PlayerState {
     exhaustedChampions.clear();
     cardsPlayedThisTurn.clear();
     focusedThisTurn = false;
+    // An unconsumed "next recruit" redirect expires at end of turn — the card
+    // text scopes it to "this turn".
+    pendingRecruitRedirect = null;
     // Destinies untap at the start of the owner's next turn. The persistent
     // zone (claimedDestinies) and per-game claim counters are NOT reset — only
     // the per-turn exhaustion state is.

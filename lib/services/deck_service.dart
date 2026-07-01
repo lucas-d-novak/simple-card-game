@@ -236,6 +236,7 @@ class DeckService {
         case ResetChampionEffect():
         case RecruitFromCenterEffect():
         case FastPlayFromCenterEffect():
+        case RedirectNextRecruitEffect():
         case ScryEffect():
         case DestroyChampionEffect():
         case ReturnFromDiscardEffect():

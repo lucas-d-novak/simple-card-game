@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:simple_card_game/data/card_art_map.dart';
-import 'package:simple_card_game/data/character_relics.dart';
 import 'package:simple_card_game/data/database/card_database.dart';
 import 'package:simple_card_game/data/database/card_database_asset.dart';
-import 'package:simple_card_game/models/card_type.dart';
+import 'package:simple_card_game/models/card_model.dart';
 import 'package:simple_card_game/models/faction.dart';
 import 'package:simple_card_game/ui/theme/faction_colors.dart';
 import 'package:simple_card_game/ui/theme/game_theme.dart';
 import 'package:simple_card_game/ui/theme/responsive.dart';
-import 'package:simple_card_game/ui/widgets/card_art.dart';
+import 'package:simple_card_game/ui/widgets/card_detail_modal.dart';
+import 'package:simple_card_game/ui/widgets/game_card_widget.dart';
 
 /// A derived faction/group bucket used to GROUP and ORDER the card list.
 ///
@@ -19,16 +18,17 @@ import 'package:simple_card_game/ui/widgets/card_art.dart';
 /// Into-the-Horizon Destiny supply (`group` == 'Destiny'/'DestinyDeck') gets its
 /// own [destiny] bucket.
 ///
-/// Two families are hidden from the catalog entirely BEFORE bucketing (see
-/// [_isCoopEnemy] / [_isRelic]) and therefore never reach [_bucketOf]:
+/// Only ONE family is hidden from the catalog entirely BEFORE bucketing (see
+/// [_isCoopEnemy]) and therefore never reaches [_bucketOf]:
 /// - the co-op/enemy boss & minion groups (`faction == none` with a non-Aion/
-///   Prism/Destiny `group` — Vox, Dominatus, Ingeminex, …), and
-/// - every Relic card (recruited one-of-two at Mastery 10, not a normal supply).
+///   Prism/Destiny `group` — Vox, Dominatus, Ingeminex, …).
 ///
-/// Relics are NOT a group: they carry their playable `faction` (or the Aion/
-/// Prism group) — so they are filtered by id/type-line, not by bucket. Enum
-/// order == display order: Aion, Prism, Order, Undergrowth, Homodeus, Wraethe,
-/// Destiny.
+/// Relic cards ARE listed (they carry their owning `faction`, or the Aion/Prism
+/// `group`, so they bucket naturally): a faction's Mastery-10 relics appear under
+/// that faction, sub-sorted by cost like every other card. Relics with no real
+/// faction/group (`faction == none`, boss-scoped) are still caught by
+/// [_isCoopEnemy]. Enum order == display order: Aion, Prism, Order, Undergrowth,
+/// Homodeus, Wraethe, Destiny.
 enum _Bucket {
   aion,
   prism,
@@ -37,32 +37,6 @@ enum _Bucket {
   homodeus,
   wraethe,
   destiny,
-}
-
-/// Relic card ids recruited via the Mastery-10 `recruitRelic` supply, taken
-/// authoritatively from [characterRelicIds] in `character_relics.dart`. Covers
-/// the Homodeus/Order/Undergrowth/Wraethe relics; the Aion/Prism relics carry no
-/// mapped Character, so they are caught by the type-line fallback in [_isRelic].
-final Set<String> _relicCardIds =
-    characterRelicIds.values.expand((ids) => ids).toSet();
-
-/// Matches the word "Relic" as it appears on a card's TYPE line (e.g. "Homodeus
-/// Relic - Ally", "Prism Relic - Champion").
-final RegExp _relicTypeLine = RegExp(r'\bRelic\b');
-
-/// True if [r] is a Relic card. PRIMARY: its id is in the authoritative
-/// [_relicCardIds] set. FALLBACK: its card-TYPE line (the first sentence/line of
-/// `rawText`, before any effect text) is flagged a Relic — so a card that merely
-/// mentions "relic" in flavor or reward text (e.g. an Ingeminex co-op card) is
-/// NOT mistaken for one.
-bool _isRelic(CardRecord r) {
-  if (_relicCardIds.contains(r.id)) return true;
-  final raw = r.rawText;
-  if (raw == null) return false;
-  var typeLine = raw.split('\n').first;
-  final sentenceBreak = typeLine.indexOf('. ');
-  if (sentenceBreak >= 0) typeLine = typeLine.substring(0, sentenceBreak);
-  return _relicTypeLine.hasMatch(typeLine);
 }
 
 /// True for co-op/enemy boss & minion cards: `faction == none` AND a `group`
@@ -182,10 +156,11 @@ class _CardListScreenState extends State<CardListScreen> {
     final query = _search.trim().toLowerCase();
     final byBucket = <_Bucket, List<CardRecord>>{};
     for (final r in db.records) {
-      // Hide co-op/enemy cards and all relics entirely — filtered here, before
-      // bucketing and searching, so the list, section grouping and filter
-      // dropdown all see the same set.
-      if (_isCoopEnemy(r) || _isRelic(r)) continue;
+      // Hide only co-op/enemy cards — filtered here, before bucketing and
+      // searching, so the list, section grouping and filter dropdown all see the
+      // same set. Relics are NOT hidden: they carry a real faction/group and so
+      // bucket into their owning faction section like any other card.
+      if (_isCoopEnemy(r)) continue;
       final bucket = _bucketOf(r);
       if (_filter != null && bucket != _filter) continue;
       if (query.isNotEmpty) {
@@ -259,21 +234,62 @@ class _CardListScreenState extends State<CardListScreen> {
         Expanded(
           child: grouped.isEmpty
               ? const _EmptyState()
-              : ListView(
-                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
-                  children: [
-                    for (final entry in grouped) ...[
-                      _BucketHeader(
-                        bucket: entry.key,
-                        count: entry.value.length,
-                      ),
-                      for (final record in entry.value)
-                        _CardRow(record: record),
-                    ],
-                  ],
+              : LayoutBuilder(
+                  builder: (context, constraints) {
+                    final columns = _gridColumnCount(constraints);
+                    // Available width inside the list's horizontal padding
+                    // (12 left + 12 right), minus the inter-tile gutters.
+                    const horizontalPadding = 24.0;
+                    const gutter = 8.0;
+                    final tileWidth = ((constraints.maxWidth -
+                                horizontalPadding -
+                                gutter * (columns - 1)) /
+                            columns)
+                        .floorToDouble();
+                    return ListView(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
+                      children: [
+                        for (final entry in grouped) ...[
+                          _BucketHeader(
+                            bucket: entry.key,
+                            count: entry.value.length,
+                          ),
+                          _CardGrid(
+                            records: entry.value,
+                            tileWidth: tileWidth,
+                            gutter: gutter,
+                            onTapCard: _openCardZoom,
+                          ),
+                        ],
+                      ],
+                    );
+                  },
                 ),
         ),
       ],
+    );
+  }
+
+  /// Responsive column count for the card grid: 3 on narrow / portrait layouts
+  /// (mobile portrait) and 5 on landscape or wide layouts (mobile landscape,
+  /// tablet, desktop). Driven by the available box — landscape OR a width at/above
+  /// the mobile breakpoint gets the wider 5-column grid.
+  int _gridColumnCount(BoxConstraints constraints) {
+    final landscape = constraints.maxWidth > constraints.maxHeight;
+    final wide = constraints.maxWidth >= Responsive.mobileMaxWidth;
+    return (landscape || wide) ? 5 : 3;
+  }
+
+  /// Opens the SAME zoom/detail view players see in-game (`showCardDetailModal`
+  /// from `card_detail_modal.dart`) for the tapped card. [sectionCards] are the
+  /// cards in the tapped card's faction section, so the modal's nav chevrons page
+  /// through that section. No context action is supplied (the catalog is not a
+  /// live game), so the modal shows the card + rules text with no action button.
+  void _openCardZoom(List<CardModel> sectionCards, int index) {
+    showCardDetailModal(
+      context,
+      cards: sectionCards,
+      initialIndex: index,
     );
   }
 
@@ -439,138 +455,48 @@ class _BucketHeader extends StatelessWidget {
   }
 }
 
-/// A single card entry: art thumbnail, name, type/group subtitle, cost badge.
-class _CardRow extends StatelessWidget {
-  const _CardRow({required this.record});
+/// A responsive grid of card icons for one faction section. Each tile is the
+/// in-game [GameCardWidget] (its own faction frame + art), so the catalog shows
+/// the exact card face players see on the board. Tiles keep the section's
+/// cost-sorted order (left-to-right, top-to-bottom). Tapping a tile opens the
+/// shared in-game zoom via [onTapCard].
+///
+/// A [Wrap] lays the fixed-width tiles into as many per row as fit — the caller
+/// sizes [tileWidth] from the responsive column count so exactly that many land
+/// on each row.
+class _CardGrid extends StatelessWidget {
+  const _CardGrid({
+    required this.records,
+    required this.tileWidth,
+    required this.gutter,
+    required this.onTapCard,
+  });
 
-  final CardRecord record;
+  final List<CardRecord> records;
+  final double tileWidth;
+  final double gutter;
 
-  String get _subtitle {
-    final parts = <String>[];
-    switch (record.model.cardType) {
-      case CardType.champion:
-        parts.add('Champion');
-      case CardType.mercenary:
-        parts.add('Mercenary');
-      case CardType.regular:
-        break;
-    }
-    // Show the source group when it adds info beyond the bucket label. The
-    // Aion/Prism/Destiny groups match their own bucket header, so listing them
-    // again would be redundant (co-op/enemy groups are filtered out of the list
-    // entirely, so they never reach here).
-    final group = record.group;
-    if (group != null &&
-        group != 'Aion' &&
-        group != 'Prism' &&
-        group != 'Destiny' &&
-        group != 'DestinyDeck') {
-      parts.add(group);
-    }
-    return parts.join(' · ');
-  }
+  /// Called with the section's cards (as [CardModel]s) and the tapped index, so
+  /// the zoom modal can page through the whole section.
+  final void Function(List<CardModel> sectionCards, int index) onTapCard;
 
   @override
   Widget build(BuildContext context) {
-    final subtitle = _subtitle;
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: GameTheme.surfaceDark,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: Row(
+    final models = [for (final r in records) r.model];
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Wrap(
+        spacing: gutter,
+        runSpacing: gutter,
         children: [
-          _Thumb(record: record),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  record.name,
-                  style: const TextStyle(
-                    color: GameTheme.textPrimary,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (subtitle.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      color: GameTheme.textSecondary,
-                      fontSize: 12.5,
-                    ),
-                  ),
-                ],
-              ],
+          for (var i = 0; i < records.length; i++)
+            GameCardWidget(
+              key: ValueKey('cardListTile_${records[i].id}'),
+              card: models[i],
+              width: tileWidth,
+              onTap: () => onTapCard(models, i),
             ),
-          ),
-          const SizedBox(width: 8),
-          _CostBadge(cost: record.model.cost),
         ],
-      ),
-    );
-  }
-}
-
-/// Small rounded art thumbnail, mirroring the board's art-resolution order
-/// (DB `art` path → name→file map → procedural fallback).
-class _Thumb extends StatelessWidget {
-  const _Thumb({required this.record});
-
-  final CardRecord record;
-
-  @override
-  Widget build(BuildContext context) {
-    final art = record.art;
-    final assetPath = (art != null && art.isNotEmpty)
-        ? 'assets/cards/$art'
-        : getCardArtAsset(record.name);
-    final Widget image = assetPath != null
-        ? Image.asset(
-            assetPath,
-            width: 44,
-            height: 60,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => CardArt(card: record.model),
-          )
-        : CardArt(card: record.model);
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(6),
-      child: SizedBox(width: 44, height: 60, child: image),
-    );
-  }
-}
-
-/// A gold-ringed cost badge.
-class _CostBadge extends StatelessWidget {
-  const _CostBadge({required this.cost});
-
-  final int cost;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 34,
-      height: 34,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: GameTheme.boardBackground,
-        shape: BoxShape.circle,
-        border: Border.all(color: GameTheme.gold, width: 1.5),
-      ),
-      child: Text(
-        '$cost',
-        style: const TextStyle(
-          color: GameTheme.gold,
-          fontSize: 15,
-          fontWeight: FontWeight.bold,
-        ),
       ),
     );
   }

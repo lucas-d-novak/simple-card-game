@@ -8,6 +8,7 @@ import 'package:simple_card_game/models/card_effect.dart';
 import 'package:simple_card_game/models/card_model.dart';
 import 'package:simple_card_game/models/card_type.dart';
 import 'package:simple_card_game/models/faction.dart';
+import 'package:simple_card_game/models/ingeminex_entity.dart';
 import 'package:simple_card_game/models/player_state.dart';
 
 /// A structured resource gain attached to a [GameLogEntry] so the UI can render
@@ -204,6 +205,16 @@ class GameService {
   final List<CardModel> centerRow = [];
   final List<CardModel> infinityDeck = [];
   final List<CardModel> removedFromGame = [];
+
+  /// The shared, NEUTRAL Ingeminex entities occupying the Champions Row. Each
+  /// belongs to NO player: any current player may attack it via
+  /// [attackIngeminex] (unlike a normal champion, which lives in its owner's
+  /// [PlayerState.championsInPlay] and is only attackable by opponents). Populated
+  /// by [spawnIngeminex]; an entity is removed when killed (its reward goes to the
+  /// killer). Empty in a game that never spawns an Ingeminex. Serialized whole by
+  /// [GameStateCodec] (`ingeminex` key) — accumulated damage survives
+  /// undo/persistence/reconnect.
+  final List<IngeminexEntity> ingeminexRow = [];
 
   /// Append-only, human-readable log of game actions (oldest first), so players
   /// can review what happened — e.g. "remind themselves what they did last
@@ -816,6 +827,55 @@ class GameService {
           m.kind == StaticModifierKind.recruitToTopOfDeck &&
           _modifierApplies(m, card));
 
+  /// Whether [player]'s pending [RedirectNextRecruitEffect] matches [card].
+  /// A null faction/type filter matches anything; faction matching honours
+  /// `countsAsAllFactions` (and the player's turn-scoped aliases). For an
+  /// `intoPlay` redirect the card must additionally be a champion — only
+  /// champions can persist in play.
+  bool _recruitRedirectMatches(RedirectNextRecruitEffect r, CardModel card) {
+    if (r.faction != null &&
+        !_factionsMatch(r.faction!, false, card.faction,
+            card.countsAsAllFactions, aliasPlayer: currentPlayer)) {
+      return false;
+    }
+    if (r.cardType != null && card.cardType != r.cardType) return false;
+    if (r.destination == RecruitRedirect.intoPlay &&
+        card.cardType != CardType.champion) {
+      return false;
+    }
+    return true;
+  }
+
+  /// If [player] has a pending [RedirectNextRecruitEffect] that matches the
+  /// just-recruited [card] (numeri_drones / anomaly_cleric), this places the
+  /// card at the redirected destination, CONSUMES the redirect (single-use), and
+  /// returns true. Otherwise it leaves the redirect intact and returns false so
+  /// the caller places the card the normal way.
+  ///
+  /// For [RecruitRedirect.intoPlay] the champion is DEPLOYED exactly as if it had
+  /// been played from hand (mechanics doc: a champion "immediately enters play"):
+  /// it joins `championsInPlay`, is recorded in `cardsPlayedThisTurn`, its
+  /// play/mastery effects resolve, and its ally ability is checked — so it can
+  /// use its ability this turn. For [RecruitRedirect.toHand] the card simply goes
+  /// to hand (to be played later), with no effects resolved.
+  bool _applyPendingRecruitRedirect(PlayerState player, CardModel card) {
+    final redirect = player.pendingRecruitRedirect;
+    if (redirect == null) return false;
+    if (!_recruitRedirectMatches(redirect, card)) return false;
+
+    player.pendingRecruitRedirect = null; // single-use — consumed
+    switch (redirect.destination) {
+      case RecruitRedirect.intoPlay:
+        player.championsInPlay.add(card);
+        player.cardsPlayedThisTurn.add(card);
+        _resolvePlayOrMastery(card, player);
+        _checkAllyAbility(card, player);
+      case RecruitRedirect.toHand:
+        player.hand.add(card);
+    }
+    return true;
+  }
+
   // -------------------------------------------------------------------------
   // Opponent draw / discard (Engine Phase 2, wave 5a — Family 13)
   // -------------------------------------------------------------------------
@@ -1120,7 +1180,11 @@ class GameService {
     final buyer = currentPlayer;
     buyer.gemPool -= price;
     centerRow.removeAt(rowIndex);
-    buyer.discardPile.add(card);
+    // numeri_drones / anomaly_cleric: a pending "next recruit" redirect may
+    // route this card directly into play or to hand instead of the discard pile.
+    if (!_applyPendingRecruitRedirect(buyer, card)) {
+      buyer.discardPile.add(card);
+    }
     _refillCenterRow();
 
     _log('recruited ${card.name} for $price gems',
@@ -1268,6 +1332,89 @@ class GameService {
       _checkGameOver();
     }
 
+    return true;
+  }
+
+  // -------------------------------------------------------------------------
+  // Ingeminex — neutral shared champion-row entities (co-op boss, versus adapt)
+  // -------------------------------------------------------------------------
+
+  /// Make an Ingeminex ENTITY APPEAR in the shared Champions Row.
+  ///
+  /// Per the Ingeminex mechanic, ON APPEARANCE the entity IMMEDIATELY deals its
+  /// effect to ALL players — every player in the game, INCLUDING whoever caused
+  /// it to appear. This is realized by resolving [IngeminexEntity.appearanceEffects]
+  /// exactly ONCE: those effects are authored as ALL-PLAYERS-scoped effects (e.g.
+  /// [AllPlayersLoseHealthEffect], which loops over every seat with no exclusion
+  /// via [_applyAllPlayersHealthLoss]), so a single resolution broadcasts to
+  /// everyone. If the appearance effect is damage, all players take it (an
+  /// appearance can even eliminate a player / end the game, exactly like any
+  /// [AllPlayersLoseHealthEffect]).
+  ///
+  /// The entity then persists in [ingeminexRow] as a NEUTRAL, shared attackable
+  /// (see [attackIngeminex]) with [IngeminexEntity.maxHealth] (10) until killed.
+  ///
+  /// APPEARANCE-TRIGGER ASSUMPTION (documented, not guessed): the six Ingeminex
+  /// cards carry NO spawn trigger in the card data — their `playEffects` are empty
+  /// and the Attack/Reward text lives only in `rawText`. This method is therefore
+  /// the clean, explicit appearance entry point a future caller (a dedicated
+  /// Ingeminex deck, a triggering card's effect, or scenario seeding) invokes to
+  /// bring one into play. Not gated on the acting player, since an appearance is a
+  /// board event, not a player turn-action. Returns the spawned entity.
+  IngeminexEntity spawnIngeminex(IngeminexEntity entity) {
+    ingeminexRow.add(entity);
+    _log('Ingeminex ${entity.name} appeared — all players are hit',
+        cardId: entity.id);
+    // Broadcast the appearance effect to ALL players. The effects are
+    // all-players-scoped, so resolving once reaches every seat (including the
+    // spawner). currentPlayer is passed only as the nominal source; all-players
+    // effects ignore it.
+    _resolveEffects(entity.appearanceEffects, currentPlayer);
+    return entity;
+  }
+
+  /// Attack a NEUTRAL [IngeminexEntity] in the shared Champions Row.
+  ///
+  /// Unlike [attackChampion] (which rejects attacking your OWN champions and
+  /// targets a specific player's board), an Ingeminex belongs to no player, so
+  /// ANY current player may attack it — there is no owner / opponent check.
+  /// Damage ACCUMULATES ([IngeminexEntity.damageTaken]) across attacks AND turns
+  /// (an HP pool, unlike a normal champion's all-or-nothing shield). The attacker
+  /// commits up to [amount] power; the engine spends only what is needed to reach
+  /// the entity's remaining health (no overkill waste). When accumulated damage
+  /// reaches [IngeminexEntity.maxHealth] (10) the entity DIES: its
+  /// [IngeminexEntity.rewardEffects] resolve for the KILLER ONLY (the current
+  /// player), and it leaves [ingeminexRow]. Returns true if any damage was applied.
+  bool attackIngeminex(String ingeminexId, int amount) {
+    if (!_currentPlayerCanAct) return false;
+    if (amount <= 0) return false;
+
+    final index = ingeminexRow.indexWhere((e) => e.id == ingeminexId);
+    if (index == -1) return false;
+
+    final entity = ingeminexRow[index];
+    if (entity.isDead) return false; // defensive; dead entities are removed
+
+    // Spend only what's needed to reach remaining health (avoid overkill waste).
+    final needed = entity.remainingHealth;
+    final spend = amount < needed ? amount : needed;
+    if (currentPlayer.powerPool < spend) return false;
+
+    currentPlayer.powerPool -= spend;
+    entity.applyDamage(spend);
+    _log('dealt $spend damage to Ingeminex ${entity.name}',
+        playerId: currentPlayer.id, cardId: entity.id);
+
+    if (entity.isDead) {
+      // Remove the neutral entity, then hand the reward to the KILLER only.
+      ingeminexRow.removeAt(index);
+      final killer = currentPlayer;
+      _resolveEffects(entity.rewardEffects, killer);
+      _log('defeated Ingeminex ${entity.name} (reward claimed)',
+          playerId: killer.id,
+          cardId: entity.id,
+          grants: _resourceGrantsOf(entity.rewardEffects));
+    }
     return true;
   }
 
@@ -1456,9 +1603,15 @@ class GameService {
 
     if (toHand) {
       player.hand.add(card);
-    } else if (toTopOfDeck || modifierToTop) {
+    } else if (toTopOfDeck) {
       // _drawCards draws via removeLast(), so the TOP of the deck (next draw) is
       // the END of the drawPile list. Append so this card is drawn next.
+      player.drawPile.add(card);
+    } else if (_applyPendingRecruitRedirect(player, card)) {
+      // numeri_drones / anomaly_cleric: a pending "next recruit" redirect placed
+      // this card directly into play or into hand (and consumed itself). A
+      // pending redirect takes precedence over the maglev top-of-deck modifier.
+    } else if (modifierToTop) {
       player.drawPile.add(card);
     } else {
       player.discardPile.add(card);
@@ -1821,6 +1974,15 @@ class GameService {
           // Requires center-row selection — the player should call
           // fastPlayFromCenter() separately after this effect.
           break;
+        case RedirectNextRecruitEffect():
+          // Turn-scoped, single-use: install the redirect so the NEXT matching
+          // card this player recruits this turn (via buyCard / recruitFromCenter)
+          // goes to the redirected destination instead of the discard pile.
+          // Consumed by the recruit, or cleared at end of turn by
+          // resetTurnResources. numeri_drones (Exhaust, into play) can only fire
+          // once per turn (it's an Exhaust ability), and re-installing simply
+          // overwrites an unused redirect — never stacks.
+          player.pendingRecruitRedirect = effect;
         case ScryEffect():
           // The two "toHand*LoseHealthEqualToCost" dispositions are MANDATORY
           // (no keep/discard choice) and resolve INLINE here — this is what

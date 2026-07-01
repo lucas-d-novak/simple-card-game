@@ -13,7 +13,7 @@ dart run tool/gen_coverage_readme.dart
 | Art on disk | 183 | 183 | 100% |
 | Effects encoded | 88 | 183 | 48% |
 | Raw text captured | 183 | 183 | 100% |
-| **Verified** | **102** | **183** | **56%** |
+| **Verified** | **104** | **183** | **57%** |
 
 Legend: **Art** = card image present · **Eff** = `playEffects` encoded · **Raw** = printed text transcribed · **Ver** = human-confirmed against the physical card.
 
@@ -21,8 +21,8 @@ Legend: **Art** = card image present · **Eff** = `playEffects` encoded · **Raw
 
 | Set | Cards | Art | Eff | Raw | Ver |
 |-----|------:|----:|----:|----:|----:|
-| `base` | 53 | 53 (100%) | 39 (74%) | 53 (100%) | 41 (77%) |
-| `ioh` | 12 | 12 (100%) | 9 (75%) | 12 (100%) | 6 (50%) |
+| `base` | 53 | 53 (100%) | 39 (74%) | 53 (100%) | 42 (79%) |
+| `ioh` | 12 | 12 (100%) | 9 (75%) | 12 (100%) | 7 (58%) |
 | `rotf` | 16 | 16 (100%) | 14 (88%) | 16 (100%) | 8 (50%) |
 | `saga` | 13 | 13 (100%) | 7 (54%) | 13 (100%) | 9 (69%) |
 | `sos` | 2 | 2 (100%) | 1 (50%) | 2 (100%) | 2 (100%) |
@@ -32,9 +32,9 @@ Legend: **Art** = card image present · **Eff** = `playEffects` encoded · **Raw
 
 | Faction | Cards | Art | Eff | Raw | Ver |
 |---------|------:|----:|----:|----:|----:|
-| `homodeus` | 23 | 23 (100%) | 13 (57%) | 23 (100%) | 16 (70%) |
+| `homodeus` | 23 | 23 (100%) | 13 (57%) | 23 (100%) | 17 (74%) |
 | `none` | 87 | 87 (100%) | 18 (21%) | 87 (100%) | 36 (41%) |
-| `order` | 26 | 26 (100%) | 22 (85%) | 26 (100%) | 15 (58%) |
+| `order` | 26 | 26 (100%) | 22 (85%) | 26 (100%) | 16 (62%) |
 | `undergrowth` | 23 | 23 (100%) | 18 (78%) | 23 (100%) | 22 (96%) |
 | `wraethe` | 24 | 24 (100%) | 17 (71%) | 24 (100%) | 13 (54%) |
 
@@ -68,7 +68,7 @@ Ordered by set, then id. ✓ = present, · = missing.
 | `limiter_drones` | base | homodeus | regular | ✓ | ✓ | ✓ | ✓ |
 | `mining_drones` | base | homodeus | regular | ✓ | ✓ | ✓ | ✓ |
 | `nil_assassin` | base | wraethe | mercenary | ✓ | ✓ | ✓ | ✓ |
-| `numeri_drones` | base | homodeus | champion | ✓ | · | ✓ | · |
+| `numeri_drones` | base | homodeus | champion | ✓ | · | ✓ | ✓ |
 | `ojas_genesis_druid` | base | undergrowth | regular | ✓ | ✓ | ✓ | ✓ |
 | `omnius_the_all_knowing` | base | order | mercenary | ✓ | ✓ | ✓ | · |
 | `optio_crusher` | base | homodeus | champion | ✓ | · | ✓ | ✓ |
@@ -97,7 +97,7 @@ Ordered by set, then id. ✓ = present, · = missing.
 | `zara_ra_soulflayer` | base | wraethe | mercenary | ✓ | ✓ | ✓ | · |
 | `zen_chi_set_godkiller` | base | wraethe | champion | ✓ | · | ✓ | ✓ |
 | `zetta_the_encryptor` | base | order | champion | ✓ | ✓ | ✓ | ✓ |
-| `anomaly_cleric` | ioh | order | regular | ✓ | ✓ | ✓ | · |
+| `anomaly_cleric` | ioh | order | regular | ✓ | ✓ | ✓ | ✓ |
 | `carnivorous_vine` | ioh | undergrowth | mercenary | ✓ | ✓ | ✓ | ✓ |
 | `cinder_scars` | ioh | wraethe | mercenary | ✓ | ✓ | ✓ | · |
 | `duplication_fabricator` | ioh | order | regular | ✓ | ✓ | ✓ | · |

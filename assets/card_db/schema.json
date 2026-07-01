@@ -179,6 +179,7 @@
             "resetChampion",
             "recruitFromCenter",
             "fastPlayFromCenter",
+            "redirectNextRecruit",
             "scry",
             "destroyChampion",
             "returnFromDiscard",
@@ -224,6 +225,11 @@
         "toTopOfDeck": {
           "type": "boolean",
           "description": "For recruitFromCenter: if true, the recruited card goes to the TOP of the draw pile (the player's next draw)."
+        },
+        "destination": {
+          "type": "string",
+          "enum": ["intoPlay", "toHand"],
+          "description": "For redirectNextRecruit: where the NEXT matching card recruited this turn goes. intoPlay=deploy a recruited champion directly into play (numeri_drones); toHand=put the recruited card into hand (anomaly_cleric Mastery-10). Turn-scoped, single-use; optional 'faction'/'cardType' filters restrict which recruit consumes it (intoPlay also requires a champion)."
         },
         "alliesOnly": {
           "type": "boolean",

@@ -132,4 +132,9 @@ const _assetFiles = <String>{
   'shield-bearer.jpg',
   'universal-soldier.jpg',
   'vine-guardian.jpg',
+  // Authoritative DB card "Wraethe Skirmisher" (id wraethe_skirmisher) carries an
+  // explicit `art` field so it already resolves via the DB-art path; this entry
+  // also lets the NAME-based fallback (step 2) resolve it, closing a gap where a
+  // "Wraethe Skirmisher" without a DB art path would have fallen to procedural.
+  'wraethe_skirmisher.jpg',
 };

@@ -1013,6 +1013,52 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
     );
   }
 
+  /// Confirm-then-forfeit: an "Are you sure?" dialog before the operator ends
+  /// (closes out) the current game. On confirm, sends the server `forfeit`
+  /// action — the game is marked completed with no winner and a `forfeit`
+  /// condition (it round-trips as a finished game, not a draw).
+  void _confirmForfeit() {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF12283F),
+        title: const Text(
+          'Forfeit game?',
+          style: TextStyle(color: Color(0xFFE8C45A), fontSize: 18),
+        ),
+        content: const Text(
+          'This ends the game now for everyone. It will be recorded as a '
+          'forfeited game with no winner, and cannot be undone.',
+          style: TextStyle(color: Color(0xFFD6E4F0), fontSize: 13, height: 1.35),
+        ),
+        actionsAlignment: MainAxisAlignment.spaceBetween,
+        actions: [
+          TextButton(
+            key: const ValueKey('forfeitCancelButton'),
+            onPressed: () => Navigator.of(ctx).pop(),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFFBFD8E8),
+            ),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            key: const ValueKey('forfeitConfirmButton'),
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              widget.client.forfeitGame();
+              _flash('Game forfeited');
+            },
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFC62828),
+            ),
+            child: const Text('Forfeit'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _onFocus() {
     final animator = BoardAnimator.of(context);
     widget.client.focus();
@@ -1523,6 +1569,17 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
                 child: _FloatingFullscreenButton(),
               ),
             ),
+          // Server-restart heads-up: an unexpected connection drop (e.g. the
+          // server restarting on redeploy) shows a dismissible banner suggesting
+          // a refresh while auto-reconnect retries. Not shown on a normal
+          // user-initiated leave. Pinned top so it's above the board.
+          if (client.serverRestarting)
+            const Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: SafeArea(child: ServerRestartBanner()),
+            ),
         ],
       ),
       ),
@@ -1609,9 +1666,19 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
             // Clear any stale in-game action error (e.g. a rejected `focus`
             // after a mastery win) so it doesn't linger in the lobby UI.
             widget.client.clearError();
+            // A spectator leaving must tell the server to stop pushing them this
+            // game's state (and clear the local view) so the lobby doesn't
+            // auto-re-enter the game they just left.
+            if (widget.client.spectating) widget.client.stopSpectate();
             Navigator.of(context).maybePop();
           },
           onShowLog: () => _showLog(view),
+          // A spectator can't forfeit (not a player); only a seated player and
+          // only while the game is live.
+          onForfeit: (!widget.client.spectating && !view.isGameOver)
+              ? _confirmForfeit
+              : null,
+          spectating: widget.client.spectating,
         ),
 
         // ---- Condensed opponent-bar strip (3-4 players) -------------------
@@ -2099,6 +2166,8 @@ class _NetworkTopBar extends StatelessWidget {
     required this.myTurn,
     required this.onBackToLobby,
     required this.onShowLog,
+    required this.onForfeit,
+    required this.spectating,
   });
 
   final _PlayerView? opponent;
@@ -2109,6 +2178,14 @@ class _NetworkTopBar extends StatelessWidget {
 
   /// Open the scrollable game log.
   final VoidCallback onShowLog;
+
+  /// Forfeit (close out) the game — the operator control. Null for a spectator
+  /// (a watcher isn't a player and can't end the game), which hides the button.
+  final VoidCallback? onForfeit;
+
+  /// True when this client is WATCHING (read-only) rather than playing — the
+  /// turn badge reads "SPECTATING" instead of "YOUR TURN"/"WAITING".
+  final bool spectating;
 
   @override
   Widget build(BuildContext context) {
@@ -2177,30 +2254,62 @@ class _NetworkTopBar extends StatelessWidget {
               top: 0,
               bottom: 0,
               child: Center(
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: myTurn
-                        ? const Color(0xFF19C39C)
-                        : const Color(0xFF37474F),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: myTurn
-                          ? BoardChrome.greenSheen
-                          : Colors.white24,
-                      width: 1,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Forfeit game — the operator "close out this test game"
+                    // control, pinned TOP-RIGHT. Confirms before ending. Hidden
+                    // for spectators (onForfeit == null).
+                    if (onForfeit != null) ...[
+                      TextButton.icon(
+                        key: const ValueKey('forfeitGameButton'),
+                        onPressed: onForfeit,
+                        style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFFE57373),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        icon: const Icon(Icons.flag, size: 16),
+                        label: const Text('Forfeit',
+                            style: TextStyle(
+                                fontSize: 12, fontWeight: FontWeight.bold)),
+                      ),
+                      const SizedBox(width: 4),
+                    ],
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: spectating
+                            ? const Color(0xFF4A3B6E)
+                            : myTurn
+                                ? const Color(0xFF19C39C)
+                                : const Color(0xFF37474F),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: myTurn && !spectating
+                              ? BoardChrome.greenSheen
+                              : Colors.white24,
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        spectating
+                            ? 'SPECTATING'
+                            : myTurn
+                                ? 'YOUR TURN'
+                                : 'WAITING',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1,
+                        ),
+                      ),
                     ),
-                  ),
-                  child: Text(
-                    myTurn ? 'YOUR TURN' : 'WAITING',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
-                    ),
-                  ),
+                  ],
                 ),
               ),
             ),
@@ -2312,6 +2421,69 @@ class _FloatingFullscreenButtonState extends State<_FloatingFullscreenButton> {
               size: 26,
               color: const Color(0xFFEAF4FB),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A dismissible amber heads-up banner shown when the client's WebSocket drops
+/// unexpectedly (e.g. the server restarting on a redeploy). Suggests refreshing
+/// shortly while auto-reconnect retries in the background. Reused by the lobby
+/// and the in-game board (both drive it off [GameClient.serverRestarting]).
+class ServerRestartBanner extends StatefulWidget {
+  const ServerRestartBanner({super.key});
+
+  @override
+  State<ServerRestartBanner> createState() => _ServerRestartBannerState();
+}
+
+class _ServerRestartBannerState extends State<ServerRestartBanner> {
+  bool _dismissed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_dismissed) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.all(8),
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          key: const ValueKey('serverRestartBanner'),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF4A360E),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFE8C45A), width: 1),
+            boxShadow: const [
+              BoxShadow(color: Colors.black45, blurRadius: 8, offset: Offset(0, 2)),
+            ],
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.wifi_off, color: Color(0xFFE8C45A), size: 20),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Heads up! Server is restarting… try refreshing shortly.',
+                  style: TextStyle(
+                    color: Color(0xFFF3E6C4),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    height: 1.3,
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Dismiss',
+                onPressed: () => setState(() => _dismissed = true),
+                icon: const Icon(Icons.close, color: Color(0xFFBFD8E8), size: 18),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                visualDensity: VisualDensity.compact,
+              ),
+            ],
           ),
         ),
       ),
@@ -3040,7 +3212,23 @@ class _NetworkPlayField extends StatelessWidget {
                                           compact: true,
                                           showCost: false,
                                           width: cardWidth,
-                                          isHighlighted: !champ.activated,
+                                          // Blue border while this OWN champion
+                                          // still has an action to fire — the
+                                          // SAME predicate that enables its
+                                          // Exhaust/Activate zoom button, over
+                                          // the redacted view's per-champion
+                                          // activated/exhausted flags (passive-
+                                          // only auras never glow). Gated on
+                                          // [onActivateChampion] (non-null only
+                                          // on MY turn) so it's suppressed
+                                          // off-turn.
+                                          hasUnusedAction:
+                                              onActivateChampion != null &&
+                                                  championHasUnusedAction(
+                                                    cardFor(champ.id),
+                                                    activated: champ.activated,
+                                                    exhausted: champ.exhausted,
+                                                  ),
                                           // Tap ALWAYS opens the zoom window
                                           // (with Activate/Exhaust actions) — no
                                           // long-press needed. Activating /

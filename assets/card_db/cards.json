@@ -215,8 +215,8 @@
       "playEffects": [],
       "art": "numeri_drones.jpg",
       "rawText": "Homodeus Champion. Cost 3, shield 5. Exhaust: Gain 1 (gem). Put the next Homodeus Champion you recruit this turn directly into play.",
-      "verified": false,
-      "notes": "Champion shield 5. Exhaust: gain 1 gem -> playEffects. UNMODELED: 'Put the next Homodeus Champion you recruit this turn directly into play' (recruit-into-play) has no engine type. | [encode-gap] \"put next Homodeus Champion you recruit this turn directly into play\" recruit-into-play not modeled -> unverified.",
+      "verified": true,
+      "notes": "Champion shield 5. Exhaust: gain 1 gem + install a redirectNextRecruit (destination=intoPlay, faction=homodeus, cardType=champion) so the next Homodeus Champion recruited this turn deploys directly into play. Previously an encode-gap ('recruit-into-play' had no engine type); now modeled via RedirectNextRecruitEffect (turn-scoped, single-use, consumed by buyCard/recruitFromCenter, cleared at end of turn).",
       "set": "base",
       "cardType": "champion",
       "cost": 3,
@@ -227,6 +227,12 @@
           {
             "type": "gainGems",
             "amount": 1
+          },
+          {
+            "type": "redirectNextRecruit",
+            "destination": "intoPlay",
+            "faction": "homodeus",
+            "cardType": "champion"
           }
         ]
       }
@@ -3478,12 +3484,18 @@
       ],
       "art": "anomaly_cleric.jpg",
       "rawText": "Order Ally. Gain 3 (gems) and 1 (mastery). Mastery 10: Put the next card you recruit this turn into your hand.",
-      "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 152: name='Anomaly Cleric', faction='Order', amount=1. | art added from TTS spritesheet crop. | Base encoded gainGems 3 + gainMastery 1. masteryThreshold 10 set. | ADVERSARIAL VERIFY: re-read assets/cards/anomaly_cleric.jpg at high zoom — first 'Gain 3' icon is the blue/white GEM teardrop, second 'Gain 1' icon is the gold MASTERY starburst. The earlier 'second icon uncertain (read as gem)' caveat is RESOLVED: it is mastery, which matches the (correct) gainMastery encoding; rawText corrected to '1 (mastery)'. | [encode-gap] Mastery10 'put the next card you recruit this turn into your hand' (recruit-redirect-to-hand) not modeled -> verified:false.",
+      "verified": true,
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 152: name='Anomaly Cleric', faction='Order', amount=1. | art added from TTS spritesheet crop. | Base encoded gainGems 3 + gainMastery 1. masteryThreshold 10 set. | ADVERSARIAL VERIFY: re-read assets/cards/anomaly_cleric.jpg at high zoom — first 'Gain 3' icon is the blue/white GEM teardrop, second 'Gain 1' icon is the gold MASTERY starburst. The earlier 'second icon uncertain (read as gem)' caveat is RESOLVED: it is mastery, which matches the (correct) gainMastery encoding; rawText corrected to '1 (mastery)'. | Mastery-10 'put the next card you recruit this turn into your hand' now modeled as masteryBonus redirectNextRecruit (destination=toHand, no faction/type filter — any recruited card); ADDITIVE (masteryReplaces default false — base gems/mastery still resolve). Same recruit-redirect mechanic as numeri_drones.",
       "set": "ioh",
       "cardType": "regular",
       "cost": 5,
       "masteryThreshold": 10,
+      "masteryBonus": [
+        {
+          "type": "redirectNextRecruit",
+          "destination": "toHand"
+        }
+      ],
       "chapter": 4
     },
     {

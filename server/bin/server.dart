@@ -89,6 +89,14 @@ void _persist(String gameId) {
 /// Connected clients by lobby player id → their socket.
 final Map<String, WebSocket> _sockets = {};
 
+/// SPECTATORS: a viewer id → the game id they are currently watching. A
+/// spectator is a connected client who is NOT seated in the game; they receive
+/// the same NON-PARTICIPANT redacted view an opponent would (all hidden hands
+/// stay hidden — see GameSession.spectatorView). Each viewer watches at most one
+/// game (a fresh `spectate` replaces any prior); `stopSpectate` or a disconnect
+/// clears the entry so we stop pushing them state.
+final Map<String, String> _spectators = {};
+
 void main(List<String> args) async {
   final port =
       args.isNotEmpty ? int.tryParse(args.first) ?? 8080 : 8080;
@@ -264,10 +272,16 @@ void _handleSocket(WebSocket socket) {
       _dispatch(playerId!, msg, send, err);
     },
     onDone: () {
-      if (playerId != null) _sockets.remove(playerId);
+      if (playerId != null) {
+        _sockets.remove(playerId);
+        _spectators.remove(playerId);
+      }
     },
     onError: (_) {
-      if (playerId != null) _sockets.remove(playerId);
+      if (playerId != null) {
+        _sockets.remove(playerId);
+        _spectators.remove(playerId);
+      }
     },
     cancelOnError: true,
   );
@@ -306,6 +320,38 @@ void _dispatch(
         'gameId': g.id,
         'state': session.viewFor(playerId),
       });
+
+    case 'spectate':
+      // WATCH a game the caller is NOT seated in. Only an in-progress game with
+      // a live session can be spectated. The spectator gets a non-participant
+      // redacted view (all hidden hands stay hidden) now and on every change.
+      final gameId = msg['gameId'] as String?;
+      if (gameId == null) {
+        err('spectate needs gameId');
+        return;
+      }
+      final g = _lobby.game(gameId);
+      final session = g?.session;
+      if (g == null || session == null || g.status != GameStatus.started) {
+        err('cannot spectate $gameId (missing or not in progress)');
+        return;
+      }
+      // A seated player watches via their own view, not as a spectator.
+      if (g.players.contains(playerId)) {
+        err('you are a player in $gameId — rejoin instead of spectating');
+        return;
+      }
+      _spectators[playerId] = gameId;
+      send({
+        'type': 'state',
+        'gameId': gameId,
+        'state': session.spectatorView(),
+      });
+
+    case 'stopSpectate':
+      // Stop watching (the client left the spectator view back to the lobby), so
+      // we no longer push this viewer state for a game they're no longer viewing.
+      _spectators.remove(playerId);
 
     case 'listGames':
       send({'type': 'lobby', 'games': _lobby.summaries()});
@@ -407,7 +453,8 @@ void _broadcastLobby() {
   }
 }
 
-/// Send each player in [gameId] their OWN redacted view.
+/// Send each player in [gameId] their OWN redacted view, plus the shared
+/// non-participant spectator view to every viewer watching this game.
 void _broadcastState(String gameId) {
   final session = _lobby.game(gameId)?.session;
   if (session == null) return;
@@ -418,5 +465,16 @@ void _broadcastState(String gameId) {
       socket.add(jsonEncode(
           {'type': 'state', 'gameId': gameId, 'state': entry.value}));
     }
+  }
+  // Spectators: one shared non-participant view (computed once), pushed to every
+  // viewer currently watching this game.
+  Map<String, dynamic>? specView;
+  for (final entry in _spectators.entries) {
+    if (entry.value != gameId) continue;
+    final socket = _sockets[entry.key];
+    if (socket == null || socket.readyState != WebSocket.open) continue;
+    specView ??= session.spectatorView();
+    socket.add(jsonEncode(
+        {'type': 'state', 'gameId': gameId, 'state': specView}));
   }
 }

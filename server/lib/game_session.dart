@@ -110,6 +110,21 @@ class GameSession {
       return result;
     }
 
+    // FORFEIT is also handled HERE, deliberately BEFORE the turn gate inside
+    // applyAction: it is an operator "close out this game" control, so ANY
+    // seated player may forfeit at any time (not only the current player). It
+    // ends the game with no winner and a distinct 'forfeit' condition so it
+    // round-trips as a finished game (not a bogus draw). See [_forfeit].
+    if (action['type'] == 'forfeit') {
+      final result = _forfeit(seatId);
+      if (result.accepted) {
+        _stateVersion++;
+        // A finished game can't be undone into; clear the same-turn history.
+        _undoStack.clear();
+      }
+      return result;
+    }
+
     // Capture a pre-action snapshot for a mutating action so it can be undone.
     // `endTurn` is special: an accepted end-turn CLEARS the history instead of
     // pushing onto it (you cannot undo across a turn boundary).
@@ -220,6 +235,35 @@ class GameSession {
     game = GameStateCodec.decode(_undoStack.removeLast());
     return ActionResult.ok();
   }
+
+  /// End the game by FORFEIT on behalf of a seated player ([seatId] is any
+  /// player's engine seat id — the turn gate is intentionally NOT applied). The
+  /// game is marked completed with NO winner and a distinct `winType` of
+  /// `'forfeit'` (round-tripped by GameStateCodec, so a persisted forfeit
+  /// reloads as a finished game — see winTypeOf / Lobby.restoreGame). Rejected
+  /// if the game is already over. Uses only the engine's public surface
+  /// (winnerId / winType fields + restoreGameOver) — the engine itself is
+  /// unchanged.
+  ActionResult _forfeit(String seatId) {
+    if (game.isGameOver) return ActionResult.reject('game is over');
+    game.winnerId = null;
+    game.winType = 'forfeit';
+    game.restoreGameOver(true);
+    return ActionResult.ok();
+  }
+
+  /// The redacted view for a NON-PARTICIPANT spectator: the exact same filter an
+  /// opponent gets (no player's hidden hand, no draw-pile order/contents), by
+  /// redacting for a recipient id that matches no seat. Spectators therefore see
+  /// only board-public information — never hidden info beyond what a seated
+  /// opponent already sees. `canUndo` is always false (spectators can't act).
+  Map<String, dynamic> spectatorView() => redactFor(
+        game,
+        '', // matches no seat → all hands stay hidden (opponent-level view)
+        stateVersion: _stateVersion,
+        canUndo: false,
+        names: _seatNames(),
+      );
 
   /// The redacted view a specific lobby player is allowed to see.
   Map<String, dynamic> viewFor(String lobbyPlayerId) {

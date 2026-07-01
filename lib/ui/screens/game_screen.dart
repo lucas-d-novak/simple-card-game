@@ -1110,6 +1110,8 @@ class _GameScreenState extends State<GameScreen>
                               champions: currentPlayer.championsInPlay,
                               activatedChampionIds:
                                   currentPlayer.activatedChampions,
+                              exhaustedChampionIds:
+                                  currentPlayer.exhaustedChampions,
                               onActivateChampion: _openChampionDetail,
                               lastPlayedCardId: _lastPlayedCardId,
                               actionMessage: _actionMessage,
@@ -1474,6 +1476,7 @@ class _PlayField extends StatelessWidget {
     required this.playedCards,
     required this.champions,
     required this.activatedChampionIds,
+    required this.exhaustedChampionIds,
     required this.onActivateChampion,
     required this.lastPlayedCardId,
     required this.actionMessage,
@@ -1488,6 +1491,7 @@ class _PlayField extends StatelessWidget {
   final List<CardModel> playedCards;
   final List<CardModel> champions;
   final Set<String> activatedChampionIds;
+  final Set<String> exhaustedChampionIds;
   final void Function(CardModel)? onActivateChampion;
   final String? lastPlayedCardId;
   final String? actionMessage;
@@ -1569,8 +1573,18 @@ class _PlayField extends StatelessWidget {
                               compact: true,
                               showCost: false,
                               width: cardWidth,
-                              isHighlighted:
-                                  !activatedChampionIds.contains(card.id),
+                              // Blue border while this champion still has an
+                              // action to fire this turn — the SAME predicate
+                              // that enables its Exhaust/Activate zoom button
+                              // (passive-only auras never glow). Not a market
+                              // card, so [isHighlighted] stays off here.
+                              hasUnusedAction: championHasUnusedAction(
+                                card,
+                                activated:
+                                    activatedChampionIds.contains(card.id),
+                                exhausted:
+                                    exhaustedChampionIds.contains(card.id),
+                              ),
                               onTap: onActivateChampion != null
                                   ? () => onActivateChampion!(card)
                                   : null,

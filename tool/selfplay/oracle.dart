@@ -447,6 +447,7 @@ class Oracle {
         case TuckUnderChampionEffect():
         case CopyUnderCardsEffect():
         case CopyPlayedCardEffect():
+        case RedirectNextRecruitEffect():
           // No actor flat-resource delta at play time. BUT some of these move
           // cards between the actor's own zones (return-from-discard adds to
           // hand on a follow-up call; recruit/fast-play affect center). At PLAY

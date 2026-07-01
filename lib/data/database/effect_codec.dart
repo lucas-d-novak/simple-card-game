@@ -130,6 +130,14 @@ CardEffect decodeEffect(Map<String, dynamic> json) {
         maxCost: json.containsKey('maxCost') ? _int(json, 'maxCost') : null,
         alliesOnly: (json['alliesOnly'] as bool?) ?? false,
       );
+    case 'redirectNextRecruit':
+      return RedirectNextRecruitEffect(
+        destination: _recruitRedirect(json['destination'] as String?),
+        faction: json['faction'] != null
+            ? _faction(json['faction'] as String?)
+            : null,
+        cardType: _cardType(json['cardType'] as String?),
+      );
     case 'scry':
       return ScryEffect(
         count: json.containsKey('count') ? _int(json, 'count') : 1,
@@ -265,6 +273,13 @@ Map<String, dynamic> encodeEffect(CardEffect effect) {
         'type': 'fastPlayFromCenter',
         if (effect.maxCost != null) 'maxCost': effect.maxCost,
         if (effect.alliesOnly) 'alliesOnly': true,
+      };
+    case RedirectNextRecruitEffect():
+      return {
+        'type': 'redirectNextRecruit',
+        'destination': effect.destination.name,
+        if (effect.faction != null) 'faction': effect.faction!.name,
+        if (effect.cardType != null) 'cardType': effect.cardType!.name,
       };
     case ScryEffect():
       return {
@@ -565,6 +580,17 @@ CenterScryDisposition _centerScryDisposition(String? raw) {
       return CenterScryDisposition.toHandLosePowerEqualToCost;
     default:
       throw FormatException('unknown center scry disposition: $raw');
+  }
+}
+
+RecruitRedirect _recruitRedirect(String? raw) {
+  switch (raw) {
+    case 'intoPlay':
+      return RecruitRedirect.intoPlay;
+    case 'toHand':
+      return RecruitRedirect.toHand;
+    default:
+      throw FormatException('unknown recruit redirect destination: $raw');
   }
 }
 

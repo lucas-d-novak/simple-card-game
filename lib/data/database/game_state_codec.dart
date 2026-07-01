@@ -14,8 +14,10 @@
 //   a fresh Random is correct. See GameService.restore.
 
 import 'package:simple_card_game/data/database/card_serialization.dart';
+import 'package:simple_card_game/data/database/effect_codec.dart';
 import 'package:simple_card_game/models/card_effect.dart';
 import 'package:simple_card_game/models/card_model.dart';
+import 'package:simple_card_game/models/ingeminex_entity.dart';
 import 'package:simple_card_game/models/player_state.dart';
 import 'package:simple_card_game/services/game_service.dart';
 
@@ -51,6 +53,11 @@ class GameStateCodec {
       'centerRow': _refs(dict, game.centerRow),
       'infinityDeck': _refs(dict, game.infinityDeck),
       'removedFromGame': _refs(dict, game.removedFromGame),
+      // Neutral Ingeminex entities in the shared champion row (ownerless, so
+      // serialized inline rather than via the card dict). Only emitted when any
+      // are in play; accumulated damage is preserved.
+      if (game.ingeminexRow.isNotEmpty)
+        'ingeminex': [for (final e in game.ingeminexRow) _encodeIngeminex(e)],
       // Destiny system (Into the Horizon) — only emitted when a supply exists.
       if (game.destinyRow.isNotEmpty)
         'destinyRow': _refs(dict, game.destinyRow),
@@ -95,6 +102,10 @@ class GameStateCodec {
     game.centerRow.addAll(zone(json['centerRow']));
     game.infinityDeck.addAll(zone(json['infinityDeck']));
     game.removedFromGame.addAll(zone(json['removedFromGame']));
+    for (final raw in (json['ingeminex'] as List? ?? const [])) {
+      game.ingeminexRow
+          .add(_decodeIngeminex((raw as Map).cast<String, dynamic>()));
+    }
     game.destinyRow.addAll(zone(json['destinyRow']));
     game.destinyDeck.addAll(zone(json['destinyDeck']));
     game.currentPlayerIndex = (json['currentPlayerIndex'] as int?) ?? 0;
@@ -127,6 +138,8 @@ class GameStateCodec {
       'unblockedDamageThisTurn': p.unblockedDamageThisTurn,
       'ignoresShieldThisTurn': p.ignoresShieldThisTurn,
       'focusedThisTurn': p.focusedThisTurn,
+      if (p.pendingRecruitRedirect != null)
+        'pendingRecruitRedirect': encodeEffect(p.pendingRecruitRedirect!),
       'factionAliasesThisTurn': [
         for (final a in p.factionAliasesThisTurn)
           {'from': a.from.name, 'to': a.to.name},
@@ -176,6 +189,14 @@ class GameStateCodec {
     p.unblockedDamageThisTurn = (json['unblockedDamageThisTurn'] as int?) ?? 0;
     p.ignoresShieldThisTurn = (json['ignoresShieldThisTurn'] as bool?) ?? false;
     p.focusedThisTurn = (json['focusedThisTurn'] as bool?) ?? false;
+    final pendingRedirect = json['pendingRecruitRedirect'];
+    if (pendingRedirect != null) {
+      final decoded =
+          decodeEffect((pendingRedirect as Map).cast<String, dynamic>());
+      if (decoded is RedirectNextRecruitEffect) {
+        p.pendingRecruitRedirect = decoded;
+      }
+    }
 
     for (final a in (json['factionAliasesThisTurn'] as List? ?? const [])) {
       final m = (a as Map).cast<String, dynamic>();
@@ -215,6 +236,41 @@ class GameStateCodec {
     p.destinyClaimCount = (json['destinyClaimCount'] as int?) ?? 0;
     p.destinyClaimGrants = (json['destinyClaimGrants'] as int?) ?? 0;
     return p;
+  }
+
+  // ---- IngeminexEntity (neutral, ownerless — serialized inline) ----
+
+  static Map<String, dynamic> _encodeIngeminex(IngeminexEntity e) {
+    return {
+      'id': e.id,
+      'name': e.name,
+      if (e.art != null) 'art': e.art,
+      'maxHealth': e.maxHealth,
+      'damageTaken': e.damageTaken,
+      'appearanceEffects': [
+        for (final f in e.appearanceEffects) encodeEffect(f),
+      ],
+      'rewardEffects': [
+        for (final f in e.rewardEffects) encodeEffect(f),
+      ],
+    };
+  }
+
+  static IngeminexEntity _decodeIngeminex(Map<String, dynamic> json) {
+    List<CardEffect> effects(dynamic raw) => [
+          for (final f in (raw as List? ?? const []))
+            decodeEffect((f as Map).cast<String, dynamic>()),
+        ];
+    return IngeminexEntity(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      art: json['art'] as String?,
+      maxHealth:
+          (json['maxHealth'] as int?) ?? IngeminexEntity.defaultMaxHealth,
+      damageTaken: (json['damageTaken'] as int?) ?? 0,
+      appearanceEffects: effects(json['appearanceEffects']),
+      rewardEffects: effects(json['rewardEffects']),
+    );
   }
 
   // ---- StaticModifier ----

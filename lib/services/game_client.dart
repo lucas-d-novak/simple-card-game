@@ -100,6 +100,23 @@ class GameClient extends ChangeNotifier {
   /// caller should forget the remembered token.
   bool authFailed = false;
 
+  /// True after an UNEXPECTED socket drop — the server closed on us or the
+  /// connection died WITHOUT a user-initiated [disconnect] and WITHOUT an auth
+  /// rejection. This is the "server is restarting (redeploy) / network blip"
+  /// signal: while it's set, the UI shows a "Heads up! Server is restarting…"
+  /// heads-up and auto-reconnect keeps retrying in the background. Cleared on a
+  /// successful (re)connect (`welcome`) and by a deliberate [disconnect].
+  ///
+  /// Distinct from the version.json poll in web/index.html (that hard-reloads on
+  /// a NEW build); this is purely the live connection-drop UX.
+  bool serverRestarting = false;
+
+  /// True when this client is WATCHING a game as a spectator (via [spectateGame])
+  /// rather than playing it. A spectator receives live non-participant redacted
+  /// state (all hidden hands stay hidden) but can take no actions — the board
+  /// renders read-only. Cleared by [stopSpectate].
+  bool spectating = false;
+
   /// Latest lobby snapshot from the server.
   List<LobbyGameSummary> lobby = const [];
 
@@ -165,8 +182,11 @@ class GameClient extends ChangeNotifier {
   }
 
   void disconnect() {
-    // A deliberate disconnect must NOT auto-reconnect.
+    // A deliberate disconnect must NOT auto-reconnect, and is NOT the "server
+    // restarting" case — clear the heads-up flag so it never shows on a normal
+    // user-initiated leave.
     _intentionalClose = true;
+    serverRestarting = false;
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
     _reconnectAttempts = 0;
@@ -242,6 +262,27 @@ class GameClient extends ChangeNotifier {
   void joinGame(String gameId) =>
       _send({'type': 'joinGame', 'gameId': gameId});
 
+  /// WATCH a full/in-progress game as a spectator (not a player). The server
+  /// pushes a non-participant redacted view (opponent-level — no hidden hands)
+  /// now and on every change, driving a read-only [NetworkGameScreen]. Marks the
+  /// client as [spectating] so the UI renders read-only chrome.
+  void spectateGame(String gameId) {
+    spectating = true;
+    _send({'type': 'spectate', 'gameId': gameId});
+  }
+
+  /// Stop watching a spectated game: tell the server to stop pushing us state,
+  /// and clear the local spectator view so [inGame] goes false (so the lobby
+  /// doesn't auto-re-enter the game we just left). No-op when not spectating.
+  void stopSpectate() {
+    if (!spectating) return;
+    _send({'type': 'stopSpectate'});
+    spectating = false;
+    gameState = null;
+    currentGameId = null;
+    notifyListeners();
+  }
+
   // ---- game actions (only valid on your turn; the server re-checks) ----
 
   void sendAction(String type, [Map<String, dynamic> extra = const {}]) {
@@ -275,6 +316,11 @@ class GameClient extends ChangeNotifier {
   void useActivatedAbility(String championId) =>
       sendAction('useActivatedAbility', {'championId': championId});
   void focus() => sendAction('focus');
+
+  /// FORFEIT the current game (operator "close out this test game" control). The
+  /// server marks it completed with no winner and a `forfeit` condition; ANY
+  /// seated player may trigger it (not only the current turn's player).
+  void forfeitGame() => sendAction('forfeit');
 
   // ---- deferred-selection follow-ups --------------------------------------
   // After playing a card whose effect resolves to a no-op at play time (banish a
@@ -357,6 +403,8 @@ class GameClient extends ChangeNotifier {
         // promptly. The server resyncs a seated player's live game off our
         // identify, so an in-progress game reappears without a manual refresh.
         _reconnectAttempts = 0;
+        // We're back — dismiss any "server restarting" heads-up.
+        serverRestarting = false;
         _setStatus(ClientStatus.connected);
       case 'lobby':
         lobby = [
@@ -384,14 +432,26 @@ class GameClient extends ChangeNotifier {
   }
 
   void _onDone() {
+    _flagUnexpectedDrop();
     _setStatus(ClientStatus.disconnected);
     _scheduleReconnect();
   }
 
   void _onError(Object e) {
     lastError = '$e';
+    _flagUnexpectedDrop();
     _setStatus(ClientStatus.error);
     _scheduleReconnect();
+  }
+
+  /// Flag an UNEXPECTED socket drop so the UI can show the "server is
+  /// restarting… try refreshing" heads-up. NOT flagged for a user-initiated
+  /// [disconnect] (`_intentionalClose`), an auth rejection (`authFailed` — that
+  /// has its own re-prompt UX), or before we ever connected (`_url == null`).
+  /// The following [_setStatus] delivers the notifyListeners.
+  void _flagUnexpectedDrop() {
+    if (_intentionalClose || authFailed || _url == null) return;
+    serverRestarting = true;
   }
 
   void _setStatus(ClientStatus s) {

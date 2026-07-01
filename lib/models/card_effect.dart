@@ -348,6 +348,73 @@ final class FastPlayFromCenterEffect extends CardEffect {
   }
 }
 
+/// Where the NEXT card a player recruits this turn should go, when a
+/// [RedirectNextRecruitEffect] is pending.
+enum RecruitRedirect {
+  /// The recruited card is deployed DIRECTLY INTO PLAY instead of going to the
+  /// discard pile (numeri_drones "put the next Homodeus Champion you recruit
+  /// this turn directly into play"). Only meaningful for champions — a
+  /// non-champion cannot persist in play, so a redirect with this destination
+  /// only matches champion recruits.
+  intoPlay,
+
+  /// The recruited card goes to the player's HAND instead of the discard pile
+  /// (anomaly_cleric Mastery-10 "put the next card you recruit this turn into
+  /// your hand").
+  toHand,
+}
+
+/// "Put the NEXT [faction]/[cardType] card you recruit this turn [destination]."
+///
+/// A TURN-SCOPED, SINGLE-USE modifier to the next matching recruit's
+/// destination — NOT an immediate action with a visible result. Its
+/// `_resolveEffects` case installs itself as the current player's
+/// [PlayerState.pendingRecruitRedirect]. The NEXT time that player recruits a
+/// card matching the [faction]/[cardType] filters (via `buyCard` or a free
+/// `recruitFromCenter`), the engine routes that card to [destination] and
+/// CONSUMES the pending redirect (it fires exactly once). Any unused redirect is
+/// cleared at end of turn by [PlayerState.resetTurnResources].
+///
+/// Cards:
+/// - numeri_drones — Exhaust: put the next Homodeus Champion you recruit this
+///   turn directly into play (`destination: intoPlay`, `faction: homodeus`,
+///   `cardType: champion`).
+/// - anomaly_cleric — Mastery 10: put the next card you recruit this turn into
+///   your hand (`destination: toHand`, no filters).
+final class RedirectNextRecruitEffect extends CardEffect {
+  const RedirectNextRecruitEffect({
+    required this.destination,
+    this.faction,
+    this.cardType,
+  });
+
+  /// Where the next matching recruited card goes.
+  final RecruitRedirect destination;
+
+  /// Optional faction filter — only a recruit of this faction consumes the
+  /// redirect (honours `countsAsAllFactions`). Null = any faction.
+  final Faction? faction;
+
+  /// Optional card-type filter — only a recruit of this type consumes the
+  /// redirect. Null = any type. (For [RecruitRedirect.intoPlay] the engine
+  /// additionally requires the recruit to be a champion regardless of this
+  /// filter, since only champions can enter play.)
+  final CardType? cardType;
+
+  @override
+  String get description {
+    final f = faction != null ? '${faction!.name} ' : '';
+    final t = cardType != null ? '${cardType!.name} ' : 'card';
+    final subject = '$f$t'.trim();
+    switch (destination) {
+      case RecruitRedirect.intoPlay:
+        return 'Put the next $subject you recruit this turn directly into play';
+      case RecruitRedirect.toHand:
+        return 'Put the next $subject you recruit this turn into your hand';
+    }
+  }
+}
+
 /// What a [ScryEffect] does with the revealed card the player keeps vs. lets go.
 enum ScryDisposition {
   /// Keep → draw to hand; let go → discard.

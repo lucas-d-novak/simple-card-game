@@ -129,8 +129,7 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
     }
     _tokenController.text = text;
     // Move the cursor to the end so the field looks natural after a paste.
-    _tokenController.selection =
-        TextSelection.collapsed(offset: text.length);
+    _tokenController.selection = TextSelection.collapsed(offset: text.length);
   }
 
   /// Forget the remembered token (e.g. on a shared computer).
@@ -182,8 +181,8 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
   }
 
   void _toast(String msg) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg), duration: const Duration(seconds: 2)));
+    ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg), duration: const Duration(seconds: 2)));
   }
 
   @override
@@ -193,20 +192,33 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          const Positioned.fill(child: CustomPaint(painter: BoardBackdropPainter())),
+          const Positioned.fill(
+              child: CustomPaint(painter: BoardBackdropPainter())),
           SafeArea(
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 720),
                 child: Padding(
                   padding: const EdgeInsets.all(20),
-                  child: client == null || client.status != ClientStatus.connected
-                      ? _connectPanel(client)
-                      : _lobbyPanel(client),
+                  child:
+                      client == null || client.status != ClientStatus.connected
+                          ? _connectPanel(client)
+                          : _lobbyPanel(client),
                 ),
               ),
             ),
           ),
+          // Server-restart heads-up: an unexpected socket drop (server
+          // restarting on redeploy) shows a dismissible banner suggesting a
+          // refresh while auto-reconnect retries. Not shown for a normal
+          // user-initiated leave. Pinned top-center, above the panel.
+          if (client != null && client.serverRestarting)
+            const Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: SafeArea(child: ServerRestartBanner()),
+            ),
           // Persistent About link (fan-made / non-commercial credits), pinned
           // top-right so it's reachable from both the login and lobby states.
           SafeArea(
@@ -225,38 +237,39 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
                   icon: const Icon(Icons.favorite_border, size: 16),
                   label: const Text(
                     'ABOUT',
-                    style:
-                        TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
             ),
           ),
-          // Persistent Card List link, pinned top-left (mirrors ABOUT) so it's
-          // reachable from both the login and lobby states.
-          SafeArea(
-            child: Align(
-              alignment: Alignment.topLeft,
-              child: Padding(
-                padding: const EdgeInsets.only(top: 4, left: 8),
-                child: TextButton.icon(
-                  key: const ValueKey('lobbyCardListButton'),
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const CardListScreen()),
-                  ),
-                  style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFFBFD8E8),
-                  ),
-                  icon: const Icon(Icons.style, size: 16),
-                  label: const Text(
-                    'CARD LIST',
-                    style:
-                        TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+          // Card List link, pinned top-left (mirrors ABOUT). Only shown once
+          // CONNECTED/authenticated — the catalog is not exposed on the
+          // pre-connect login screen.
+          if (client != null && client.status == ClientStatus.connected)
+            SafeArea(
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 4, left: 8),
+                  child: TextButton.icon(
+                    key: const ValueKey('lobbyCardListButton'),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const CardListScreen()),
+                    ),
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFFBFD8E8),
+                    ),
+                    icon: const Icon(Icons.style, size: 16),
+                    label: const Text(
+                      'CARD LIST',
+                      style:
+                          TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -339,7 +352,8 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
             if (status == ClientStatus.error || client?.lastError != null)
               Padding(
                 padding: const EdgeInsets.all(8),
-                child: Text('Error: ${client?.lastError ?? 'connection failed'}',
+                child: Text(
+                    'Error: ${client?.lastError ?? 'connection failed'}',
                     textAlign: TextAlign.center,
                     style: const TextStyle(color: Color(0xFFE57373))),
               ),
@@ -365,8 +379,14 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
   Widget _lobbyPanel(GameClient client) {
     // Active games (waiting / in-progress) show in the main list; finished games
     // move to the scrollable "Past games" summary reachable via a link.
-    final games = [for (final g in client.lobby) if (!g.isComplete) g];
-    final pastGames = [for (final g in client.lobby) if (g.isComplete) g];
+    final games = [
+      for (final g in client.lobby)
+        if (!g.isComplete) g
+    ];
+    final pastGames = [
+      for (final g in client.lobby)
+        if (g.isComplete) g
+    ];
     return Card(
       color: const Color(0xFF12283F),
       child: Padding(
@@ -501,6 +521,7 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
 
   Widget _pastGameTile(LobbyGameSummary g) {
     final winner = g.winnerId;
+    final forfeited = g.winType == 'forfeit';
     final String outcome;
     if (winner != null && winner.isNotEmpty) {
       final how = g.winType == 'mastery'
@@ -509,6 +530,9 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
               ? ' (elimination)'
               : '';
       outcome = '$winner won$how';
+    } else if (forfeited) {
+      // A forfeited (operator-closed) game — distinct from a genuine draw.
+      outcome = 'Forfeited (no winner)';
     } else {
       outcome = 'Draw / no winner';
     }
@@ -523,7 +547,11 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
       child: Row(
         children: [
           Icon(
-            winner != null ? Icons.emoji_events : Icons.handshake,
+            winner != null
+                ? Icons.emoji_events
+                : forfeited
+                    ? Icons.flag
+                    : Icons.handshake,
             size: 18,
             color: const Color(0xFFE8C45A),
           ),
@@ -543,8 +571,8 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
                     style: const TextStyle(
                         color: Color(0xFF9FE7C9), fontSize: 13)),
                 Text('players: ${g.players.join(", ")}',
-                    style: const TextStyle(
-                        color: Colors.white54, fontSize: 11)),
+                    style:
+                        const TextStyle(color: Colors.white54, fontSize: 11)),
               ],
             ),
           ),
@@ -559,6 +587,10 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
     // If you're a member of a game that has already started, you can re-enter
     // it (the server resyncs your state on request).
     final canRejoin = joined && g.status == 'started';
+    // FULL / in-progress game you're NOT in: no seat to join, so offer to WATCH
+    // it as a spectator (read-only live view). Only for started games (a full
+    // waiting game auto-starts instantly, so started ≈ full-and-playing).
+    final canWatch = !joined && g.status == 'started';
     return Card(
       color: const Color(0xFF1B3A57),
       child: ListTile(
@@ -581,10 +613,22 @@ class _NetworkLobbyScreenState extends State<NetworkLobbyScreen> {
                         backgroundColor: const Color(0xFF2E7D32)),
                     child: const Text('Rejoin'),
                   )
-                : joined
-                    ? const Text('joined',
-                        style: TextStyle(color: Color(0xFF80CBC4)))
-                    : null,
+                : canWatch
+                    ? FilledButton.icon(
+                        key: ValueKey('watchGameButton_${g.id}'),
+                        // Spectate THIS game: the server pushes a non-participant
+                        // (opponent-level) redacted view and the game screen
+                        // renders read-only.
+                        onPressed: () => client.spectateGame(g.id),
+                        style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF4A3B6E)),
+                        icon: const Icon(Icons.visibility, size: 16),
+                        label: const Text('Watch'),
+                      )
+                    : joined
+                        ? const Text('joined',
+                            style: TextStyle(color: Color(0xFF80CBC4)))
+                        : null,
       ),
     );
   }
@@ -647,12 +691,14 @@ class _ServerStatusChip extends StatelessWidget {
               child: Text(
                 "Server: $label",
                 textAlign: TextAlign.center,
-                style: TextStyle(color: color, fontSize: 12.5, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                    color: color, fontSize: 12.5, fontWeight: FontWeight.w600),
               ),
             ),
             if (status == _ServerStatus.offline) ...[
               const SizedBox(width: 8),
-              Icon(Icons.refresh, size: 14, color: color.withValues(alpha: 0.8)),
+              Icon(Icons.refresh,
+                  size: 14, color: color.withValues(alpha: 0.8)),
             ],
           ],
         ),

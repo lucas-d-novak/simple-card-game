@@ -7,7 +7,36 @@ import 'package:simple_card_game/models/faction.dart';
 import 'package:simple_card_game/ui/theme/animation_timing.dart';
 import 'package:simple_card_game/ui/theme/faction_colors.dart';
 import 'package:simple_card_game/ui/widgets/card_art.dart';
+import 'package:simple_card_game/ui/widgets/card_detail_modal.dart'
+    show isPassiveOnlyChampion;
 import 'package:simple_card_game/ui/widgets/resource_icons.dart';
+
+/// Whether an in-play champion still has an ACTION its controller can fire this
+/// turn — the SINGLE source of truth behind BOTH the champion's enabled
+/// "Exhaust"/"Activate" zoom button AND its blue "unused" board border
+/// ([GameCardWidget.hasUnusedAction]), so the two can never disagree.
+///
+/// True iff the champion is NOT an [isPassiveOnlyChampion] (a pure aura like
+/// Zetta / Carmine carries no action, ever — so it must NEVER glow) AND it has
+/// either an unspent free play-effect activation OR an unspent Exhaust-gated
+/// ability this turn. This is exactly the negation of the zoom button's
+/// "everything spent" state (`!(activationDone && exhaustDone)`).
+///
+/// The per-turn [activated]/[exhausted] flags are supplied by the caller so the
+/// logic is identical on the local board (from
+/// `PlayerState.activatedChampions` / `exhaustedChampions`) and the networked
+/// board (from the redacted view's per-champion `activated` / `exhausted`),
+/// rather than being re-derived divergently in each screen.
+bool championHasUnusedAction(
+  CardModel card, {
+  required bool activated,
+  required bool exhausted,
+}) {
+  if (isPassiveOnlyChampion(card)) return false;
+  final canActivate = card.playEffects.isNotEmpty && !activated;
+  final canExhaust = card.activatedAbility != null && !exhausted;
+  return canActivate || canExhaust;
+}
 
 /// A styled card widget matching the official Fragments of Boundlessness card frame:
 /// faction-tinted title bar, blue teardrop recruit cost, painted art filling
@@ -22,6 +51,7 @@ class GameCardWidget extends StatelessWidget {
     this.isHighlighted = false,
     this.conditionsMet = false,
     this.interactable = true,
+    this.hasUnusedAction = false,
     this.showCost = true,
     this.compact = false,
     this.width,
@@ -46,6 +76,18 @@ class GameCardWidget extends StatelessWidget {
   /// affordability here; hand/other contexts leave it `true` (default) so their
   /// glow is unchanged.
   final bool interactable;
+
+  /// When true this card paints the SAME bright-blue glow/border as the market
+  /// [isHighlighted] "affordable" prompt, but for a DIFFERENT context: an
+  /// in-play CHAMPION that still has an available action this turn ("unused").
+  /// It is a distinct, explicit flag (not a repurposing of [isHighlighted]) so
+  /// the two contexts can't collide — a champion is never a market card, and a
+  /// market card never sets this. Callers derive it from
+  /// [championHasUnusedAction] (the same predicate driving the champion's
+  /// enabled Exhaust/Activate button), so a passive-only aura champion never
+  /// glows. The GOLD synergy glow still trumps it, exactly as it trumps the
+  /// affordable blue. Defaults false.
+  final bool hasUnusedAction;
   final bool showCost;
   final bool compact;
   final double? width;
@@ -71,6 +113,10 @@ class GameCardWidget extends StatelessWidget {
         compact ? cardWidth * (130 / 90) : cardWidth * (170 / 120);
     final scale = cardWidth / 120.0; // 120 is the reference design width
     final radius = 8.0 * scale.clamp(0.7, 1.4);
+    // The blue glow fires for EITHER an affordable market card ([isHighlighted])
+    // OR an in-play champion with an unused action ([hasUnusedAction]) — two
+    // non-overlapping contexts sharing one styling. GOLD (synergy) still trumps.
+    final blueGlow = isHighlighted || hasUnusedAction;
 
     return GestureDetector(
       onTap: onTap,
@@ -106,8 +152,9 @@ class GameCardWidget extends StatelessWidget {
                 blurRadius: 16.1 * scale,
                 spreadRadius: 1.7,
               )
-            else if (isHighlighted)
-              // Bright BLUE "you can buy this now" glow (affordable on your turn).
+            else if (blueGlow)
+              // Bright BLUE glow — affordable market card ([isHighlighted]) OR
+              // an in-play champion with an unused action ([hasUnusedAction]).
               BoxShadow(
                 color: const Color(0xFF49B4FF),
                 blurRadius: 18.4 * scale,
@@ -127,7 +174,7 @@ class GameCardWidget extends StatelessWidget {
                   color: const Color(0xFFFFD666),
                   width: 1.7 * scale.clamp(0.7, 1.4),
                 )
-              : isHighlighted
+              : blueGlow
                   ? Border.all(
                       color: const Color(0xFF6FD0FF),
                       width: 1.84 * scale.clamp(0.7, 1.4),

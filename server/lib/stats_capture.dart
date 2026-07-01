@@ -297,6 +297,11 @@ DecisionSnapshot? buildDecisionSnapshot({
 /// be >= 30 on an elimination win in a long game). 'none' for a drawn/abandoned
 /// game with no winner.
 String winTypeOf(GameService game) {
+  // A FORFEIT (operator-ended game) has no winner but is NOT a draw/none — the
+  // distinct 'forfeit' condition must survive so the lobby past-games summary
+  // and telemetry label it correctly (not "Draw / no winner"). Checked before
+  // the winnerId gate precisely because forfeits carry a null winnerId.
+  if (game.winType == 'forfeit') return 'forfeit';
   if (game.winnerId == null) return 'none';
   return game.winType ?? 'elimination';
 }
