@@ -172,6 +172,19 @@ void main() {
       // The static modifier survived.
       expect(restored.players[0].staticModifiers.single.kind,
           StaticModifierKind.shieldBuff);
+
+      // The action log — including each entry's optional cardId (used by the
+      // networked playback overlay) — round-trips through the codec.
+      final origWithCard =
+          game.actionLog.where((e) => e.cardId != null).toList();
+      expect(origWithCard, isNotEmpty,
+          reason: 'playing/buying cards should log entries carrying a cardId');
+      expect(restored.actionLog.length, game.actionLog.length);
+      for (var i = 0; i < game.actionLog.length; i++) {
+        expect(restored.actionLog[i].cardId, game.actionLog[i].cardId,
+            reason: 'log entry $i cardId must round-trip');
+        expect(restored.actionLog[i].message, game.actionLog[i].message);
+      }
     });
 
     test('relic options + recruited flag round-trip (set aside and recruited)',

@@ -94,12 +94,22 @@ Map<String, dynamic> redactFor(
     'destinyRow': _ids(game.destinyRow),
     'destinyDeckCount': game.destinyDeck.length,
     // Public action log (no hidden info) — the recent tail, so players can review
-    // what happened (e.g. "what did I do last turn"). Bounded for payload size.
+    // what happened (e.g. "what did I do last turn") and the playback overlay can
+    // show a mini card. Bounded for payload size.
+    //
+    // HIDDEN-INFO SAFETY: a log entry's optional `cardId` is only kept when that
+    // card is CURRENTLY in a public, dictionaried zone (played/champion/discard/
+    // removed/center). A card that has since moved to a hidden zone (e.g. a played
+    // card shuffled back into a draw pile) has its cardId STRIPPED here, so the
+    // wire never carries an id the recipient couldn't otherwise resolve. The
+    // message text is unchanged (the card name was already public when logged).
     'actionLog': [
       for (final e in game.actionLog.length > 80
           ? game.actionLog.sublist(game.actionLog.length - 80)
           : game.actionLog)
-        e.toJson(),
+        (e.cardId != null && !cards.containsKey(e.cardId))
+            ? (e.toJson()..remove('cardId'))
+            : e.toJson(),
     ],
     'players': [
       for (final p in game.players) _redactPlayer(p, p.id == recipientId),
