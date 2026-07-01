@@ -34,7 +34,11 @@ Map<String, dynamic> redactFor(
   String recipientId, {
   required int stateVersion,
   bool canUndo = false,
+  Map<String, String> names = const {},
 }) {
+  // Display name for an engine seat id: the lobby username when known, else the
+  // seat id itself (`p0`). So the board shows real usernames, not seats.
+  String displayName(String seatId) => names[seatId] ?? seatId;
   // Card dictionary: every card the recipient may legitimately see, serialized
   // BY VALUE (name + effects + stats), keyed by id. The client renders directly
   // from this — it does NOT re-look-up ids in any catalog, so the cards it shows
@@ -77,6 +81,9 @@ Map<String, dynamic> redactFor(
     'currentPlayerIndex': game.currentPlayerIndex,
     'turnNumber': game.turnNumber,
     'isGameOver': game.isGameOver,
+    // winnerId stays the SEAT id (`p0`) — the client matches it against player
+    // ids and its own `you` for the game-over screen. The username is carried on
+    // each player's `name` (below), so the UI shows the real name.
     if (game.winnerId != null) 'winnerId': game.winnerId,
     // HOW the game was won — 'mastery' (Infinity Shard at 30) / 'elimination' /
     // 'draw' (mutual knockout). Public (not hidden info); drives the win
@@ -112,17 +119,21 @@ Map<String, dynamic> redactFor(
             : e.toJson(),
     ],
     'players': [
-      for (final p in game.players) _redactPlayer(p, p.id == recipientId),
+      for (final p in game.players)
+        _redactPlayer(p, p.id == recipientId, displayName(p.id)),
     ],
     // Full card definitions for every visible card, by id.
     'cards': cards,
   };
 }
 
-Map<String, dynamic> _redactPlayer(PlayerState p, bool isRecipient) {
+Map<String, dynamic> _redactPlayer(
+    PlayerState p, bool isRecipient, String displayName) {
   return {
     'id': p.id,
-    'name': p.name,
+    // The lobby username (falls back to the seat id when unknown). The engine
+    // seat `id` stays `p0` above for turn/winner matching.
+    'name': displayName,
     if (p.character != null) 'character': p.character!.name,
     'health': p.health,
     'mastery': p.mastery,

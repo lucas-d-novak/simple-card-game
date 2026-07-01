@@ -133,6 +133,47 @@ void main() {
       }
     });
 
+    test('player views show LOBBY USERNAMES (not seat ids) via names map', () {
+      final game = GameService(playerCount: 2);
+      final session = GameSession(
+        id: 'g1',
+        game: game,
+        playerIds: ['Alice', 'Bob'], // seat order: p0=Alice, p1=Bob
+      );
+      final view = session.viewFor('Alice');
+      final players = (view['players'] as List).cast<Map>();
+      // ids stay the engine seat ids (for turn/winner matching)...
+      expect(players.map((p) => p['id']), containsAll(['p0', 'p1']));
+      // ...but the display NAMES are the lobby usernames.
+      final p0 = players.firstWhere((p) => p['id'] == 'p0');
+      final p1 = players.firstWhere((p) => p['id'] == 'p1');
+      expect(p0['name'], 'Alice');
+      expect(p1['name'], 'Bob');
+    });
+
+    test('winnerLobbyId maps the engine seat winner to the right username', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final session = GameSession(
+        id: 'g1',
+        game: game,
+        playerIds: ['Alice', 'Bob'],
+      );
+      // No winner yet.
+      expect(session.winnerLobbyId, isNull);
+
+      // Force an elimination win for SEAT p1 (Bob): drop p0 to lethal, let p1
+      // attack. p1 must be the current player to attack, so end p0's turn first.
+      game.endTurn(); // now p1 (Bob) is current
+      game.players[0].health = 1; // p0 (Alice) on the brink
+      game.currentPlayer.powerPool = 5;
+      final ok = game.attackPlayer('p0', 5);
+      expect(ok, isTrue);
+      expect(game.isGameOver, isTrue);
+      expect(game.winnerId, 'p1', reason: 'seat p1 survived');
+      // The mapping must resolve seat p1 → the lobby username Bob.
+      expect(session.winnerLobbyId, 'Bob');
+    });
+
     test('public zones (center row, discards) ARE visible', () {
       final game = GameService(playerCount: 2);
       final view = redactFor(game, 'p0', stateVersion: 1);

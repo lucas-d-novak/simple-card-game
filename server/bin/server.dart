@@ -23,7 +23,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:shards_server/game_session.dart';
 import 'package:shards_server/lobby.dart';
 import 'package:shards_server/persistence.dart';
 import 'package:shards_server/stats_capture.dart';
@@ -370,7 +369,7 @@ void _dispatch(
       if (session.game.isGameOver && g!.status != GameStatus.complete) {
         g.status = GameStatus.complete;
         // Record who won on the lobby game so the past-games summary can show it.
-        final winner = _winnerLobbyId(session);
+        final winner = session.winnerLobbyId;
         final wType = winTypeOf(session.game);
         g.winnerId = winner;
         g.winType = wType;
@@ -386,17 +385,6 @@ void _dispatch(
       _persist(gameId);
       _broadcastState(gameId);
   }
-}
-
-/// The LOBBY player id of the winner (the engine's `winnerId` is a seat id like
-/// `p0`; decisions are keyed by lobby id, so the supervised-label join needs the
-/// lobby id). Null if there is no winner (drawn/abandoned).
-String? _winnerLobbyId(GameSession session) {
-  final seatId = session.game.winnerId;
-  if (seatId == null) return null;
-  final seat = session.game.players.indexWhere((p) => p.id == seatId);
-  final ids = session.playerIds;
-  return (seat >= 0 && seat < ids.length) ? ids[seat] : seatId;
 }
 
 /// If [playerId] is in a live game, send them their current redacted state so a

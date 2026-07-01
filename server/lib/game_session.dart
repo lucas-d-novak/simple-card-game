@@ -90,6 +90,12 @@ class GameSession {
     return (seat >= 0 && seat < playerIds.length) ? playerIds[seat] : seatId;
   }
 
+  /// The LOBBY player id (username) of the winner, or null if there is no winner
+  /// (game in progress, or a draw). Maps the engine's seat-id `winnerId` through
+  /// the seat↔lobby-id table. Public so the lobby past-games summary and
+  /// telemetry share one correct mapping (rather than each re-deriving it).
+  String? get winnerLobbyId => _lobbyIdForSeatId(game.winnerId);
+
   /// Apply an action on behalf of [lobbyPlayerId]. On success the broadcast
   /// version bumps so clients can detect they need the new state.
   ActionResult apply(String lobbyPlayerId, Map<String, dynamic> action) {
@@ -224,7 +230,19 @@ class GameSession {
       seatId ?? '',
       stateVersion: _stateVersion,
       canUndo: canUndoFor(lobbyPlayerId),
+      names: _seatNames(),
     );
+  }
+
+  /// Engine seat id (`p0`..) → lobby username, so redacted views can show real
+  /// player names instead of seat ids. Seats and [playerIds] share order (seat i
+  /// == game.players[i], joined at start), so we zip them.
+  Map<String, String> _seatNames() {
+    final out = <String, String>{};
+    for (var i = 0; i < game.players.length && i < playerIds.length; i++) {
+      out[game.players[i].id] = playerIds[i];
+    }
+    return out;
   }
 
   /// Redacted views for every connected player, keyed by LOBBY id — what the
