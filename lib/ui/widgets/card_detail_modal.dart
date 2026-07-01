@@ -76,11 +76,22 @@ class _CardDetailModalState extends State<CardDetailModal> {
     final action = widget.actionFor?.call(card);
     final secondaryAction = widget.secondaryActionFor?.call(card);
     final size = MediaQuery.of(context).size;
-    // Scale the card to a comfortable fraction of the viewport, capped so it
-    // never collides with the side arrows on wide screens. Slightly smaller than
-    // before to leave room for the rules-text panel BELOW the card.
-    final cardWidth = (size.height * 0.66 * (120 / 170))
-        .clamp(170.0, size.width * 0.42);
+    // Scale the card to a comfortable fraction of the viewport. On wide/landscape
+    // screens height drives it (capped by 42% width so it never collides with the
+    // side arrows); on tall/portrait phones that height-based value would exceed
+    // the screen width, so we cap by a generous share of the WIDTH instead.
+    //
+    // IMPORTANT: never build an inverted clamp (lower > upper) — on a narrow
+    // portrait phone the old `clamp(170, width*0.42)` had upper < lower, which
+    // threw during build and left ONLY the scrim on screen (a grey veil that
+    // trapped the player). Compute the two candidates and take the min, floored.
+    final heightBased = size.height * 0.66 * (120 / 170);
+    final widthCap = size.width * 0.82; // leave a margin on portrait
+    // Smaller of the two candidates, then a floor that itself never exceeds the
+    // width cap — so lower is always <= upper (no inverted clamp, ever).
+    final target = heightBased < widthCap ? heightBased : widthCap;
+    final floor = 140.0 < widthCap ? 140.0 : widthCap;
+    final cardWidth = target < floor ? floor : target;
     final rulesLines = GameCardWidget(card: card).rulesLines();
 
     final canPrev = _index > 0;
@@ -125,7 +136,16 @@ class _CardDetailModalState extends State<CardDetailModal> {
             child: GestureDetector(
               // Absorb taps on the card/panel so they don't dismiss.
               onTap: () {},
-              child: Column(
+              // Bound the content to the viewport and let it scroll if the card
+              // + rules panel are taller than the screen (portrait phones), so
+              // it never overflows off-screen. The horizontal padding keeps the
+              // scrim tappable on the sides to dismiss.
+              child: SingleChildScrollView(
+                padding: EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: size.height * 0.06,
+                ),
+                child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
@@ -188,6 +208,7 @@ class _CardDetailModalState extends State<CardDetailModal> {
                     ),
                   ],
                 ],
+              ),
               ),
             ),
           ),
