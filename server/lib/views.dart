@@ -92,6 +92,22 @@ Map<String, dynamic> redactFor(
     // 'draw' (mutual knockout). Public (not hidden info); drives the win
     // flourish + game-over copy on the networked board.
     if (game.winType != null) 'winType': game.winType,
+    // Most recent direct player-vs-player damage event, so every client
+    // (attacker AND victim) can play the SAME attack animation deterministically
+    // once. Public info (attacker, victim and amount of a direct attack are all
+    // board-visible), so shipping this leaks nothing hidden. `seq` is a
+    // monotonic high-water mark the client uses to fire the animation exactly
+    // once per event; `fromName`/`toName` are resolved to usernames here (the
+    // seat ids are also kept so the client can match against its own `you`).
+    if (game.lastDamage != null)
+      'lastDamage': {
+        'seq': game.lastDamage!.seq,
+        'fromId': game.lastDamage!.fromId,
+        'toId': game.lastDamage!.toId,
+        'fromName': displayName(game.lastDamage!.fromId),
+        'toName': displayName(game.lastDamage!.toId),
+        'amount': game.lastDamage!.amount,
+      },
     // True only in the recipient's OWN view when they may undo right now.
     'canUndo': canUndo,
     // Market is public.

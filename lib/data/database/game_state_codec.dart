@@ -61,6 +61,7 @@ class GameStateCodec {
       'gameOver': game.isGameOver,
       if (game.winnerId != null) 'winnerId': game.winnerId,
       if (game.winType != null) 'winType': game.winType,
+      if (game.lastDamage != null) 'lastDamage': game.lastDamage!.toJson(),
       if (game.actionLog.isNotEmpty)
         'actionLog': [for (final e in game.actionLog) e.toJson()],
     };
@@ -101,6 +102,10 @@ class GameStateCodec {
     game.restoreGameOver((json['gameOver'] as bool?) ?? false);
     game.winnerId = json['winnerId'] as String?;
     game.winType = json['winType'] as String?;
+    if (json['lastDamage'] != null) {
+      game.restoreLastDamage(LastDamageEvent.fromJson(
+          (json['lastDamage'] as Map).cast<String, dynamic>()));
+    }
     for (final e in (json['actionLog'] as List? ?? const [])) {
       game.actionLog.add(GameLogEntry.fromJson((e as Map).cast<String, dynamic>()));
     }
