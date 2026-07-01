@@ -873,6 +873,12 @@ enum GameConditionKind {
   /// turn. The resolving source card is EXCLUDED from the count. Used by
   /// advanced_medicine.
   evenCostCardsPlayed,
+
+  /// The controlling player has STRICTLY more mastery than EVERY other
+  /// (non-eliminated) player — a sole mastery lead. `threshold` is ignored.
+  /// Used by cloud_oracles ("if you have more mastery than all other players,
+  /// gain 2 gems"). Ties do NOT satisfy it (must be strictly greater).
+  highestMasteryAmongPlayers,
 }
 
 /// A board-state predicate evaluated by `GameService._evaluateGameCondition`.
@@ -961,6 +967,8 @@ class GameCondition {
         return 'if you have played $threshold+ odd-cost cards this turn';
       case GameConditionKind.evenCostCardsPlayed:
         return 'if you have played $threshold+ even-cost cards this turn';
+      case GameConditionKind.highestMasteryAmongPlayers:
+        return 'if you have more mastery than all other players';
     }
   }
 }

@@ -2168,6 +2168,14 @@ class GameService {
         final count = _countPlayedThisTurn(
             player, source, (card) => card.cost.isEven);
         return count >= c.threshold;
+      case GameConditionKind.highestMasteryAmongPlayers:
+        // Strictly greater than every other non-eliminated player's mastery.
+        for (final other in players) {
+          if (identical(other, player)) continue;
+          if (other.isEliminated) continue;
+          if (other.mastery >= player.mastery) return false;
+        }
+        return true;
     }
   }
 

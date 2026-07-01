@@ -181,7 +181,6 @@
       "notes": "Ally (regular). Inspire 'If you control a Champion' = conditional(championsControlled threshold 1); then 'you may banish a card from your hand or discard pile' (the 'may' is the player's option to Skip in the banish dialog). 'Draw a card' resolves unconditionally.",
       "set": "base",
       "cardType": "regular",
-      "cost": 2,
       "chapter": 1
     },
     {
@@ -376,12 +375,24 @@
         {
           "type": "drawCards",
           "count": 1
+        },
+        {
+          "type": "conditional",
+          "condition": {
+            "kind": "highestMasteryAmongPlayers"
+          },
+          "then": [
+            {
+              "type": "gainGems",
+              "amount": 2
+            }
+          ]
         }
       ],
       "art": "cloud_oracles.jpg",
       "rawText": "Order Ally. Cost 2. Draw a card. If you have more (mastery) than all other players, gain 2 (gems).",
       "verified": true,
-      "notes": "Ally (regular). Draw a card -> playEffects. UNMODELED: 'If you have more mastery than all other players, gain 2 (gems)' (conditional on having highest mastery among players) has no engine type; the conditional 2 gems not encoded.",
+      "notes": "Ally (regular). Draw a card -> playEffects. UNMODELED: 'If you have more mastery than all other players, gain 2 (gems)' (conditional on having highest mastery among players) has no engine type; the conditional 2 gems not encoded. | [fix] added missing 2nd clause: conditional(highestMasteryAmongPlayers) -> gain 2 gems ('if you have more mastery than all other players').",
       "set": "base",
       "cardType": "regular",
       "cost": 2,

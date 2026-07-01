@@ -122,24 +122,9 @@ class GameCardWidget extends StatelessWidget {
             children: [
               // ---- Art fills the whole inner card ----------------------
               _CardArtArea(card: card),
-              // Dark gradient over the lower portion for text legibility.
-              Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.black.withValues(alpha: 0.0),
-                        Colors.black.withValues(alpha: 0.0),
-                        Colors.black.withValues(alpha: 0.35),
-                        const Color(0xFF0C1726).withValues(alpha: 0.92),
-                      ],
-                      stops: const [0.0, 0.42, 0.52, 0.66],
-                    ),
-                  ),
-                ),
-              ),
+              // No dark overlay over the artwork — the art shows through fully.
+              // Legibility of the faction/name text is carried by the text's own
+              // drop shadows (see the Text styles below), not a scrim.
 
               // ---- Title bar -------------------------------------------
               Positioned(

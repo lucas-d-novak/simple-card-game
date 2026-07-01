@@ -214,6 +214,9 @@ bool _evaluate(
     case GameConditionKind.gemParityCardsPlayed:
     case GameConditionKind.filteredCardsPlayed:
     case GameConditionKind.isCharacter:
+    // Needs every player's mastery (comparative); the redacted context carries
+    // only the recipient's own mastery, so we can't evaluate it client-side.
+    case GameConditionKind.highestMasteryAmongPlayers:
       return false;
   }
 }

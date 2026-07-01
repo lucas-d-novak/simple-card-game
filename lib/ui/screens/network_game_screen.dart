@@ -296,13 +296,19 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
   /// Queue a deferred target picker for the first deferred effect in [effects]
   /// (a card's playEffects, or a champion's activated-ability effects), with
   /// [source] as the effect's source card for condition evaluation.
+  ///
+  /// The picker is resolved LAZILY when [_pendingSelection] fires (on the next
+  /// server state), NOT now — because right after sending the action our local
+  /// `_view` is still the PRE-action state, so a condition like "if you control
+  /// a Champion" must be evaluated against the fresh POST-action redacted view
+  /// (the one that reflects what the engine actually did).
   void _queueDeferredSelection(CardModel source, List<CardEffect> effects) {
-    // Evaluate conditions against the POST-action state (the played card is now
-    // in playedThisTurn / championsInPlay), mirroring what the engine saw.
-    final me = _view?.me;
-    final ctx = me != null ? _conditionContext(me) : null;
-    final picker = _deferredPickerFor(effects, source, ctx);
-    if (picker != null) _pendingSelection = picker;
+    _pendingSelection = () {
+      final me = _view?.me;
+      final ctx = me != null ? _conditionContext(me) : null;
+      final picker = _deferredPickerFor(effects, source, ctx);
+      if (picker != null) picker();
+    };
   }
 
   /// Walks a list of effects (recursing into `ConditionalEffect.then` and
@@ -664,13 +670,38 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
       if (ability == null) continue;
       widget.client.useActivatedAbility(champ.id);
       fired++;
-      // Queue the deferred picker only for the first ability that needs one, so
-      // multiple target prompts don't overwrite each other's pending slot.
-      if (_pendingSelection == null) {
+      // Queue a picker only for the FIRST ability that actually needs a target,
+      // so a no-target ability doesn't waste the single pending slot and a
+      // later target-needing one doesn't overwrite an already-queued prompt.
+      if (_pendingSelection == null && _hasDeferredEffect(ability.effects)) {
         _queueDeferredSelection(card, ability.effects);
       }
     }
     if (fired > 0) _flash('Exhausted $fired champion${fired == 1 ? '' : 's'}');
+  }
+
+  /// Whether [effects] contains any deferred-selection effect (banish / scrap /
+  /// single-target destroy / return), recursing into conditional / choose-one.
+  bool _hasDeferredEffect(List<CardEffect> effects) {
+    for (final e in effects) {
+      switch (e) {
+        case BanishCardEffect():
+        case ScrapFromCenterRowEffect():
+        case ReturnFromDiscardEffect():
+          return true;
+        case DestroyChampionEffect() when !e.all:
+          return true;
+        case ConditionalEffect():
+          if (_hasDeferredEffect(e.then)) return true;
+        case ChooseOneEffect():
+          for (final g in e.choices) {
+            if (_hasDeferredEffect(g)) return true;
+          }
+        default:
+          break;
+      }
+    }
+    return false;
   }
 
   /// Count of my champions that can still be Exhausted this turn (have an
@@ -1730,17 +1761,28 @@ class _StatChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Big, semi-transparent "floating" resource icon (no chip background) with
+    // the value beside it. The larger icon reads at a glance; the slight
+    // translucency + shadow lets the board show through so it feels like it's
+    // floating over the play field rather than sitting in a boxed pill.
+    final iconSize = fontSize * 1.9;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        ResourceIconWidget(icon, size: fontSize + 2),
-        const SizedBox(width: 3),
+        Opacity(
+          opacity: 0.88,
+          child: ResourceIconWidget(icon, size: iconSize),
+        ),
+        const SizedBox(width: 4),
         AnimatedCounter(
           value: value,
           style: TextStyle(
             color: Colors.white,
-            fontSize: fontSize,
+            fontSize: fontSize * 1.35,
             fontWeight: FontWeight.bold,
+            shadows: const [
+              Shadow(color: Colors.black87, blurRadius: 4, offset: Offset(0, 1)),
+            ],
           ),
         ),
       ],
@@ -2240,32 +2282,9 @@ class _NetworkPlayField extends StatelessWidget {
           )
         else
           playColumn,
-        if (actionMessage != null)
-          Positioned(
-            top: 6,
-            left: 0,
-            right: 0,
-            child: IgnorePointer(
-              child: Center(
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.45),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    actionMessage!,
-                    style: const TextStyle(
-                      color: BoardChrome.goldText,
-                      fontSize: 12,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
+        // (Removed the transient "Recruiting/Activated X…" banner that floated
+        // over the enemy champions row — the action ticker + board updates make
+        // it redundant and it obscured the champions.)
       ],
     );
   }
