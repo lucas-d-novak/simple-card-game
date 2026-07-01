@@ -63,6 +63,25 @@ class GameClient extends ChangeNotifier {
   ClientStatus status = ClientStatus.disconnected;
   String? lastError;
 
+  // ---- auto-reconnect ----
+  /// The URL of the last [connect]; reused to reconnect after an unexpected
+  /// drop.
+  String? _url;
+
+  /// True while a manual [disconnect] is in progress, so its socket close does
+  /// NOT trigger an auto-reconnect (only unexpected drops reconnect).
+  bool _intentionalClose = false;
+
+  /// Pending reconnect timer (null when not scheduled).
+  Timer? _reconnectTimer;
+
+  /// Current reconnect attempt count, for exponential backoff. Reset to 0 on a
+  /// successful `welcome`.
+  int _reconnectAttempts = 0;
+
+  /// Backoff schedule (seconds) for reconnect attempts; the last value repeats.
+  static const List<int> _reconnectBackoff = [1, 2, 4, 8, 15, 30];
+
   /// True once the server rejected our access token — the UI re-prompts and the
   /// caller should forget the remembered token.
   bool authFailed = false;
@@ -106,6 +125,9 @@ class GameClient extends ChangeNotifier {
     if (status == ClientStatus.connecting || status == ClientStatus.connected) {
       return;
     }
+    _url = url;
+    _intentionalClose = false;
+    _reconnectTimer?.cancel();
     _setStatus(ClientStatus.connecting);
     try {
       final channel = WebSocketChannel.connect(Uri.parse(url));
@@ -117,20 +139,50 @@ class GameClient extends ChangeNotifier {
         cancelOnError: true,
       );
       // The server requires identify as the FIRST message (with the shared
-      // access token when the server is gated).
+      // access token when the server is gated). On a reconnect this same
+      // identify re-seats the player and the server resyncs their live game.
       _send(_identifyMsg());
       // Optimistically connected; a `welcome` confirms.
     } catch (e) {
       lastError = '$e';
       _setStatus(ClientStatus.error);
+      _scheduleReconnect();
     }
   }
 
   void disconnect() {
+    // A deliberate disconnect must NOT auto-reconnect.
+    _intentionalClose = true;
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
+    _reconnectAttempts = 0;
     _sub?.cancel();
     _channel?.sink.close();
     _channel = null;
     _setStatus(ClientStatus.disconnected);
+  }
+
+  /// Schedule an auto-reconnect after an UNEXPECTED drop (idle close that the
+  /// server ping didn't catch, laptop sleep, network blip). Backs off
+  /// exponentially so a server that's genuinely down isn't hammered. A manual
+  /// [disconnect], an auth rejection, or the absence of a prior URL cancels it.
+  void _scheduleReconnect() {
+    if (_intentionalClose || authFailed || _url == null) return;
+    if (_reconnectTimer != null) return; // already scheduled
+    final idx = _reconnectAttempts < _reconnectBackoff.length
+        ? _reconnectAttempts
+        : _reconnectBackoff.length - 1;
+    final delay = Duration(seconds: _reconnectBackoff[idx]);
+    _reconnectAttempts++;
+    _reconnectTimer = Timer(delay, () {
+      _reconnectTimer = null;
+      if (_intentionalClose || authFailed || _url == null) return;
+      // Fully tear down the dead socket before reconnecting.
+      _sub?.cancel();
+      _channel = null;
+      connect(_url!);
+    });
+    notifyListeners();
   }
 
   // ---- lobby actions ----
@@ -257,6 +309,10 @@ class GameClient extends ChangeNotifier {
     }
     switch (msg['type'] as String?) {
       case 'welcome':
+        // Successful (re)connect: clear the backoff so the NEXT drop retries
+        // promptly. The server resyncs a seated player's live game off our
+        // identify, so an in-progress game reappears without a manual refresh.
+        _reconnectAttempts = 0;
         _setStatus(ClientStatus.connected);
       case 'lobby':
         lobby = [
@@ -283,11 +339,15 @@ class GameClient extends ChangeNotifier {
     }
   }
 
-  void _onDone() => _setStatus(ClientStatus.disconnected);
+  void _onDone() {
+    _setStatus(ClientStatus.disconnected);
+    _scheduleReconnect();
+  }
 
   void _onError(Object e) {
     lastError = '$e';
     _setStatus(ClientStatus.error);
+    _scheduleReconnect();
   }
 
   void _setStatus(ClientStatus s) {

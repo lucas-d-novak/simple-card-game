@@ -52,6 +52,14 @@ Set<String> _allowedOrigins = {};
 /// this is rejected without parsing, so a giant payload can't exhaust memory.
 const int _maxMessageBytes = 64 * 1024;
 
+/// How often the server sends a WebSocket ping frame to each connected client.
+/// This keeps otherwise-idle connections alive through intermediary idle
+/// timeouts (Cloudflare closes idle WS at ~100s; many proxies/NATs at 30-60s),
+/// which is why a quiet game would drop after ~a minute and force a refresh.
+/// `dart:io`'s WebSocket handles ping/pong automatically once [WebSocket.pingInterval]
+/// is set, and also closes a truly dead socket if a pong isn't received in time.
+const Duration _pingInterval = Duration(seconds: 20);
+
 /// Constant-time string comparison so a wrong token can't be discovered by
 /// timing how long the reject takes.
 bool _tokenMatches(String provided) {
@@ -171,6 +179,10 @@ void main(List<String> args) async {
         }
       }
       final socket = await WebSocketTransformer.upgrade(req);
+      // Keep idle connections alive: dart:io sends ping frames on this interval
+      // and closes the socket if the peer stops answering, so a quiet game no
+      // longer drops after ~a minute behind Cloudflare/proxy idle timeouts.
+      socket.pingInterval = _pingInterval;
       _handleSocket(socket);
     } else {
       req.response.statusCode = HttpStatus.upgradeRequired;
