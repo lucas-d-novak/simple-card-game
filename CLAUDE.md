@@ -255,6 +255,7 @@ server/                                  # Authoritative multiplayer (pure-Dart,
 | Mastery progress indicator (bar to 30) | Done | `resource_bar.dart` |
 | Rematch flow (game over → replay) | Done | `game_screen.dart` |
 | Card play animations (scale + highlight) | Done | `game_screen.dart` |
+| Board fly-animations (deck→market, resource pips, recruit→discard) | Done | `board_animator.dart`, `fly_overlay.dart` |
 | Legacy demo catalog (55 unique cards) | Done | `card_definitions.dart` |
 | Authoritative card DB (183 cards, 101/142 in-scope verified, 41 out-of-scope) | In progress | `assets/card_db/cards.json` |
 | Card-verify adversarial re-check (41 unverified re-audited, 0 flipped) | Done | `assets/card_db/cards.json` |

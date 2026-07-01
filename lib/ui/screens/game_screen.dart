@@ -12,11 +12,13 @@ import 'package:simple_card_game/ui/theme/faction_colors.dart';
 import 'package:simple_card_game/ui/theme/game_theme.dart';
 import 'package:simple_card_game/ui/theme/responsive.dart';
 import 'package:simple_card_game/ui/widgets/beveled_button.dart';
+import 'package:simple_card_game/ui/widgets/board_animator.dart';
 import 'package:simple_card_game/ui/widgets/card_detail_modal.dart';
 import 'package:simple_card_game/ui/widgets/card_fan.dart';
 import 'package:simple_card_game/ui/widgets/choice_modal.dart';
 import 'package:simple_card_game/ui/widgets/destiny_tray.dart';
 import 'package:simple_card_game/ui/widgets/game_card_widget.dart';
+import 'package:simple_card_game/ui/widgets/resource_grant.dart';
 import 'package:simple_card_game/ui/widgets/resource_icons.dart';
 import 'package:simple_card_game/ui/widgets/scrollable_board.dart';
 import 'package:simple_card_game/ui/widgets/shard_win_overlay.dart';
@@ -61,6 +63,17 @@ class _GameScreenState extends State<GameScreen>
   String? _actionMessage;
   bool _aiThinking = false;
   String? _lastPlayedCardId;
+
+  // ---- Fly-animation anchors (resolved to rects at animation time) ----------
+  // Attached to the resource counters, piles, center row and play area so
+  // BoardAnimator can tween pips/cards between them. See board_animator.dart.
+  final GlobalKey _gemAnchorKey = GlobalKey(debugLabel: 'gemAnchor');
+  final GlobalKey _powerAnchorKey = GlobalKey(debugLabel: 'powerAnchor');
+  final GlobalKey _masteryAnchorKey = GlobalKey(debugLabel: 'masteryAnchor');
+  final GlobalKey _deckAnchorKey = GlobalKey(debugLabel: 'deckAnchor');
+  final GlobalKey _discardAnchorKey = GlobalKey(debugLabel: 'discardAnchor');
+  final GlobalKey _centerRowKey = GlobalKey(debugLabel: 'centerRow');
+  final GlobalKey _playAreaKey = GlobalKey(debugLabel: 'playArea');
 
   /// True once the Infinity-Shard mastery-win flourish has been shown (or
   /// skipped) for this game, so the board advances to the game-over screen and
@@ -147,6 +160,41 @@ class _GameScreenState extends State<GameScreen>
   /// DragTarget (drag-to-play) or via the zoom modal's "Play" action. Cards with
   /// a [ChooseOneEffect] first open the choice dialog; post-play banish/scrap
   /// dialogs are still handled.
+  /// The [GlobalKey] anchor for a resource counter (where its pips fly TO).
+  GlobalKey? _counterKeyFor(ResourceIcon icon) {
+    switch (icon) {
+      case ResourceIcon.gem:
+        return _gemAnchorKey;
+      case ResourceIcon.power:
+        return _powerAnchorKey;
+      case ResourceIcon.mastery:
+        return _masteryAnchorKey;
+      case ResourceIcon.health:
+        // No dedicated health anchor in the local bottom zone; fall back to the
+        // mastery pill area so the pip still lands near the player's stats.
+        return _masteryAnchorKey;
+      case ResourceIcon.shield:
+        return null;
+    }
+  }
+
+  /// Fly resource-gain pips from [fromKey] to the matching resource counters for
+  /// every simple resource grant on [card]. No-op in instant mode.
+  void _flyResourceGains(CardModel card, GlobalKey fromKey) {
+    final animator = BoardAnimator.of(context);
+    if (animator.isNoop) return;
+    for (final grant in resourceGrantsOf(card.playEffects)) {
+      final toKey = _counterKeyFor(grant.icon);
+      if (toKey == null) continue;
+      animator.flyResource(
+        fromKey: fromKey,
+        toKey: toKey,
+        icon: grant.icon,
+        count: grant.count,
+      );
+    }
+  }
+
   void _playCard(CardModel card) {
     // Check if card has a ChooseOneEffect — show picker dialog first.
     final chooseEffect =
@@ -165,6 +213,13 @@ class _GameScreenState extends State<GameScreen>
       }
     });
     if (success) {
+      // Telegraph the play: fly resource pips from the play area (where the card
+      // just landed) to their counters. Runs after the frame so the play-area
+      // anchor is laid out. No-op under instant / reduced motion.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _flyResourceGains(card, _playAreaKey);
+      });
       // Clear the played highlight after a brief delay (scaled by speed;
       // zero under instant / reduced motion).
       final highlightDelay = AnimationTiming.of(context).phaseDelay;
@@ -695,6 +750,8 @@ class _GameScreenState extends State<GameScreen>
   }
 
   void _buyCard(CardModel card) {
+    final animator = BoardAnimator.of(context);
+    final factionColor = FactionColors.getPrimary(card.faction);
     _pushUndo();
     final success = _game.buyCard(card.id);
     setState(() {
@@ -704,15 +761,49 @@ class _GameScreenState extends State<GameScreen>
         _actionMessage = 'Cannot afford ${card.name}';
       }
     });
+    if (success && !animator.isNoop) {
+      // Telegraph the recruit: the bought card flies from the center row down to
+      // the discard pile (where recruited cards go). Also fly a card into the
+      // center row from the deck to fill the freed slot (market refill).
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        animator.flyCard(
+          fromKey: _centerRowKey,
+          toKey: _discardAnchorKey,
+          factionColor: factionColor,
+          endScale: 0.5,
+        );
+        animator.flyCard(
+          fromKey: _deckAnchorKey,
+          toKey: _centerRowKey,
+          factionColor: GameTheme.gold,
+          endScale: 1.0,
+        );
+      });
+    }
   }
 
   void _focus() {
+    final animator = BoardAnimator.of(context);
     _pushUndo();
+    var focused = false;
     setState(() {
-      if (_game.focus()) {
+      focused = _game.focus();
+      if (focused) {
         _actionMessage = 'Focus: spent 1 gem → +1 mastery';
       }
     });
+    if (focused && !animator.isNoop) {
+      // A gem pip flies from the gem counter to the mastery counter.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        animator.flyResource(
+          fromKey: _gemAnchorKey,
+          toKey: _masteryAnchorKey,
+          icon: ResourceIcon.mastery,
+        );
+      });
+    }
   }
 
   /// Whether the current player may claim a Destiny right now (Into the Horizon,
@@ -925,7 +1016,8 @@ class _GameScreenState extends State<GameScreen>
     final opponent = livingOpponents.isNotEmpty ? livingOpponents.first : null;
 
     return Scaffold(
-      body: Stack(
+      body: BoardAnimatorScope(
+        child: Stack(
         fit: StackFit.expand,
         children: [
           // Painted board backdrop (deep blue-teal + central glow).
@@ -967,15 +1059,18 @@ class _GameScreenState extends State<GameScreen>
                           ),
 
                           // ---- Center row (6 market cards) ----------------
-                          _CenterRow(
-                            cards: _game.centerRow,
-                            canAfford: (card) =>
-                                currentPlayer.gemPool >= card.cost,
-                            onTapCard: _openCenterRowDetail,
-                            infinityDeckCount: _game.infinityDeck.length,
-                            onLongPress: _showCardDetail,
-                            conditionsMet: _game.conditionsSatisfied,
-                            screenWidth: screenWidth,
+                          KeyedSubtree(
+                            key: _centerRowKey,
+                            child: _CenterRow(
+                              cards: _game.centerRow,
+                              canAfford: (card) =>
+                                  currentPlayer.gemPool >= card.cost,
+                              onTapCard: _openCenterRowDetail,
+                              infinityDeckCount: _game.infinityDeck.length,
+                              onLongPress: _showCardDetail,
+                              conditionsMet: _game.conditionsSatisfied,
+                              screenWidth: screenWidth,
+                            ),
                           ),
                         ],
 
@@ -985,7 +1080,9 @@ class _GameScreenState extends State<GameScreen>
                           onAcceptWithDetails: (details) =>
                               _playCard(details.data),
                           builder: (context, candidate, rejected) {
-                            return _PlayField(
+                            return KeyedSubtree(
+                              key: _playAreaKey,
+                              child: _PlayField(
                               opponentChampions:
                                   opponent?.championsInPlay ?? const [],
                               opponentId: opponent?.id,
@@ -1002,6 +1099,7 @@ class _GameScreenState extends State<GameScreen>
                               screenWidth: screenWidth,
                               // Highlight the drop zone while a card hovers.
                               isDropTarget: candidate.isNotEmpty,
+                            ),
                             );
                           },
                         ),
@@ -1039,6 +1137,11 @@ class _GameScreenState extends State<GameScreen>
                                 currentPlayer.claimedDestinies.isNotEmpty
                                     ? _openDestinyTray
                                     : null,
+                            gemAnchorKey: _gemAnchorKey,
+                            powerAnchorKey: _powerAnchorKey,
+                            masteryAnchorKey: _masteryAnchorKey,
+                            deckAnchorKey: _deckAnchorKey,
+                            discardAnchorKey: _discardAnchorKey,
                           ),
                         ],
                       ),
@@ -1071,6 +1174,7 @@ class _GameScreenState extends State<GameScreen>
               ),
             ),
         ],
+      ),
       ),
     );
   }
@@ -1537,7 +1641,20 @@ class _BottomZone extends StatelessWidget {
     this.onRecruitRelic,
     this.onOpenDestinyTray,
     this.conditionsMet,
+    this.gemAnchorKey,
+    this.powerAnchorKey,
+    this.masteryAnchorKey,
+    this.deckAnchorKey,
+    this.discardAnchorKey,
   });
+
+  /// Fly-animation anchors for the player's resource counters and piles (pips /
+  /// recruited cards fly to these). Null = not anchored.
+  final GlobalKey? gemAnchorKey;
+  final GlobalKey? powerAnchorKey;
+  final GlobalKey? masteryAnchorKey;
+  final GlobalKey? deckAnchorKey;
+  final GlobalKey? discardAnchorKey;
 
   final dynamic player; // PlayerState
   final double screenWidth;
@@ -1639,16 +1756,22 @@ class _BottomZone extends StatelessWidget {
                         size: 14, color: Colors.white70),
                   ),
                   const SizedBox(width: 6),
-                  _StatChip(
-                    icon: ResourceIcon.mastery,
-                    value: player.mastery as int,
-                    fontSize: 14,
+                  KeyedSubtree(
+                    key: masteryAnchorKey,
+                    child: _StatChip(
+                      icon: ResourceIcon.mastery,
+                      value: player.mastery as int,
+                      fontSize: 14,
+                    ),
                   ),
                   const SizedBox(width: 8),
-                  _StatChip(
-                    icon: ResourceIcon.gem,
-                    value: player.gemPool as int,
-                    fontSize: 14,
+                  KeyedSubtree(
+                    key: gemAnchorKey,
+                    child: _StatChip(
+                      icon: ResourceIcon.gem,
+                      value: player.gemPool as int,
+                      fontSize: 14,
+                    ),
                   ),
                 ],
               ),
@@ -1684,15 +1807,21 @@ class _BottomZone extends StatelessWidget {
                 ),
               ],
               const SizedBox(height: 4),
-              _PileHex(
-                count: player.drawPile.length as int,
-                style: _PileStyle.draw,
+              KeyedSubtree(
+                key: deckAnchorKey,
+                child: _PileHex(
+                  count: player.drawPile.length as int,
+                  style: _PileStyle.draw,
+                ),
               ),
             ],
           ),
           const SizedBox(width: 8),
           // Power diamond (gems/power available for the turn).
-          _ValueDiamond(value: power),
+          KeyedSubtree(
+            key: powerAnchorKey,
+            child: _ValueDiamond(value: power),
+          ),
           const SizedBox(width: 4),
           // Center: hand fan. Tap = zoom, long-press = begin drag-to-play.
           Expanded(
@@ -1721,9 +1850,12 @@ class _BottomZone extends StatelessWidget {
                 radius: 16,
               ),
               const SizedBox(height: 4),
-              _PileHex(
-                count: player.discardPile.length as int,
-                style: _PileStyle.discard,
+              KeyedSubtree(
+                key: discardAnchorKey,
+                child: _PileHex(
+                  count: player.discardPile.length as int,
+                  style: _PileStyle.discard,
+                ),
               ),
             ],
           ),

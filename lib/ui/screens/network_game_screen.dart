@@ -9,13 +9,16 @@ import 'package:simple_card_game/services/redacted_condition_evaluator.dart';
 import 'package:simple_card_game/ui/theme/board_chrome.dart';
 import 'package:simple_card_game/ui/theme/game_theme.dart';
 import 'package:simple_card_game/ui/theme/responsive.dart';
+import 'package:simple_card_game/ui/theme/faction_colors.dart';
 import 'package:simple_card_game/ui/widgets/action_playback_overlay.dart';
 import 'package:simple_card_game/ui/widgets/beveled_button.dart';
+import 'package:simple_card_game/ui/widgets/board_animator.dart';
 import 'package:simple_card_game/ui/widgets/card_detail_modal.dart';
 import 'package:simple_card_game/ui/widgets/card_fan.dart';
 import 'package:simple_card_game/ui/widgets/choice_modal.dart';
 import 'package:simple_card_game/ui/widgets/destiny_tray.dart';
 import 'package:simple_card_game/ui/widgets/game_card_widget.dart';
+import 'package:simple_card_game/ui/widgets/resource_grant.dart';
 import 'package:simple_card_game/ui/widgets/resource_icons.dart';
 import 'package:simple_card_game/ui/widgets/scrollable_board.dart';
 import 'package:simple_card_game/ui/widgets/shard_win_overlay.dart';
@@ -57,6 +60,48 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
   /// the just-played card is already out of hand, opponents' champions reflect
   /// the play, etc. Cleared once fired.
   VoidCallback? _pendingSelection;
+
+  // ---- Fly-animation anchors (see board_animator.dart) ----------------------
+  final GlobalKey _gemAnchorKey = GlobalKey(debugLabel: 'netGemAnchor');
+  final GlobalKey _powerAnchorKey = GlobalKey(debugLabel: 'netPowerAnchor');
+  final GlobalKey _masteryAnchorKey = GlobalKey(debugLabel: 'netMasteryAnchor');
+  final GlobalKey _deckAnchorKey = GlobalKey(debugLabel: 'netDeckAnchor');
+  final GlobalKey _discardAnchorKey = GlobalKey(debugLabel: 'netDiscardAnchor');
+  final GlobalKey _centerRowKey = GlobalKey(debugLabel: 'netCenterRow');
+  final GlobalKey _playAreaKey = GlobalKey(debugLabel: 'netPlayArea');
+
+  /// The [GlobalKey] anchor for a resource counter (where its pips fly TO).
+  GlobalKey? _counterKeyFor(ResourceIcon icon) {
+    switch (icon) {
+      case ResourceIcon.gem:
+        return _gemAnchorKey;
+      case ResourceIcon.power:
+        return _powerAnchorKey;
+      case ResourceIcon.mastery:
+        return _masteryAnchorKey;
+      case ResourceIcon.health:
+        return _masteryAnchorKey;
+      case ResourceIcon.shield:
+        return null;
+    }
+  }
+
+  /// Fly resource-gain pips from [fromKey] to the matching counters for every
+  /// simple resource grant on [card]. No-op in instant mode.
+  void _flyResourceGains(CardModel card, GlobalKey fromKey) {
+    final animator = BoardAnimator.of(context);
+    if (animator.isNoop) return;
+    for (final grant in resourceGrantsOf(card.playEffects)) {
+      final toKey = _counterKeyFor(grant.icon);
+      if (toKey == null) continue;
+      animator.flyResource(
+        fromKey: fromKey,
+        toKey: toKey,
+        icon: grant.icon,
+        count: grant.count,
+      );
+    }
+  }
 
   @override
   void initState() {
@@ -163,9 +208,21 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
     }
     widget.client.playCard(card.id);
     _flash('Played ${card.name}');
+    _animatePlay(card);
     // Queue any target picker to run on the NEXT server state (after the play
     // is reflected), not synchronously — playCard only sent a message.
     _queuePostPlayEffects(card);
+  }
+
+  /// Telegraph a hand-card play: fly resource pips from the play area (where the
+  /// card lands) to their counters. No-op under instant / reduced motion.
+  void _animatePlay(CardModel card) {
+    final animator = BoardAnimator.of(context);
+    if (animator.isNoop) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _flyResourceGains(card, _playAreaKey);
+    });
   }
 
   // ---- deferred-selection target pickers ----------------------------------
@@ -424,8 +481,29 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
   }
 
   void _onCenterTap(CardModel card) {
+    final animator = BoardAnimator.of(context);
+    final factionColor = FactionColors.getPrimary(card.faction);
     widget.client.buyCard(card.id);
     _flash('Recruiting ${card.name}…');
+    if (!animator.isNoop) {
+      // Recruited card flies from the market to the discard pile, and a fresh
+      // card flies from the deck into the freed market slot (refill).
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        animator.flyCard(
+          fromKey: _centerRowKey,
+          toKey: _discardAnchorKey,
+          factionColor: factionColor,
+          endScale: 0.5,
+        );
+        animator.flyCard(
+          fromKey: _deckAnchorKey,
+          toKey: _centerRowKey,
+          factionColor: GameTheme.gold,
+          endScale: 1.0,
+        );
+      });
+    }
   }
 
   void _onFastPlayMercenary(CardModel card) {
@@ -514,8 +592,19 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
   }
 
   void _onFocus() {
+    final animator = BoardAnimator.of(context);
     widget.client.focus();
     _flash('Focus: spent 1 gem → +1 mastery');
+    if (!animator.isNoop) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        animator.flyResource(
+          fromKey: _gemAnchorKey,
+          toKey: _masteryAnchorKey,
+          icon: ResourceIcon.mastery,
+        );
+      });
+    }
   }
 
   /// Build the redacted condition context for [me] (the recipient's own slice),
@@ -789,7 +878,8 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
     final state = client.gameState;
 
     return Scaffold(
-      body: Stack(
+      body: BoardAnimatorScope(
+        child: Stack(
         fit: StackFit.expand,
         children: [
           const Positioned.fill(
@@ -848,6 +938,7 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
               ),
             ),
         ],
+      ),
       ),
     );
   }
@@ -922,15 +1013,18 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
         // wiring below and the market DragTarget on the play field.
         Builder(builder: (context) {
           final centerCards = [for (final id in view.centerRow) _card(id)];
-          return _NetworkCenterRow(
-            cards: centerCards,
-            canAfford: (c) => myTurn && me.gemPool >= c.cost,
-            onTapCard: (c) => _openMarketDetail(centerCards, c),
-            onLongPressCard: (c) => _openMarketDetail(centerCards, c),
-            // Long-press begins a drag; dropping on the play field recruits it.
-            onDragStarted: myTurn ? (_) {} : null,
-            conditionsMet: conditionsMet,
-            screenWidth: screenWidth,
+          return KeyedSubtree(
+            key: _centerRowKey,
+            child: _NetworkCenterRow(
+              cards: centerCards,
+              canAfford: (c) => myTurn && me.gemPool >= c.cost,
+              onTapCard: (c) => _openMarketDetail(centerCards, c),
+              onLongPressCard: (c) => _openMarketDetail(centerCards, c),
+              // Long-press begins a drag; dropping on the play field recruits it.
+              onDragStarted: myTurn ? (_) {} : null,
+              conditionsMet: conditionsMet,
+              screenWidth: screenWidth,
+            ),
           );
         }),
       ],
@@ -950,7 +1044,9 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
             onWillAcceptWithDetails: (_) => myTurn,
             onAcceptWithDetails: (details) => _playHandCard(details.data),
             builder: (context, candidate, rejected) {
-              return _NetworkPlayField(
+              return KeyedSubtree(
+                key: _playAreaKey,
+                child: _NetworkPlayField(
                 opponentChampions: opponent?.champions ?? const [],
                 opponentPlayedThisTurn: opponent?.playedThisTurn ?? const [],
                 opponentName: opponent?.name,
@@ -968,6 +1064,7 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
                 screenWidth: screenWidth,
                 isDropTarget:
                     candidate.isNotEmpty || marketCandidate.isNotEmpty,
+              ),
               );
             },
           );
@@ -1010,6 +1107,11 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
               ? () => _openDestinyTray(me)
               : null,
           conditionsMet: conditionsMet,
+          gemAnchorKey: _gemAnchorKey,
+          powerAnchorKey: _powerAnchorKey,
+          masteryAnchorKey: _masteryAnchorKey,
+          deckAnchorKey: _deckAnchorKey,
+          discardAnchorKey: _discardAnchorKey,
         ),
       ],
     );
@@ -2006,7 +2108,19 @@ class _NetworkBottomZone extends StatelessWidget {
     required this.onRecruitRelic,
     required this.onOpenDestinyTray,
     required this.conditionsMet,
+    this.gemAnchorKey,
+    this.powerAnchorKey,
+    this.masteryAnchorKey,
+    this.deckAnchorKey,
+    this.discardAnchorKey,
   });
+
+  /// Fly-animation anchors for the player's resource counters and piles.
+  final GlobalKey? gemAnchorKey;
+  final GlobalKey? powerAnchorKey;
+  final GlobalKey? masteryAnchorKey;
+  final GlobalKey? deckAnchorKey;
+  final GlobalKey? discardAnchorKey;
 
   final _PlayerView me;
   final double screenWidth;
@@ -2106,15 +2220,21 @@ class _NetworkBottomZone extends StatelessWidget {
                       value: me.health,
                       fontSize: 14),
                   const SizedBox(width: 8),
-                  _StatChip(
-                      icon: ResourceIcon.mastery,
-                      value: me.mastery,
-                      fontSize: 14),
+                  KeyedSubtree(
+                    key: masteryAnchorKey,
+                    child: _StatChip(
+                        icon: ResourceIcon.mastery,
+                        value: me.mastery,
+                        fontSize: 14),
+                  ),
                   const SizedBox(width: 8),
-                  _StatChip(
-                      icon: ResourceIcon.gem,
-                      value: me.gemPool,
-                      fontSize: 14),
+                  KeyedSubtree(
+                    key: gemAnchorKey,
+                    child: _StatChip(
+                        icon: ResourceIcon.gem,
+                        value: me.gemPool,
+                        fontSize: 14),
+                  ),
                 ],
               ),
               const SizedBox(height: 4),
@@ -2148,16 +2268,22 @@ class _NetworkBottomZone extends StatelessWidget {
                 ),
               ],
               const SizedBox(height: 4),
-              _PileHex(
-                count: me.drawPileCount,
-                style: _PileStyle.draw,
-                onTap: onTapDraw,
+              KeyedSubtree(
+                key: deckAnchorKey,
+                child: _PileHex(
+                  count: me.drawPileCount,
+                  style: _PileStyle.draw,
+                  onTap: onTapDraw,
+                ),
               ),
             ],
           ),
           const SizedBox(width: 8),
           // Power diamond.
-          _ValueDiamond(value: me.powerPool),
+          KeyedSubtree(
+            key: powerAnchorKey,
+            child: _ValueDiamond(value: me.powerPool),
+          ),
           const SizedBox(width: 4),
           // Center: hand fan. Tap = zoom (always), long-press = begin
           // drag-to-play (only on your turn — off-turn, drag is disabled and
@@ -2211,10 +2337,13 @@ class _NetworkBottomZone extends StatelessWidget {
                 radius: 16,
               ),
               const SizedBox(height: 4),
-              _PileHex(
-                count: me.discardCount,
-                style: _PileStyle.discard,
-                onTap: onTapDiscard,
+              KeyedSubtree(
+                key: discardAnchorKey,
+                child: _PileHex(
+                  count: me.discardCount,
+                  style: _PileStyle.discard,
+                  onTap: onTapDiscard,
+                ),
               ),
             ],
           ),

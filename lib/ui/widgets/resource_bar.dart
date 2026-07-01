@@ -15,6 +15,12 @@ class ResourceBar extends StatelessWidget {
     this.isCurrentPlayer = false,
     this.deckCount = 0,
     this.discardCount = 0,
+    this.gemKey,
+    this.powerKey,
+    this.masteryKey,
+    this.healthKey,
+    this.deckKey,
+    this.discardKey,
   });
 
   final int health;
@@ -25,6 +31,22 @@ class ResourceBar extends StatelessWidget {
   final bool isCurrentPlayer;
   final int deckCount;
   final int discardCount;
+
+  /// Optional anchor keys for the fly-animation system: resource pips fly TO the
+  /// gem/power/mastery/health counters, and cards fly TO/FROM the deck & discard
+  /// pile indicators. They only tag the render box (via [KeyedSubtree]) so
+  /// [BoardAnimator] can resolve each counter's global rect. Null = no anchor.
+  final GlobalKey? gemKey;
+  final GlobalKey? powerKey;
+  final GlobalKey? masteryKey;
+  final GlobalKey? healthKey;
+  final GlobalKey? deckKey;
+  final GlobalKey? discardKey;
+
+  /// Tag [child] with [key] (if any) so the fly-animation system can resolve its
+  /// global rect. [KeyedSubtree] adds no layout — it just carries the key.
+  static Widget _anchor(GlobalKey? key, Widget child) =>
+      key == null ? child : KeyedSubtree(key: key, child: child);
 
   @override
   Widget build(BuildContext context) {
@@ -54,27 +76,44 @@ class ResourceBar extends StatelessWidget {
           );
 
           final stats = <Widget>[
-            _ResourceChip(
-              icon: Icons.favorite,
-              value: health,
-              color: health > 25 ? GameTheme.healthGreen : GameTheme.healthRed,
+            _anchor(
+              healthKey,
+              _ResourceChip(
+                icon: Icons.favorite,
+                value: health,
+                color:
+                    health > 25 ? GameTheme.healthGreen : GameTheme.healthRed,
+              ),
             ),
-            _MasteryIndicator(mastery: mastery),
-            _ResourceChip(
-              icon: Icons.diamond,
-              value: gems,
-              color: GameTheme.gemCyan,
+            _anchor(masteryKey, _MasteryIndicator(mastery: mastery)),
+            _anchor(
+              gemKey,
+              _ResourceChip(
+                icon: Icons.diamond,
+                value: gems,
+                color: GameTheme.gemCyan,
+              ),
             ),
-            _ResourceChip(
-              icon: Icons.bolt,
-              value: power,
-              color: GameTheme.powerOrange,
+            _anchor(
+              powerKey,
+              _ResourceChip(
+                icon: Icons.bolt,
+                value: power,
+                color: GameTheme.powerOrange,
+              ),
             ),
-            _PileIndicator(icon: Icons.layers, count: deckCount, label: 'Deck'),
-            _PileIndicator(
-                icon: Icons.delete_outline,
-                count: discardCount,
-                label: 'Disc'),
+            _anchor(
+              deckKey,
+              _PileIndicator(
+                  icon: Icons.layers, count: deckCount, label: 'Deck'),
+            ),
+            _anchor(
+              discardKey,
+              _PileIndicator(
+                  icon: Icons.delete_outline,
+                  count: discardCount,
+                  label: 'Disc'),
+            ),
           ];
 
           if (isNarrow) {
