@@ -1103,13 +1103,18 @@ class GameService {
         target.championsInPlay.indexWhere((c) => c.id == championId);
     if (champIndex == -1) return false;
 
-    // zetta_the_encryptor: a player with a cannotBeAttacked static modifier
-    // cannot have their champions targeted by an attack either (the whole
-    // player is untargetable). Card-effect destruction (destroyChampion) is a
-    // separate path and is intentionally not gated here.
-    if (_hasCannotBeAttacked(target)) return false;
-
     final champion = target.championsInPlay[champIndex];
+
+    // zetta_the_encryptor: "You and your OTHER Champions can't be attacked."
+    // A cannotBeAttacked modifier protects the player and the owner's OTHER
+    // champions — but NOT the champion that SOURCES it (Zetta itself stays
+    // attackable). So block the attack only when the target champion is NOT the
+    // source of a cannotBeAttacked modifier the player owns. (Card-effect
+    // destruction via destroyChampion is a separate path, not gated here.)
+    final protectedByOther = target.staticModifiers.any((m) =>
+        m.kind == StaticModifierKind.cannotBeAttacked &&
+        m.sourceChampionId != champion.id);
+    if (protectedByOther) return false;
     // spirit_leech: while the attacker ignores shield this turn, the shield
     // value required to destroy a champion is treated as 0 (any power, including
     // 0, destroys it). The normal path is untouched when the flag is false.

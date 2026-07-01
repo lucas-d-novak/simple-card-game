@@ -260,6 +260,45 @@ void main() {
       expect(game.attackChampion('protected_champ', 'p1'), false);
       expect(target.championsInPlay, hasLength(1));
     });
+
+    test('the SOURCE champion (Zetta) is itself attackable; its OTHER champions '
+        'are protected', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final attacker = game.currentPlayer;
+      final target = game.players[1];
+
+      const zetta = CardModel(
+        id: 'zetta',
+        name: 'Zetta',
+        cost: 5,
+        playEffects: [],
+        cardType: CardType.champion,
+        shield: 1,
+      );
+      const other = CardModel(
+        id: 'other_champ',
+        name: 'Other',
+        cost: 0,
+        playEffects: [],
+        cardType: CardType.champion,
+        shield: 1,
+      );
+      target.championsInPlay.addAll([zetta, other]);
+      // Zetta's modifier is stamped with its own champion id (as the engine does
+      // when a champion source applies it).
+      target.staticModifiers.add(const StaticModifier(
+        kind: StaticModifierKind.cannotBeAttacked,
+        sourceChampionId: 'zetta',
+      ));
+      attacker.powerPool = 5;
+
+      // The OTHER champion is protected...
+      expect(game.attackChampion('other_champ', 'p1'), false);
+      // ...but Zetta ITSELF can be attacked ("your OTHER champions").
+      expect(game.attackChampion('zetta', 'p1'), true);
+      expect(target.championsInPlay.any((c) => c.id == 'zetta'), false,
+          reason: 'Zetta was destroyed by the attack');
+    });
   });
 
   group('AddStaticModifierEffect — recruitToTopOfDeck', () {
