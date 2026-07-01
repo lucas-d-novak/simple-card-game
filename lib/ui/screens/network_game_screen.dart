@@ -1578,7 +1578,21 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
       //     PLAYED (drag-to-play).
       field: DragTarget<_MarketCardDrag>(
         onWillAcceptWithDetails: (_) => myTurn,
-        onAcceptWithDetails: (details) => _onCenterTap(details.data.card),
+        // Dropping a MERCENARY opens the zoom detail (Recruit / Fast Play) so the
+        // player picks — a merc can be recruited to discard OR fast-played now,
+        // and a drag shouldn't silently choose. Any other market card recruits
+        // directly (drag-to-recruit).
+        onAcceptWithDetails: (details) {
+          final card = details.data.card;
+          if (card.cardType == CardType.mercenary) {
+            _openMarketDetail(
+              [for (final id in view.centerRow) _card(id)],
+              card,
+            );
+          } else {
+            _onCenterTap(card);
+          }
+        },
         builder: (context, marketCandidate, _) {
           return DragTarget<CardModel>(
             onWillAcceptWithDetails: (_) => myTurn,
