@@ -77,9 +77,11 @@ class _CardDetailModalState extends State<CardDetailModal> {
     final secondaryAction = widget.secondaryActionFor?.call(card);
     final size = MediaQuery.of(context).size;
     // Scale the card to a comfortable fraction of the viewport, capped so it
-    // never collides with the side arrows on wide screens.
-    final cardWidth = (size.height * 0.78 * (120 / 170))
-        .clamp(180.0, size.width * 0.46);
+    // never collides with the side arrows on wide screens. Slightly smaller than
+    // before to leave room for the rules-text panel BELOW the card.
+    final cardWidth = (size.height * 0.66 * (120 / 170))
+        .clamp(170.0, size.width * 0.42);
+    final rulesLines = GameCardWidget(card: card).rulesLines();
 
     final canPrev = _index > 0;
     final canNext = _index < widget.cards.length - 1;
@@ -116,32 +118,76 @@ class _CardDetailModalState extends State<CardDetailModal> {
               ),
             ),
 
-          // The focused card, scaled up with a bright cyan glow.
+          // The focused card (scaled up, cyan glow) with a rules-encoding text
+          // panel directly BELOW it, so the full effect text is readable and its
+          // encoding is easy to verify against the printed card art.
           Center(
             child: GestureDetector(
-              // Absorb taps on the card itself so they don't dismiss.
+              // Absorb taps on the card/panel so they don't dismiss.
               onTap: () {},
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF49E4FF).withValues(alpha: 0.85),
-                      blurRadius: 36,
-                      spreadRadius: 4,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color:
+                              const Color(0xFF49E4FF).withValues(alpha: 0.85),
+                          blurRadius: 36,
+                          spreadRadius: 4,
+                        ),
+                        BoxShadow(
+                          color: glow.withValues(alpha: 0.5),
+                          blurRadius: 18,
+                          spreadRadius: 1,
+                        ),
+                      ],
                     ),
-                    BoxShadow(
-                      color: glow.withValues(alpha: 0.5),
-                      blurRadius: 18,
-                      spreadRadius: 1,
+                    child: GameCardWidget(
+                      key: ValueKey('detail_${card.id}'),
+                      card: card,
+                      width: cardWidth,
+                    ),
+                  ),
+                  if (rulesLines.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: cardWidth * 1.35),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0E2236).withValues(alpha: 0.92),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: glow.withValues(alpha: 0.55),
+                            width: 1,
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            for (final line in rulesLines)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 4),
+                                child: Text(
+                                  line,
+                                  style: const TextStyle(
+                                    color: Color(0xFFF2F6FA),
+                                    fontSize: 14,
+                                    height: 1.25,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
-                ),
-                child: GameCardWidget(
-                  key: ValueKey('detail_${card.id}'),
-                  card: card,
-                  width: cardWidth,
-                ),
+                ],
               ),
             ),
           ),

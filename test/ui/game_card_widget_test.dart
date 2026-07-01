@@ -48,22 +48,14 @@ void main() {
     );
 
     testWidgets(
-        'champion with only an activated ability shows its Exhaust text',
+        'champion with only an activated ability surfaces its Exhaust text',
         (tester) async {
-      // Wide, non-compact so up to 3 rules lines render.
-      await pumpCard(tester, isaTelTor, width: 160);
-
-      // The "Exhaust:" prefixed activated-ability line must be surfaced even
-      // though playEffects is empty.
-      expect(
-        find.textContaining('Exhaust:', findRichText: true),
-        findsOneWidget,
-      );
-      // And it carries the gained-power body, not a blank/misleading line.
-      expect(
-        find.textContaining('Gain 2 power', findRichText: true),
-        findsOneWidget,
-      );
+      // The rules-encoding data (shown in the zoom modal's under-card panel)
+      // must surface the "Exhaust:" activated-ability line even though
+      // playEffects is empty — and carry the gained-power body, not a blank line.
+      final lines = const GameCardWidget(card: isaTelTor).rulesLines();
+      expect(lines.any((l) => l.startsWith('Exhaust:')), isTrue);
+      expect(lines.any((l) => l.contains('Gain 2 power')), isTrue);
     });
 
     testWidgets('rulesLines() surfaces ability + mastery tier', (tester) async {
@@ -123,7 +115,7 @@ void main() {
     });
   });
 
-  group('GameCardWidget on-card text width gating', () {
+  group('GameCardWidget on-card text', () {
     const card = CardModel(
       id: 'gemcard',
       name: 'Gem Card',
@@ -131,20 +123,25 @@ void main() {
       playEffects: [GainGemsEffect(2)],
     );
 
-    testWidgets('small board card suppresses on-card rules text',
+    testWidgets('rules text is NOT overlaid on the card at any board width',
         (tester) async {
-      // Below GameCardWidget.rulesTextMinWidth — the cramped board size.
+      // On-card rules text was removed: a dark scrim behind it made the art's
+      // own printed text hard to read. The full text now lives UNDER the card in
+      // the zoom modal (card_detail_modal.dart). So no board card renders it.
       await pumpCard(tester, card, width: 90);
+      expect(find.textContaining('Gain 2 gems', findRichText: true),
+          findsNothing);
+      await pumpCard(tester, card, width: 200);
       expect(find.textContaining('Gain 2 gems', findRichText: true),
           findsNothing);
     });
 
-    testWidgets('large (zoom) card shows the full rules text', (tester) async {
-      // At/above the threshold — the size the zoom modal renders at.
-      await pumpCard(tester, card,
-          width: GameCardWidget.rulesTextMinWidth + 20);
-      expect(find.textContaining('Gain 2 gems', findRichText: true),
-          findsOneWidget);
+    testWidgets('rulesLines() still exposes the encoding text (for the zoom '
+        'modal panel)', (tester) async {
+      // The DATA is unchanged — the zoom modal reads rulesLines() to render the
+      // under-card rules panel — only the on-card rendering was dropped.
+      expect(const GameCardWidget(card: card).rulesLines(),
+          contains('Gain 2 gems'));
     });
   });
 }

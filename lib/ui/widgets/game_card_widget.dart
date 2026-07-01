@@ -193,79 +193,13 @@ class GameCardWidget extends StatelessWidget {
                 ),
               ),
 
-              // ---- Rules text (lower box) ------------------------------
-              // ALWAYS overlay the card's own rules text (when the card is large
-              // enough to read it), rendered over a semi-opaque dark scrim at the
-              // bottom of the art so it stays legible over ANY art — including
-              // real painted crops that may or may not show their own text. This
-              // guarantees a player can read what every card does on the board
-              // (critical for following an opponent's turn); the zoom modal still
-              // shows the full text. The scrim also visually anchors the text.
-              if (cardWidth >= rulesTextMinWidth && _rulesLines(card, compact).isNotEmpty)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  top: cardHeight * 0.54,
-                  bottom: 0,
-                  child: IgnorePointer(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.black.withValues(alpha: 0.0),
-                            Colors.black.withValues(alpha: 0.72),
-                            Colors.black.withValues(alpha: 0.82),
-                          ],
-                          stops: const [0.0, 0.28, 1.0],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              if (cardWidth >= rulesTextMinWidth && _rulesLines(card, compact).isNotEmpty)
-                Positioned(
-                  left: 4 * scale,
-                  right: (22 * scale).clamp(16.0, 30.0) + 4 * scale,
-                  top: cardHeight * 0.6,
-                  bottom: 3 * scale,
-                  child: ClipRect(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        for (final line in _rulesLines(card, compact))
-                          Padding(
-                            padding: EdgeInsets.only(bottom: 1 * scale),
-                            child: Text(
-                              line,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: const Color(0xFFF2F6FA),
-                                fontSize: (7.5 * scale).clamp(6, 10.5),
-                                height: 1.15,
-                                shadows: const [
-                                  Shadow(color: Colors.black, blurRadius: 2),
-                                ],
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-
-              // ---- Value chevron (bottom-right corner) -----------------
-              if (_primaryValue(card) != null)
-                Positioned(
-                  right: 0,
-                  bottom: 3 * scale,
-                  child: _ValueChevron(
-                    value: _primaryValue(card)!,
-                    scale: scale,
-                  ),
-                ),
+              // NOTE: on-card rules TEXT is intentionally NOT overlaid on board
+              // cards — a dark scrim behind it made the art's own printed text
+              // hard to read. The card keeps its ICONS/badges (cost, shield,
+              // faction banner, MERCENARY tab) so encodings are still verifiable
+              // at a glance, and the FULL rules-encoding text is shown in a clean
+              // panel UNDER the card in the tap-to-zoom detail modal
+              // (card_detail_modal.dart).
             ],
           ),
         ),
@@ -286,34 +220,6 @@ String _typeBanner(CardModel card) {
     CardType.regular => 'Ally',
   };
   return faction.isEmpty ? type : '$faction $type';
-}
-
-/// The card's primary numeric output for the green value chevron: the largest
-/// single resource gain among its play effects (gems / power / mastery /
-/// health / draw). Returns null when there's no obvious scalar output.
-int? _primaryValue(CardModel card) {
-  int? best;
-  void consider(int v) {
-    if (best == null || v > best!) best = v;
-  }
-
-  for (final e in card.playEffects) {
-    switch (e) {
-      case GainGemsEffect(:final amount):
-        consider(amount);
-      case GainPowerEffect(:final amount):
-        consider(amount);
-      case GainMasteryEffect(:final amount):
-        consider(amount);
-      case GainHealthEffect(:final amount):
-        consider(amount);
-      case OpponentLosesHealthEffect(:final amount):
-        consider(amount);
-      default:
-        break;
-    }
-  }
-  return best;
 }
 
 /// The ordered rules-text lines for a card's info area — covering every place a
@@ -481,49 +387,6 @@ class _ShieldBadge extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// A quiet value hint holding the card's main output number. Deliberately
-/// subtle: small, low-contrast translucent dark-green pill with a soft border,
-/// so it reads as a glanceable hint rather than a bold badge.
-class _ValueChevron extends StatelessWidget {
-  const _ValueChevron({required this.value, required this.scale});
-  final int value;
-  final double scale;
-
-  @override
-  Widget build(BuildContext context) {
-    // Smaller than the old bold badge.
-    final size = (16 * scale).clamp(12.0, 22.0);
-    return Container(
-      width: size * 1.05,
-      height: size,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        // Muted, translucent dark green — no bright gradient.
-        color: const Color(0xFF1F6B3A).withValues(alpha: 0.5),
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(size * 0.3),
-          bottomLeft: Radius.circular(size * 0.3),
-        ),
-        // Soft, low-contrast rim rather than a crisp white border.
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.18),
-          width: 0.8,
-        ),
-      ),
-      child: Text(
-        '$value',
-        style: TextStyle(
-          // Slightly translucent text so the number stays quiet.
-          color: Colors.white.withValues(alpha: 0.85),
-          fontSize: size * 0.6,
-          fontWeight: FontWeight.w600,
-          shadows: const [Shadow(color: Colors.black54, blurRadius: 2)],
-        ),
       ),
     );
   }
