@@ -8,6 +8,7 @@ import 'package:simple_card_game/services/redacted_condition_evaluator.dart';
 import 'package:simple_card_game/ui/theme/board_chrome.dart';
 import 'package:simple_card_game/ui/theme/game_theme.dart';
 import 'package:simple_card_game/ui/theme/responsive.dart';
+import 'package:simple_card_game/ui/widgets/action_playback_overlay.dart';
 import 'package:simple_card_game/ui/widgets/beveled_button.dart';
 import 'package:simple_card_game/ui/widgets/card_detail_modal.dart';
 import 'package:simple_card_game/ui/widgets/card_fan.dart';
@@ -107,6 +108,28 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
   CardModel _card(String id) {
     return _cards[id] ??
         CardModel(id: id, name: '', cost: 0, playEffects: const []);
+  }
+
+  /// Build the playback entries for the action-ticker overlay from the current
+  /// action-log tail. Each entry is "<actor> <message>" plus the involved card
+  /// (resolved from the `cards` dict) when the log entry carries a public
+  /// `cardId`. Card-less events (focus / turn change / direct attack / end turn)
+  /// have no cardId and show text only.
+  List<PlaybackEntry> _playbackEntries(_GameView view) {
+    return [
+      for (final e in view.actionLog)
+        () {
+          final who = view.nameFor(e['playerId'] as String?);
+          final msg = e['message'] as String? ?? '';
+          final line = who.isEmpty ? msg : '$who $msg';
+          final cardId = e['cardId'] as String?;
+          // Only attach a mini card when the id resolves to a real, dictionaried
+          // (public) card — a missing id renders as text only.
+          final card =
+              (cardId != null && _cards.containsKey(cardId)) ? _card(cardId) : null;
+          return PlaybackEntry(message: line, card: card);
+        }(),
+    ];
   }
 
   // ---- actions ------------------------------------------------------------
@@ -807,6 +830,22 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
                     },
                   ),
           ),
+          // Dynamic action-playback ticker: newly-arrived public log entries fade
+          // in one at a time near the top so a player can WATCH the opponent's
+          // turn unfold. Only while a game is in progress.
+          if (state != null && !(_GameView.parse(state, client.playerId).isGameOver))
+            Positioned(
+              top: 4,
+              left: 12,
+              right: 12,
+              child: SafeArea(
+                bottom: false,
+                child: ActionPlaybackOverlay(
+                  entries:
+                      _playbackEntries(_GameView.parse(state, client.playerId)),
+                ),
+              ),
+            ),
         ],
       ),
     );

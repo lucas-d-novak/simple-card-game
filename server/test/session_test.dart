@@ -77,6 +77,62 @@ void main() {
       expect(log.last['message'], isA<String>());
     });
 
+    test('a played-card log entry carries a cardId that is in the dictionary '
+        '(so the playback overlay can show a mini card)', () {
+      final game = GameService(playerCount: 2);
+      game.playAllCards();
+      final view = redactFor(game, 'p0', stateVersion: 1);
+      final log = (view['actionLog'] as List).cast<Map>();
+      final cards = view['cards'] as Map;
+
+      final played = log.where((e) => e['cardId'] != null).toList();
+      expect(played, isNotEmpty,
+          reason: 'playing cards should log entries with a cardId');
+      for (final e in played) {
+        final id = e['cardId'] as String;
+        expect(cards.containsKey(id), isTrue,
+            reason: 'a public log-entry cardId ($id) must be resolvable '
+                'in the recipient dictionary');
+      }
+    });
+
+    test('no action-log entry cardId leaks a HIDDEN card id (opponent hand or '
+        'any draw pile) — hidden-info safety', () {
+      // Drive a couple of turns so the log spans plays by both players and
+      // cards move between zones (drawing shuffles discards into draw piles).
+      final game = GameService(playerCount: 2, random: Random(7));
+      game.playAllCards();
+      game.endTurn(); // p1's turn
+      game.playAllCards();
+      game.endTurn(); // back to p0
+
+      final view = redactFor(game, 'p0', stateVersion: 1);
+      final log = (view['actionLog'] as List).cast<Map>();
+      final loggedCardIds = {
+        for (final e in log)
+          if (e['cardId'] != null) e['cardId'] as String,
+      };
+
+      // Hidden from p0: p1's hand, AND every player's draw pile (order-secret,
+      // contents count-only for opponents). No log cardId may name any of them.
+      final hiddenIds = <String>{
+        ...game.players[1].hand.map((c) => c.id),
+        for (final p in game.players) ...p.drawPile.map((c) => c.id),
+      };
+
+      final leaked = loggedCardIds.intersection(hiddenIds);
+      expect(leaked, isEmpty,
+          reason: 'an action-log cardId leaked a hidden card: $leaked');
+
+      // And every logged cardId that IS shipped must be a public, dictionaried
+      // card (never a bare id with no backing definition the recipient can see).
+      final cards = view['cards'] as Map;
+      for (final id in loggedCardIds) {
+        expect(cards.containsKey(id), isTrue,
+            reason: 'logged cardId $id must be a public dictionaried card');
+      }
+    });
+
     test('public zones (center row, discards) ARE visible', () {
       final game = GameService(playerCount: 2);
       final view = redactFor(game, 'p0', stateVersion: 1);

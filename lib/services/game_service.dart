@@ -472,6 +472,8 @@ class GameService {
     player.activatedChampions.add(championId);
     _resolvePlayOrMastery(champion, player);
     _checkAllyAbility(champion, player);
+    _log('activated ${champion.name}',
+        playerId: player.id, cardId: champion.id);
     return true;
   }
 
@@ -935,7 +937,7 @@ class GameService {
     // Step 9: check ally ability
     _checkAllyAbility(card, player);
 
-    _log('played ${card.name}', playerId: player.id);
+    _log('played ${card.name}', playerId: player.id, cardId: card.id);
     return true;
   }
 
@@ -972,7 +974,8 @@ class GameService {
     buyer.discardPile.add(card);
     _refillCenterRow();
 
-    _log('recruited ${card.name} for $price gems', playerId: buyer.id);
+    _log('recruited ${card.name} for $price gems',
+        playerId: buyer.id, cardId: card.id);
     return true;
   }
 
@@ -1045,7 +1048,7 @@ class GameService {
     _releaseUnderCards(target, champion.id);
 
     _log('destroyed ${target.name}\'s ${champion.name}',
-        playerId: currentPlayer.id);
+        playerId: currentPlayer.id, cardId: champion.id);
     return true;
   }
 
@@ -1380,7 +1383,8 @@ class GameService {
     removedFromGame.add(card);
 
     _refillCenterRow();
-    _log('fast-played ${card.name} for $price gems', playerId: player.id);
+    _log('fast-played ${card.name} for $price gems',
+        playerId: player.id, cardId: card.id);
     return true;
   }
 
