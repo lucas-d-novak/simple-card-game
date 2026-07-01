@@ -1170,14 +1170,10 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
           // Floating fullscreen affordance — a big, always-reachable icon button
           // pinned to the bottom-right of the board on web MOBILE widths, where
           // the small top-bar toggle is easy to miss and can sit under the
-          // centered opponent pill. On browsers with a working Fullscreen API
-          // (desktop, Android Chrome) it hides the address bar / chrome; on iOS
-          // Safari — which has NO working fullscreen API — it instead opens
-          // "Add to Home Screen" instructions (the only way to go chrome-free on
-          // iPhone/iPad). Hidden entirely when already running as an installed
-          // standalone PWA (already fullscreen) and on native.
+          // centered opponent pill. Tapping it hides the browser address bar /
+          // chrome via the Fullscreen API. Web-only and only where the API works
+          // (hidden on native and on iOS Safari via the isSupported gate).
           if (Fullscreen.instance.isSupported &&
-              !Fullscreen.instance.isStandalone &&
               Responsive.isMobile(MediaQuery.of(context).size.width))
             const Positioned(
               right: 10,
@@ -1702,11 +1698,9 @@ class _NetworkTopBar extends StatelessWidget {
                           style: TextStyle(
                               fontSize: 12, fontWeight: FontWeight.bold)),
                     ),
-                    // Fullscreen toggle — web only (no-op/hidden on native),
-                    // hidden when already an installed standalone PWA. On iOS
-                    // Safari it opens install instructions instead of toggling.
-                    if (Fullscreen.instance.isSupported &&
-                        !Fullscreen.instance.isStandalone)
+                    // Fullscreen toggle — web only, hidden where the Fullscreen
+                    // API doesn't work (native + iOS Safari) via isSupported.
+                    if (Fullscreen.instance.isSupported)
                       const _FullscreenButton(),
                   ],
                 ),
@@ -1759,116 +1753,10 @@ class _NetworkTopBar extends StatelessWidget {
   }
 }
 
-/// Handle a tap on any fullscreen affordance: on browsers with a working
-/// Fullscreen API, toggle it; on iOS Safari (no working API), show "Add to Home
-/// Screen" instructions — the only route to a chrome-free view on iPhone/iPad.
-void _handleFullscreenTap(BuildContext context) {
-  if (Fullscreen.instance.shouldOfferInstall) {
-    _showAddToHomeScreenSheet(context);
-  } else {
-    Fullscreen.instance.toggle();
-  }
-}
-
-/// A bottom sheet explaining how to install the app to the home screen for a
-/// true fullscreen (no address bar) experience on iOS Safari, where the browser
-/// Fullscreen API does nothing.
-void _showAddToHomeScreenSheet(BuildContext context) {
-  showModalBottomSheet<void>(
-    context: context,
-    backgroundColor: const Color(0xFF0E2236),
-    isScrollControlled: true,
-    builder: (ctx) => SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Go fullscreen',
-              style: TextStyle(
-                color: BoardChrome.goldText,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              "iPhone and iPad Safari don't allow apps to go fullscreen from a "
-              "button. To play with no address bar, add this game to your Home "
-              "Screen — it then opens as a full-screen app:",
-              style: TextStyle(color: Colors.white70, fontSize: 14, height: 1.4),
-            ),
-            const SizedBox(height: 16),
-            _stepRow(1, Icons.ios_share,
-                "Tap the Share button in Safari's toolbar."),
-            const SizedBox(height: 10),
-            _stepRow(2, Icons.add_box_outlined,
-                'Choose "Add to Home Screen".'),
-            const SizedBox(height: 10),
-            _stepRow(3, Icons.rocket_launch_outlined,
-                'Open the game from its new Home Screen icon — fullscreen.'),
-            const SizedBox(height: 20),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFFBFD8E8),
-                ),
-                child: const Text('Got it'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-}
-
-Widget _stepRow(int n, IconData icon, String text) {
-  return Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Container(
-        width: 26,
-        height: 26,
-        alignment: Alignment.center,
-        decoration: const BoxDecoration(
-          color: Color(0xFF14405E),
-          shape: BoxShape.circle,
-        ),
-        child: Text(
-          '$n',
-          style: const TextStyle(
-            color: Color(0xFFEAF4FB),
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-      const SizedBox(width: 12),
-      Icon(icon, color: BoardChrome.tealHighlight, size: 20),
-      const SizedBox(width: 10),
-      Expanded(
-        child: Text(
-          text,
-          style: const TextStyle(
-            color: Color(0xFFEAF4FB),
-            fontSize: 14,
-            height: 1.35,
-          ),
-        ),
-      ),
-    ],
-  );
-}
-
 /// A web-only fullscreen toggle for the top bar. Shows enter/exit-fullscreen
-/// icons and flips the browser Fullscreen state (or, on iOS Safari, opens
-/// install instructions). Hidden on native (the parent only builds it when
-/// `Fullscreen.instance.isSupported`).
+/// icons and flips the browser Fullscreen state. Hidden where the Fullscreen
+/// API doesn't work (native + iOS Safari) — the parent only builds it when
+/// `Fullscreen.instance.isSupported`.
 class _FullscreenButton extends StatefulWidget {
   const _FullscreenButton();
 
@@ -1879,16 +1767,10 @@ class _FullscreenButton extends StatefulWidget {
 class _FullscreenButtonState extends State<_FullscreenButton> {
   @override
   Widget build(BuildContext context) {
-    // iOS Safari can't toggle fullscreen — offer install instructions instead.
-    final offerInstall = Fullscreen.instance.shouldOfferInstall;
     final full = Fullscreen.instance.isFullscreen;
-    final iconData = offerInstall
-        ? Icons.ios_share
-        : (full ? Icons.fullscreen_exit : Icons.fullscreen);
-    final label = offerInstall ? 'Fullscreen' : (full ? 'Exit' : 'Fullscreen');
-    final icon = Icon(iconData, size: 16);
-    void onTap() {
-      _handleFullscreenTap(context);
+    final icon = Icon(full ? Icons.fullscreen_exit : Icons.fullscreen, size: 16);
+    void toggle() {
+      Fullscreen.instance.toggle();
       // Rebuild after the browser applies the change so the icon updates.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) setState(() {});
@@ -1901,19 +1783,17 @@ class _FullscreenButtonState extends State<_FullscreenButton> {
     final iconOnly = Responsive.isMobile(MediaQuery.of(context).size.width);
     if (iconOnly) {
       return IconButton(
-        onPressed: onTap,
+        onPressed: toggle,
         icon: icon,
         color: const Color(0xFFBFD8E8),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         constraints: const BoxConstraints(minWidth: 44, minHeight: 40),
         visualDensity: VisualDensity.compact,
-        tooltip: offerInstall
-            ? 'How to go fullscreen'
-            : (full ? 'Exit fullscreen' : 'Fullscreen'),
+        tooltip: full ? 'Exit fullscreen' : 'Fullscreen',
       );
     }
     return TextButton.icon(
-      onPressed: onTap,
+      onPressed: toggle,
       style: TextButton.styleFrom(
         foregroundColor: const Color(0xFFBFD8E8),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -1921,7 +1801,7 @@ class _FullscreenButtonState extends State<_FullscreenButton> {
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
       icon: icon,
-      label: Text(label,
+      label: Text(full ? 'Exit' : 'Fullscreen',
           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
     );
   }
@@ -1944,16 +1824,10 @@ class _FloatingFullscreenButton extends StatefulWidget {
 class _FloatingFullscreenButtonState extends State<_FloatingFullscreenButton> {
   @override
   Widget build(BuildContext context) {
-    final offerInstall = Fullscreen.instance.shouldOfferInstall;
     final full = Fullscreen.instance.isFullscreen;
-    final iconData = offerInstall
-        ? Icons.ios_share
-        : (full ? Icons.fullscreen_exit : Icons.fullscreen);
     return Semantics(
       button: true,
-      label: offerInstall
-          ? 'How to go fullscreen'
-          : (full ? 'Exit fullscreen' : 'Enter fullscreen'),
+      label: full ? 'Exit fullscreen' : 'Enter fullscreen',
       child: Material(
         color: const Color(0xFF14405E),
         shape: CircleBorder(
@@ -1967,7 +1841,7 @@ class _FloatingFullscreenButtonState extends State<_FloatingFullscreenButton> {
         child: InkWell(
           customBorder: const CircleBorder(),
           onTap: () {
-            _handleFullscreenTap(context);
+            Fullscreen.instance.toggle();
             // Rebuild after the browser applies the change so the icon flips.
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) setState(() {});
@@ -1976,7 +1850,7 @@ class _FloatingFullscreenButtonState extends State<_FloatingFullscreenButton> {
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Icon(
-              iconData,
+              full ? Icons.fullscreen_exit : Icons.fullscreen,
               size: 26,
               color: const Color(0xFFEAF4FB),
             ),

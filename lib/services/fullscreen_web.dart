@@ -9,13 +9,10 @@ import 'fullscreen.dart';
 Fullscreen createFullscreen() => _WebFullscreen();
 
 class _WebFullscreen implements Fullscreen {
-  @override
-  bool get isSupported => true;
-
   /// iOS Safari (iPhone/iPad) exposes no working document Fullscreen API —
-  /// `requestFullscreen` is undefined / a no-op there — so the toggle would do
-  /// nothing. Detect it (including iPadOS, which reports as "Macintosh" with a
-  /// touch screen) so callers can offer "Add to Home Screen" instead.
+  /// `requestFullscreen` is a no-op there — so the toggle would do nothing.
+  /// Detect it (including iPadOS, which reports as "Macintosh" with a touch
+  /// screen) so the button is hidden rather than dead.
   bool get _isIos {
     final ua = html.window.navigator.userAgent;
     if (RegExp(r'iPad|iPhone|iPod').hasMatch(ua)) return true;
@@ -25,29 +22,10 @@ class _WebFullscreen implements Fullscreen {
     return isMacLike && touch;
   }
 
+  // The Fullscreen API works everywhere on web EXCEPT iOS Safari, so hide the
+  // toggle there (nothing would happen).
   @override
-  bool get fullscreenApiWorks {
-    // The only browser where the API is exposed but doesn't work is iOS Safari;
-    // dart:html always types requestFullscreen as present, so gate on iOS.
-    return !_isIos;
-  }
-
-  @override
-  bool get isStandalone {
-    // iOS Safari exposes navigator.standalone; other browsers use the
-    // display-mode media query set by the manifest's "display": "standalone".
-    final iosStandalone = (html.window.navigator as dynamic).standalone;
-    if (iosStandalone == true) return true;
-    try {
-      return html.window.matchMedia('(display-mode: standalone)').matches;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  @override
-  bool get shouldOfferInstall =>
-      isSupported && !fullscreenApiWorks && !isStandalone;
+  bool get isSupported => !_isIos;
 
   @override
   bool get isFullscreen => html.document.fullscreenElement != null;
