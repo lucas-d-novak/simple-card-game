@@ -5,6 +5,7 @@ import 'package:shards_server/lobby.dart';
 import 'package:shards_server/views.dart';
 import 'package:simple_card_game/models/card_effect.dart';
 import 'package:simple_card_game/models/card_model.dart';
+import 'package:simple_card_game/models/card_type.dart';
 import 'package:simple_card_game/services/game_service.dart';
 import 'package:test/test.dart';
 
@@ -142,6 +143,45 @@ void main() {
     test('a non-player id is rejected', () {
       final g = startedGame();
       final rejected = g.session!.apply('eve', {'type': 'endTurn'});
+      expect(rejected.accepted, isFalse);
+    });
+
+    test('fastPlayMercenary pays + plays + removes a center-row mercenary', () {
+      final g = startedGame();
+      final session = g.session!;
+      final seat = session.game.currentPlayerIndex;
+      final current = session.playerIds[seat];
+
+      // Seed an affordable mercenary into the center row and give gems.
+      session.game.centerRow
+        ..clear()
+        ..add(const CardModel(
+          id: 'merc_x',
+          name: 'Merc X',
+          cost: 3,
+          cardType: CardType.mercenary,
+          playEffects: [GainPowerEffect(5)],
+        ));
+      session.game.players[seat].gemPool = 5;
+
+      final res =
+          session.apply(current, {'type': 'fastPlayMercenary', 'cardId': 'merc_x'});
+      expect(res.accepted, isTrue);
+      expect(session.game.players[seat].powerPool, 5,
+          reason: 'effect resolved');
+      expect(session.game.removedFromGame.any((c) => c.id == 'merc_x'), isTrue,
+          reason: 'mercenary removed from game, not to discard');
+      expect(session.game.players[seat].discardPile.any((c) => c.id == 'merc_x'),
+          isFalse);
+    });
+
+    test('fastPlayMercenary is rejected off-turn', () {
+      final g = startedGame();
+      final session = g.session!;
+      final offTurn =
+          session.playerIds[(session.game.currentPlayerIndex + 1) % 2];
+      final rejected =
+          session.apply(offTurn, {'type': 'fastPlayMercenary', 'cardId': 'x'});
       expect(rejected.accepted, isFalse);
     });
 

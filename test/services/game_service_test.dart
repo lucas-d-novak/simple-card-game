@@ -42,10 +42,20 @@ void main() {
 
       for (final player in game.players) {
         expect(player.health, 50);
-        expect(player.mastery, 0);
         expect(player.gemPool, 0);
         expect(player.powerPool, 0);
       }
+      // Staggered starting Mastery by seat (offsets turn-order advantage):
+      // seat 0 → 0, seat 1 → 1, etc.
+      expect(game.players[0].mastery, 0);
+      expect(game.players[1].mastery, 1);
+    });
+
+    test('starting Mastery is staggered by seat (0,1,2,3) in a 4-player game',
+        () {
+      final game = GameService(playerCount: 4, random: Random(7));
+      expect(game.players.map((p) => p.mastery).toList(), [0, 1, 2, 3],
+          reason: 'later seats start with more mastery to offset turn order');
     });
 
     test('3-player game initializes with 3 players', () {
@@ -3434,6 +3444,63 @@ void main() {
     test('rejected when card not in center row', () {
       final game = GameService(playerCount: 2, random: Random(7));
       expect(game.fastPlayFromCenter('not_present'), false);
+    });
+  });
+
+  group('payAndFastPlayFromCenter() — mercenary recruit-or-fast-play', () {
+    CardModel seedMerc(GameService game,
+        {int cost = 3,
+        List<CardEffect> playEffects = const [GainPowerEffect(5)],
+        CardType cardType = CardType.mercenary,
+        String id = 'merc'}) {
+      final card = CardModel(
+        id: id,
+        name: id,
+        cost: cost,
+        playEffects: playEffects,
+        cardType: cardType,
+      );
+      game.centerRow.clear();
+      game.centerRow.add(card);
+      return card;
+    }
+
+    test('pays cost, plays immediately, removes from game, refills', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.gemPool = 5;
+      seedMerc(game, cost: 3);
+
+      expect(game.payAndFastPlayFromCenter('merc'), true);
+      expect(player.gemPool, 2, reason: 'paid the 3 cost');
+      expect(player.powerPool, 5, reason: 'effect resolved immediately');
+      // Removed from the game (mercenary), NOT sent to discard.
+      expect(player.discardPile.any((c) => c.id == 'merc'), false);
+      expect(game.removedFromGame.any((c) => c.id == 'merc'), true);
+      expect(player.cardsPlayedThisTurn.any((c) => c.id == 'merc'), true);
+      expect(game.centerRow.length, 6, reason: 'row refilled');
+    });
+
+    test('refuses when the player cannot afford the cost', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.gemPool = 2;
+      seedMerc(game, cost: 3);
+
+      expect(game.payAndFastPlayFromCenter('merc'), false);
+      expect(player.gemPool, 2, reason: 'no gems spent');
+      expect(player.powerPool, 0);
+      expect(game.centerRow.any((c) => c.id == 'merc'), true);
+    });
+
+    test('refuses a non-mercenary (champions/regulars recruit normally)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final player = game.currentPlayer;
+      player.gemPool = 10;
+      seedMerc(game, cost: 3, cardType: CardType.champion, id: 'champ');
+      expect(game.payAndFastPlayFromCenter('champ'), false);
+      seedMerc(game, cost: 3, cardType: CardType.regular, id: 'reg');
+      expect(game.payAndFastPlayFromCenter('reg'), false);
     });
   });
 

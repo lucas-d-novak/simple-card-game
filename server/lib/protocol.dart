@@ -51,6 +51,11 @@ ActionResult applyAction(
       ok = true;
     case 'buyCard':
       ok = game.buyCard(s('cardId'));
+    case 'fastPlayMercenary':
+      // Player-initiated: pay a center-row Mercenary's cost and play it
+      // immediately (removed after). Distinct from 'fastPlayFromCenter' (the
+      // FREE warp effect triggered by a card).
+      ok = game.payAndFastPlayFromCenter(s('cardId'));
     case 'endTurn':
       game.endTurn();
       ok = true;

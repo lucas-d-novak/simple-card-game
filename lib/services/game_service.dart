@@ -18,22 +18,32 @@ class GameLogEntry {
     required this.turn,
     required this.playerId,
     required this.message,
+    this.cardId,
   });
 
   final int turn;
   final String? playerId;
   final String message;
 
+  /// The card this action involved, if any (a play / recruit / fast-play /
+  /// activate). Lets the shared-action playback show a mini card face alongside
+  /// the message. Null for card-less events (focus, turn change, attack player).
+  /// The id resolves against the redacted view's `cards` dictionary, so it never
+  /// leaks hidden info — only public actions carry a card id.
+  final String? cardId;
+
   Map<String, dynamic> toJson() => {
         'turn': turn,
         if (playerId != null) 'playerId': playerId,
         'message': message,
+        if (cardId != null) 'cardId': cardId,
       };
 
   factory GameLogEntry.fromJson(Map<String, dynamic> j) => GameLogEntry(
         turn: (j['turn'] as int?) ?? 0,
         playerId: j['playerId'] as String?,
         message: (j['message'] as String?) ?? '',
+        cardId: j['cardId'] as String?,
       );
 }
 
@@ -116,12 +126,14 @@ class GameService {
   static const int _maxLogEntries = 400;
 
   /// Record a public game event. [playerId] is the actor (or null for system
-  /// events like turn changes).
-  void _log(String message, {String? playerId}) {
+  /// events like turn changes). [cardId] is the involved card, if any, so the
+  /// shared-action playback can show a mini card face (public actions only).
+  void _log(String message, {String? playerId, String? cardId}) {
     actionLog.add(GameLogEntry(
       turn: turnNumber,
       playerId: playerId,
       message: message,
+      cardId: cardId,
     ));
     if (actionLog.length > _maxLogEntries) {
       actionLog.removeRange(0, actionLog.length - _maxLogEntries);
@@ -172,9 +184,14 @@ class GameService {
   // -------------------------------------------------------------------------
 
   void _initializeGame(int playerCount) {
-    // Create players with starter decks
+    // Create players with starter decks.
     for (int i = 0; i < playerCount; i++) {
       final player = PlayerState(id: 'p$i', name: 'Player ${i + 1}');
+      // Staggered starting Mastery to offset turn-order advantage: the player
+      // who goes first starts at 0, the second at 1, third at 2, fourth at 3
+      // (seat index). Later seats act later, so they're compensated up front —
+      // the advantage scales down the seat order.
+      player.mastery = i;
       final deck = buildStarterDeck('p$i');
       player.drawPile.addAll(deck);
       player.drawPile.shuffle(_random);
@@ -1319,6 +1336,51 @@ class GameService {
     removedFromGame.add(card);
 
     _refillCenterRow();
+    return true;
+  }
+
+  /// PLAYER-INITIATED mercenary fast-play: PAY a center-row Mercenary's gem cost,
+  /// play it immediately from the row (its effects resolve this turn), then
+  /// remove it from the game. This is the Mercenary "recruit OR fast-play"
+  /// choice — the alternative to [buyCard] (which sends the card to the buyer's
+  /// discard to be played on a later turn). Distinct from [fastPlayFromCenter],
+  /// which is the FREE warp effect triggered BY another card (no cost paid).
+  ///
+  /// Only Mercenaries may be fast-played this way; champions and regular cards
+  /// must be recruited normally. The cost honours the buyer's cost-reduction
+  /// static modifiers (same as [buyCard]). Returns false (no state change) if the
+  /// card isn't a payable center-row Mercenary on the current player's turn.
+  bool payAndFastPlayFromCenter(String cardId) {
+    if (!_currentPlayerCanAct) return false;
+    final player = currentPlayer;
+
+    final index = centerRow.indexWhere((c) => c.id == cardId);
+    if (index == -1) return false;
+
+    final card = centerRow[index];
+    // Only Mercenaries can be paid-fast-played from the market.
+    if (card.cardType != CardType.mercenary) return false;
+
+    final price = _discountedCost(card, player);
+    if (player.gemPool < price) return false;
+
+    player.gemPool -= price;
+    centerRow.removeAt(index);
+
+    // Play immediately (mirrors the warp path's zone bookkeeping).
+    player.playedThisTurn.add(card);
+    player.cardsPlayedThisTurn.add(card);
+    _resolvePlayOrMastery(card, player);
+    _checkAllyAbility(card, player);
+
+    // Mercenaries are removed from the game after use — remove from
+    // playedThisTurn so end-of-turn cleanup doesn't also discard it, but keep it
+    // in cardsPlayedThisTurn for this turn's play-history scaling.
+    player.playedThisTurn.removeWhere((c) => identical(c, card));
+    removedFromGame.add(card);
+
+    _refillCenterRow();
+    _log('fast-played ${card.name} for $price gems', playerId: player.id);
     return true;
   }
 

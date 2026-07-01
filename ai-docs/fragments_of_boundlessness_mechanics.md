@@ -40,7 +40,13 @@ Fragments of Boundlessness is a competitive deck-building game where players acq
 5. Each player shuffles their personal 10-card starter deck and draws **5 cards** as their starting hand.
 6. Determine a starting player (random). Play proceeds clockwise.
 
-**First player adjustment**: The first player draws only **3 cards** on their first turn (instead of 5) to offset the advantage of going first. (In a 2-player game this is the standard rule; multiplayer variants may differ.)
+**Turn-order adjustment (this implementation)**: to offset the advantage of
+going first, starting **Mastery is staggered by seat**: the first player starts
+at **0** Mastery, the second at **1**, the third at **2**, the fourth at **3**
+(seat index). Every player still draws a full **5-card** opening hand. (This
+replaces the classic "first player draws only 3 cards" rule as the sole
+turn-order offset — the offset now scales smoothly across all seats. See
+`GameService._initializeGame`.)
 
 ---
 

@@ -179,6 +179,12 @@ class GameClient extends ChangeNotifier {
       sendAction('playCard', {'cardId': cardId, 'choiceIndex': choiceIndex});
   void playAllCards() => sendAction('playAllCards');
   void buyCard(String cardId) => sendAction('buyCard', {'cardId': cardId});
+
+  /// Fast-play a center-row Mercenary: pay its cost and play it immediately
+  /// (removed after), instead of recruiting it to your discard. Server-validated
+  /// (mercenary-only, affordable, your turn).
+  void fastPlayMercenary(String cardId) =>
+      sendAction('fastPlayMercenary', {'cardId': cardId});
   void endTurn() => sendAction('endTurn');
 
   /// Undo your most-recent action THIS turn (server-authoritative; legal only on
