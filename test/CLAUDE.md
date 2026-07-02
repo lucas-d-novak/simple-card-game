@@ -4,19 +4,23 @@ Test suite covering game logic and UI behavior.
 
 ## Totals
 
-- **640 engine tests** — run with `flutter test --exclude-tags golden` (what CI runs).
+- **791 engine tests** — run with `flutter test --exclude-tags golden` (what CI runs).
 - **8 golden screenshot tests** — tagged `golden`, run locally with plain `flutter test`.
-- **56 server tests** — the separate `server/` Dart package; run with
+- **64 server tests** — the separate `server/` Dart package; run with
   `cd server && dart test`. Cover state redaction (hidden hands / deck order; the
   recipient's OWN draw-pile contents shipped SORTED — contents visible, order
   hidden; the trailing `actionLog` tail; the `cards` dictionary shipped to
-  clients), action authorization (on-turn vs off-turn), same-turn server UNDO,
+  clients; `staticModifiers` incl. the public `sourceChampionId`), action
+  authorization (on-turn vs off-turn), same-turn server UNDO,
   reconnect / resync, custom game names, JSON/SQLite persistence (games survive a
-  restart), lobby flow (create / join / start), and **player-stats / ML
-  telemetry** (`stats_test.dart` — `StatsStore` events/decisions/games rows + the
-  `decision_export` view, capture via `GameSession.apply`, `playerWon` backfill at
-  game end, and the HIDDEN-INFO guarantee that no opponent hand-card id ever
-  appears in a recorded decision's option set / state JSON).
+  restart, and a finished game's WINNER is re-derived rather than defaulting to a
+  draw), lobby flow (create / join / start), **spectator views + admin forfeit**
+  (`spectator_test.dart`, `forfeit_test.dart` — winType `'forfeit'`), and
+  **player-stats / ML telemetry** (`stats_test.dart` — `StatsStore`
+  events/decisions/games rows + the `decision_export` view, capture via
+  `GameSession.apply`, `playerWon` backfill at game end, and the HIDDEN-INFO
+  guarantee that no opponent hand-card id ever appears in a recorded decision's
+  option set / state JSON).
 
 The bulk of the engine coverage is `test/services/game_service_test.dart`
 (the Fragments of Boundlessness engine spec). The legacy `DeckService` demo tests below
@@ -33,6 +37,30 @@ are a small subset.
   and that copy counts come from the DB `copies` field.
 - `game_state_codec_test.dart` — round-trips a full `GameService`/`PlayerState`
   snapshot through `GameStateCodec` (the multiplayer serialization layer).
+- `new_effects_codec_test.dart`, `ingeminex_codec_test.dart`,
+  `corrected_effects_test.dart` — codec coverage for the new effect types and the
+  Ingeminex entity.
+
+### services/ (engine spec)
+The bulk of engine coverage is `game_service_test.dart`. Sprint-added engine
+suites include: `shield_combat_model_test.dart` + `owner_shield_data_test.dart`
+(the owner combat model — in-hand shield reduction, champion HEALTH, 50-HP cap,
+Datic Robes / Praetorian / One Mind), `ingeminex_test.dart` (neutral entity
+spawn / attack / kill-reward), `recruit_redirect_test.dart` (Numeri Drones
+redirect-next-recruit), `new_mechanics_test.dart`, `static_modifiers_test.dart`,
+`turn_modifiers_test.dart`, `characters_undercard_test.dart`,
+`copy_centerdeck_opponent_test.dart`, `game_condition_test.dart`,
+`conditions_glow_test.dart`, `cloud_oracles_test.dart`, `action_log_extras_test.dart`.
+
+### ui/ (widget behaviour)
+Sprint-added widget suites: `card_list_screen_test.dart` (card-list grid + zoom),
+`played_this_turn_tray_test.dart` (played/warped strip + fast-play shading),
+`champion_unused_border_test.dart` (blue unused-action border),
+`game_log_line_test.dart` (inline log icons + seat-id → name resolution),
+`network_forfeit_spectate_test.dart` (spectate + forfeit-in-log-popout),
+`network_attack_ends_turn_test.dart` (Attack + End Turn),
+`opponent_bar_strip_test.dart` (4-player Phase A bars), plus the existing
+passive-champion, portrait-ticker, game-over-draw, and board-animation suites.
 
 ### services/deck_service_test.dart
 Unit tests for `DeckService` — the legacy demo rules layer. 13 tests covering:
@@ -74,8 +102,8 @@ Widget/integration tests that pump the full `DeckDrawApp` and interact via tap. 
 flutter test                              # all tests (incl. goldens) — run locally
 flutter test test/services/               # just service tests
 flutter test test/widget_test.dart         # just widget tests
-flutter test --exclude-tags golden        # what CI runs (skips goldens) — 608 tests
-cd server && dart test                    # the 52 server tests (redaction / auth / undo / reconnect / persistence / lobby / stats telemetry)
+flutter test --exclude-tags golden        # what CI runs (skips goldens) — 791 tests
+cd server && dart test                    # the 64 server tests (redaction / auth / undo / reconnect / persistence / lobby / spectate / forfeit / stats telemetry)
 ```
 
 ## Golden screenshot tests (the `golden` tag)

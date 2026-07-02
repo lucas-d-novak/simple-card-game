@@ -11,7 +11,7 @@ dart run tool/gen_coverage_readme.dart
 | Dimension | Covered | Total | % |
 |-----------|--------:|------:|--:|
 | Art on disk | 183 | 183 | 100% |
-| Effects encoded | 88 | 183 | 48% |
+| Effects encoded | 89 | 183 | 49% |
 | Raw text captured | 183 | 183 | 100% |
 | **Verified** | **104** | **183** | **57%** |
 
@@ -24,7 +24,7 @@ Legend: **Art** = card image present · **Eff** = `playEffects` encoded · **Raw
 | `base` | 53 | 53 (100%) | 39 (74%) | 53 (100%) | 42 (79%) |
 | `ioh` | 12 | 12 (100%) | 9 (75%) | 12 (100%) | 7 (58%) |
 | `rotf` | 16 | 16 (100%) | 14 (88%) | 16 (100%) | 8 (50%) |
-| `saga` | 13 | 13 (100%) | 7 (54%) | 13 (100%) | 9 (69%) |
+| `saga` | 13 | 13 (100%) | 8 (62%) | 13 (100%) | 9 (69%) |
 | `sos` | 2 | 2 (100%) | 1 (50%) | 2 (100%) | 2 (100%) |
 | `unknown` | 87 | 87 (100%) | 18 (21%) | 87 (100%) | 36 (41%) |
 
@@ -34,7 +34,7 @@ Legend: **Art** = card image present · **Eff** = `playEffects` encoded · **Raw
 |---------|------:|----:|----:|----:|----:|
 | `homodeus` | 23 | 23 (100%) | 13 (57%) | 23 (100%) | 17 (74%) |
 | `none` | 87 | 87 (100%) | 18 (21%) | 87 (100%) | 36 (41%) |
-| `order` | 26 | 26 (100%) | 22 (85%) | 26 (100%) | 16 (62%) |
+| `order` | 26 | 26 (100%) | 23 (88%) | 26 (100%) | 16 (62%) |
 | `undergrowth` | 23 | 23 (100%) | 18 (78%) | 23 (100%) | 22 (96%) |
 | `wraethe` | 24 | 24 (100%) | 17 (71%) | 24 (100%) | 13 (54%) |
 
@@ -131,7 +131,7 @@ Ordered by set, then id. ✓ = present, · = missing.
 | `huntmaster_arach` | saga | undergrowth | champion | ✓ | · | ✓ | ✓ |
 | `isa_tel_tor_the_axe` | saga | wraethe | champion | ✓ | · | ✓ | · |
 | `keeper_of_datic_vessels` | saga | order | regular | ✓ | ✓ | ✓ | ✓ |
-| `nexus_datic_hunter` | saga | order | champion | ✓ | · | ✓ | · |
+| `nexus_datic_hunter` | saga | order | champion | ✓ | ✓ | ✓ | · |
 | `paradigm_the_archivist` | saga | order | champion | ✓ | · | ✓ | ✓ |
 | `se_soc_tar_the_inquisitor` | saga | wraethe | champion | ✓ | · | ✓ | · |
 | `synthetica_artifex` | saga | homodeus | regular | ✓ | ✓ | ✓ | ✓ |

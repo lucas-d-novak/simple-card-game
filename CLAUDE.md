@@ -10,13 +10,13 @@ Build a playable digital version of Fragments of Boundlessness with all core mec
 
 ```bash
 flutter pub get              # install dependencies
-flutter test                 # run all tests (608 + 8 goldens)
+flutter test                 # run all tests (791 + 8 goldens)
 flutter run -d windows       # run on Windows
 flutter run -d chrome        # run in browser
 flutter analyze              # static analysis
 
 # Multiplayer server (pure Dart, reuses the engine):
-cd server && dart pub get && dart test       # 52 server tests
+cd server && dart pub get && dart test       # 64 server tests
 cd server && dart run bin/server.dart 8080   # run the WebSocket server
 # Optional env: SHARDS_ACCESS_TOKEN (shared-secret auth gate), SHARDS_ALLOWED_ORIGINS
 # (WS origin allowlist), SHARDS_STATS_DB (telemetry SQLite path, default server/data/stats.db)
@@ -54,7 +54,8 @@ lib/
 │       └── game_state_codec.dart       # GameStateCodec: full GameService/PlayerState snapshot ⇄ JSON
 ├── models/
 │   ├── card_model.dart                 # CardModel with faction, type, shield, guard, art, etc.
-│   ├── card_effect.dart                # Sealed class hierarchy (31 effect types)
+│   ├── card_effect.dart                # Sealed class hierarchy (37 effect types)
+│   ├── ingeminex_entity.dart           # Neutral, shared Ingeminex boss entity (ownerless, HP pool)
 │   ├── card_type.dart                  # regular | champion | mercenary
 │   ├── faction.dart                    # homodeus | wraethe | order | undergrowth | none
 │   └── player_state.dart              # Per-player mutable state (HP, mastery, zones, claimedDestinies, relicOptions, focusedThisTurn)
@@ -143,6 +144,29 @@ server/                                  # Authoritative multiplayer (pure-Dart,
   hit YOU for N") — firing exactly ONCE per new `seq` (high-water mark) so BOTH
   the attacker and the victim see the SAME event. Instant/reduced-motion mode
   renders nothing and schedules no timers (tests never hang).
+- **Owner combat model** — the sprint reworked combat around a per-hit
+  **damage-reduction** model (backlog §E). A direct `attackPlayer` is reduced by
+  the target's `_playerDamageReduction`: the sum of the `shield` of every card in
+  their HAND (a card with `CardModel.shieldEqualsMastery`, e.g. Datic Robes,
+  contributes its owner's current mastery) PLUS every champion-granted
+  `StaticModifierKind.shieldBuff` (e.g. Praetorian-02, which may be mastery-scaled
+  via `StaticModifier.masteryThreshold`/`masteryAmount`). Champion **value = HEALTH**:
+  destroying a champion needs `power >= _effectiveHealth` (its printed shield plus
+  any `StaticModifierKind.healthBuff` such as One Mind One Army's "+2 health", plus
+  `shieldPerCardUnder` self-buffs). `IgnoreShieldThisTurnEffect` (spirit_leech) now
+  makes the ATTACKER ignore the TARGET's per-hit damage reduction (it is no longer
+  a champion instakill). A global **50-HP cap** lives in `PlayerState.maxHealth`;
+  `PlayerState.heal()` clamps to it. See `test/services/shield_combat_model_test.dart`
+  and `owner_shield_data_test.dart`, and `docs/card_mechanics_backlog.md`.
+- **Ingeminex neutral entities** — `IngeminexEntity`
+  ([`lib/models/ingeminex_entity.dart`](lib/models/ingeminex_entity.dart)) is a
+  NEUTRAL, ownerless boss that lives in a shared `GameService.ingeminexRow`. It has
+  an HP pool (`maxHealth` 10, accumulating `damageTaken`), not the all-or-nothing
+  shield of a champion. `spawnIngeminex` resolves its `appearanceEffects` against
+  EVERY player on appearance; `attackIngeminex` lets any player hit it, and the
+  killing blow awards that player its `rewardEffects`. Round-tripped by
+  `GameStateCodec` (`ingeminex` key). Tests: `test/services/ingeminex_test.dart`,
+  `test/data/ingeminex_codec_test.dart`.
 - **Action log** — `GameService.actionLog` (`List<GameLogEntry>`{turn, playerId?,
   message, cardId?, grants}) recorded via the `_log()` helper for public events
   (play / recruit / attack / focus / destroy / turn / win); bounded. Now also
@@ -150,9 +174,11 @@ server/                                  # Authoritative multiplayer (pure-Dart,
   **shield a destroyed champion absorbed** ("… (shield N absorbed)"). Each
   `played` / `activated` / `fast-played` entry additionally carries structured
   `grants` (a pure-Dart `LogResourceGrant` list of {kind: gem/power/mastery/
-  health, amount}) — the card's flat, unconditional resource gains — so the UI
-  can render small resource icons instead of parsing the message string
-  (conditional / scaling grants are omitted, so an icon is never wrong). Serialized
+  health, amount}) — the ACTUAL positive resource delta the actor gained from the
+  play, measured by snapshotting the pools before/after resolution (so scaling /
+  conditional bonuses that actually fired are counted, and the icons are never
+  wrong) — so the UI can render small resource icons instead of parsing the
+  message string. Serialized
   by `GameStateCodec` (encode/decode `actionLog`, including `grants`) and shipped
   (recent tail) per-view in `server/lib/views.dart`'s `redactFor` as `actionLog`
   (grants are public — the played card is face-up). The networked board's **Log**
@@ -226,7 +252,7 @@ server/                                  # Authoritative multiplayer (pure-Dart,
 | Mechanic | Status | File |
 |----------|--------|------|
 | Turn lifecycle (play/buy/end) | Done | `game_service.dart` |
-| All 31 card effect types | Done | `card_effect.dart` |
+| All 37 card effect types | Done | `card_effect.dart` |
 | Center row / market (6 cards, auto-refill) | Done | `game_service.dart` |
 | Champion deployment & persistence | Done | `game_service.dart` |
 | Champion manual activation (tap to activate) | Done | `game_service.dart` |
@@ -279,7 +305,11 @@ server/                                  # Authoritative multiplayer (pure-Dart,
 | Legacy demo catalog (55 unique cards) | Done | `card_definitions.dart` |
 | Authoritative card DB (183 cards, 102/142 in-scope verified, 41 out-of-scope) | In progress | `assets/card_db/cards.json` |
 | Card-verify adversarial re-check (41 unverified re-audited, 0 flipped) | Done | `assets/card_db/cards.json` |
-| Engine Phase 2 + 3 (31 effect types) | Done | `card_effect.dart`, `game_service.dart` |
+| Engine Phase 2 + 3 (37 effect types) | Done | `card_effect.dart`, `game_service.dart` |
+| Owner combat model (in-hand shield reduction, champion HEALTH, 50-HP cap) | Done | `game_service.dart` (`_playerDamageReduction`/`_effectiveHealth`), `player_state.dart` (`maxHealth`/`heal`) |
+| Mastery-scaled + dynamic buffs (`healthBuff`, `shieldPerCardUnder`, `shieldEqualsMastery`, `StaticModifier.masteryThreshold`) | Done | `card_effect.dart`, `card_model.dart`, `game_service.dart` |
+| Ingeminex neutral entities (shared boss, HP pool, appearance/kill rewards) | Done | `ingeminex_entity.dart`, `game_service.dart` (`spawnIngeminex`/`attackIngeminex`) |
+| New effects (opponent-mastery-loss, mill, recruit-to-hand, return-to-deck-top, return-self-on-champion, redirect-next-recruit) | Done | `card_effect.dart`, `game_service.dart` |
 | Game-state serialization (multiplayer snapshot) | Done | `game_state_codec.dart` |
 | Authoritative multiplayer server (Phase 0/1) | Done | `server/` |
 | Relics DB-built + wired (server + setup); recruited at Mastery 10, not bought | Done | `market_deck.dart` (`buildRelicCardsFromDatabase`), `server/bin/server.dart`, `game_setup_screen.dart` |
@@ -306,21 +336,21 @@ server/                                  # Authoritative multiplayer (pure-Dart,
 ## Testing
 
 ```bash
-flutter test                              # all tests (640 + 8 goldens)
-flutter test --exclude-tags golden        # what CI runs (640)
+flutter test                              # all tests (791 + 8 goldens)
+flutter test --exclude-tags golden        # what CI runs (791)
 flutter test test/services/               # game service + deck service + AI tests
 flutter test test/data/                   # card db, codecs, serialization, starter deck
 flutter test test/models/                 # model-level tests
 flutter test test/widget_test.dart        # legacy widget tests
 flutter test test/screenshot_test.dart --update-goldens  # regenerate screenshots
 bash scripts/generate_report.sh           # generate visual QA report (HTML)
-cd server && dart test                    # 56 server tests (redaction + auth + lobby + undo + reconnect + persistence + stats)
+cd server && dart test                    # 64 server tests (redaction + auth + lobby + undo + reconnect + persistence + stats + spectate/forfeit)
 ```
 
-- **640 engine tests** (+ 8 goldens, + 56 server tests) across game mechanics,
+- **791 engine tests** (+ 8 goldens, + 64 server tests) across game mechanics,
   models, data, codecs/serialization, AI, widgets, and the multiplayer server
 - Tests use deterministic `Random` injection (`Random(7)`, `ZeroRandom`)
-- Game service tests cover: initialization, all 31 effect types, buying, turn cycling, champions, guard, ally abilities, mastery thresholds (additive + replace), banish/scrap, infinity shard scaling, combat, win conditions, Character Focus, Destiny (claim/use/cascade) and Relics, Phase 2/3 board conditions, and integration scenarios. Serialization tests round-trip a full mid-game snapshot (including the action log). Server tests assert hidden-info redaction (including draw-pile contents sorted/order-hidden and the action-log tail), action authorization, per-turn undo, reconnect/resync/multi-game lobby flow, JSON/SQLite persistence across a restart, and the player-stats/telemetry capture.
+- Game service tests cover: initialization, all 37 effect types, buying, turn cycling, champions, guard, ally abilities, mastery thresholds (additive + replace), banish/scrap, infinity shard scaling, combat, win conditions, Character Focus, Destiny (claim/use/cascade) and Relics, Phase 2/3 board conditions, and integration scenarios. Serialization tests round-trip a full mid-game snapshot (including the action log). Server tests assert hidden-info redaction (including draw-pile contents sorted/order-hidden and the action-log tail), action authorization, per-turn undo, reconnect/resync/multi-game lobby flow, JSON/SQLite persistence across a restart, and the player-stats/telemetry capture.
 
 ## CI
 
@@ -336,7 +366,7 @@ See [`test/CLAUDE.md`](test/CLAUDE.md).
 ## Key files to read first
 
 1. `lib/services/game_service.dart` — all game mechanics (the brain)
-2. `lib/models/card_effect.dart` — sealed effect hierarchy, 31 types (the vocabulary)
+2. `lib/models/card_effect.dart` — sealed effect hierarchy, 37 types (the vocabulary)
 3. `assets/card_db/cards.json` — authoritative 183-card DB (the content; 102/142 in-scope verified, 41 out-of-scope). Legacy `lib/data/card_definitions.dart` (55 cards) still drives the live demo.
 4. `test/services/game_service_test.dart` — mechanic tests (the spec)
 5. `lib/ui/screens/game_screen.dart` — game board UI
@@ -356,12 +386,13 @@ Cross-referenced. The mechanics doc is source of truth for game rules.
 - [`ai-docs/responsive_ui_design.md`](ai-docs/responsive_ui_design.md) — Design (5 iterations) behind the responsive breakpoints (`lib/ui/theme/responsive.dart`).
 - [`ai-docs/bug_patterns.md`](ai-docs/bug_patterns.md) — **Field guide to the recurring bug SHAPES** from the alpha bug-bash (resource-icon transcription errors, deferred-effect pickers, seat-id-vs-username leaks, stale deploy, rules-model gaps) and how to catch each class proactively. Read this before fixing a card-data or "nothing happened when I clicked" bug.
 - [`ai-docs/bug_fix_workflow.md`](ai-docs/bug_fix_workflow.md) — **Our principal METHOD for card/mechanic bugs:** the parallel find-and-stamp-out loop (find root cause → fix → confirm → identify other affected cards/mechanics → investigate → review → iterate). Parallel workflows per bug, grouped when fixes could conflict. The method paired with `bug_patterns.md`'s shapes; the in-repo sibling of `discord_bug_pipeline.md`.
-- [`ai-docs/engine_gaps.md`](ai-docs/engine_gaps.md) — **(Historical)** Catalogue of unmodeled card mechanics the ORIGINAL 14-effect vocabulary couldn't express, plus the phased plan to extend the engine. Phases 1–3 have largely landed (31 effect types now) — see `card_effect.dart` + [`engine_phase2_plan.md`](ai-docs/engine_phase2_plan.md)/[`engine_phase3_plan.md`](ai-docs/engine_phase3_plan.md) for what shipped.
+- [`ai-docs/engine_gaps.md`](ai-docs/engine_gaps.md) — **(Historical)** Catalogue of unmodeled card mechanics the ORIGINAL 14-effect vocabulary couldn't express, plus the phased plan to extend the engine. Phases 1–3 have largely landed (37 effect types now) — see `card_effect.dart` + [`engine_phase2_plan.md`](ai-docs/engine_phase2_plan.md)/[`engine_phase3_plan.md`](ai-docs/engine_phase3_plan.md) for what shipped.
 - [`ai-docs/engine_phase2_plan.md`](ai-docs/engine_phase2_plan.md) / [`ai-docs/engine_phase3_plan.md`](ai-docs/engine_phase3_plan.md) — the Phase 2 (14→31 effect types) and Phase 3 (final gap families) engine-extension designs.
 - [`ai-docs/multiplayer_architecture.md`](ai-docs/multiplayer_architecture.md) — **Authoritative-server multiplayer design** (transport, action protocol, hidden-info redaction, access-token auth + origin allowlist, status probe, wss `/ws` routing, lobby, Pi/Cloudflare-Tunnel deploy, phased rollout). Phase 0/1 implemented in `server/`.
 - [`ai-docs/player_stats_design.md`](ai-docs/player_stats_design.md) — design of the hidden-info-safe player-stats / ML-decision telemetry SQLite store (`server/lib/stats_store.dart`).
 - [`ai-docs/deploy_cloudflare.md`](ai-docs/deploy_cloudflare.md) — hosted public-alpha runbook (Cloudflare Tunnel + custom domain + TLS + env vars; bare-link Option A, Cloudflare-Pages-vs-box web hosting, Pi `dart run` + `libsqlite3` setup).
-- [`ai-docs/discord_bug_pipeline.md`](ai-docs/discord_bug_pipeline.md) — design for the Discord bug-report → automated agent-fix pipeline (intake/triage → investigate → implement → verify → human-gated draft PR). Deferred; see [`ROADMAP.md`](ROADMAP.md) "Community / bug intake".
+- [`ai-docs/discord_bug_pipeline.md`](ai-docs/discord_bug_pipeline.md) — design for the Discord bug-report → automated agent-fix pipeline (intake/triage → investigate → implement → verify → human-gated draft PR). A first cut now lives in [`tool/bug_pipeline/`](tool/bug_pipeline/) (Discord ingest `start_from_discord.sh`/`run_pipeline.sh` + `discord_reply.sh` reply-back + `deploy_trigger.sh`; see its `README.md`). See also [`ROADMAP.md`](ROADMAP.md) "Community / bug intake".
+- [`docs/card_mechanics_backlog.md`](docs/card_mechanics_backlog.md) — **living card-fix backlog** (product-owner spec). The AUTHORITY for queued engine/card work: per-card callouts of what is MISSING or WRONG today (Aion/Prism subsystem build, combat model §E, etc.). The owner's notes override the printed card art / rawText — implement as written, don't re-judge.
 - [`ai-docs/self_play_bots_design.md`](ai-docs/self_play_bots_design.md) — design for the dev-only self-play bot system: two bots play at scale for semantic bug detection (a differential oracle that checks each card did what its `CardEffect`/text says) + bot-tagged training telemetry kept separate from human data. Deferred; see [`ROADMAP.md`](ROADMAP.md) "AI".
 - [`ai-docs/design_reference/`](ai-docs/design_reference/DESIGN_SPEC.md) — official-client UI mockups + `DESIGN_SPEC.md`, the visual target for the board/modals/lobby.
 

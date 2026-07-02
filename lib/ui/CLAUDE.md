@@ -14,13 +14,15 @@ ui/
 │   ├── online_lobby_screen.dart    # Multi-game lobby (auto-enter recent, back-to-lobby)
 │   ├── network_auto_screen.dart    # Auto-connect/reconnect entry
 │   ├── about_screen.dart           # Fan-made / non-commercial credits page
-│   ├── card_list_screen.dart       # Full browsable card catalog (search + faction/Destiny filter, cost-sorted; co-op/relics hidden). Linked from the setup lobby; also ?cards=1
+│   ├── card_list_screen.dart       # Full browsable card catalog — responsive GRID (3 cols narrow/portrait, 5 landscape/wide), tap-to-zoom, search + faction/Destiny filter, cost-sorted. Relics ARE shown (bucketed under their faction/group). Linked from the setup lobby; also ?cards=1
 │   └── home_screen.dart            # Legacy demo screen
 ├── widgets/
 │   ├── game_card_widget.dart       # Styled card with faction colors, art, badges, conditional glow
 │   ├── opponent_bar_strip.dart     # 4-player: condensed per-opponent bars (champions·mastery·health + guard); tap to select whose champions show (OpponentBarData/OpponentBarStrip)
 │   ├── card_detail_modal.dart      # Zoom modal w/ context action (Recruit/Play/Activate/Exhaust)
 │   ├── choice_modal.dart           # Shared modal for ChooseOne / Destiny / Relic picks
+│   ├── played_this_turn_tray.dart  # Scrollable strip of small cards played (and fast-played/warped, red-shaded) this turn, shown above the stats bar (supersedes the old grey WARP tile)
+│   ├── game_log_line.dart          # Shared inline log-line renderer (resource-grant icons + seat-id → username resolution); used by the Log sheet and playback ticker
 │   ├── destiny_tray.dart           # Tray of claimed Destinies with Use actions (showDestinyTray)
 │   ├── card_fan.dart               # Fan-of-cards hand display
 │   ├── card_art.dart               # Procedural canvas art (faction patterns) fallback
@@ -76,9 +78,10 @@ Shared affordances (both boards):
 - **PLAY ALL** → plays all hand cards left to right (does NOT auto-attack); queues
   any deferred target pickers (banish / recruit / …) for the played cards.
 - **ATTACK** → spends all power attacking the opponent (target picker in 3-4p).
-  On the networked board, if the opponent still has a champion your power could
-  destroy, a **warning dialog** ("Your opponent still has champions in play!" —
-  Cancel / End Turn) fires first.
+  On the networked board the button is labelled **"Attack + End Turn ($power)"** —
+  it deals the damage and then ends the turn in one press. If the opponent still
+  has a champion your power could destroy, a **warning dialog** ("Your opponent
+  still has champions in play!" — Cancel / End Turn) fires first.
 - **Champions are a SINGLE action.** The zoom's champion button is labelled
   **"Exhaust"** (when the champion has an Exhaust-gated `activatedAbility`) or
   **"Activate"** (active play-effects only). Firing it does the free once-per-turn
@@ -108,7 +111,9 @@ scroll rather than overflow.
 ### Networked board extras (`network_game_screen.dart`)
 
 - **Log** button → a scrollable, newest-first sheet of the game's public action
-  log (the `actionLog` tail shipped by the server's `redactFor`).
+  log (the `actionLog` tail shipped by the server's `redactFor`), each row rendered
+  by the shared `GameLogLine` (inline resource-grant icons + seat-id → username
+  resolution). The **Forfeit** control now lives inside this popout.
 - **Draw-pile viewer** — tapping your own draw pile lists its contents **A→Z**
   (the server ships your own `drawPileContents` SORTED — contents visible, ORDER
   hidden, so the anti-scry rule holds; opponents' piles still show a count only).
@@ -134,10 +139,23 @@ scroll rather than overflow.
 - **Draw/discard pile sheets are labelled by Character** — tapping your draw or
   discard pile titles the sheet with your Character's display name (e.g. "Ko Syn
   Wu's draw pile"), via `characterDisplayName`.
-- **Fast-played / warped cards stay visible, greyed** — a mercenary/warp card
-  that leaves the game at end of turn (rather than going to discard) is rendered
-  by `_GreyedPlayTile` (desaturated + a small "WARP" badge) in the play area, so
-  you can see it was played. Fed by the view's `fastPlayedThisTurn`.
+- **Played-this-turn tray** (`widgets/played_this_turn_tray.dart`,
+  `PlayedThisTurnTray`) — a scrollable strip of small cards played this turn,
+  shown above the stats bar. Fast-played / warped cards (mercenary/warp cards that
+  leave the game at end of turn rather than going to discard) share the SAME strip,
+  **red-shaded** (`ValueKey('fastPlayShade_<id>')`) to mark them. This supersedes
+  the older greyed `_GreyedPlayTile` "WARP" tile. Fed by the view's `playedThisTurn`
+  + `fastPlayedThisTurn`.
+- **Spectate ("Watch")** — a non-participant can watch a live game; the board's
+  turn badge reads **"SPECTATING"** (instead of "YOUR TURN"/"WAITING"), the
+  forfeit control is hidden, and leaving calls `client.stopSpectate()` so the
+  server stops pushing views. The server exposes `GameSession.spectatorView()`
+  (the same redacted filter an opponent gets, `canUndo` always false).
+- **Server-restart banner** — an unexpected socket drop (e.g. the server
+  restarting on a redeploy) shows a dismissible "Heads up! Server is restarting…
+  try refreshing shortly." banner on both the board and the lobby.
+- **Forfeit** lives inside the **game-log popout** (moved out of the top bar); a
+  spectator or a finished game shows no forfeit control.
 - **Edge-fade scroll** (`_EdgeFadeScroll`) — the horizontally-scrolling
   champion / played rows get a pronounced left/right gradient fade (ShaderMask)
   on whichever edge has cards clipped off-screen, so it's obvious there's more to
@@ -164,7 +182,10 @@ scroll rather than overflow.
   remembered in browser `localStorage` via
   [`token_storage.dart`](../services/token_storage.dart) (a conditional-import
   shim — `token_storage_web.dart` uses `dart:html`, `token_storage_stub.dart` is
-  the non-web no-op), with a **"Forget saved code"** control to clear them.
+  the non-web no-op), with a **"Forget saved code"** control to clear them, and a
+  one-tap **paste** button (`ValueKey('pasteAccessCodeButton')`, `_pasteToken` via
+  `Clipboard.getData`) since access codes are copied from an invite and the OS
+  long-press paste menu is unreliable on web/mobile.
 - **Past-games summary** — a **"Past games (N)"** link
   (`ValueKey('pastGamesButton')`) opens a scrollable sheet of finished games with
   who won (Infinity Shard / elimination / draw). Active games stay in the main
@@ -181,8 +202,11 @@ scroll rather than overflow.
   printed effect text (full text lives in the zoom modal) for a cleaner board;
   cards without art still show effect descriptions in the info area
 - Badges: shield value, GUARD, MERC, faction abbreviation
-- **Affordable glow** — a bright BLUE glow + border on a market card you can buy
-  right now (affordable on your turn); a distinct action prompt from the gold
+- **Affordable / unused-action glow** — a bright BLUE glow + border on a market
+  card you can buy right now (affordable on your turn) OR on an in-play champion
+  that still has an **unused action** this turn (`championHasUnusedAction` in
+  `game_card_widget.dart` — a free play-effect activation and/or an un-exhausted
+  Exhaust ability still available); a distinct action prompt from the gold
   selection accent and the amber conditional glow.
 - **Conditional (synergy) glow** — a GOLD glow/border on a card whose
   `ConditionalEffect` predicate currently holds (the `conditionsMet` flag) **and**

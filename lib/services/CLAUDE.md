@@ -37,6 +37,8 @@ Map<String, CardModel>? relicCards, List<CardModel>? destinySupply})`
 - `destinyRow` / `destinyDeck` — the shared Destiny supply (face-up row + cascade
   draw pile); empty unless a `destinySupply` was injected
 - `removedFromGame` — banished/scrapped/mercenary cards
+- `ingeminexRow` — shared list of NEUTRAL `IngeminexEntity` bosses (ownerless HP
+  pools); empty unless a card spawns one. Round-tripped by `GameStateCodec`.
 - `currentPlayerIndex`, `turnNumber`, `isGameOver`, `winnerId`
 - `winType` — `String?`: HOW the game was won — `'mastery'` (Infinity Shard
   played at mastery 30+) or `'elimination'` (all opponents at 0 health), null
@@ -74,7 +76,24 @@ Map<String, CardModel>? relicCards, List<CardModel>? destinySupply})`
 | `recruitRelic(cardId)` | At Mastery 10, recruit ONE of the Character's two set-aside `relicOptions`; the other is banished and the chosen relic is shuffled into the draw pile. |
 | `conditionsSatisfied(card)` | True when a card's `ConditionalEffect` predicate currently holds for the active player. Pure read-only; drives the **conditional glow** (hand + market) in the UI. The networked board mirrors it client-side over the redacted state via `redacted_condition_evaluator.dart`. |
 
-**Effect resolution:** `_resolveEffects()` handles all 31 CardEffect subtypes (the full Engine Phase 2 vocabulary) via exhaustive switch. Scaling/conditional effects (`ScalingResourceEffect`, the `ConditionalEffect` wrapper, and the legacy `ConditionalPowerEffect`) read per-turn state from `PlayerState.cardsPlayedThisTurn` — a list of cards played this turn, appended in `playCard()` (and `fastPlayFromCenter()`) and cleared each turn. Deferred-selection effects (banish/destroy/return/recruit/fastPlay/scry/copy/tuck/reset) resolve to a no-op here and expose a public `GameService` method the UI/AI calls after the player selects a target.
+**Effect resolution:** `_resolveEffects()` handles all 37 CardEffect subtypes (the full Engine Phase 2/3 vocabulary) via exhaustive switch. Scaling/conditional effects (`ScalingResourceEffect`, the `ConditionalEffect` wrapper, and the legacy `ConditionalPowerEffect`) read per-turn state from `PlayerState.cardsPlayedThisTurn` — a list of cards played this turn, appended in `playCard()` (and `fastPlayFromCenter()`) and cleared each turn. Deferred-selection effects (banish/destroy/return/recruit/fastPlay/scry/copy/tuck/reset) resolve to a no-op here and expose a public `GameService` method the UI/AI calls after the player selects a target.
+
+**Owner combat model** (backlog §E): a direct `attackPlayer` is reduced by the
+target's `_playerDamageReduction` — the sum of the `shield` of every card in their
+HAND (a `CardModel.shieldEqualsMastery` card contributes the owner's mastery) PLUS
+every champion-granted `StaticModifierKind.shieldBuff` (which may be mastery-scaled
+via `StaticModifier.masteryThreshold`/`masteryAmount`) — floored at 0, applied
+BEFORE the damage lands (so `lastDamage` / the flash / `unblockedDamageThisTurn`
+all reflect the POST-reduction number). Champion **value = HEALTH**: destroying one
+needs `power >= _effectiveHealth` (printed shield + `StaticModifierKind.healthBuff`
++ any `shieldPerCardUnder` self-buff). `IgnoreShieldThisTurnEffect` on the ATTACKER
+now ignores the TARGET's per-hit reduction (not a champion instakill). Health heals
+are capped at the global `PlayerState.maxHealth` (50) by `PlayerState.heal()`.
+
+**Ingeminex neutral entities:** `spawnIngeminex(entity)` adds an `IngeminexEntity`
+to `ingeminexRow` and resolves its `appearanceEffects` against EVERY player;
+`attackIngeminex(entityId, amount)` accumulates damage, and the killing blow awards
+that player the entity's `rewardEffects`. See `lib/models/ingeminex_entity.dart`.
 
 **Win conditions:**
 - Elimination: all opponents health <= 0

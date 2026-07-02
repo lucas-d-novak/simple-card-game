@@ -119,34 +119,50 @@ types in [`lib/models/card_effect.dart`](../models/card_effect.dart) and the
   `tool/validate_card_db.dart` call the decoder so bad data surfaces.
 
 Supported `type` values: `gainGems`, `gainPower`, `gainMastery`, `gainHealth`,
-`drawCards`, `opponentLosesHealth`, `allPlayersLoseHealth` (`amount` — every
+`drawCards`, `mill` (`count` — mill the top N of YOUR OWN deck to discard),
+`opponentLosesHealth`, `opponentLosesMastery` (`amount` — every living opponent
+loses that much mastery, floored at 0; cannot be shielded/guarded),
+`allPlayersLoseHealth` (`amount` — every
 player INCLUDING the current one loses health, bypassing shield/guard),
 `banishCard` (`source`:
-`hand`/`discard`/`handOrDiscard`), `scrapFromCenterRow`, `selfBanish` ("then,
+`hand`/`discard`/`handOrDiscard`/`playedThisTurn`), `scrapFromCenterRow`,
+`selfBanish` ("then,
 banish this" — the source card removes itself; list LAST in the effect array),
 `resetChampion` (deferred-selection: un-exhaust a champion you control via
 `GameService.resetChampion`), `destroyChampion`
 (`all`: bool — single target vs. all enemy champions), `returnFromDiscard`
 (`filter`: `any`/`champion`/`mercenary`/`faction`, plus `faction` when
-filtering by faction), `conditionalPower` (`condition`:
+filtering by faction; `self`: return THIS card inline; `all`: return every match
+inline), `returnFromDiscardToDeckTop` (deferred: return a discard card to the TOP
+of your deck — dash), `recruitToHand` (on-recruit-to-hand marker, optional
+`character` gate — breaker / nexus_datic_hunter), `returnSelfWhenChampionPlayed`
+(passive while-in-discard: playing a Champion returns this to hand — praetorian_01),
+`redirectNextRecruit` (`destination`: `intoPlay`/`toHand`; optional
+`faction`/`cardType` — turn-scoped single-use redirect of the next matching
+recruit — numeri_drones / anomaly_cleric), `conditionalPower` (`condition`:
 `perChampionControlled`/`perAllyPlayedThisTurn`/`perFactionPlayedThisTurn`/`perCardInDiscard`),
 `scalingResource` (`resource`: `power`/`gems`/`health`/`mastery`; `condition`:
 the four `conditionalPower` conditions plus `perFactionCardInDiscard`/
 `perFactionChampionControlled`/`perFactionCardPlayedThisTurn`/
 `perAllyWithShieldPlayedThisTurn`; optional `perN` (default 1) and `faction`),
 `conditional` (`condition`: a `GameCondition` object with a `kind` — one of the
-**18 `GameConditionKind` values**, incl. `masteryAtLeast`, `healthAtLeast`
+**19 `GameConditionKind` values**, incl. `masteryAtLeast`, `healthAtLeast`
 (threshold = your current health), `highestMasteryAmongPlayers` (strict mastery
 lead over all others), `unblockedDamageAtLeast`, `factionAllyPlayedOrInHand`,
-`factionCardInDiscard`, `oddCostCardsPlayed`/`evenCostCardsPlayed`, `isCharacter`,
+`factionCardInDiscard`, `oddCostCardsPlayed`/`evenCostCardsPlayed`,
+`sameNamePlayedThisTurn` (another copy of this card played this turn),
+`isCharacter`,
 … — plus optional
 `threshold`/`faction`/`factions`/`parity`/`cardType`/`maxCost`/`character`;
 `then`: effects resolved only when the condition holds. The full enum is the
 source of truth — see `GameConditionKind` in `card_effect.dart` and the enum in
 [`assets/card_db/schema.json`](../../assets/card_db/schema.json)),
-`addStaticModifier` (`kind`: `shieldBuff`/`cardCostReduction`/`cannotBeAttacked`/
-`recruitToTopOfDeck`; optional `amount`/`faction`/`cardType`; adds a persistent
-board-wide [StaticModifier] to the player — rest-of-game lifetime),
+`addStaticModifier` (`kind`: `shieldBuff`/`healthBuff` (champions need +N power to
+destroy — one_mind_one_army)/`cardCostReduction`/`cannotBeAttacked`/
+`recruitToTopOfDeck`/`shieldPerCardUnder` (self-scoped, scales with under-cards —
+carmine_eclipse); optional `amount`/`faction`/`cardType` and
+`masteryThreshold`/`masteryAmount` for a mastery-scaled buff — praetorian_02; adds
+a persistent board-wide [StaticModifier] to the player — rest-of-game lifetime),
 `opponentDraws`/`opponentDiscards` (`count`: each OTHER player draws/discards N),
 `copyPlayedCard` (deferred-selection: `filter` `any`/`nonChampion`; re-resolves a
 played card's effects via `GameService.copyPlayedCard`; copy-cards and

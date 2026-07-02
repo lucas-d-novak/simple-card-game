@@ -9,7 +9,8 @@ Immutable data classes and enums for the Fragments of Boundlessness card game.
 - `id`, `name`, `cost`, `playEffects` — core identity
 - `faction` (Faction enum) — which of the 4 factions (or none)
 - `cardType` (CardType enum) — regular, champion, or mercenary
-- `shield` (int) — champion HP, power needed to destroy
+- `shield` (int) — a champion's base HEALTH (power needed to destroy, via `GameService._effectiveHealth`); on a card in HAND it contributes to the owner's per-hit damage reduction (owner combat model)
+- `shieldEqualsMastery` (bool, default false) — dynamic shield: the card's shield equals the owner's CURRENT mastery instead of a fixed value (Datic Robes)
 - `hasGuard` (bool) — must destroy before attacking player
 - `allyAbility` (List\<CardEffect\>) — triggers when same-faction card in play
 - `masteryThreshold` / `masteryBonus` — bonus effects at mastery level
@@ -20,15 +21,16 @@ Immutable data classes and enums for the Fragments of Boundlessness card game.
 All fields have defaults for backward compatibility with legacy DeckService.
 
 ### card_effect.dart
-`CardEffect` — sealed class hierarchy, **31 subtypes** (the full Engine Phase 2/3 vocabulary; the `_resolveEffects` switch in `GameService` is exhaustive over them):
+`CardEffect` — sealed class hierarchy, **37 subtypes** (the full Engine Phase 2/3 vocabulary; the `_resolveEffects` switch in `GameService` is exhaustive over them):
 - **Resource effects:** `GainGemsEffect`, `GainPowerEffect`, `GainMasteryEffect`, `GainHealthEffect`, `GainMoneyEffect` (legacy)
-- **Draw:** `DrawCardsEffect`
-- **Opponent interaction:** `OpponentLosesHealthEffect`, `AllPlayersLoseHealthEffect`, `OpponentDrawsEffect`, `OpponentDiscardsEffect`
-- **Deck thinning:** `BanishCardEffect` (with `BanishSource` enum: hand/discard/handOrDiscard), `ScrapFromCenterRowEffect`, `SelfBanishEffect`
+- **Draw / mill:** `DrawCardsEffect`, `MillEffect` (mill top N of your own deck to discard)
+- **Opponent interaction:** `OpponentLosesHealthEffect`, `OpponentLosesMasteryEffect` (raw mastery subtraction, floored at 0), `AllPlayersLoseHealthEffect`, `OpponentDrawsEffect`, `OpponentDiscardsEffect`
+- **Deck thinning:** `BanishCardEffect` (with `BanishSource` enum: hand/discard/handOrDiscard/playedThisTurn), `ScrapFromCenterRowEffect`, `SelfBanishEffect`
 - **Champion control:** `DestroyChampionEffect` (`all` flag: single chosen target vs. all enemy champions; no power cost), `ResetChampionEffect`
-- **Discard recursion:** `ReturnFromDiscardEffect` (with `ReturnFilter` enum: any/champion/mercenary/faction, plus an optional `Faction`) — return a discard card to hand
+- **Discard recursion:** `ReturnFromDiscardEffect` (with `ReturnFilter` enum: any/champion/mercenary/faction + optional `Faction`; `self` returns THIS card inline, `all` returns every match inline), `ReturnFromDiscardToDeckTopEffect` (return to top of deck), `ReturnSelfWhenChampionPlayedEffect` (passive while-in-discard: playing a Champion returns this to hand — praetorian_01)
+- **Recruit routing:** `RecruitToHandEffect` (on-recruit-to-hand, optional Character gate), `RedirectNextRecruitEffect` (turn-scoped single-use redirect of the next matching recruit to play or hand — numeri_drones / anomaly_cleric)
 - **Center-row recursion:** `RecruitFromCenterEffect`, `FastPlayFromCenterEffect`, `CenterDeckScryEffect`, `ScryEffect`
-- **Board / static:** `TreatFactionAsEffect`, `IgnoreShieldThisTurnEffect`, `AddStaticModifierEffect`, `TuckUnderChampionEffect`, `CopyUnderCardsEffect`, `CopyPlayedCardEffect`
+- **Board / static:** `TreatFactionAsEffect`, `IgnoreShieldThisTurnEffect` (attacker ignores the target's per-hit damage reduction), `AddStaticModifierEffect` (carries a `StaticModifier` of `StaticModifierKind`: `shieldBuff` / `healthBuff` / `cardCostReduction` / `cannotBeAttacked` / `recruitToTopOfDeck` / `shieldPerCardUnder`; may be mastery-scaled via `masteryThreshold`/`masteryAmount`), `TuckUnderChampionEffect`, `CopyUnderCardsEffect`, `CopyPlayedCardEffect`
 - **Complex:** `ChooseOneEffect` (player picks from effect groups), `ConditionalEffect` (board-state predicate wrapping an effect list), `ConditionalPowerEffect` (scales POWER with game state via `PowerCondition`: `perChampionControlled`, `perAllyPlayedThisTurn`, `perFactionPlayedThisTurn`, `perCardInDiscard`), `ScalingResourceEffect` (generalises the above to any resource pool), `InfinityShardEffect` (scales with mastery, instant win at 30+)
 
 **Activated abilities (Exhaust) — implemented as value types, not effects:**
@@ -62,7 +64,15 @@ Used for ally ability matching and visual theming (colors, art patterns).
 
 ### player_state.dart
 `PlayerState` — mutable per-player state:
-- `health` (50), `mastery` (0), `gemPool`, `powerPool`
+- `health` (50), `mastery` (0), `gemPool`, `powerPool`. `maxHealth` is a global
+  **50-HP cap**; `heal(amount)` clamps to it (over-heal is wasted)
+- `staticModifiers` (List\<StaticModifier\>) — persistent board-wide buffs/
+  protections added by `AddStaticModifierEffect` (rest-of-game lifetime); read by
+  the combat / acquisition methods (`_playerDamageReduction`, `_effectiveHealth`,
+  `buyCard`, `attackPlayer`)
+- `pendingRecruitRedirect` (RecruitRedirect?) — a turn-scoped, single-use redirect
+  installed by `RedirectNextRecruitEffect`; consumed by the next matching recruit,
+  cleared at end of turn
 - Card zones: `hand`, `drawPile`, `discardPile`, `playedThisTurn`, `championsInPlay`
 - `activatedChampions` — champion ids that used their free play-effect activation this turn
 - `exhaustedChampions` — champion ids tapped this turn by their Exhaust-gated `activatedAbility` (independent of `activatedChampions`); both clear in `resetTurnResources()`
