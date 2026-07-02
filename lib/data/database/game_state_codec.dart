@@ -282,6 +282,8 @@ class GameStateCodec {
       if (m.faction != null) 'faction': m.faction!.name,
       if (m.cardType != null) 'cardType': m.cardType!.name,
       if (m.sourceChampionId != null) 'sourceChampionId': m.sourceChampionId,
+      if (m.masteryThreshold != null) 'masteryThreshold': m.masteryThreshold,
+      if (m.masteryAmount != 0) 'masteryAmount': m.masteryAmount,
     };
   }
 
@@ -301,6 +303,8 @@ class GameStateCodec {
           ? cardTypeFromName(json['cardType'] as String?)
           : null,
       sourceChampionId: json['sourceChampionId'] as String?,
+      masteryThreshold: json['masteryThreshold'] as int?,
+      masteryAmount: (json['masteryAmount'] as int?) ?? 0,
     );
   }
 }

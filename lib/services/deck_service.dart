@@ -244,6 +244,7 @@ class DeckService {
         case ReturnFromDiscardToDeckTopEffect():
         case MillEffect():
         case RecruitToHandEffect():
+        case ReturnSelfWhenChampionPlayedEffect():
         case ChooseOneEffect():
         case ConditionalPowerEffect():
         case ScalingResourceEffect():

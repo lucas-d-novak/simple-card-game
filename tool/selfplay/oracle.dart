@@ -440,6 +440,7 @@ class Oracle {
         case ReturnFromDiscardToDeckTopEffect():
         case MillEffect():
         case RecruitToHandEffect():
+        case ReturnSelfWhenChampionPlayedEffect():
         case RecruitFromCenterEffect():
         case FastPlayFromCenterEffect():
         case ScryEffect():

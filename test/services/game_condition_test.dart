@@ -729,6 +729,7 @@ void main() {
     test('health resource adds to the controlling player\'s health', () {
       final game = GameService(playerCount: 2, random: Random(7));
       final player = game.currentPlayer;
+      player.health = 40; // below the 50 cap so the +2 heal registers
       final before = player.health;
       // 2 cards in discard, gain 1 health per discard card.
       player.discardPile.add(_card(id: 'd1'));

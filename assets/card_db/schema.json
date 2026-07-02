@@ -64,6 +64,10 @@
       "minimum": 0,
       "description": "Dual meaning by zone (owner combat model, backlog E). ON A CHAMPION IN PLAY this is its HEALTH: an attack destroys the champion only when its power is >= this value (the one-shot lethal gate; no chip/accumulating damage). WHILE A CARD IS IN HAND this same value is a passive SHIELD that reduces each direct attack on YOU (the player) by its amount; all in-hand shields sum, are not consumed, and floor incoming damage at 0. A champion in play does NOT contribute its own value to player damage reduction (only an explicit shieldBuff it grants does). 0 for cards with neither role. Historically named 'shield'."
     },
+    "shieldEqualsMastery": {
+      "type": "boolean",
+      "description": "Optional (default false). When true, this card's IN-HAND shield is DYNAMIC and equals the owner's CURRENT mastery instead of the static 'shield' value (datic_robes: 'this has shield equal to your mastery'). Affects only player damage reduction (in hand), never a champion's kill threshold."
+    },
     "hasGuard": {
       "type": "boolean",
       "description": "Champions only. If true, must be destroyed before the owner can be attacked directly."
@@ -187,6 +191,7 @@
             "returnFromDiscardToDeckTop",
             "mill",
             "recruitToHand",
+            "returnSelfWhenChampionPlayed",
             "chooseOne",
             "conditionalPower",
             "scalingResource",
@@ -256,8 +261,12 @@
         },
         "kind": {
           "type": "string",
-          "enum": ["shieldBuff", "cardCostReduction", "cannotBeAttacked", "recruitToTopOfDeck", "shieldPerCardUnder"],
-          "description": "For addStaticModifier: which persistent board-wide modifier to add. shieldBuff/cardCostReduction use 'amount'; both plus recruitToTopOfDeck may use optional 'faction'/'cardType' filters; cannotBeAttacked ignores amount/filters; shieldPerCardUnder is SELF-scoped to the source champion (carmine_eclipse), buffing it by 'amount' per card tucked under it."
+          "enum": ["shieldBuff", "healthBuff", "cardCostReduction", "cannotBeAttacked", "recruitToTopOfDeck", "shieldPerCardUnder"],
+          "description": "For addStaticModifier: which persistent board-wide modifier to add. shieldBuff (a champion-sourced shieldBuff adds to the OWNER's per-hit damage reduction while that champion is in play, praetorian_02) and healthBuff (your champions have +amount HEALTH — a higher kill threshold, one_mind_one_army) use 'amount'; both, plus cardCostReduction/recruitToTopOfDeck, may use optional 'faction'/'cardType' filters; cannotBeAttacked ignores amount/filters; shieldPerCardUnder is SELF-scoped to the source champion (carmine_eclipse), buffing it by 'amount' per card tucked under it. shieldBuff/healthBuff may be mastery-scaled via 'masteryThreshold'/'masteryAmount'."
+        },
+        "masteryAmount": {
+          "type": "integer",
+          "description": "For addStaticModifier: the magnitude used when the owner's mastery is at/above the effect's 'masteryThreshold' (praetorian_02: amount 4, masteryThreshold 20, masteryAmount 8). Ignored when 'masteryThreshold' is absent."
         },
         "cardType": {
           "type": "string",

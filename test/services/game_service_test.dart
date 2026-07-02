@@ -1255,10 +1255,11 @@ void main() {
       );
       player.hand.add(card);
 
+      player.health = 40; // below the 50 cap so the +3 heal registers
       game.playCard('order_card');
 
       expect(player.gemPool, 1); // play effect
-      expect(player.health, 53); // ally ability: +3 health
+      expect(player.health, 43); // ally ability: +3 health
     });
 
     test('countsAsAllFactions triggers ally ability for any faction', () {

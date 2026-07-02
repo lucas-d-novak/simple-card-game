@@ -376,6 +376,19 @@ final class RecruitToHandEffect extends CardEffect {
           'recruit it';
 }
 
+/// A PASSIVE, while-in-discard trigger: "when you play a Champion, return this
+/// from your discard pile to your hand" (praetorian_01). This effect is INERT
+/// during normal resolution (a no-op in `GameService._resolveEffects`) — it is a
+/// marker that `GameService.playCard` scans the discard pile for after a champion
+/// is played, moving any card carrying it back to the owner's hand.
+final class ReturnSelfWhenChampionPlayedEffect extends CardEffect {
+  const ReturnSelfWhenChampionPlayedEffect();
+
+  @override
+  String get description =>
+      'When you play a Champion, return this from your discard pile to your hand';
+}
+
 // ---------------------------------------------------------------------------
 // Deferred-selection action effects (Engine Phase 2, wave 3)
 //
@@ -642,9 +655,19 @@ final class IgnoreShieldThisTurnEffect extends CardEffect {
 /// The kind of persistent board-wide modifier a [StaticModifier] applies.
 enum StaticModifierKind {
   /// Your champions (optionally faction/type-filtered) have +amount shield —
-  /// they require that much extra power to destroy (one_mind_one_army,
-  /// phasic_technology). Consulted in `attackChampion`.
+  /// under the owner combat model (backlog §E) a CHAMPION-sourced shieldBuff is a
+  /// standing buff to the PLAYER's per-hit damage reduction while that champion is
+  /// in play (praetorian_02 "you have 4 shield"). Consulted in
+  /// `_playerDamageReduction` (NOT in champion kill thresholds). May be
+  /// mastery-scaled via [StaticModifier.masteryThreshold]/[masteryAmount].
   shieldBuff,
+
+  /// Your champions (optionally faction/type-filtered) have +amount HEALTH —
+  /// they require that much extra power to destroy (one_mind_one_army "your
+  /// Champions have +2 health"). Consulted in `_effectiveHealth`. Distinct from
+  /// [shieldBuff]: this raises the champion KILL threshold, it does NOT reduce
+  /// player damage.
+  healthBuff,
 
   /// Cards you acquire from the center row cost `amount` less gems, to a
   /// minimum of 1 (aedifex "Champions cost 3 less"). Optional faction/type
@@ -689,6 +712,8 @@ class StaticModifier {
     this.faction,
     this.cardType,
     this.sourceChampionId,
+    this.masteryThreshold,
+    this.masteryAmount = 0,
   });
 
   final StaticModifierKind kind;
@@ -697,6 +722,23 @@ class StaticModifier {
   /// [StaticModifierKind.shieldPerCardUnder]). Ignored by
   /// [StaticModifierKind.cannotBeAttacked] and [StaticModifierKind.recruitToTopOfDeck].
   final int amount;
+
+  /// Optional mastery tier for a mastery-scaled modifier. When non-null and the
+  /// owner's mastery is at/above this threshold, [masteryAmount] is used instead
+  /// of [amount] (praetorian_02: 4 shield normally, 8 at mastery >= 20). Null =
+  /// the amount never scales. See [amountFor].
+  final int? masteryThreshold;
+
+  /// The magnitude used when the owner's mastery is at/above [masteryThreshold].
+  /// Ignored when [masteryThreshold] is null.
+  final int masteryAmount;
+
+  /// The effective magnitude for an owner at [mastery]: [masteryAmount] when a
+  /// [masteryThreshold] is set and reached, otherwise [amount].
+  int amountFor(int mastery) =>
+      (masteryThreshold != null && mastery >= masteryThreshold!)
+          ? masteryAmount
+          : amount;
 
   /// Optional faction filter — the modifier only applies to cards/champions of
   /// this faction. Null = applies regardless of faction.
@@ -719,6 +761,8 @@ class StaticModifier {
     switch (kind) {
       case StaticModifierKind.shieldBuff:
         return 'Your $f${t}champions have +$amount shield';
+      case StaticModifierKind.healthBuff:
+        return 'Your $f${t}champions have +$amount health';
       case StaticModifierKind.cardCostReduction:
         return 'Your $f${t}cards cost $amount less';
       case StaticModifierKind.cannotBeAttacked:

@@ -23,6 +23,13 @@ class CardModel {
   /// the champion. (Named `shield` for historical reasons.)
   final int shield;
 
+  /// When true, this card's IN-HAND shield is DYNAMIC and equals the owner's
+  /// CURRENT mastery, rather than the static [shield] value (datic_robes: "this
+  /// has shield equal to your mastery"). Consulted only by the player
+  /// damage-reduction path (GameService._playerDamageReduction) — it has no
+  /// effect on a champion's kill threshold. Defaults to false.
+  final bool shieldEqualsMastery;
+
   /// Whether this champion has Guard. While a player controls ANY guard
   /// champion, opponents cannot attack that player directly — every guard
   /// champion must be destroyed first. A champion is an OPTIONAL attack target
@@ -76,6 +83,7 @@ class CardModel {
     this.faction = Faction.none,
     this.cardType = CardType.regular,
     this.shield = 0,
+    this.shieldEqualsMastery = false,
     this.hasGuard = false,
     this.allyAbility = const <CardEffect>[],
     this.masteryThreshold,

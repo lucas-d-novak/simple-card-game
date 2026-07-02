@@ -171,6 +171,8 @@ CardEffect decodeEffect(Map<String, dynamic> json) {
       return RecruitToHandEffect(
         character: _character(json['character'] as String?),
       );
+    case 'returnSelfWhenChampionPlayed':
+      return const ReturnSelfWhenChampionPlayedEffect();
     case 'conditionalPower':
       return ConditionalPowerEffect(_powerCondition(json['condition'] as String?));
     case 'scalingResource':
@@ -208,6 +210,9 @@ CardEffect decodeEffect(Map<String, dynamic> json) {
             : null,
         cardType: _cardType(json['cardType'] as String?),
         sourceChampionId: json['sourceChampionId'] as String?,
+        masteryThreshold: json['masteryThreshold'] as int?,
+        masteryAmount:
+            json.containsKey('masteryAmount') ? _int(json, 'masteryAmount') : 0,
       ));
     case 'opponentDraws':
       return OpponentDrawsEffect(
@@ -331,6 +336,8 @@ Map<String, dynamic> encodeEffect(CardEffect effect) {
         'type': 'recruitToHand',
         if (effect.character != null) 'character': effect.character!.name,
       };
+    case ReturnSelfWhenChampionPlayedEffect():
+      return {'type': 'returnSelfWhenChampionPlayed'};
     case ConditionalPowerEffect():
       return {'type': 'conditionalPower', 'condition': effect.condition.name};
     case ScalingResourceEffect():
@@ -366,6 +373,9 @@ Map<String, dynamic> encodeEffect(CardEffect effect) {
         if (m.cardType != null) 'cardType': m.cardType!.name,
         if (m.sourceChampionId != null)
           'sourceChampionId': m.sourceChampionId,
+        if (m.masteryThreshold != null)
+          'masteryThreshold': m.masteryThreshold,
+        if (m.masteryAmount != 0) 'masteryAmount': m.masteryAmount,
       };
     case OpponentDrawsEffect():
       return {

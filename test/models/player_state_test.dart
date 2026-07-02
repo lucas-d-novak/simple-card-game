@@ -40,9 +40,10 @@ void main() {
       expect(player.mastery, 5);
     });
 
-    test('health can go above 50 via heal', () {
-      player.heal(10);
-      expect(player.health, 60);
+    test('health is capped at maxHealth (50) via heal', () {
+      player.takeDamage(5); // 45
+      player.heal(20); // would be 65 → clamped to the 50 cap
+      expect(player.health, 50);
     });
 
     test('takeDamage reduces health', () {

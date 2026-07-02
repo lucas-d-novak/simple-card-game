@@ -801,6 +801,12 @@ class GameService {
         // with that champion's under-card count.
         health += mod.amount * owner.cardsUnderCount(champion.id);
       }
+      // one_mind_one_army: a healthBuff raises the destroy threshold of the
+      // owner's champions (optionally faction/type-filtered) by `amount`.
+      if (mod.kind == StaticModifierKind.healthBuff &&
+          _modifierApplies(mod, champion)) {
+        health += mod.amountFor(owner.mastery);
+      }
     }
     return health;
   }
@@ -820,13 +826,17 @@ class GameService {
   int _playerDamageReduction(PlayerState player) {
     var reduction = 0;
     for (final card in player.hand) {
-      reduction += card.shield;
+      // datic_robes: a card whose in-hand shield is DYNAMIC contributes the
+      // player's CURRENT mastery instead of its static shield value.
+      reduction += card.shieldEqualsMastery ? player.mastery : card.shield;
     }
     for (final mod in player.staticModifiers) {
       if (mod.kind == StaticModifierKind.shieldBuff &&
           mod.sourceChampionId != null &&
           player.championsInPlay.any((c) => c.id == mod.sourceChampionId)) {
-        reduction += mod.amount;
+        // praetorian_02: a champion-sourced shieldBuff may be mastery-scaled
+        // (4 normally, 8 at mastery >= 20).
+        reduction += mod.amountFor(player.mastery);
       }
     }
     return reduction;
@@ -939,6 +949,25 @@ class GameService {
       }
     }
     return false;
+  }
+
+  /// praetorian_01 trigger: after [player] plays a Champion, move every card in
+  /// their discard pile that carries a [ReturnSelfWhenChampionPlayedEffect] back
+  /// to their hand. A passive, while-in-discard trigger; no effects resolve on
+  /// the returned card (it goes to hand to be replayed later). A no-op when no
+  /// such card is in the discard pile.
+  void _triggerChampionPlayReturns(PlayerState player) {
+    final returning = <CardModel>[];
+    player.discardPile.removeWhere((c) {
+      final match =
+          c.playEffects.any((e) => e is ReturnSelfWhenChampionPlayedEffect);
+      if (match) returning.add(c);
+      return match;
+    });
+    for (final c in returning) {
+      player.hand.add(c);
+      _log('returned ${c.name} to hand', playerId: player.id, cardId: c.id);
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -1193,6 +1222,9 @@ class GameService {
     // Step 13a: champions go to championsInPlay, not playedThisTurn
     if (card.cardType == CardType.champion) {
       player.championsInPlay.add(card);
+      // praetorian_01: playing a Champion returns any discard-pile card carrying
+      // the on-champion-play return trigger back to the owner's hand.
+      _triggerChampionPlayReturns(player);
     } else {
       player.playedThisTurn.add(card);
     }
@@ -2098,6 +2130,11 @@ class GameService {
           // On-RECRUIT trigger, not a play effect — a no-op here. buyCard /
           // recruitFromCenter consult it to route the recruited card to hand.
           break;
+        case ReturnSelfWhenChampionPlayedEffect():
+          // Passive while-in-discard trigger (praetorian_01), not a play effect —
+          // a no-op here. playCard scans the discard pile for it after a champion
+          // is played and returns the carrier to the owner's hand.
+          break;
         case BanishCardEffect():
           // Requires card selection — auto-banish not possible without target.
           // The player should call banishCard() separately after this effect.
@@ -2183,6 +2220,8 @@ class GameService {
                   faction: effect.modifier.faction,
                   cardType: effect.modifier.cardType,
                   sourceChampionId: sourceCard.id,
+                  masteryThreshold: effect.modifier.masteryThreshold,
+                  masteryAmount: effect.modifier.masteryAmount,
                 )
               : effect.modifier;
           final alreadyApplied = stamped.sourceChampionId != null &&
@@ -2191,7 +2230,9 @@ class GameService {
                   m.kind == stamped.kind &&
                   m.amount == stamped.amount &&
                   m.faction == stamped.faction &&
-                  m.cardType == stamped.cardType);
+                  m.cardType == stamped.cardType &&
+                  m.masteryThreshold == stamped.masteryThreshold &&
+                  m.masteryAmount == stamped.masteryAmount);
           if (!alreadyApplied) {
             player.staticModifiers.add(stamped);
           }

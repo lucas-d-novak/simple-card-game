@@ -141,6 +141,7 @@
     },
     {
       "id": "korvus_legionnaire",
+      "shield": 2,
       "name": "Korvus Legionnaire",
       "faction": "homodeus",
       "copies": 3,
@@ -432,6 +433,7 @@
     },
     {
       "id": "command_seer",
+      "shield": 5,
       "name": "Command Seer",
       "faction": "order",
       "copies": 2,
@@ -452,6 +454,7 @@
     },
     {
       "id": "cryptofist_monk",
+      "shield": 8,
       "name": "Cryptofist Monk",
       "faction": "order",
       "copies": 2,
@@ -817,6 +820,7 @@
     },
     {
       "id": "thorn_zealot",
+      "shield": 3,
       "name": "Thorn Zealot",
       "faction": "undergrowth",
       "copies": 2,
@@ -1509,6 +1513,7 @@
     },
     {
       "id": "crimson_operative",
+      "shield": 3,
       "ksOnly": true,
       "name": "Crimson Operative",
       "faction": "none",
@@ -1577,6 +1582,7 @@
     },
     {
       "id": "concussio_and_mirus",
+      "shield": 2,
       "ksOnly": true,
       "name": "Concussio and Mirus",
       "faction": "homodeus",
@@ -1639,6 +1645,7 @@
     },
     {
       "id": "mainframe_abbot",
+      "shield": 3,
       "name": "Mainframe Abbot",
       "faction": "order",
       "copies": 2,
@@ -1944,12 +1951,15 @@
         {
           "type": "gainPower",
           "amount": 8
+        },
+        {
+          "type": "returnSelfWhenChampionPlayed"
         }
       ],
       "art": "praetorian_01.jpg",
       "rawText": "Homodeus Relic - Ally. When you play a Champion, return this from your discard pile to your hand. Gain 8 (power). Mastery 20: Gain 12 instead.",
       "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 68: name='Praetorian-01', faction='Homodeus', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Relic (Ally). Base gain 8 power encoded; masteryThreshold 20 set. UNMODELED: 'When you play a Champion, return this from discard to hand' (trigger) and mastery-20 'Gain 12 instead' (replacement). verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false.",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 68: name='Praetorian-01', faction='Homodeus', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Relic (Ally). Gain 8 power (mastery-20 replace: 12) + passive on-champion-play return-from-discard trigger, both encoded (owner-authoritative 2026-07-01). | EFFECTS PASS B: card image re-read and transcribed.",
       "set": "rotf",
       "cardType": "regular",
       "cost": 10,
@@ -1970,33 +1980,29 @@
       "copies": 1,
       "playEffects": [
         {
-          "type": "gainPower",
-          "amount": 3
+          "type": "addStaticModifier",
+          "kind": "shieldBuff",
+          "amount": 4,
+          "masteryThreshold": 20,
+          "masteryAmount": 8
         }
       ],
       "art": "praetorian_02.jpg",
-      "rawText": "Homodeus Relic - Champion. You have 3 (power). Mastery 20: You have 6 instead.",
+      "rawText": "Homodeus Relic - Champion. You have 4 (shield). Mastery 20: You have 8 instead.",
       "verified": true,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 69: name='Praetorian-02', faction='Homodeus', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Relic Champion shield 9. UNMODELED: passive 'You have 3 power' (ongoing power grant, not an on-play gain) and mastery-20 replacement. verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false.",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 69: name='Praetorian-02', faction='Homodeus', amount=1. | art added from TTS spritesheet crop. | Relic Champion, HEALTH (shield field) 9. Grants YOU a standing shield buff while in play: 4 shield, 8 at mastery >= 20 (champion-sourced shieldBuff, mastery-scaled) — owner-authoritative 2026-07-01, replaces the prior wrong gainPower encoding. | EFFECTS PASS B: card image re-read and transcribed.",
       "set": "rotf",
       "cardType": "champion",
       "cost": 10,
       "shield": 9,
-      "masteryThreshold": 20,
-      "chapter": 2,
-      "masteryBonus": [
-        {
-          "type": "gainPower",
-          "amount": 6
-        }
-      ],
-      "masteryReplaces": true
+      "chapter": 2
     },
     {
       "id": "datic_robes",
       "name": "Datic Robes",
       "faction": "order",
       "copies": 1,
+      "shieldEqualsMastery": true,
       "playEffects": [
         {
           "type": "drawCards",
@@ -2006,7 +2012,7 @@
       "art": "datic_robes.jpg",
       "rawText": "Order Relic - Ally. This has (shield) equal to your (mastery). Draw a card. Mastery 20: Draw two cards instead.",
       "verified": false,
-      "notes": "Note: 'datic' kept verbatim from BGG source (possible lowercase/typo, left as-is). set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 70: name='Datic Robes', faction='Order', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Relic (Ally). Base draw 1 encoded; masteryThreshold 20 set. UNMODELED: variable shield ('shield equal to your mastery') and mastery-20 'Draw two cards instead' (replacement). verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false.",
+      "notes": "Note: 'datic' kept verbatim from BGG source (possible lowercase/typo, left as-is). set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 70: name='Datic Robes', faction='Order', amount=1. | art added from TTS spritesheet crop. | Relic (Ally). Draw 1 (mastery-20 replace: 2). Dynamic in-hand shield = your current mastery, via shieldEqualsMastery flag (owner-authoritative 2026-07-01). | EFFECTS PASS B: card image re-read and transcribed.",
       "set": "rotf",
       "cardType": "regular",
       "cost": 10,
@@ -2347,6 +2353,7 @@
     },
     {
       "id": "breaker",
+      "shield": 4,
       "name": "Breaker",
       "faction": "none",
       "copies": 1,
@@ -2371,6 +2378,7 @@
     },
     {
       "id": "brute",
+      "shield": 2,
       "name": "Brute",
       "faction": "none",
       "copies": 2,
@@ -2421,6 +2429,7 @@
     },
     {
       "id": "dash",
+      "shield": 2,
       "name": "Dash",
       "faction": "none",
       "copies": 2,
@@ -2446,6 +2455,7 @@
     },
     {
       "id": "lucky",
+      "shield": 2,
       "name": "Lucky",
       "faction": "none",
       "copies": 2,
@@ -2472,6 +2482,7 @@
     },
     {
       "id": "red_fortune",
+      "shield": 2,
       "name": "Red Fortune",
       "faction": "none",
       "copies": 1,
@@ -2669,6 +2680,7 @@
     },
     {
       "id": "keeper_of_datic_vessels",
+      "shield": 2,
       "name": "Keeper of Datic Vessels",
       "faction": "order",
       "copies": 1,
@@ -3506,6 +3518,7 @@
     },
     {
       "id": "torian_commandos",
+      "shield": 4,
       "name": "Torian Commandos",
       "faction": "homodeus",
       "copies": 3,
@@ -3952,6 +3965,7 @@
     },
     {
       "id": "subversion_elders",
+      "shield": 4,
       "name": "Subversion Elders",
       "faction": "order",
       "copies": 1,
@@ -3973,6 +3987,7 @@
     },
     {
       "id": "querry_monk",
+      "shield": 3,
       "name": "Querry Monk",
       "faction": "order",
       "copies": 1,
@@ -4128,15 +4143,15 @@
       "playEffects": [
         {
           "type": "addStaticModifier",
-          "kind": "shieldBuff",
+          "kind": "healthBuff",
           "amount": 2,
           "cardType": "champion"
         }
       ],
       "art": "one_mind_one_army.jpg",
-      "rawText": "One Mind, One Army\nCost: 5\nYour Champions have +[shield]2 (+2 shield).",
+      "rawText": "One Mind, One Army\nCost: 5\nYour Champions have +2 (health).",
       "verified": true,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 174: name='One Mind, One Army', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/one_mind_one_army.jpg; conf=high",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 174: name='One Mind, One Army', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | Owner-authoritative 2026-07-01: your Champions have +2 HEALTH (not shields) — re-encoded from the now-inert shieldBuff to a champion healthBuff (raises destroy threshold via _effectiveHealth). | [hunt] src=Local printed card art assets/cards/one_mind_one_army.jpg; conf=high",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,

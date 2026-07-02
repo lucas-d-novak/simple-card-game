@@ -243,7 +243,35 @@ void main() {
   });
 
   group('IgnoreShieldThisTurnEffect', () {
-    test('low-power attack destroys a high-shield champion when set', () {
+    test('ignores the target player\'s in-hand shield reduction on a direct attack',
+        () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final attacker = game.currentPlayer;
+      final target = game.players[1];
+
+      // A shielded ally in the target's HAND normally reduces incoming damage.
+      target.hand.add(const CardModel(
+        id: 'guard_ally',
+        name: 'Guard Ally',
+        cost: 0,
+        playEffects: [],
+        cardType: CardType.regular,
+        shield: 3,
+      ));
+      final before = target.health;
+      attacker.powerPool = 5;
+      attacker.ignoresShieldThisTurn = true;
+
+      game.attackPlayer('p1', 5);
+
+      // With the flag, the +3 in-hand shield is IGNORED → the full 5 lands.
+      expect(target.health, before - 5);
+    });
+
+    test('does NOT let you destroy a champion without lethal power (health model)',
+        () {
+      // Under the combat model a champion's value is HEALTH; ignoreShield no
+      // longer zeroes it, so you still need power >= health to destroy it.
       final game = GameService(playerCount: 2, random: Random(7));
       final attacker = game.currentPlayer;
       final target = game.players[1];
@@ -254,19 +282,17 @@ void main() {
         cost: 0,
         playEffects: [],
         cardType: CardType.champion,
-        shield: 6,
+        shield: 6, // = HEALTH
       );
       target.championsInPlay.add(champion);
 
       attacker.ignoresShieldThisTurn = true;
-      attacker.powerPool = 0; // even zero power is enough
+      attacker.powerPool = 0;
 
       final result = game.attackChampion('tanky', 'p1');
 
-      expect(result, true);
-      expect(attacker.powerPool, 0); // shield treated as 0, nothing deducted
-      expect(target.championsInPlay, isEmpty);
-      expect(target.discardPile.map((c) => c.id), contains('tanky'));
+      expect(result, false);
+      expect(target.championsInPlay, hasLength(1));
     });
 
     test('same attack fails without the flag (regression guard)', () {

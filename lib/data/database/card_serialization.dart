@@ -49,6 +49,7 @@ Map<String, dynamic> cardModelToJson(CardModel c) {
     if (c.faction != Faction.none) 'faction': c.faction.name,
     if (c.cardType != CardType.regular) 'cardType': c.cardType.name,
     if (c.shield != 0) 'shield': c.shield,
+    if (c.shieldEqualsMastery) 'shieldEqualsMastery': true,
     if (c.hasGuard) 'hasGuard': true,
     if (c.allyAbility.isNotEmpty)
       'allyAbility': [for (final e in c.allyAbility) encodeEffect(e)],
@@ -73,6 +74,7 @@ CardModel cardModelFromJson(Map<String, dynamic> json) {
     faction: factionFromName(json['faction'] as String?),
     cardType: cardTypeFromName(json['cardType'] as String?),
     shield: (json['shield'] as int?) ?? 0,
+    shieldEqualsMastery: (json['shieldEqualsMastery'] as bool?) ?? false,
     hasGuard: (json['hasGuard'] as bool?) ?? false,
     allyAbility: decodeEffectList(json['allyAbility']),
     masteryThreshold: json['masteryThreshold'] as int?,
