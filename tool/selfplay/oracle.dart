@@ -443,6 +443,8 @@ class Oracle {
         case MillEffect():
         case RecruitToHandEffect():
         case ReturnSelfWhenChampionPlayedEffect():
+        case AcquireCostReductionPerChampionEffect():
+        case BonusDrawNextTurnOnUnblockedDamageEffect():
         case RecruitFromCenterEffect():
         case FastPlayFromCenterEffect():
         case ScryEffect():

@@ -173,6 +173,18 @@ CardEffect decodeEffect(Map<String, dynamic> json) {
       );
     case 'returnSelfWhenChampionPlayed':
       return const ReturnSelfWhenChampionPlayedEffect();
+    case 'acquireCostReductionPerChampion':
+      return AcquireCostReductionPerChampionEffect(
+        faction: _faction(json['faction'] as String?),
+        amountPer:
+            json.containsKey('amountPer') ? _int(json, 'amountPer') : 1,
+      );
+    case 'bonusDrawNextTurnOnUnblockedDamage':
+      return BonusDrawNextTurnOnUnblockedDamageEffect(
+        threshold:
+            json.containsKey('threshold') ? _int(json, 'threshold') : 10,
+        count: json.containsKey('count') ? _int(json, 'count') : 3,
+      );
     case 'conditionalPower':
       return ConditionalPowerEffect(_powerCondition(json['condition'] as String?));
     case 'scalingResource':
@@ -354,6 +366,18 @@ Map<String, dynamic> encodeEffect(CardEffect effect) {
       };
     case ReturnSelfWhenChampionPlayedEffect():
       return {'type': 'returnSelfWhenChampionPlayed'};
+    case AcquireCostReductionPerChampionEffect():
+      return {
+        'type': 'acquireCostReductionPerChampion',
+        'faction': effect.faction.name,
+        if (effect.amountPer != 1) 'amountPer': effect.amountPer,
+      };
+    case BonusDrawNextTurnOnUnblockedDamageEffect():
+      return {
+        'type': 'bonusDrawNextTurnOnUnblockedDamage',
+        if (effect.threshold != 10) 'threshold': effect.threshold,
+        if (effect.count != 3) 'count': effect.count,
+      };
     case ConditionalPowerEffect():
       return {'type': 'conditionalPower', 'condition': effect.condition.name};
     case ScalingResourceEffect():

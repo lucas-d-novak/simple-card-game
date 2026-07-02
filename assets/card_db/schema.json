@@ -202,6 +202,8 @@
             "mill",
             "recruitToHand",
             "returnSelfWhenChampionPlayed",
+            "acquireCostReductionPerChampion",
+            "bonusDrawNextTurnOnUnblockedDamage",
             "chooseOne",
             "conditionalPower",
             "scalingResource",
@@ -336,7 +338,8 @@
                 "perFactionCardInDiscard",
                 "perFactionChampionControlled",
                 "perFactionCardPlayedThisTurn",
-                "perAllyWithShieldPlayedThisTurn"
+                "perAllyWithShieldPlayedThisTurn",
+                "perHealthGainedThisTurn"
               ]
             },
             { "$ref": "#/definitions/gameCondition" }
@@ -351,6 +354,14 @@
           "type": "integer",
           "minimum": 1,
           "description": "For scalingResource: how much resource to grant per counted unit (default 1)."
+        },
+        "amountPer": {
+          "type": "integer",
+          "description": "For acquireCostReductionPerChampion: gems this card's acquisition cost drops per matching 'faction' champion the buyer controls (default 1; floored at 0 — axia)."
+        },
+        "threshold": {
+          "type": "integer",
+          "description": "For bonusDrawNextTurnOnUnblockedDamage: the unblocked-damage bar that must be met this turn to arm the next-turn draw bonus (default 10 — the_heart_of_nothing)."
         },
         "then": {
           "type": "array",

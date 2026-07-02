@@ -884,13 +884,29 @@ class GameService {
   /// [StaticModifierKind.cardCostReduction] modifier, floored at 1 gem.
   int _discountedCost(CardModel card, PlayerState buyer) {
     var cost = card.cost;
+    // aedifex-style board-wide cost reductions on the BUYER (floor at 1 gem).
     for (final mod in buyer.staticModifiers) {
       if (mod.kind == StaticModifierKind.cardCostReduction &&
           _modifierApplies(mod, card)) {
         cost -= mod.amount;
       }
     }
-    return cost < 1 ? 1 : cost;
+    if (cost < 1) cost = 1;
+    // axia: a SELF acquire-cost reduction carried by THIS card — subtract
+    // `amountPer` per matching champion the buyer controls (floored at 0, so the
+    // card can become free). Distinct from the aedifex discount above (which
+    // floors at 1 and applies to OTHER cards).
+    for (final effect in card.playEffects) {
+      if (effect is AcquireCostReductionPerChampionEffect) {
+        final matching = buyer.championsInPlay
+            .where((c) => _factionsMatch(
+                effect.faction, false, c.faction, c.countsAsAllFactions,
+                aliasPlayer: buyer, extraB: _extraFactions(c, buyer)))
+            .length;
+        cost -= effect.amountPer * matching;
+      }
+    }
+    return cost < 0 ? 0 : cost;
   }
 
   /// Whether a recruited [card] should be routed to the top of [player]'s deck
@@ -1365,6 +1381,20 @@ class GameService {
     final player = currentPlayer;
     _log('ended their turn', playerId: player.id);
 
+    // the_heart_of_nothing: arm a next-turn draw bonus if a card PLAYED this turn
+    // requests it and this player dealt enough UNBLOCKED damage. Evaluated NOW,
+    // before resetTurnResources zeroes unblockedDamageThisTurn / clears
+    // cardsPlayedThisTurn. The bonus is consumed by the end-of-turn draw below,
+    // which deals this player's NEXT hand.
+    for (final card in player.cardsPlayedThisTurn) {
+      for (final effect in card.playEffects) {
+        if (effect is BonusDrawNextTurnOnUnblockedDamageEffect &&
+            player.unblockedDamageThisTurn >= effect.threshold) {
+          player.nextTurnDrawBonus += effect.count;
+        }
+      }
+    }
+
     // Discard remaining hand cards (unplayed cards go to discard)
     player.discardPile.addAll(player.hand);
     player.hand.clear();
@@ -1374,11 +1404,15 @@ class GameService {
     final removed = player.cleanupTurn();
     removedFromGame.addAll(removed);
 
-    // Reset per-turn resources
+    // Reset per-turn resources (nextTurnDrawBonus is deliberately preserved —
+    // it is consumed by the draw just below, not by resetTurnResources).
     player.resetTurnResources();
 
-    // Draw 5 cards for end-of-turn (mechanics doc Section 4d)
-    _drawCards(player, 5);
+    // Draw 5 cards for end-of-turn (mechanics doc Section 4d), plus any armed
+    // next-turn draw bonus (the_heart_of_nothing), then clear the bonus.
+    final drawCount = 5 + player.nextTurnDrawBonus;
+    player.nextTurnDrawBonus = 0;
+    _drawCards(player, drawCount);
 
     // Advance to next non-eliminated player
     _advanceTurn();
@@ -2208,6 +2242,16 @@ class GameService {
           // a no-op here. playCard scans the discard pile for it after a champion
           // is played and returns the carrier to the owner's hand.
           break;
+        case AcquireCostReductionPerChampionEffect():
+          // SELF acquire-cost reduction (axia), not a play effect — a no-op here.
+          // _discountedCost scans the card's playEffects for it to discount THIS
+          // card's center-row price per matching champion the buyer controls.
+          break;
+        case BonusDrawNextTurnOnUnblockedDamageEffect():
+          // Next-turn draw bonus marker (the_heart_of_nothing), not resolved at
+          // play time — a no-op here. endTurn scans cardsPlayedThisTurn for it and
+          // arms PlayerState.nextTurnDrawBonus when the unblocked-damage bar is met.
+          break;
         case BanishCardEffect():
           // Requires card selection — auto-banish not possible without target.
           // The player should call banishCard() separately after this effect.
@@ -2795,6 +2839,10 @@ class GameService {
               _factionsMatch(f, false, c.faction, c.countsAsAllFactions,
                   aliasPlayer: player, extraB: _extraFactions(c, player)),
         );
+      case ScalingCondition.perHealthGainedThisTurn:
+        // entropic_talons: scale by the HEALTH gained this turn (faction filter
+        // ignored — health gain is not faction-scoped).
+        return player.healthGainedThisTurn;
     }
   }
 

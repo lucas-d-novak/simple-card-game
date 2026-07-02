@@ -245,6 +245,8 @@ class DeckService {
         case MillEffect():
         case RecruitToHandEffect():
         case ReturnSelfWhenChampionPlayedEffect():
+        case AcquireCostReductionPerChampionEffect():
+        case BonusDrawNextTurnOnUnblockedDamageEffect():
         case ChooseOneEffect():
         case ConditionalPowerEffect():
         case ScalingResourceEffect():

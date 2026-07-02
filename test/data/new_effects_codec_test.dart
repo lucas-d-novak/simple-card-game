@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:simple_card_game/data/database/card_database.dart';
 import 'package:simple_card_game/data/database/effect_codec.dart';
 import 'package:simple_card_game/models/card_effect.dart';
+import 'package:simple_card_game/models/faction.dart';
 
 /// Codec round-trips for the 2026-07-01 new effect types + condition kind, and
 /// assertions that the wired cards in cards.json decode to the intended shapes.
@@ -155,6 +156,108 @@ void main() {
       final effects = _db.byId('dash')!.model.playEffects;
       expect(effects.first, isA<ReturnFromDiscardToDeckTopEffect>());
       expect(effects.whereType<DrawCardsEffect>().single.count, 1);
+    });
+  });
+
+  group('batch-2 codec round-trips (Axia / Heart / Talons / Ferrata)', () {
+    void roundTrip(CardEffect effect) {
+      final json = encodeEffect(effect);
+      final decoded = decodeEffect(json);
+      expect(encodeEffect(decoded), json,
+          reason: 'stable re-encode for ${effect.runtimeType}');
+    }
+
+    test('acquireCostReductionPerChampion (default amountPer)', () {
+      final e = decodeEffect({
+        'type': 'acquireCostReductionPerChampion',
+        'faction': 'homodeus',
+      });
+      expect(e, isA<AcquireCostReductionPerChampionEffect>());
+      final a = e as AcquireCostReductionPerChampionEffect;
+      expect(a.faction, Faction.homodeus);
+      expect(a.amountPer, 1);
+      roundTrip(e);
+    });
+
+    test('acquireCostReductionPerChampion (explicit amountPer)', () {
+      final e = decodeEffect({
+        'type': 'acquireCostReductionPerChampion',
+        'faction': 'wraethe',
+        'amountPer': 2,
+      });
+      final a = e as AcquireCostReductionPerChampionEffect;
+      expect(a.faction, Faction.wraethe);
+      expect(a.amountPer, 2);
+      roundTrip(e);
+    });
+
+    test('bonusDrawNextTurnOnUnblockedDamage', () {
+      final e = decodeEffect({
+        'type': 'bonusDrawNextTurnOnUnblockedDamage',
+        'threshold': 10,
+        'count': 3,
+      });
+      expect(e, isA<BonusDrawNextTurnOnUnblockedDamageEffect>());
+      final b = e as BonusDrawNextTurnOnUnblockedDamageEffect;
+      expect(b.threshold, 10);
+      expect(b.count, 3);
+      roundTrip(e);
+    });
+
+    test('bonusDrawNextTurnOnUnblockedDamage defaults', () {
+      final e = decodeEffect(
+              {'type': 'bonusDrawNextTurnOnUnblockedDamage'})
+          as BonusDrawNextTurnOnUnblockedDamageEffect;
+      expect(e.threshold, 10);
+      expect(e.count, 3);
+    });
+
+    test('scalingResource perHealthGainedThisTurn', () {
+      final e = decodeEffect({
+        'type': 'scalingResource',
+        'resource': 'power',
+        'condition': 'perHealthGainedThisTurn',
+      }) as ScalingResourceEffect;
+      expect(e.condition, ScalingCondition.perHealthGainedThisTurn);
+      expect(e.resource, ScalingResource.power);
+      roundTrip(e);
+    });
+
+    test('Axia wires the self acquire-cost reduction (homodeus)', () {
+      final effects = _db.byId('axia')!.model.playEffects;
+      final r =
+          effects.whereType<AcquireCostReductionPerChampionEffect>().single;
+      expect(r.faction, Faction.homodeus);
+      expect(r.amountPer, 1);
+    });
+
+    test('The Heart of Nothing wires the next-turn draw marker (10 / 3)', () {
+      final effects = _db.byId('the_heart_of_nothing')!.model.playEffects;
+      final b = effects
+          .whereType<BonusDrawNextTurnOnUnblockedDamageEffect>()
+          .single;
+      expect(b.threshold, 10);
+      expect(b.count, 3);
+    });
+
+    test('Entropic Talons wires power per health gained this turn', () {
+      final effects = _db.byId('entropic_talons')!.model.playEffects;
+      final s = effects
+          .whereType<ScalingResourceEffect>()
+          .singleWhere((e) =>
+              e.condition == ScalingCondition.perHealthGainedThisTurn);
+      expect(s.resource, ScalingResource.power);
+    });
+
+    test('Ferrata Guard wires the Decima-gated power branch', () {
+      final effects = _db.byId('ferrata_guard')!.model.playEffects;
+      final cond = effects.whereType<ConditionalEffect>().single;
+      expect(cond.condition.kind, GameConditionKind.isCharacter);
+      expect(cond.condition.character, Character.decima);
+      final scale = cond.then.whereType<ScalingResourceEffect>().single;
+      expect(scale.resource, ScalingResource.power);
+      expect(scale.condition, ScalingCondition.perChampionControlled);
+      expect(scale.perN, 2);
     });
   });
 }

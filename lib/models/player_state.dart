@@ -30,6 +30,21 @@ class PlayerState {
   /// (e.g. blood_for_blood). Reset each turn by [resetTurnResources].
   int unblockedDamageThisTurn = 0;
 
+  /// Total HEALTH this player has GAINED this turn (the actual, post-cap delta
+  /// applied by [heal]). Read by `ScalingCondition.perHealthGainedThisTurn`
+  /// (entropic_talons: "gain power for each health you gained this turn"). Reset
+  /// each turn by [resetTurnResources].
+  int healthGainedThisTurn = 0;
+
+  /// Extra cards to draw at the END of THIS player's turn (the draw that deals
+  /// their NEXT hand) — a "draw more next turn" bonus armed this turn. Set at
+  /// [GameService.endTurn] when a played card's
+  /// [BonusDrawNextTurnOnUnblockedDamageEffect] condition is met
+  /// (the_heart_of_nothing: dealt enough unblocked damage) and CONSUMED by that
+  /// same end-of-turn draw. Persists (round-tripped by the codec) and is NOT
+  /// reset by [resetTurnResources] — it is cleared only when consumed.
+  int nextTurnDrawBonus = 0;
+
   /// Turn-scoped faction aliases set by [TreatFactionAsEffect] (e.g.
   /// project_yggdrasil "treat Wraethe cards as Undergrowth this turn"). Each
   /// entry maps a `from` faction to a `to` faction; when matching factions for
@@ -208,8 +223,12 @@ class PlayerState {
   /// (lifegain only); use [takeDamage] to lose health.
   void heal(int amount) {
     if (amount <= 0) return;
+    final before = health;
     final gained = health + amount;
     health = gained > maxHealth ? maxHealth : gained;
+    // Track the ACTUAL health gained (post-cap) for per-turn scaling sources
+    // (entropic_talons "gain power for each health you gained this turn").
+    healthGainedThisTurn += health - before;
   }
 
   /// Resets per-turn resource pools. Does not touch mastery or health.
@@ -217,6 +236,7 @@ class PlayerState {
     gemPool = 0;
     powerPool = 0;
     unblockedDamageThisTurn = 0;
+    healthGainedThisTurn = 0;
     factionAliasesThisTurn.clear();
     ignoresShieldThisTurn = false;
     ignoresGuardThisTurn = false;

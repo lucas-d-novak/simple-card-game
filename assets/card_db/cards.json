@@ -7,11 +7,16 @@
       "name": "Axia",
       "faction": "homodeus",
       "copies": 1,
-      "playEffects": [],
+      "playEffects": [
+        {
+          "type": "acquireCostReductionPerChampion",
+          "faction": "homodeus"
+        }
+      ],
       "art": "axia.jpg",
       "rawText": "Homodeus Champion. Cost 7, shield 7. You pay 1 (gem) less to acquire Axia for each Homodeus Champion you have in play. Exhaust: Gain 7 (power).",
-      "verified": false,
-      "notes": "Champion shield 7. Exhaust ability (champion activated): gain 7 power -> playEffects. UNMODELED: cost reduction 'You pay 1 less to acquire Axia for each Homodeus Champion you have in play' (acquire-cost discount) has no engine type; cost left at printed 7. | [encode-gap] \"pay 1 gem less to acquire per Homodeus Champion in play\" acquire-cost scaling not modeled -> unverified.",
+      "verified": true,
+      "notes": "Champion shield 7. Exhaust ability (champion activated): gain 7 power -> activatedAbility. Self acquire-cost reduction 'pay 1 gem less to acquire per Homodeus Champion in play' now encoded as acquireCostReductionPerChampion{faction:homodeus} in playEffects (a MARKER read by _discountedCost; inert on play/activate). Discounts only THIS card in the center row, scaling with Homodeus champions the buyer controls, floored at 0 (can be free).",
       "set": "base",
       "cardType": "champion",
       "cost": 7,
@@ -1663,11 +1668,27 @@
       "name": "Ferrata Guard",
       "faction": "homodeus",
       "copies": 2,
-      "playEffects": [],
+      "playEffects": [
+        {
+          "type": "conditional",
+          "condition": {
+            "kind": "isCharacter",
+            "character": "decima"
+          },
+          "then": [
+            {
+              "type": "scalingResource",
+              "resource": "power",
+              "condition": "perChampionControlled",
+              "perN": 2
+            }
+          ]
+        }
+      ],
       "art": "ferrata_guard.jpg",
       "rawText": "Homodeus Champion. If you are Decima, your Champions (including this one) have an additional 2 (power). Exhaust: Gain 1 (gem) for each Homodeus Champion you have in play.",
       "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 57: name='Ferrata Guard', faction='Homodeus', amount=2. | art added from TTS spritesheet crop (effects pending verification). | EFFECTS PASS B: image read. Cost 4, Homodeus Champion. No shield number printed on the card (shield omitted). UNMODELED: character-identity passive 'If you are Decima, your Champions have +2 power' and Exhaust activated ability 'Gain 1 gem for each Homodeus Champion in play'. No mappable on-play effect. verified:false. | [encode-gap] Exhaust 'gain 1 gem per Homodeus Champion in play' now encodes via scalingResource{resource:gems, condition:perFactionChampionControlled, faction:homodeus}. Still unencodable: 'If you are Decima, your Champions (including this) have +2 power' — a character-gated, board-wide power buff to champions. isCharacter exists, but there is no static-modifier kind for a power buff to champions (shieldBuff is shield only), so the Decima clause cannot be expressed.",
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 57: name='Ferrata Guard', faction='Homodeus', amount=2. | art added from TTS spritesheet crop (effects pending verification). | EFFECTS PASS B: image read. Cost 4, Homodeus Champion. Exhaust 'gain 1 gem per Homodeus Champion in play' encodes via scalingResource{resource:gems, condition:perFactionChampionControlled, faction:homodeus}. Decima branch: 'If you are Decima, your Champions (including this) have +2 power' — champions hold no power stat in this engine, so implemented as the most faithful readable equivalent: a Decima-gated (isCharacter) ConditionalEffect that grants +2 POWER per champion you control (perChampionControlled, perN 2, includes Ferrata), resolved when Ferrata is played and each turn it is activated. FLAGGED for owner confirmation of this interpretation.",
       "set": "rotf",
       "chapter": 2,
       "cardType": "champion",
@@ -2173,12 +2194,17 @@
         {
           "type": "drawCards",
           "count": 2
+        },
+        {
+          "type": "scalingResource",
+          "resource": "power",
+          "condition": "perHealthGainedThisTurn"
         }
       ],
       "art": "entropic_talons.jpg",
-      "rawText": "Undergrowth Relic - Ally. Draw two cards. Gain (power) for each (gem) you gain this turn. Mastery 20: Gain 10 (health).",
-      "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 74: name='Entropic Talons', faction='Undergrowth', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Relic (Ally). Base draw 2 encoded; mastery-20 bonus gain 10 gems encoded. UNMODELED: 'Gain power for each gem you gain this turn' (scaling). verified:false (base scaling unmodeled). | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false. | FIX: Mastery-20 Gain 10 is HEALTH (green cross), not gems.",
+      "rawText": "Undergrowth Relic - Ally. Draw two cards. Gain (power) for each (health) you gain this turn. Mastery 20: Gain 10 (health).",
+      "verified": true,
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 74: name='Entropic Talons', faction='Undergrowth', amount=1. | art added from TTS spritesheet crop. | Relic (Ally). Base draw 2 + mastery-20 gain 10 HEALTH. Scaling 'gain power for each HEALTH you gained this turn' (OWNER-CONFIRMED health, NOT gems) now encoded via scalingResource{resource:power, condition:perHealthGainedThisTurn}; reads PlayerState.healthGainedThisTurn (reset each turn). rawText FIX: 'each gem you gain this turn' -> 'each health you gain this turn' to match owner. | FIX: Mastery-20 Gain 10 is HEALTH (green cross), not gems.",
       "set": "rotf",
       "cardType": "regular",
       "cost": 10,
@@ -2240,12 +2266,17 @@
         {
           "type": "gainPower",
           "amount": 5
+        },
+        {
+          "type": "bonusDrawNextTurnOnUnblockedDamage",
+          "threshold": 10,
+          "count": 3
         }
       ],
       "art": "the_heart_of_nothing.jpg",
       "rawText": "Wraethe Relic - Ally. Gain 5 (power). If you deal ten or more unprevented damage to an opponent this turn, draw an extra three cards at the end of the turn. Mastery 20: Gain an additional 5 (power).",
-      "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 76: name='The Heart of Nothing', faction='Wraethe', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Relic (Ally). Base gain 5 power + mastery-20 additional 5 power (additive) encoded. UNMODELED: conditional 'if you deal 10+ unprevented damage this turn, draw 3 at end of turn'. verified:false. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false.",
+      "verified": true,
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 76: name='The Heart of Nothing', faction='Wraethe', amount=1. | art added from TTS spritesheet crop. | Relic (Ally). Base gain 5 power + mastery-20 additional 5 power (additive). Conditional 'if you deal 10+ unprevented (unblocked) damage this turn, draw an extra 3 cards at end of turn' now encoded as bonusDrawNextTurnOnUnblockedDamage{threshold:10,count:3} (a MARKER read at endTurn; uses unblockedDamageThisTurn -> arms PlayerState.nextTurnDrawBonus, consumed by the end-of-turn draw that deals the next hand).",
       "set": "rotf",
       "cardType": "regular",
       "cost": 10,

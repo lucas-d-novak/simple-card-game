@@ -389,6 +389,60 @@ final class ReturnSelfWhenChampionPlayedEffect extends CardEffect {
       'When you play a Champion, return this from your discard pile to your hand';
 }
 
+/// SELF acquire-cost reduction (axia): "you pay [amountPer] less to acquire THIS
+/// card from the center row for each [faction] Champion you control." INERT
+/// during normal resolution (a no-op in `GameService._resolveEffects`, like
+/// [RecruitToHandEffect]) — it is a MARKER scanned by
+/// `GameService._discountedCost`, which subtracts `amountPer` per matching
+/// champion the BUYER controls from THIS card's price (floored at 0 — the card
+/// can become free). It only discounts the card that CARRIES it, NOT other
+/// recruits (distinct from [StaticModifierKind.cardCostReduction], which
+/// discounts OTHER cards for its owner and floors at 1). Champion faction
+/// matching honours `countsAsAllFactions`.
+final class AcquireCostReductionPerChampionEffect extends CardEffect {
+  const AcquireCostReductionPerChampionEffect({
+    required this.faction,
+    this.amountPer = 1,
+  });
+
+  /// The champion faction that reduces this card's acquisition cost.
+  final Faction faction;
+
+  /// How much (gems) the cost drops per matching champion the buyer controls.
+  final int amountPer;
+
+  @override
+  String get description =>
+      'You pay $amountPer less to acquire this for each ${faction.name} '
+      'champion you control';
+}
+
+/// NEXT-TURN draw bonus keyed to unblocked damage (the_heart_of_nothing): "if
+/// you deal [threshold]+ unprevented (unblocked) damage to an opponent this
+/// turn, draw [count] extra card(s) for your next hand." INERT during normal
+/// resolution (a no-op in `GameService._resolveEffects`) — it is a MARKER
+/// scanned at [GameService.endTurn]: if the carrying card was PLAYED this turn
+/// AND the player's [PlayerState.unblockedDamageThisTurn] >= [threshold], [count]
+/// is added to [PlayerState.nextTurnDrawBonus], which is consumed by the same
+/// end-of-turn draw that deals the player's NEXT hand. Uses `unblockedDamageThisTurn`.
+final class BonusDrawNextTurnOnUnblockedDamageEffect extends CardEffect {
+  const BonusDrawNextTurnOnUnblockedDamageEffect({
+    this.threshold = 10,
+    this.count = 3,
+  });
+
+  /// The unblocked-damage bar that must be met this turn to arm the bonus.
+  final int threshold;
+
+  /// How many extra cards to draw next turn when the condition is met.
+  final int count;
+
+  @override
+  String get description =>
+      'If you deal $threshold+ unprevented damage this turn, draw $count extra '
+      'card${count == 1 ? '' : 's'} next turn';
+}
+
 // ---------------------------------------------------------------------------
 // Deferred-selection action effects (Engine Phase 2, wave 3)
 //
@@ -1457,6 +1511,11 @@ enum ScalingCondition {
 
   /// Per ally with a shield (champion of the source faction) played this turn.
   perAllyWithShieldPlayedThisTurn,
+
+  /// Per point of HEALTH the player has GAINED this turn
+  /// ([PlayerState.healthGainedThisTurn]). entropic_talons: "gain power for each
+  /// health you gained this turn". Ignores [ScalingResourceEffect.faction].
+  perHealthGainedThisTurn,
 }
 
 /// A resource gain that scales with game state rather than a fixed amount.
@@ -1500,6 +1559,8 @@ final class ScalingResourceEffect extends CardEffect {
         return '${faction?.name ?? 'faction'} card played this turn';
       case ScalingCondition.perAllyWithShieldPlayedThisTurn:
         return 'ally with shield played this turn';
+      case ScalingCondition.perHealthGainedThisTurn:
+        return 'health you gained this turn';
     }
   }
 

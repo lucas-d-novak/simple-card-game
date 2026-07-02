@@ -145,6 +145,24 @@ For EACH, also identify other cards where the same fix/mechanic applies.
   Consistent with existing all-factions handling; change only if the owner wants querry_monk
   to single-handedly satisfy multi-faction counts.
 
+## B5. Wave-B Group 4 (deferred-selection trio) — OWNER RULINGS (2026-07-01)
+Design plan captured (needs game_service.dart + server protocol + client picker; see
+the Group-4 design agent output). Owner rulings:
+- **Duplication Fabricator** — play effect grants **+1 mastery, THEN** (base, every play —
+  NOT mastery-gated) reveal the top card of every player's deck and copy one revealed
+  ALLY's effect (cannot copy another Duplication Fabricator; "this effect can't be
+  copied"). The deck-top reveal is APPROVED (shown only to the chooser; intentional public
+  reveal — the one sanctioned exception to the secret-deck rule; ship a server redaction
+  test that opponents never see it). **After copying, leave the revealed cards ON TOP**
+  (accepts that the chooser now knows each player's next draw).
+- **Carmine Eclipse** — tuck fast-played cards under it (mandatory; reuses shieldPerCardUnder
+  health). On death, the owner may **PAY each under-card's gem cost to acquire it** (NOT
+  free), and the rest are banished. Resolve as a deferred choice (off-turn if Carmine dies
+  on an opponent's turn — first off-turn action; needs the protocol turn-gate exception).
+- **Swyft** — "if you are Rez, you may recruit any card you fast-play (to discard)"; default
+  gate = controlling Swyft AND character==Rez; Carmine's mandatory tuck takes precedence
+  over Swyft's optional recruit.
+
 ## C. Ingeminex wire-up (owner: "in-scope, wire them up")
 - Flag the 6 Ingeminex cards in-scope (they still spawn as NEUTRAL entities via
   `spawnIngeminex`, NOT into the normal market — keep them out of the center supply,
