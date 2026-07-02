@@ -71,17 +71,22 @@ compresses it to the browser (~920 KB), and CanvasKit loads from Google's CDN
 ### Required Cache Rule (one-time, Cloudflare dashboard)
 
 Caching → Cache Rules → Create rule:
-- **When incoming requests match:** `URI Path` `ends with` `.js`
+- **When incoming requests match:** `URI Path` `equals` `/main.dart.js`
 - **Then:**
   - Cache eligibility → **Eligible for cache**
-  - Edge TTL → **Respect origin** (uses our `s-maxage=604800`) *or* Override to e.g. 1 month
-  - Browser TTL → **Respect origin** (keeps `max-age=0` → browser always revalidates)
+  - **Edge TTL → Override origin → 1 month** — this is the load-bearing setting.
+    Cloudflare's free-tier default treats our origin `max-age=0` as "don't
+    edge-cache" (measured: `cf-cache-status: DYNAMIC` even with `s-maxage`), so
+    "Respect origin" does NOT work here — you must **Override**. Safe because
+    `build_web.sh` purges the edge on every deploy.
+  - **Browser TTL → Respect origin** (keeps `max-age=0` → browser always
+    revalidates → a deploy is picked up immediately).
 
-This flips `main.dart.js` from `cf-cache-status: DYNAMIC` → `HIT`. Safe because
-`build_web.sh` purges the edge on every deploy and the browser still revalidates.
-`flutter_bootstrap.js` is also `.js` but its `no-cache` header (respected) keeps
-it uncached. (A dashboard click because the deploy token is Cache-Purge-only, not
-Rulesets-Edit.)
+This flips `main.dart.js` from `cf-cache-status: DYNAMIC` → `HIT` (the Pi stops
+serving the 2.99 MB file on repeat/global loads). Targeting `/main.dart.js`
+specifically keeps `flutter_bootstrap.js`/`version.json` on their `no-cache`
+path so the version-poll reload is unaffected. (A dashboard click because the
+deploy token is Cache-Purge-only, not Rulesets-Edit.)
 
 ## Verifying
 ```
