@@ -7,6 +7,11 @@ import 'package:simple_card_game/models/faction.dart';
 class PlayerState {
   PlayerState({required this.id, required this.name, this.character});
 
+  /// Global health ceiling. A player's health can NEVER exceed this (owner
+  /// ruling, backlog §B/§E). Every lifegain path routes through [heal], which
+  /// clamps to this cap.
+  static const int maxHealth = 50;
+
   final String id;
   final String name;
 
@@ -89,7 +94,7 @@ class PlayerState {
   /// by the champion's id. Populated by [TuckUnderChampionEffect] (carmine_eclipse
   /// fast-play-under, paradigm_the_archivist "put an Ally under this", gene_scavs
   /// ambush). The list per champion is in tuck order. Read by
-  /// `GameService._effectiveShield` (carmine_eclipse "+shield per card under")
+  /// `GameService._effectiveHealth` (carmine_eclipse "+shield per card under")
   /// and `GameService.copyUnderCards` (paradigm). NOT cleared by
   /// [resetTurnResources] — under-cards persist with their champion until it
   /// leaves play.
@@ -191,8 +196,13 @@ class PlayerState {
     health -= amount;
   }
 
+  /// Gain [amount] health, clamped to the global [maxHealth] cap (a player's
+  /// health can never exceed 50 — owner ruling). Negative amounts are ignored
+  /// (lifegain only); use [takeDamage] to lose health.
   void heal(int amount) {
-    health += amount;
+    if (amount <= 0) return;
+    final gained = health + amount;
+    health = gained > maxHealth ? maxHealth : gained;
   }
 
   /// Resets per-turn resource pools. Does not touch mastery or health.

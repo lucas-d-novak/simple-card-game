@@ -666,7 +666,7 @@ enum StaticModifierKind {
   /// other kinds this is SELF-scoped: it only buffs the champion that owns the
   /// modifier, scaling with that champion's under-card count
   /// ([PlayerState.cardsUnderChampion]). Consulted in `attackChampion` via
-  /// `_effectiveShield`. The modifier carries the owning champion's id in
+  /// `_effectiveHealth`. The modifier carries the owning champion's id in
   /// [StaticModifier.sourceChampionId].
   shieldPerCardUnder,
 }

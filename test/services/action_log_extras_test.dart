@@ -185,6 +185,9 @@ void main() {
     test('grants round-trip through GameStateCodec', () {
       final game = GameService(playerCount: 2, random: Random(7));
       final me = game.currentPlayer;
+      // Below the 50-HP cap so the +1 health actually registers (a player at the
+      // cap would gain 0 and the health grant would correctly drop out).
+      me.health = 40;
       me.hand.add(_card(id: 'shiny', playEffects: const [
         GainMasteryEffect(2),
         GainHealthEffect(1),

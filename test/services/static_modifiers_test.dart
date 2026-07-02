@@ -9,8 +9,13 @@ import 'package:simple_card_game/services/game_service.dart';
 
 /// Engine Phase 2 wave 5a — Family 11 (static board-wide modifiers).
 void main() {
-  group('AddStaticModifierEffect — shield buff', () {
-    test('shield buff raises effective shield (champion harder to destroy)', () {
+  group('AddStaticModifierEffect — shield buff (player damage reduction)', () {
+    // Owner combat model (backlog §E): a champion-granted shieldBuff (e.g.
+    // praetorian_02) is a standing buff to the PLAYER's per-hit damage
+    // reduction while that champion is in play — NOT a buff to any champion's
+    // destroy threshold. Champions have HEALTH = their printed `shield` value.
+    test('a champion-sourced shield buff does NOT raise a champion destroy '
+        'threshold (champion health is its printed value only)', () {
       final game = GameService(playerCount: 2, random: Random(7));
       final attacker = game.currentPlayer;
       final target = game.players[1];
@@ -23,61 +28,61 @@ void main() {
         cardType: CardType.champion,
         shield: 2,
       );
-      target.championsInPlay.add(champion);
-      // The target owns a +3 shield buff for their champions.
-      target.staticModifiers
-          .add(const StaticModifier(kind: StaticModifierKind.shieldBuff, amount: 3));
+      const praetorian = CardModel(
+        id: 'praetorian',
+        name: 'Praetorian',
+        cost: 0,
+        playEffects: [],
+        cardType: CardType.champion,
+        shield: 5,
+      );
+      target.championsInPlay.addAll([champion, praetorian]);
+      // Praetorian grants a +3 shield buff to the PLAYER while in play.
+      target.staticModifiers.add(const StaticModifier(
+          kind: StaticModifierKind.shieldBuff,
+          amount: 3,
+          sourceChampionId: 'praetorian'));
 
-      // 4 power < effective shield (2 + 3 = 5): attack fails, nothing deducted.
-      attacker.powerPool = 4;
-      expect(game.attackChampion('guard', 'p1'), false);
-      expect(attacker.powerPool, 4);
-      expect(target.championsInPlay, hasLength(1));
-
-      // 5 power == effective shield: succeeds, deducts 5.
-      attacker.powerPool = 5;
+      // The guard champion's health is just its printed value (2). The buff does
+      // NOT add to it — 2 power destroys it.
+      attacker.powerPool = 2;
       expect(game.attackChampion('guard', 'p1'), true);
       expect(attacker.powerPool, 0);
-      expect(target.championsInPlay, isEmpty);
+      expect(target.championsInPlay.any((c) => c.id == 'guard'), false);
     });
 
-    test('faction-filtered shield buff only applies to matching champions', () {
+    test('a champion-sourced shield buff reduces direct damage to the PLAYER, '
+        'and stops the moment the champion leaves play', () {
       final game = GameService(playerCount: 2, random: Random(7));
       final attacker = game.currentPlayer;
       final target = game.players[1];
 
-      const orderChamp = CardModel(
-        id: 'order_c',
-        name: 'Order Champ',
+      const praetorian = CardModel(
+        id: 'praetorian',
+        name: 'Praetorian',
         cost: 0,
         playEffects: [],
-        faction: Faction.order,
         cardType: CardType.champion,
-        shield: 1,
+        shield: 3,
       );
-      const wraetheChamp = CardModel(
-        id: 'wr_c',
-        name: 'Wraethe Champ',
-        cost: 0,
-        playEffects: [],
-        faction: Faction.wraethe,
-        cardType: CardType.champion,
-        shield: 1,
-      );
-      target.championsInPlay.addAll([orderChamp, wraetheChamp]);
+      target.championsInPlay.add(praetorian);
       target.staticModifiers.add(const StaticModifier(
-        kind: StaticModifierKind.shieldBuff,
-        amount: 4,
-        faction: Faction.order,
-      ));
+          kind: StaticModifierKind.shieldBuff,
+          amount: 4,
+          sourceChampionId: 'praetorian'));
 
-      // Wraethe champion unbuffed: 1 power destroys it.
-      attacker.powerPool = 1;
-      expect(game.attackChampion('wr_c', 'p1'), true);
+      // A 10-damage attack is reduced by 4 → 6 lands.
+      attacker.powerPool = 40;
+      final before = target.health;
+      expect(game.attackPlayer('p1', 10), true);
+      expect(target.health, before - 6);
 
-      // Order champion buffed to shield 5: 4 power not enough.
-      attacker.powerPool = 4;
-      expect(game.attackChampion('order_c', 'p1'), false);
+      // Destroy the Praetorian (health 3): its shield buff is dropped.
+      expect(game.attackChampion('praetorian', 'p1'), true);
+      // Now a 10-damage attack lands in full.
+      final before2 = target.health;
+      expect(game.attackPlayer('p1', 10), true);
+      expect(target.health, before2 - 10);
     });
 
     test('effect resolution appends the modifier to the player', () {

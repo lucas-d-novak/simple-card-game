@@ -779,32 +779,57 @@ class GameService {
     return true;
   }
 
-  /// The effective shield of [champion] owned by [owner]: its printed shield,
-  /// plus every matching [StaticModifierKind.shieldBuff] the owner holds, plus —
-  /// for a [StaticModifierKind.shieldPerCardUnder] modifier whose
-  /// [StaticModifier.sourceChampionId] is THIS champion — `amount` per card
-  /// currently tucked under it (carmine_eclipse). The per-card-under term is the
-  /// single shield path (Wave 5b extends this Wave-5a helper; combat reads only
-  /// `_effectiveShield`).
-  int _effectiveShield(CardModel champion, PlayerState owner) {
-    var shield = champion.shield;
+  /// The effective HEALTH of [champion] owned by [owner]: the printed `shield`
+  /// field value (reinterpreted as the champion's health pips per the owner's
+  /// combat model, backlog §E) plus — for a [StaticModifierKind.shieldPerCardUnder]
+  /// modifier whose [StaticModifier.sourceChampionId] is THIS champion —
+  /// `amount` per card currently tucked under it (carmine_eclipse; FLAGGED for
+  /// owner confirmation of how "+shield per card under" maps to health).
+  ///
+  /// A champion is destroyed only by an attack whose power is >= this value (the
+  /// existing one-shot lethal gate, unchanged). NOTE: [StaticModifierKind.shieldBuff]
+  /// is NO LONGER folded in here — a shield buff granted by a champion in play
+  /// (e.g. praetorian_02) is a standing buff to the PLAYER's per-hit damage
+  /// reduction (see [_playerDamageReduction]), not to any champion's kill
+  /// threshold. A champion's own value never protects the player.
+  int _effectiveHealth(CardModel champion, PlayerState owner) {
+    var health = champion.shield;
     for (final mod in owner.staticModifiers) {
-      switch (mod.kind) {
-        case StaticModifierKind.shieldBuff:
-          if (_modifierApplies(mod, champion)) shield += mod.amount;
-        case StaticModifierKind.shieldPerCardUnder:
-          // Self-scoped: only buffs the champion that owns the modifier, scaling
-          // with that champion's under-card count.
-          if (mod.sourceChampionId == champion.id) {
-            shield += mod.amount * owner.cardsUnderCount(champion.id);
-          }
-        case StaticModifierKind.cardCostReduction:
-        case StaticModifierKind.cannotBeAttacked:
-        case StaticModifierKind.recruitToTopOfDeck:
-          break;
+      if (mod.kind == StaticModifierKind.shieldPerCardUnder &&
+          mod.sourceChampionId == champion.id) {
+        // Self-scoped: only buffs the champion that owns the modifier, scaling
+        // with that champion's under-card count.
+        health += mod.amount * owner.cardsUnderCount(champion.id);
       }
     }
-    return shield;
+    return health;
+  }
+
+  /// The passive damage reduction protecting [player] against each direct attack
+  /// (owner combat model, backlog §E): the SUM of the `shield` value of every
+  /// card currently in the player's HAND, PLUS the SUM of every
+  /// [StaticModifierKind.shieldBuff] granted by a champion the player currently
+  /// has in play (e.g. praetorian_02 grants a constant shield to YOU while it is
+  /// in play; the buff is dropped from [staticModifiers] the instant that
+  /// champion leaves play — see [_releaseUnderCards]). Passive, NOT consumed.
+  ///
+  /// A card's own shield contributes ONLY while it is IN HAND — a champion in
+  /// play does NOT contribute its own (health) value. Champion-sourced shield
+  /// buffs are recognised by a non-null [StaticModifier.sourceChampionId] that
+  /// matches a champion currently in play.
+  int _playerDamageReduction(PlayerState player) {
+    var reduction = 0;
+    for (final card in player.hand) {
+      reduction += card.shield;
+    }
+    for (final mod in player.staticModifiers) {
+      if (mod.kind == StaticModifierKind.shieldBuff &&
+          mod.sourceChampionId != null &&
+          player.championsInPlay.any((c) => c.id == mod.sourceChampionId)) {
+        reduction += mod.amount;
+      }
+    }
+    return reduction;
   }
 
   /// Resolve the state a champion leaves behind when [championId]'s champion
@@ -1303,26 +1328,24 @@ class GameService {
         m.kind == StaticModifierKind.cannotBeAttacked &&
         m.sourceChampionId != champion.id);
     if (protectedByOther) return false;
-    // spirit_leech: while the attacker ignores shield this turn, the shield
-    // value required to destroy a champion is treated as 0 (any power, including
-    // 0, destroys it). The normal path is untouched when the flag is false.
-    // Otherwise the effective shield is the printed shield PLUS any shieldBuff
-    // static modifiers the target owns that apply to this champion
-    // (one_mind_one_army, phasic_technology).
-    final shieldNeeded = currentPlayer.ignoresShieldThisTurn
-        ? 0
-        : _effectiveShield(champion, target);
-    if (currentPlayer.powerPool < shieldNeeded) return false;
+    // Owner combat model (backlog §E): a champion has HEALTH (its printed
+    // `shield` value, plus any self-scoped shieldPerCardUnder term) and is
+    // destroyed only by an attack with power >= that health — the existing
+    // one-shot lethal gate, unchanged. spirit_leech / ignoresShieldThisTurn no
+    // longer applies here: "ignore shield" means ignore the target PLAYER's
+    // per-hit damage reduction (see attackPlayer), NOT instakill a champion.
+    final healthNeeded = _effectiveHealth(champion, target);
+    if (currentPlayer.powerPool < healthNeeded) return false;
 
-    currentPlayer.powerPool -= shieldNeeded;
+    currentPlayer.powerPool -= healthNeeded;
     target.championsInPlay.removeAt(champIndex);
     target.discardPile.add(champion);
     _releaseUnderCards(target, champion.id);
 
-    // Note the shield the champion absorbed (public: printed/buffed shield and
-    // the ignore-shield flag are board-visible). shieldNeeded is 0 when the
-    // attacker ignores shield this turn.
-    final shieldNote = shieldNeeded > 0 ? ' (shield $shieldNeeded absorbed)' : '';
+    // Note the health the champion absorbed (public: the champion's value is
+    // board-visible). Kept as "shield N absorbed" for log/UI continuity — the
+    // value is the champion's health under the new model.
+    final shieldNote = healthNeeded > 0 ? ' (shield $healthNeeded absorbed)' : '';
     // Reference the victim by SEAT ID (`p0`), not PlayerState.name: the UI's
     // shared log renderer (and the server's name rewrite) resolves seat ids to
     // real player names, so the line reads with usernames on both boards.
@@ -1365,8 +1388,19 @@ class GameService {
 
     final attackerId = currentPlayer.id;
     currentPlayer.powerPool -= amount;
-    target.takeDamage(amount);
-    _log('dealt $amount damage to ${target.id}', playerId: attackerId);
+
+    // Owner combat model (backlog §E): the target's PASSIVE damage reduction —
+    // the sum of the shield of every card in their HAND plus every shieldBuff a
+    // champion they control grants — reduces the incoming damage (floored at 0)
+    // BEFORE it lands. spirit_leech / ignoresShieldThisTurn on the ATTACKER lets
+    // this attack ignore that per-hit reduction. lastDamage / the flash and
+    // unblockedDamageThisTurn all reflect the POST-reduction number.
+    final reduction =
+        currentPlayer.ignoresShieldThisTurn ? 0 : _playerDamageReduction(target);
+    final dealt = amount - reduction < 0 ? 0 : amount - reduction;
+
+    target.takeDamage(dealt);
+    _log('dealt $dealt damage to ${target.id}', playerId: attackerId);
 
     // Publish a structured "last damage" event so every client (attacker AND
     // victim) can play the SAME attack animation once, keyed off the bumped seq.
@@ -1375,12 +1409,13 @@ class GameService {
       seq: ++_damageSeq,
       fromId: attackerId,
       toId: target.id,
-      amount: amount,
+      amount: dealt,
     );
 
     // Record unblocked damage dealt this turn (guard already ruled out above),
-    // for GameConditionKind.unblockedDamageAtLeast (e.g. blood_for_blood).
-    currentPlayer.unblockedDamageThisTurn += amount;
+    // for GameConditionKind.unblockedDamageAtLeast (e.g. blood_for_blood) — the
+    // POST-reduction number (shield-reduced damage is not "unblocked").
+    currentPlayer.unblockedDamageThisTurn += dealt;
 
     // Check elimination and clean up zones if the target was just eliminated
     if (target.isEliminated) {
@@ -2138,7 +2173,7 @@ class GameService {
           // duplicate buff each turn (unbounded growth). Regular/mercenary
           // sources resolve once per play, so they need no dedupe but are still
           // stamped when a source card is known. A shieldPerCardUnder modifier
-          // is additionally SELF-scoped so _effectiveShield only buffs that
+          // is additionally SELF-scoped so _effectiveHealth only buffs that
           // champion (carmine_eclipse).
           final stamped = effect.modifier.sourceChampionId == null &&
                   sourceCard != null
