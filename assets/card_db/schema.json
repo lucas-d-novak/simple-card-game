@@ -72,6 +72,10 @@
       "type": "boolean",
       "description": "Champions only. If true, must be destroyed before the owner can be attacked directly."
     },
+    "recruitUnderCardsOnDeath": {
+      "type": "boolean",
+      "description": "Champions only (default false). When true, destroying this champion does NOT move its tucked under-cards straight to discard; instead the owner may SALVAGE them (move to GameService.pendingUnderCardRecruit) — paying each card's gem cost to recruit it (to discard) and banishing the rest. carmine_eclipse 'when this is destroyed, you may recruit any of the cards under this and banish the rest'. false = the ordinary paradigm_the_archivist disposition (all under-cards to discard)."
+    },
     "countsAsAllFactions": {
       "type": "boolean",
       "description": "If true, satisfies the ally condition for any faction (e.g. Universal Soldier)."
@@ -276,8 +280,8 @@
         },
         "kind": {
           "type": "string",
-          "enum": ["shieldBuff", "healthBuff", "cardCostReduction", "cannotBeAttacked", "recruitToTopOfDeck", "shieldPerCardUnder"],
-          "description": "For addStaticModifier: which persistent board-wide modifier to add. shieldBuff (a champion-sourced shieldBuff adds to the OWNER's per-hit damage reduction while that champion is in play, praetorian_02) and healthBuff (your champions have +amount HEALTH — a higher kill threshold, one_mind_one_army) use 'amount'; both, plus cardCostReduction/recruitToTopOfDeck, may use optional 'faction'/'cardType' filters; cannotBeAttacked ignores amount/filters and instead reads the optional 'cannotBeAttackedScope'/'cannotBeAttackedCondition'/'conditionCardName' fields (zetta aura is the unconditional default; li_hin/drakonarius/raidian are self-scoped conditional variants); shieldPerCardUnder is SELF-scoped to the source champion (carmine_eclipse), buffing it by 'amount' per card tucked under it. shieldBuff/healthBuff may be mastery-scaled via 'masteryThreshold'/'masteryAmount'."
+          "enum": ["shieldBuff", "healthBuff", "cardCostReduction", "cannotBeAttacked", "recruitToTopOfDeck", "shieldPerCardUnder", "fastPlayRecruit", "tuckFastPlaysUnder"],
+          "description": "For addStaticModifier: which persistent board-wide modifier to add. shieldBuff (a champion-sourced shieldBuff adds to the OWNER's per-hit damage reduction while that champion is in play, praetorian_02) and healthBuff (your champions have +amount HEALTH — a higher kill threshold, one_mind_one_army) use 'amount'; both, plus cardCostReduction/recruitToTopOfDeck, may use optional 'faction'/'cardType' filters; cannotBeAttacked ignores amount/filters and instead reads the optional 'cannotBeAttackedScope'/'cannotBeAttackedCondition'/'conditionCardName' fields (zetta aura is the unconditional default; li_hin/drakonarius/raidian are self-scoped conditional variants); shieldPerCardUnder is SELF-scoped to the source champion (carmine_eclipse), buffing it by 'amount' per card tucked under it. fastPlayRecruit (swyft) lets the owner recruit cards they fast-play to discard while the source champion is in play — the engine additionally gates on character==Rez. tuckFastPlaysUnder (carmine_eclipse) mandatorily tucks every fast-played card under the source champion instead of banishing it. shieldBuff/healthBuff may be mastery-scaled via 'masteryThreshold'/'masteryAmount'."
         },
         "masteryAmount": {
           "type": "integer",

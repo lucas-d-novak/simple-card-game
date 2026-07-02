@@ -89,6 +89,17 @@ class CardModel {
   /// guessing an asset from the card name. Null for cards without DB art.
   final String? art;
 
+  /// When true (champions only), destroying this champion does NOT simply move
+  /// the cards tucked under it to the owner's discard pile. Instead the owner
+  /// may SALVAGE them: the under-cards move to
+  /// [GameService.pendingUnderCardRecruit] where the owner can PAY each card's
+  /// gem cost to recruit it (to discard) and the rest are banished
+  /// (carmine_eclipse "when this is destroyed, you may recruit any of the cards
+  /// under this and banish the rest"). Consulted by
+  /// [GameService._disposeUnderCardsOnDeath]. Defaults to false (the ordinary
+  /// paradigm_the_archivist disposition — all under-cards to discard).
+  final bool recruitUnderCardsOnDeath;
+
   const CardModel({
     required this.id,
     required this.name,
@@ -108,6 +119,7 @@ class CardModel {
     this.countsAsFactionsMasteryThreshold,
     this.activatedAbility,
     this.art,
+    this.recruitUnderCardsOnDeath = false,
   });
 
   /// Returns a copy with the given overrides; any field left null keeps the
@@ -133,6 +145,7 @@ class CardModel {
     int? countsAsFactionsMasteryThreshold,
     ActivatedAbility? activatedAbility,
     String? art,
+    bool? recruitUnderCardsOnDeath,
   }) {
     return CardModel(
       id: id ?? this.id,
@@ -154,6 +167,8 @@ class CardModel {
           this.countsAsFactionsMasteryThreshold,
       activatedAbility: activatedAbility ?? this.activatedAbility,
       art: art ?? this.art,
+      recruitUnderCardsOnDeath:
+          recruitUnderCardsOnDeath ?? this.recruitUnderCardsOnDeath,
     );
   }
 }

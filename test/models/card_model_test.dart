@@ -166,4 +166,36 @@ void main() {
       expect(card.cost, 0);
     });
   });
+
+  group('CardModel.recruitUnderCardsOnDeath', () {
+    test('defaults to false', () {
+      const card = CardModel(id: 'x', name: 'X', cost: 0, playEffects: []);
+      expect(card.recruitUnderCardsOnDeath, false);
+    });
+
+    test('copyWith preserves recruitUnderCardsOnDeath (both directions)', () {
+      const carmine = CardModel(
+        id: 'carmine_eclipse',
+        name: 'Carmine Eclipse',
+        cost: 2,
+        playEffects: [],
+        cardType: CardType.champion,
+        shield: 6,
+        recruitUnderCardsOnDeath: true,
+      );
+      // Overriding an UNRELATED field must not drop the flag (the codegen
+      // lesson: a recruited/relic instance is built via copyWith).
+      final recruited = carmine.copyWith(id: 'carmine_eclipse_1');
+      expect(recruited.id, 'carmine_eclipse_1');
+      expect(recruited.recruitUnderCardsOnDeath, true);
+
+      // And it can be explicitly toggled.
+      expect(carmine.copyWith(recruitUnderCardsOnDeath: false)
+          .recruitUnderCardsOnDeath, false);
+
+      const plain = CardModel(id: 'y', name: 'Y', cost: 0, playEffects: []);
+      expect(plain.copyWith(recruitUnderCardsOnDeath: true)
+          .recruitUnderCardsOnDeath, true);
+    });
+  });
 }

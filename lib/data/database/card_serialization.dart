@@ -65,6 +65,7 @@ Map<String, dynamic> cardModelToJson(CardModel c) {
     if (c.activatedAbility != null)
       'activatedAbility': encodeActivatedAbility(c.activatedAbility!),
     if (c.art != null) 'art': c.art,
+    if (c.recruitUnderCardsOnDeath) 'recruitUnderCardsOnDeath': true,
   };
 }
 
@@ -90,6 +91,8 @@ CardModel cardModelFromJson(Map<String, dynamic> json) {
         json['countsAsFactionsMasteryThreshold'] as int?,
     activatedAbility: decodeActivatedAbility(json['activatedAbility']),
     art: json['art'] as String?,
+    recruitUnderCardsOnDeath:
+        (json['recruitUnderCardsOnDeath'] as bool?) ?? false,
   );
 }
 

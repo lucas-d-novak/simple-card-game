@@ -787,6 +787,28 @@ enum StaticModifierKind {
   /// `_effectiveHealth`. The modifier carries the owning champion's id in
   /// [StaticModifier.sourceChampionId].
   shieldPerCardUnder,
+
+  /// While the SOURCE champion is in play, the owner MAY recruit any card they
+  /// fast-play — the fast-played card is moved to the owner's DISCARD pile
+  /// instead of leaving the game (swyft "if you are Rez, you may recruit any
+  /// card you fast-play"). The Rez character requirement is NOT stored on the
+  /// modifier — it is baked into the engine gate
+  /// ([GameService.recruitFastPlayedCard], which additionally requires
+  /// `player.character == Character.rez`). The modifier carries the owning
+  /// champion's id in [StaticModifier.sourceChampionId] (stamped at runtime).
+  fastPlayRecruit,
+
+  /// While the SOURCE champion is in play, every card the owner fast-plays is
+  /// MANDATORILY tucked UNDER that champion instead of being banished / left in
+  /// `fastPlayedThisTurn` (carmine_eclipse "whenever you fast-play a card,
+  /// instead of banishing it, put it under this"). Consulted in
+  /// [GameService._disposeFastPlayedCard] at BOTH fast-play sites; the tuck
+  /// auto-raises the champion's health via any companion [shieldPerCardUnder]
+  /// modifier. Precedes (takes priority over) the optional [fastPlayRecruit] —
+  /// the card never reaches `fastPlayedThisTurn`. The modifier carries the
+  /// owning champion's id in [StaticModifier.sourceChampionId] (stamped at
+  /// runtime).
+  tuckFastPlaysUnder,
 }
 
 /// WHO a [StaticModifierKind.cannotBeAttacked] modifier protects.
@@ -929,6 +951,10 @@ class StaticModifier {
         return 'Recruited $f${t}cards go to the top of your deck';
       case StaticModifierKind.shieldPerCardUnder:
         return 'This champion has +$amount shield for each card under it';
+      case StaticModifierKind.fastPlayRecruit:
+        return 'If you are Rez, you may recruit cards you fast-play';
+      case StaticModifierKind.tuckFastPlaysUnder:
+        return 'Cards you fast-play are tucked under this champion';
     }
   }
 }

@@ -1602,11 +1602,16 @@
       "name": "Swyft",
       "faction": "none",
       "copies": 2,
-      "playEffects": [],
+      "playEffects": [
+        {
+          "type": "addStaticModifier",
+          "kind": "fastPlayRecruit"
+        }
+      ],
       "art": "swyft.jpg",
-      "rawText": "Aion Champion. Exhaust: Gain 2 (gems) and 2 (power). If you are Rez, you may recruit any card you fast-play.",
+      "rawText": "Aion Champion. Exhaust: Gain 2 (gems) and 2 (power). If you are Rez, you may recruit any card you fast-play (to your discard pile).",
       "verified": false,
-      "notes": "Faction group (non-player): Aion. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 55: name='Swyft', faction='Aion', amount=2. | art added from TTS spritesheet crop (effects pending verification). | Aion Champion shield 3. UNMODELED: Exhaust activated ability ('Gain 2 gems and 2 power') and character-identity conditional 'If you are Rez...'. verified:false. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false. | [encode-gap] 'If you are Rez, you may recruit any card you fast-play' modifies the disposition of a fast-play action (turn the warp/banish into a recruit). There is no effect to convert a fast-played card into a recruited one, and no fast-play action is present on this card to gate.",
+      "notes": "Faction group (non-player): Aion. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 55: name='Swyft', faction='Aion', amount=2. | art added from TTS spritesheet crop (effects pending verification). | Aion Champion shield 3. UNMODELED: Exhaust activated ability ('Gain 2 gems and 2 power') and character-identity conditional 'If you are Rez...'. verified:false. | set was 'sos' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false. | [encode-gap] 'If you are Rez, you may recruit any card you fast-play' modifies the disposition of a fast-play action (turn the warp/banish into a recruit). There is no effect to convert a fast-played card into a recruited one, and no fast-play action is present on this card to gate. | [MODELED 2026-07-01, backlog B5] playEffects now add a fastPlayRecruit static modifier (sourceChampionId stamped at runtime). Engine gate GameService.recruitFastPlayedCard requires Swyft in play AND character==Rez; the recruited fast-play goes to the DISCARD pile (owner ruling). Carmine Eclipse's mandatory tuck takes precedence. Exhaust activatedAbility retained. Server protocol action + client 'Recruit' affordance on fast-played cards are a follow-up.",
       "group": "Aion",
       "set": "unknown",
       "cardType": "champion",
@@ -2485,19 +2490,24 @@
           "type": "addStaticModifier",
           "kind": "shieldPerCardUnder",
           "amount": 2
+        },
+        {
+          "type": "addStaticModifier",
+          "kind": "tuckFastPlaysUnder"
         }
       ],
       "art": "carmine_eclipse.jpg",
       "rawText": "Carmine Eclipse\nAion Champion\n[health][health][health][health][health][health]\nWhenever you fast-play a card, instead of banishing it, put it under this. You have [shield][shield] for each card under this.\nWhen this is destroyed, you may recruit any of the cards under this and banish the rest.",
       "verified": false,
-      "notes": "Faction group (non-player): Aion. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 83: name='Carmine Eclipse', faction='Aion', amount=1. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/carmine_eclipse.jpg (shield/health icon value 6; effect references gaining 2 shield per card under); conf=high | [encode-gap] shieldPerCardUnder static modifier covers the '+2 shield per card under this' clause (engine stamps sourceChampionId at runtime). Still unencodable: 'whenever you fast-play a card, instead of banishing it, put it under this' (no fast-play-redirect-to-under-card mechanic) and 'when destroyed, recruit any cards under this and banish the rest' (no on-destroy under-card recruit/banish).",
+      "notes": "Faction group (non-player): Aion. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 83: name='Carmine Eclipse', faction='Aion', amount=1. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/carmine_eclipse.jpg (shield/health icon value 6; effect references gaining 2 shield per card under); conf=high | [encode-gap] shieldPerCardUnder static modifier covers the '+2 shield per card under this' clause (engine stamps sourceChampionId at runtime). Still unencodable: 'whenever you fast-play a card, instead of banishing it, put it under this' (no fast-play-redirect-to-under-card mechanic) and 'when destroyed, recruit any cards under this and banish the rest' (no on-destroy under-card recruit/banish). | [MODELED 2026-07-01, backlog B5] playEffects now add BOTH shieldPerCardUnder (health, unchanged) AND a tuckFastPlaysUnder static modifier: GameService._disposeFastPlayedCard mandatorily tucks every fast-played card under Carmine (auto-raising its health). recruitUnderCardsOnDeath=true routes its under-cards to GameService.pendingUnderCardRecruit on death (combat/destroy/self-banish); the owner PAYS each card's gem cost to recruit it (owner ruling B5 — not free) and the rest are banished. Off-turn protocol authorization + owner-only salvage redaction + client picker are a follow-up.",
       "group": "Aion",
       "set": "unknown",
       "chapter": 3,
       "ksOnly": true,
       "cost": 2,
       "cardType": "champion",
-      "shield": 6
+      "shield": 6,
+      "recruitUnderCardsOnDeath": true
     },
     {
       "id": "dash",

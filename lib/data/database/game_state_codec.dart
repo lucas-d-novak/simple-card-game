@@ -53,6 +53,13 @@ class GameStateCodec {
       'centerRow': _refs(dict, game.centerRow),
       'infinityDeck': _refs(dict, game.infinityDeck),
       'removedFromGame': _refs(dict, game.removedFromGame),
+      // carmine_eclipse on-death salvage buckets (ownerId → salvageable
+      // under-cards). Only emitted when a salvage is pending.
+      if (game.pendingUnderCardRecruit.isNotEmpty)
+        'pendingUnderCardRecruit': {
+          for (final entry in game.pendingUnderCardRecruit.entries)
+            entry.key: _refs(dict, entry.value),
+        },
       // Neutral Ingeminex entities in the shared champion row (ownerless, so
       // serialized inline rather than via the card dict). Only emitted when any
       // are in play; accumulated damage is preserved.
@@ -102,6 +109,11 @@ class GameStateCodec {
     game.centerRow.addAll(zone(json['centerRow']));
     game.infinityDeck.addAll(zone(json['infinityDeck']));
     game.removedFromGame.addAll(zone(json['removedFromGame']));
+    final pendingSalvage = (json['pendingUnderCardRecruit'] as Map? ?? const {})
+        .cast<String, dynamic>();
+    for (final entry in pendingSalvage.entries) {
+      game.pendingUnderCardRecruit[entry.key] = zone(entry.value);
+    }
     for (final raw in (json['ingeminex'] as List? ?? const [])) {
       game.ingeminexRow
           .add(_decodeIngeminex((raw as Map).cast<String, dynamic>()));

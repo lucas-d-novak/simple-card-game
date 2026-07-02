@@ -148,6 +148,8 @@ class CardRecord {
             json['countsAsFactionsMasteryThreshold'] as int?,
         activatedAbility: decodeActivatedAbility(json['activatedAbility']),
         art: json['art'] as String?,
+        recruitUnderCardsOnDeath:
+            (json['recruitUnderCardsOnDeath'] as bool?) ?? false,
       ),
     );
   }

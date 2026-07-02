@@ -206,6 +206,18 @@ class GameService {
   final List<CardModel> infinityDeck = [];
   final List<CardModel> removedFromGame = [];
 
+  /// Cards tucked under a destroyed [CardModel.recruitUnderCardsOnDeath] champion
+  /// (carmine_eclipse) that are pending the OWNER's salvage choice, keyed by the
+  /// owner's player id. Populated by [_disposeUnderCardsOnDeath] when such a
+  /// champion dies with cards under it (possible OFF-TURN — Carmine may be
+  /// destroyed on an opponent's turn). The owner then either PAYS a card's gem
+  /// cost to recruit it ([recruitUnderCard], → discard) or banishes the rest
+  /// ([finishUnderCardSalvage], → removedFromGame). Empty when no salvage is
+  /// pending. Round-tripped by [GameStateCodec]. NOTE: an owner who is
+  /// ELIMINATED gets no salvage — [_cleanupEliminatedPlayer] sends their
+  /// under-cards straight to removed-from-game.
+  final Map<String, List<CardModel>> pendingUnderCardRecruit = {};
+
   /// The shared, NEUTRAL Ingeminex entities occupying the Champions Row. Each
   /// belongs to NO player: any current player may attack it via
   /// [attackIngeminex] (unlike a normal champion, which lives in its owner's
@@ -849,6 +861,69 @@ class GameService {
     owner.staticModifiers.removeWhere((m) => m.sourceChampionId == championId);
   }
 
+  /// Shared champion-DEATH under-card disposition, called by EVERY combat/effect
+  /// death path (attackChampion / destroyChampion / _selfBanish / banishCard's
+  /// played-this-turn champion branch) in place of [_releaseUnderCards].
+  ///
+  /// When [champion] carries [CardModel.recruitUnderCardsOnDeath] (carmine_eclipse)
+  /// AND has cards tucked under it, those cards are moved to
+  /// [pendingUnderCardRecruit] for the OWNER to salvage (pay-to-recruit / banish
+  /// the rest) — instead of going straight to discard. The champion's static
+  /// modifiers are still dropped (exactly as [_releaseUnderCards] does), so its
+  /// shieldPerCardUnder / tuck auras vanish with it. Otherwise this falls back to
+  /// [_releaseUnderCards] (the ordinary paradigm_the_archivist disposition — all
+  /// under-cards to discard, modifiers dropped).
+  ///
+  /// Elimination is NOT routed here: [_cleanupEliminatedPlayer] sweeps an
+  /// eliminated owner's under-cards to removed-from-game (no salvage — they are
+  /// out of the game).
+  void _disposeUnderCardsOnDeath(PlayerState owner, CardModel champion) {
+    final under = owner.cardsUnderChampion[champion.id];
+    if (champion.recruitUnderCardsOnDeath && under != null && under.isNotEmpty) {
+      owner.cardsUnderChampion.remove(champion.id);
+      pendingUnderCardRecruit.putIfAbsent(owner.id, () => []).addAll(under);
+      // Drop the champion's sourced modifiers, mirroring _releaseUnderCards.
+      owner.staticModifiers
+          .removeWhere((m) => m.sourceChampionId == champion.id);
+    } else {
+      _releaseUnderCards(owner, champion.id);
+    }
+  }
+
+  /// The id of a champion in [player]'s play that sources an ACTIVE
+  /// [StaticModifierKind.tuckFastPlaysUnder] modifier (carmine_eclipse), or null
+  /// if none. Used by [_disposeFastPlayedCard] to route fast-plays under Carmine.
+  String? _tuckFastPlaysChampionId(PlayerState player) {
+    for (final m in player.staticModifiers) {
+      if (m.kind == StaticModifierKind.tuckFastPlaysUnder &&
+          m.sourceChampionId != null &&
+          player.championsInPlay.any((c) => c.id == m.sourceChampionId)) {
+        return m.sourceChampionId;
+      }
+    }
+    return null;
+  }
+
+  /// Final disposition of a just-resolved fast-played [card] at BOTH fast-play
+  /// sites ([fastPlayFromCenter] free warp, [payAndFastPlayFromCenter] paid
+  /// mercenary). If [player] controls a champion with an active
+  /// [StaticModifierKind.tuckFastPlaysUnder] aura (carmine_eclipse), the card is
+  /// MANDATORILY tucked under that champion (auto-raising its
+  /// shieldPerCardUnder health; the card never reaches `fastPlayedThisTurn`, so
+  /// Carmine's tuck takes precedence over swyft's optional recruit). Otherwise
+  /// the card goes to `fastPlayedThisTurn`, where it stays visible (greyed) for
+  /// the rest of the turn and is swept to removed-from-game by
+  /// [PlayerState.cleanupTurn] — unless swyft's [recruitFastPlayedCard] rescues
+  /// it to discard first.
+  void _disposeFastPlayedCard(PlayerState player, CardModel card) {
+    final championId = _tuckFastPlaysChampionId(player);
+    if (championId != null) {
+      player.cardsUnderChampion.putIfAbsent(championId, () => []).add(card);
+    } else {
+      player.fastPlayedThisTurn.add(card);
+    }
+  }
+
   /// Whether a cannotBeAttacked modifier [m] owned by [owner] is currently
   /// ACTIVE against [attacker]. Evaluates the modifier's
   /// [StaticModifier.cannotBeAttackedCondition] with the attacker in context so
@@ -1476,7 +1551,7 @@ class GameService {
     currentPlayer.powerPool -= healthNeeded;
     target.championsInPlay.removeAt(champIndex);
     target.discardPile.add(champion);
-    _releaseUnderCards(target, champion.id);
+    _disposeUnderCardsOnDeath(target, champion);
 
     // Note the health the champion absorbed (public: the champion's value is
     // board-visible). Kept as "shield N absorbed" for log/UI continuity — the
@@ -1675,13 +1750,23 @@ class GameService {
         // which must be purged so scaling/conditional counts and end-of-turn
         // cleanup do not still see it.
         final inPlayed = _banishFromZone(player.playedThisTurn, cardId);
+        // Capture the champion model BEFORE banishing so its under-cards can be
+        // disposed with the correct death disposition (carmine_eclipse salvage
+        // vs. discard). _banishFromZone only returns a bool.
+        final banishedChampion = inPlayed
+            ? null
+            : player.championsInPlay
+                .where((c) => c.id == cardId)
+                .firstOrNull;
         final inChampions =
             !inPlayed && _banishFromZone(player.championsInPlay, cardId);
         if (!inPlayed && !inChampions) return false;
-        // A banished champion must release its under-cards (mirrors every other
+        // A banished champion must dispose its under-cards (mirrors every other
         // champion-removal path; otherwise tucked cards + shieldPerCardUnder
         // orphan).
-        if (inChampions) _releaseUnderCards(player, cardId);
+        if (inChampions && banishedChampion != null) {
+          _disposeUnderCardsOnDeath(player, banishedChampion);
+        }
         // Remove a SINGLE history entry (ids are card-type ids, so duplicates
         // legitimately recur this turn — removeWhere would over-purge and
         // corrupt per-turn counts; we only banished one physical card).
@@ -1710,11 +1795,13 @@ class GameService {
     // removedFromGame (card duplication). Also drop its per-turn exhaustion mark.
     player.claimedDestinies.removeWhere((c) => identical(c, source));
     player.exhaustedDestinies.remove(source.id);
-    // If a champion self-banishes, release any cards tucked under it (to the
-    // owner's discard) and drop its self-scoped shield modifier — otherwise the
-    // under-cards orphan in the map and the modifier dangles. Mirrors every
-    // other champion-removal path (attack/destroy/eliminate).
-    if (wasChampion) _releaseUnderCards(player, source.id);
+    // If a champion self-banishes, dispose any cards tucked under it and drop
+    // its self-scoped modifiers — otherwise the under-cards orphan in the map
+    // and the modifier dangles. Mirrors every other champion-removal path
+    // (attack/destroy/eliminate). A recruitUnderCardsOnDeath champion
+    // (carmine_eclipse) routes its under-cards to the owner's salvage instead of
+    // discard.
+    if (wasChampion) _disposeUnderCardsOnDeath(player, source);
     removedFromGame.add(source);
   }
 
@@ -1766,7 +1853,59 @@ class GameService {
 
     final champion = target.championsInPlay.removeAt(champIndex);
     target.discardPile.add(champion);
-    _releaseUnderCards(target, champion.id);
+    _disposeUnderCardsOnDeath(target, champion);
+    return true;
+  }
+
+  // -------------------------------------------------------------------------
+  // Carmine Eclipse — on-death under-card salvage (deferred, may be OFF-TURN)
+  // -------------------------------------------------------------------------
+
+  /// carmine_eclipse: after a [CardModel.recruitUnderCardsOnDeath] champion is
+  /// destroyed, its OWNER may PAY each salvageable under-card's gem cost to
+  /// recruit it (owner ruling §B5: PAY GEMS, not free). Moves [cardId] from the
+  /// owner's [pendingUnderCardRecruit] bucket to their DISCARD pile, charging
+  /// `card.cost` gems.
+  ///
+  /// This is authorized for the OWNER ([playerId]) — NOT necessarily the current
+  /// player, because Carmine can be destroyed on an opponent's turn (the
+  /// protocol layer will off-turn-authorize this later). It therefore does NOT
+  /// gate on [_currentPlayerCanAct]; it only validates the salvage is legal.
+  ///
+  /// Returns false (no state change) if [playerId] has no pending salvage, the
+  /// card is not pending for them, or they cannot afford its cost.
+  bool recruitUnderCard(String playerId, String cardId) {
+    final player = players.where((p) => p.id == playerId).firstOrNull;
+    if (player == null || player.isEliminated) return false;
+
+    final pending = pendingUnderCardRecruit[playerId];
+    if (pending == null) return false;
+
+    final index = pending.indexWhere((c) => c.id == cardId);
+    if (index == -1) return false;
+
+    final card = pending[index];
+    if (player.gemPool < card.cost) return false;
+
+    player.gemPool -= card.cost;
+    pending.removeAt(index);
+    player.discardPile.add(card);
+    if (pending.isEmpty) pendingUnderCardRecruit.remove(playerId);
+    _log('salvaged ${card.name} for ${card.cost} gems',
+        playerId: playerId, cardId: card.id);
+    return true;
+  }
+
+  /// carmine_eclipse: finish [playerId]'s under-card salvage — BANISH every
+  /// remaining pending card (→ [removedFromGame], "banish the rest") and clear
+  /// their [pendingUnderCardRecruit] bucket. Like [recruitUnderCard] this is an
+  /// OWNER action that may run OFF-TURN, so it does NOT gate on
+  /// [_currentPlayerCanAct]. Returns false (no state change) if [playerId] had no
+  /// pending salvage.
+  bool finishUnderCardSalvage(String playerId) {
+    final pending = pendingUnderCardRecruit.remove(playerId);
+    if (pending == null) return false;
+    removedFromGame.addAll(pending);
     return true;
   }
 
@@ -1904,7 +2043,9 @@ class GameService {
     // cards' play-history scaling/conditions (perAllyPlayedThisTurn, etc.)
     // should still count it even though the physical card will leave the game.
     player.playedThisTurn.removeWhere((c) => identical(c, card));
-    player.fastPlayedThisTurn.add(card);
+    // Carmine-tuck (mandatory) vs. plain fast-play disposition (from where
+    // swyft's optional recruit or end-of-turn removal can later act).
+    _disposeFastPlayedCard(player, card);
 
     _refillCenterRow();
     _log('warped ${card.name}',
@@ -1959,13 +2100,49 @@ class GameService {
     // the rest of the turn; cleanupTurn() removes it from the game at end of
     // turn. Keep it in cardsPlayedThisTurn for this turn's play-history scaling.
     player.playedThisTurn.removeWhere((c) => identical(c, card));
-    player.fastPlayedThisTurn.add(card);
+    // Carmine-tuck (mandatory) vs. plain fast-play disposition (from where
+    // swyft's optional recruit or end-of-turn removal can later act).
+    _disposeFastPlayedCard(player, card);
 
     _refillCenterRow();
     _log('fast-played ${card.name} for $price gems',
         playerId: player.id,
         cardId: card.id,
         grants: _grantsSince(player, gem0, power0, mastery0, health0));
+    return true;
+  }
+
+  /// swyft: "if you are Rez, you may recruit any card you fast-play (to
+  /// discard)". Moves the fast-played [cardId] out of the current player's
+  /// `fastPlayedThisTurn` (where it would otherwise leave the game at end of
+  /// turn) into their DISCARD pile, so it can be drawn and played again later.
+  ///
+  /// GATE (owner ruling §B5): the player must (a) control a champion in play that
+  /// sources an active [StaticModifierKind.fastPlayRecruit] modifier (swyft) AND
+  /// (b) have `character == Character.rez`. Carmine's mandatory
+  /// [StaticModifierKind.tuckFastPlaysUnder] takes precedence — a tucked card
+  /// never enters `fastPlayedThisTurn`, so it is not reachable here.
+  ///
+  /// Returns false (no state change) if the gate fails, the player can't act, or
+  /// [cardId] is not currently in `fastPlayedThisTurn`.
+  bool recruitFastPlayedCard(String cardId) {
+    if (!_currentPlayerCanAct) return false;
+    final player = currentPlayer;
+
+    final hasSwyftAura = player.staticModifiers.any((m) =>
+        m.kind == StaticModifierKind.fastPlayRecruit &&
+        m.sourceChampionId != null &&
+        player.championsInPlay.any((c) => c.id == m.sourceChampionId));
+    if (!hasSwyftAura) return false;
+    if (player.character != Character.rez) return false;
+
+    final index = player.fastPlayedThisTurn.indexWhere((c) => c.id == cardId);
+    if (index == -1) return false;
+
+    final card = player.fastPlayedThisTurn.removeAt(index);
+    player.discardPile.add(card);
+    _log('recruited fast-played ${card.name}',
+        playerId: player.id, cardId: card.id);
     return true;
   }
 
@@ -2071,7 +2248,10 @@ class GameService {
       if (player.id == source.id) continue;
       if (player.championsInPlay.isEmpty) continue;
       for (final champion in player.championsInPlay) {
-        _releaseUnderCards(player, champion.id);
+        // Route through the shared death disposition so a Carmine-style
+        // recruitUnderCardsOnDeath champion still offers its salvage even when
+        // wiped by a destroy-all effect (not just single-target destroy).
+        _disposeUnderCardsOnDeath(player, champion);
       }
       player.discardPile.addAll(player.championsInPlay);
       player.championsInPlay.clear();
@@ -3233,6 +3413,13 @@ class GameService {
       removedFromGame.addAll(under);
     }
     player.cardsUnderChampion.clear();
+
+    // A Carmine-style salvage bucket already migrated out of cardsUnderChampion
+    // (its champion died) still belongs to this player — an eliminated owner
+    // gets no salvage, so banish any pending under-cards too (else the bucket
+    // would orphan forever and a zombie eliminated seat could still salvage).
+    final pending = pendingUnderCardRecruit.remove(player.id);
+    if (pending != null) removedFromGame.addAll(pending);
 
     // Board-wide static modifiers leave with the player too. Champion-sourced
     // auras (e.g. zetta_the_encryptor's cannotBeAttacked) are keyed to a

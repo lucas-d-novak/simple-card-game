@@ -372,4 +372,68 @@ void main() {
       expect(encoded.containsKey('lastDamage'), isFalse);
     });
   });
+
+  group('Wave-B Group 4 — new field / kinds / pending salvage round-trip', () {
+    test('recruitUnderCardsOnDeath survives CardModel JSON round-trip', () {
+      const card = CardModel(
+        id: 'carmine_eclipse',
+        name: 'Carmine Eclipse',
+        cost: 2,
+        cardType: CardType.champion,
+        shield: 6,
+        recruitUnderCardsOnDeath: true,
+        playEffects: [],
+      );
+      final back = cardModelFromJson(cardModelToJson(card));
+      expect(back.recruitUnderCardsOnDeath, true);
+      // Default stays false / absent.
+      const plain = CardModel(id: 'p', name: 'P', cost: 0, playEffects: []);
+      expect(cardModelToJson(plain).containsKey('recruitUnderCardsOnDeath'),
+          isFalse);
+      expect(
+          cardModelFromJson(cardModelToJson(plain)).recruitUnderCardsOnDeath,
+          false);
+    });
+
+    test('fastPlayRecruit / tuckFastPlaysUnder static modifiers round-trip',
+        () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      game.players[0].staticModifiers.add(const StaticModifier(
+          kind: StaticModifierKind.fastPlayRecruit,
+          sourceChampionId: 'swyft'));
+      game.players[0].staticModifiers.add(const StaticModifier(
+          kind: StaticModifierKind.tuckFastPlaysUnder,
+          sourceChampionId: 'carmine_eclipse'));
+
+      final restored = GameStateCodec.decode(
+          jsonDecode(jsonEncode(GameStateCodec.encode(game)))
+              as Map<String, dynamic>);
+      final kinds = restored.players[0].staticModifiers.map((m) => m.kind);
+      expect(kinds, contains(StaticModifierKind.fastPlayRecruit));
+      expect(kinds, contains(StaticModifierKind.tuckFastPlaysUnder));
+    });
+
+    test('pendingUnderCardRecruit round-trips (owner → under-cards)', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final ownerId = game.players[0].id;
+      const under = CardModel(
+          id: 'warp_target', name: 'Warp Target', cost: 3, playEffects: []);
+      game.pendingUnderCardRecruit[ownerId] = [under];
+
+      final encoded = GameStateCodec.encode(game);
+      expect(encoded.containsKey('pendingUnderCardRecruit'), isTrue);
+
+      final restored = GameStateCodec.decode(
+          jsonDecode(jsonEncode(encoded)) as Map<String, dynamic>);
+      expect(restored.pendingUnderCardRecruit[ownerId], isNotNull);
+      expect(restored.pendingUnderCardRecruit[ownerId]!.single.id,
+          'warp_target');
+    });
+
+    test('no pendingUnderCardRecruit key when empty', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      expect(GameStateCodec.encode(game)
+          .containsKey('pendingUnderCardRecruit'), isFalse);
+    });
+  });
 }
