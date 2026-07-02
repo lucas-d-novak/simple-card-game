@@ -1130,6 +1130,36 @@ final class CopyAllPlayedCardsEffect extends CardEffect {
   }
 }
 
+/// "Reveal the top card of EVERY player's deck, then copy the effect of one
+/// revealed ALLY" (duplication_fabricator). Wave-B Group 4b.
+///
+/// BASE effect — resolves on EVERY play, NOT mastery-gated. The reveal itself is
+/// resolved INLINE in `_resolveEffects` (via [GameService.revealTopOfAllDecks]):
+/// the top card of each non-empty deck is PEEKED (left on top, not removed;
+/// discard reshuffled into the draw pile first when a deck is empty) and recorded
+/// in [GameService.pendingDeckReveal]. The COPY is then DEFERRED-SELECTION: the
+/// player calls [GameService.copyRevealedCard] with the chosen revealed card's
+/// id, which RE-RESOLVES that card's `playEffects` for the current player.
+///
+/// COPY RESTRICTIONS (enforced in [GameService.copyRevealedCard]): the chosen
+/// card must be an ALLY (a regular, non-champion card), must NOT be another
+/// Duplication Fabricator, and — like every copy path — an [InfinityShardEffect]
+/// and a nested copy effect are excluded from the re-resolved list. Crucially,
+/// this effect itself CANNOT be copied ("this effect can't be copied"): it is in
+/// the skip-lists of every copy method ([GameService.copyPlayedCard],
+/// `_copyAllPlayedCards`, `copyUnderCards`) and `_containsCopyEffect`.
+///
+/// After copying, the revealed cards are LEFT ON TOP (peek-only — the chooser
+/// now knows each player's next draw; owner-approved).
+final class RevealAndCopyTopOfDecksEffect extends CardEffect {
+  const RevealAndCopyTopOfDecksEffect();
+
+  @override
+  String get description =>
+      "Reveal the top card of every player's deck; copy one revealed ally's "
+      "effect. This effect can't be copied.";
+}
+
 // ---------------------------------------------------------------------------
 // Opponent draw / discard (Engine Phase 2, wave 5a — Family 13)
 // ---------------------------------------------------------------------------

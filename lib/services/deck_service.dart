@@ -260,6 +260,7 @@ class DeckService {
         case OpponentDrawsEffect():
         case OpponentDiscardsEffect():
         case CopyPlayedCardEffect():
+        case RevealAndCopyTopOfDecksEffect():
         case CenterDeckScryEffect():
         case TuckUnderChampionEffect():
         case CopyUnderCardsEffect():

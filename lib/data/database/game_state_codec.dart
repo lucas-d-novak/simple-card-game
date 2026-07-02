@@ -60,6 +60,14 @@ class GameStateCodec {
           for (final entry in game.pendingUnderCardRecruit.entries)
             entry.key: _refs(dict, entry.value),
         },
+      // duplication_fabricator: top-of-deck cards revealed and awaiting the
+      // caster's copy choice (ownerId + card ref). Only emitted mid-choice.
+      // REDACTION (follow-up): ship ONLY to the current chooser.
+      if (game.pendingDeckReveal.isNotEmpty)
+        'pendingDeckReveal': [
+          for (final e in game.pendingDeckReveal)
+            {'ownerId': e.ownerId, 'card': dict.ref(e.card)},
+        ],
       // Neutral Ingeminex entities in the shared champion row (ownerless, so
       // serialized inline rather than via the card dict). Only emitted when any
       // are in play; accumulated damage is preserved.
@@ -113,6 +121,13 @@ class GameStateCodec {
         .cast<String, dynamic>();
     for (final entry in pendingSalvage.entries) {
       game.pendingUnderCardRecruit[entry.key] = zone(entry.value);
+    }
+    for (final raw in (json['pendingDeckReveal'] as List? ?? const [])) {
+      final m = (raw as Map).cast<String, dynamic>();
+      game.pendingDeckReveal.add((
+        ownerId: m['ownerId'] as String,
+        card: lookup(m['card'] as String),
+      ));
     }
     for (final raw in (json['ingeminex'] as List? ?? const [])) {
       game.ingeminexRow

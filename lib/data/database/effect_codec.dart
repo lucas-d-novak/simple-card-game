@@ -257,6 +257,8 @@ CardEffect decodeEffect(Map<String, dynamic> json) {
             ? _faction(json['faction'] as String?)
             : null,
       );
+    case 'revealAndCopyTopOfDecks':
+      return const RevealAndCopyTopOfDecksEffect();
     case 'centerDeckScry':
       return CenterDeckScryEffect(
         disposition: _centerScryDisposition(json['disposition'] as String?),
@@ -450,6 +452,8 @@ Map<String, dynamic> encodeEffect(CardEffect effect) {
         'filter': effect.filter.name,
         if (effect.faction != null) 'faction': effect.faction!.name,
       };
+    case RevealAndCopyTopOfDecksEffect():
+      return {'type': 'revealAndCopyTopOfDecks'};
     case CenterDeckScryEffect():
       return {
         'type': 'centerDeckScry',

@@ -218,6 +218,7 @@
             "opponentDraws",
             "opponentDiscards",
             "copyPlayedCard",
+            "revealAndCopyTopOfDecks",
             "centerDeckScry",
             "tuckUnderChampion",
             "copyUnderCards",

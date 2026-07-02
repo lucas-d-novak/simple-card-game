@@ -3663,12 +3663,15 @@
         {
           "type": "gainMastery",
           "amount": 1
+        },
+        {
+          "type": "revealAndCopyTopOfDecks"
         }
       ],
       "art": "duplication_fabricator.jpg",
       "rawText": "Order Ally. Gain 1 (mastery). Each player reveals the top card of their deck. Copy the effect of an Ally revealed this way. This effect can't be copied.",
-      "verified": false,
-      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 153: name='Duplication Fabricator', faction='Order', amount=2. | art added from TTS spritesheet crop. | Base gain 1 MASTERY encoded (gainMastery 1). | ADVERSARIAL VERIFY: re-read assets/cards/duplication_fabricator.jpg at high zoom — the 'Gain 1' icon is the gold MASTERY starburst, not a gem. rawText corrected from 'gem' to 'mastery' to match the (correct) gainMastery encoding. | [encode-gap] 'each player reveals top card of deck; copy the effect of an Ally revealed this way' (multi-player top-of-deck reveal + copy-an-Ally) not modeled -> verified:false.",
+      "verified": true,
+      "notes": "set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 153: name='Duplication Fabricator', faction='Order', amount=2. | art added from TTS spritesheet crop. | Base gain 1 MASTERY encoded (gainMastery 1). | ADVERSARIAL VERIFY: re-read assets/cards/duplication_fabricator.jpg at high zoom — the 'Gain 1' icon is the gold MASTERY starburst, not a gem. rawText corrected from 'gem' to 'mastery' to match the (correct) gainMastery encoding. | Wave-B Group 4b (owner ruling B5): play effect = +1 mastery THEN (base, every play, NOT mastery-gated) reveal the top card of EVERY player's deck and copy one revealed ALLY's effect. Encoded gainMastery(1) FIRST then revealAndCopyTopOfDecks. Cannot copy another Duplication Fabricator; 'this effect can't be copied' (in every copy skip-list). Revealed cards LEFT ON TOP (peek-only). Deck-top reveal shown only to the chooser (server redaction is a follow-up pass).",
       "set": "ioh",
       "cardType": "regular",
       "cost": 1,

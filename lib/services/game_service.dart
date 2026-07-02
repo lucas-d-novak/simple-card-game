@@ -218,6 +218,18 @@ class GameService {
   /// under-cards straight to removed-from-game.
   final Map<String, List<CardModel>> pendingUnderCardRecruit = {};
 
+  /// Top-of-deck cards revealed by a [RevealAndCopyTopOfDecksEffect]
+  /// (duplication_fabricator) that are awaiting the caster's copy choice, each
+  /// paired with the id of the player whose deck it came from. Populated by
+  /// [revealTopOfAllDecks] (peek-only — the cards are LEFT ON TOP of their decks)
+  /// and consumed by [copyRevealedCard]. Empty outside a pending choice.
+  ///
+  /// REDACTION NOTE (follow-up pass): this list is the ONE sanctioned exception
+  /// to the secret-deck rule — it must be shipped ONLY to the current chooser and
+  /// REDACTED from every other player's view. Round-tripped whole by
+  /// [GameStateCodec] (omitted when empty).
+  final List<({String ownerId, CardModel card})> pendingDeckReveal = [];
+
   /// The shared, NEUTRAL Ingeminex entities occupying the Champions Row. Each
   /// belongs to NO player: any current player may attack it via
   /// [attackIngeminex] (unlike a normal champion, which lives in its owner's
@@ -1153,10 +1165,11 @@ class GameService {
     if (_containsCopyEffect(card.playEffects)) return false;
 
     // Re-resolve the copied card's play effects, excluding InfinityShardEffect
-    // so the copy never causes a mastery gain / spurious win.
+    // so the copy never causes a mastery gain / spurious win, and
+    // RevealAndCopyTopOfDecksEffect ("this effect can't be copied").
     final copyable = [
       for (final e in card.playEffects)
-        if (e is! InfinityShardEffect) e,
+        if (e is! InfinityShardEffect && e is! RevealAndCopyTopOfDecksEffect) e,
     ];
     _resolveEffects(copyable, player, sourceCard: card);
     return true;
@@ -1200,7 +1213,8 @@ class GameService {
 
       final copyable = [
         for (final e in card.playEffects)
-          if (e is! InfinityShardEffect) e,
+          if (e is! InfinityShardEffect && e is! RevealAndCopyTopOfDecksEffect)
+            e,
       ];
       _resolveEffects(copyable, player, sourceCard: card);
     }
@@ -1210,6 +1224,8 @@ class GameService {
     for (final e in effects) {
       if (e is CopyPlayedCardEffect) return true;
       if (e is CopyAllPlayedCardsEffect) return true;
+      // duplication_fabricator "this effect can't be copied".
+      if (e is RevealAndCopyTopOfDecksEffect) return true;
       // Guard nested copies inside chooseOne / conditional too.
       if (e is ChooseOneEffect) {
         for (final group in e.choices) {
@@ -1299,11 +1315,93 @@ class GameService {
         for (final e in card.playEffects)
           if (e is! InfinityShardEffect &&
               e is! TuckUnderChampionEffect &&
-              e is! CopyUnderCardsEffect)
+              e is! CopyUnderCardsEffect &&
+              e is! RevealAndCopyTopOfDecksEffect)
             e,
       ];
       _resolveEffects(copyable, player, sourceCard: card);
     }
+    return true;
+  }
+
+  // -------------------------------------------------------------------------
+  // Reveal-and-copy top of every deck (Wave-B Group 4b — duplication_fabricator)
+  // -------------------------------------------------------------------------
+
+  /// PEEK at the top card of EVERY player's deck (owner ruling: base effect,
+  /// every play), populating [pendingDeckReveal] for the caster's copy choice.
+  /// Resolved INLINE from [RevealAndCopyTopOfDecksEffect].
+  ///
+  /// - The revealed card is LEFT ON TOP (peek-only — never removed).
+  /// - When a player's draw pile is empty, their discard pile is reshuffled into
+  ///   it first (mirrors [_drawCards] / [scryReveal]); a player with NO cards at
+  ///   all (empty draw AND discard) is skipped.
+  /// - "Top of deck" is the END of [PlayerState.drawPile] (the next card
+  ///   [_drawCards] would deal via removeLast()).
+  ///
+  /// Any prior pending reveal is cleared first (a fresh play supersedes it).
+  void revealTopOfAllDecks() {
+    pendingDeckReveal.clear();
+    for (final player in players) {
+      if (player.isEliminated) continue;
+      if (player.drawPile.isEmpty && player.discardPile.isNotEmpty) {
+        player.drawPile.addAll(player.discardPile);
+        player.discardPile.clear();
+        player.drawPile.shuffle(_random);
+      }
+      if (player.drawPile.isEmpty) continue; // no cards to reveal — skip
+      pendingDeckReveal
+          .add((ownerId: player.id, card: player.drawPile.last));
+    }
+  }
+
+  /// Fulfil a [RevealAndCopyTopOfDecksEffect]: copy the effect of the revealed
+  /// card [cardId] (chosen from [pendingDeckReveal]) for the CURRENT player.
+  ///
+  /// The chosen card must (1) be present in [pendingDeckReveal], (2) be an ALLY —
+  /// a regular, non-champion card — and (3) NOT be another Duplication Fabricator
+  /// ("cannot copy another Duplication Fabricator"). Its `playEffects` are then
+  /// re-resolved for the current player using the shared copy guards: an
+  /// [InfinityShardEffect], a [RevealAndCopyTopOfDecksEffect] ("this effect can't
+  /// be copied"), and any nested copy effect (`_containsCopyEffect`) are all
+  /// excluded so copying can neither win the game nor recurse.
+  ///
+  /// The revealed cards are LEFT ON TOP of their decks (peek-only); [cardId] is
+  /// NOT moved. [pendingDeckReveal] is cleared on success.
+  ///
+  /// Returns false (no state change) if the game is over / the player can't act,
+  /// the card is not a valid pending reveal, or it fails the ally / self filters.
+  bool copyRevealedCard(String cardId) {
+    if (!_currentPlayerCanAct) return false;
+
+    final entry =
+        pendingDeckReveal.where((e) => e.card.id == cardId).firstOrNull;
+    if (entry == null) return false;
+    final card = entry.card;
+
+    // Ally = a regular, non-champion card (mercenaries are not allies).
+    if (card.cardType != CardType.regular) return false;
+
+    // Cannot copy another Duplication Fabricator (by id/name).
+    if (card.id == 'duplication_fabricator' ||
+        card.name == 'Duplication Fabricator') {
+      return false;
+    }
+
+    // Re-entrancy guard: never copy a card that itself copies.
+    if (_containsCopyEffect(card.playEffects)) return false;
+
+    final player = currentPlayer;
+    // Re-resolve the copied ally's play effects, excluding InfinityShardEffect
+    // (no spurious mastery/win) and RevealAndCopyTopOfDecksEffect (uncopyable).
+    final copyable = [
+      for (final e in card.playEffects)
+        if (e is! InfinityShardEffect && e is! RevealAndCopyTopOfDecksEffect) e,
+    ];
+    _resolveEffects(copyable, player, sourceCard: card);
+
+    // Peek-only: revealed cards stay on top. Clear the pending choice.
+    pendingDeckReveal.clear();
     return true;
   }
 
@@ -1473,6 +1571,13 @@ class GameService {
     // Discard remaining hand cards (unplayed cards go to discard)
     player.discardPile.addAll(player.hand);
     player.hand.clear();
+
+    // A Duplication Fabricator reveal-and-copy is a SAME-TURN deferred choice —
+    // if the caster ended their turn without picking, drop it. Otherwise the
+    // list (which carries no chooser id) would linger and let the NEXT player
+    // consume the prior caster's copy choice, and its "leave on top" guarantee
+    // would already be stale (the owner may have drawn the revealed card).
+    pendingDeckReveal.clear();
 
     // Cleanup: move played cards to discard; mercenaries and fast-played/warped
     // cards (kept visible in the play area this turn) leave the game.
@@ -2584,6 +2689,12 @@ class GameService {
         case CopyPlayedCardEffect():
           // Requires selecting which previously-played card to copy — the player
           // should call copyPlayedCard() separately after this effect.
+          break;
+        case RevealAndCopyTopOfDecksEffect():
+          // duplication_fabricator: reveal the top card of EVERY player's deck
+          // INLINE (peek-only; populates pendingDeckReveal), then DEFER the copy
+          // choice — the player calls copyRevealedCard() with the chosen ally.
+          revealTopOfAllDecks();
           break;
         case CenterDeckScryEffect():
           // Requires a center-deck peek + per-card disposition — the player
