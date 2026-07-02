@@ -31,11 +31,19 @@
       "name": "Drakonarius",
       "faction": "homodeus",
       "copies": 1,
-      "playEffects": [],
+      "playEffects": [
+        {
+          "type": "addStaticModifier",
+          "kind": "cannotBeAttacked",
+          "cannotBeAttackedScope": "selfChampion",
+          "cannotBeAttackedCondition": "controlsNamedChampion",
+          "conditionCardName": "General Decurion"
+        }
+      ],
       "art": "drakonarius.jpg",
       "rawText": "Homodeus Champion. Cost 6, shield 2. If you have General Decurion in play, this can't be attacked. Exhaust: Gain 6 (power).",
-      "verified": false,
-      "notes": "Champion shield 2. Exhaust ability: gain 6 power -> playEffects. UNMODELED: \"If you have General Decurion in play, this can't be attacked\" (conditional unattackable) has no engine type. | [encode-gap] \"if you have General Decurion in play, this cannot be attacked\" conditional-on-named-card immunity not modeled -> unverified.",
+      "verified": true,
+      "notes": "Champion shield 2. Exhaust ability: gain 6 power -> activatedAbility. \"If you have General Decurion in play, this can't be attacked\" encoded as a self-scoped conditional cannotBeAttacked (controlsNamedChampion=General Decurion). Attackable normally when General Decurion is not in play; destroy-effects always bypass. Grouped with Raidian/Li Hin/Zetta cannotBeAttacked work.",
       "set": "base",
       "cardType": "champion",
       "cost": 6,
@@ -645,11 +653,18 @@
       "name": "Raidian, Cloud Master",
       "faction": "order",
       "copies": 1,
-      "playEffects": [],
+      "playEffects": [
+        {
+          "type": "addStaticModifier",
+          "kind": "cannotBeAttacked",
+          "cannotBeAttackedScope": "selfChampion",
+          "cannotBeAttackedCondition": "attackerMasteryLessThanOwner"
+        }
+      ],
       "art": "raidian_cloud_master.jpg",
       "rawText": "Order Champion. Cost 5, shield 3. Exhaust: Draw a card. This Champion can't be attacked with (power) by players with less (mastery) than you.",
-      "verified": false,
-      "notes": "Champion shield 3. Exhaust: draw a card -> playEffects. UNMODELED: \"This Champion can't be attacked with (power) by players with less (mastery) than you\" (conditional unattackable based on relative mastery) has no engine type. | [encode-gap] \"cannot be attacked by players with less mastery than you\" relative-mastery immunity not modeled -> unverified.",
+      "verified": true,
+      "notes": "Champion shield 3. Exhaust: draw a card -> activatedAbility. \"This Champion can't be attacked by players with less mastery than you\" encoded as a self-scoped conditional cannotBeAttacked (attackerMasteryLessThanOwner) — blocked only when the attacker's mastery < Raidian's owner's mastery; an equal-or-higher-mastery attacker may attack. Grouped with Drakonarius/Li Hin/Zetta cannotBeAttacked work.",
       "set": "base",
       "cardType": "champion",
       "cost": 5,
@@ -1218,11 +1233,17 @@
       "name": "Li Hin, The Shattered",
       "faction": "wraethe",
       "copies": 1,
-      "playEffects": [],
+      "playEffects": [
+        {
+          "type": "addStaticModifier",
+          "kind": "cannotBeAttacked",
+          "cannotBeAttackedScope": "selfChampion"
+        }
+      ],
       "art": "li_hin_the_shattered.jpg",
       "rawText": "Wraethe Champion. Cost 3, shield 1. This Champion can't be attacked with (power). Exhaust: Gain 1 (power).",
-      "verified": false,
-      "notes": "Wraethe Champion. Exhaust: gain 1 power. [encode-gap] 'This Champion can't be attacked with power' (per-champion immunity; cannotBeAttacked is player-scoped) not modeled.",
+      "verified": true,
+      "notes": "Wraethe Champion. Exhaust: gain 1 power -> activatedAbility. \"This Champion can't be attacked with (power)\" encoded as a self-scoped cannotBeAttacked (always) — blocks a normal attackChampion but does NOT block card-effect destruction (DestroyChampionEffect / destroyChampion still kill it). Grouped with Drakonarius/Raidian/Zetta cannotBeAttacked work.",
       "set": "base",
       "cardType": "champion",
       "cost": 3,

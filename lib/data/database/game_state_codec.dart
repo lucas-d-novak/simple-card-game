@@ -284,6 +284,12 @@ class GameStateCodec {
       if (m.sourceChampionId != null) 'sourceChampionId': m.sourceChampionId,
       if (m.masteryThreshold != null) 'masteryThreshold': m.masteryThreshold,
       if (m.masteryAmount != 0) 'masteryAmount': m.masteryAmount,
+      if (m.cannotBeAttackedScope !=
+          CannotBeAttackedScope.playerAndOtherChampions)
+        'cannotBeAttackedScope': m.cannotBeAttackedScope.name,
+      if (m.cannotBeAttackedCondition != CannotBeAttackedCondition.always)
+        'cannotBeAttackedCondition': m.cannotBeAttackedCondition.name,
+      if (m.conditionCardName != null) 'conditionCardName': m.conditionCardName,
     };
   }
 
@@ -305,6 +311,29 @@ class GameStateCodec {
       sourceChampionId: json['sourceChampionId'] as String?,
       masteryThreshold: json['masteryThreshold'] as int?,
       masteryAmount: (json['masteryAmount'] as int?) ?? 0,
+      cannotBeAttackedScope: _cannotBeAttackedScope(
+          json['cannotBeAttackedScope'] as String?),
+      cannotBeAttackedCondition: _cannotBeAttackedCondition(
+          json['cannotBeAttackedCondition'] as String?),
+      conditionCardName: json['conditionCardName'] as String?,
+    );
+  }
+
+  static CannotBeAttackedScope _cannotBeAttackedScope(String? raw) {
+    if (raw == null) return CannotBeAttackedScope.playerAndOtherChampions;
+    return CannotBeAttackedScope.values.firstWhere(
+      (v) => v.name == raw,
+      orElse: () => throw FormatException(
+          'unknown cannotBeAttacked scope "$raw"'),
+    );
+  }
+
+  static CannotBeAttackedCondition _cannotBeAttackedCondition(String? raw) {
+    if (raw == null) return CannotBeAttackedCondition.always;
+    return CannotBeAttackedCondition.values.firstWhere(
+      (v) => v.name == raw,
+      orElse: () => throw FormatException(
+          'unknown cannotBeAttacked condition "$raw"'),
     );
   }
 }

@@ -17,6 +17,7 @@
 //  - scalars (health/mastery/pools/flags/character/modifiers): public.
 
 import 'package:simple_card_game/data/database/card_serialization.dart';
+import 'package:simple_card_game/models/card_effect.dart';
 import 'package:simple_card_game/models/card_model.dart';
 import 'package:simple_card_game/models/player_state.dart';
 import 'package:simple_card_game/services/game_service.dart';
@@ -258,6 +259,18 @@ Map<String, dynamic> _redactPlayer(
           // mirror can't tell the source champion (still attackable) from the
           // ones the aura protects. Mirrors GameStateCodec._encodeStaticModifier.
           if (m.sourceChampionId != null) 'sourceChampionId': m.sourceChampionId,
+          // Conditional cannotBeAttacked descriptor (scope / condition / named
+          // champion) — all PUBLIC board info (the champion's printed ability
+          // text is face-up), so a client can grey/label an unattackable
+          // champion. Mirrors GameStateCodec._encodeStaticModifier; omitted when
+          // at the defaults (unconditional player aura).
+          if (m.cannotBeAttackedScope !=
+              CannotBeAttackedScope.playerAndOtherChampions)
+            'cannotBeAttackedScope': m.cannotBeAttackedScope.name,
+          if (m.cannotBeAttackedCondition != CannotBeAttackedCondition.always)
+            'cannotBeAttackedCondition': m.cannotBeAttackedCondition.name,
+          if (m.conditionCardName != null)
+            'conditionCardName': m.conditionCardName,
         },
     ],
   };

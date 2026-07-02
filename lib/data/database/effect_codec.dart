@@ -213,6 +213,11 @@ CardEffect decodeEffect(Map<String, dynamic> json) {
         masteryThreshold: json['masteryThreshold'] as int?,
         masteryAmount:
             json.containsKey('masteryAmount') ? _int(json, 'masteryAmount') : 0,
+        cannotBeAttackedScope:
+            _cannotBeAttackedScope(json['cannotBeAttackedScope'] as String?),
+        cannotBeAttackedCondition: _cannotBeAttackedCondition(
+            json['cannotBeAttackedCondition'] as String?),
+        conditionCardName: json['conditionCardName'] as String?,
       ));
     case 'opponentDraws':
       return OpponentDrawsEffect(
@@ -376,6 +381,13 @@ Map<String, dynamic> encodeEffect(CardEffect effect) {
         if (m.masteryThreshold != null)
           'masteryThreshold': m.masteryThreshold,
         if (m.masteryAmount != 0) 'masteryAmount': m.masteryAmount,
+        if (m.cannotBeAttackedScope !=
+            CannotBeAttackedScope.playerAndOtherChampions)
+          'cannotBeAttackedScope': m.cannotBeAttackedScope.name,
+        if (m.cannotBeAttackedCondition != CannotBeAttackedCondition.always)
+          'cannotBeAttackedCondition': m.cannotBeAttackedCondition.name,
+        if (m.conditionCardName != null)
+          'conditionCardName': m.conditionCardName,
       };
     case OpponentDrawsEffect():
       return {
@@ -590,6 +602,22 @@ StaticModifierKind _staticModifierKind(String? raw) {
     if (v.name == raw) return v;
   }
   throw FormatException('unknown static modifier kind: $raw');
+}
+
+CannotBeAttackedScope _cannotBeAttackedScope(String? raw) {
+  if (raw == null) return CannotBeAttackedScope.playerAndOtherChampions;
+  for (final v in CannotBeAttackedScope.values) {
+    if (v.name == raw) return v;
+  }
+  throw FormatException('unknown cannotBeAttacked scope: $raw');
+}
+
+CannotBeAttackedCondition _cannotBeAttackedCondition(String? raw) {
+  if (raw == null) return CannotBeAttackedCondition.always;
+  for (final v in CannotBeAttackedCondition.values) {
+    if (v.name == raw) return v;
+  }
+  throw FormatException('unknown cannotBeAttacked condition: $raw');
 }
 
 CopyFilter _copyFilter(String? raw) {

@@ -262,7 +262,7 @@
         "kind": {
           "type": "string",
           "enum": ["shieldBuff", "healthBuff", "cardCostReduction", "cannotBeAttacked", "recruitToTopOfDeck", "shieldPerCardUnder"],
-          "description": "For addStaticModifier: which persistent board-wide modifier to add. shieldBuff (a champion-sourced shieldBuff adds to the OWNER's per-hit damage reduction while that champion is in play, praetorian_02) and healthBuff (your champions have +amount HEALTH — a higher kill threshold, one_mind_one_army) use 'amount'; both, plus cardCostReduction/recruitToTopOfDeck, may use optional 'faction'/'cardType' filters; cannotBeAttacked ignores amount/filters; shieldPerCardUnder is SELF-scoped to the source champion (carmine_eclipse), buffing it by 'amount' per card tucked under it. shieldBuff/healthBuff may be mastery-scaled via 'masteryThreshold'/'masteryAmount'."
+          "description": "For addStaticModifier: which persistent board-wide modifier to add. shieldBuff (a champion-sourced shieldBuff adds to the OWNER's per-hit damage reduction while that champion is in play, praetorian_02) and healthBuff (your champions have +amount HEALTH — a higher kill threshold, one_mind_one_army) use 'amount'; both, plus cardCostReduction/recruitToTopOfDeck, may use optional 'faction'/'cardType' filters; cannotBeAttacked ignores amount/filters and instead reads the optional 'cannotBeAttackedScope'/'cannotBeAttackedCondition'/'conditionCardName' fields (zetta aura is the unconditional default; li_hin/drakonarius/raidian are self-scoped conditional variants); shieldPerCardUnder is SELF-scoped to the source champion (carmine_eclipse), buffing it by 'amount' per card tucked under it. shieldBuff/healthBuff may be mastery-scaled via 'masteryThreshold'/'masteryAmount'."
         },
         "masteryAmount": {
           "type": "integer",
@@ -276,6 +276,20 @@
         "sourceChampionId": {
           "type": "string",
           "description": "For addStaticModifier with kind shieldPerCardUnder: the owning champion's id (normally stamped at runtime from the source card; rarely set in data)."
+        },
+        "cannotBeAttackedScope": {
+          "type": "string",
+          "enum": ["playerAndOtherChampions", "selfChampion"],
+          "description": "For addStaticModifier with kind cannotBeAttacked: WHO the protection covers. playerAndOtherChampions (default) protects the owner and their OTHER champions but not the source champion (zetta_the_encryptor aura). selfChampion protects ONLY the source champion, never the player (li_hin_the_shattered, drakonarius, raidian_cloud_master)."
+        },
+        "cannotBeAttackedCondition": {
+          "type": "string",
+          "enum": ["always", "controlsNamedChampion", "attackerMasteryLessThanOwner"],
+          "description": "For addStaticModifier with kind cannotBeAttacked: WHEN the protection is active (evaluated per-attacker at attack time). always (default). controlsNamedChampion = active only while the owner controls a champion named 'conditionCardName' in play (drakonarius → General Decurion). attackerMasteryLessThanOwner = active only against an attacker whose mastery is strictly less than the owner's (raidian_cloud_master)."
+        },
+        "conditionCardName": {
+          "type": "string",
+          "description": "For addStaticModifier with kind cannotBeAttacked and cannotBeAttackedCondition controlsNamedChampion: the NAME of the champion the owner must control in play for the protection to be active (drakonarius → 'General Decurion'). Matched by name, robust to per-copy id suffixes."
         },
         "faction": {
           "type": "string",

@@ -306,6 +306,47 @@ void main() {
           reason: 'sourceChampionId must only be emitted when non-null');
       expect(buff['amount'], 1);
     });
+
+    test('redacted staticModifiers carry the conditional cannotBeAttacked '
+        'fields (scope/condition/conditionCardName) — public, no leak', () {
+      final game = GameService(playerCount: 2);
+      // Drakonarius: self-scoped, protected only while its controller has the
+      // named champion "General Decurion" in play. The descriptor is the
+      // champion's face-up printed ability — public.
+      const drak = CardModel(
+        id: 'drakonarius_1',
+        name: 'Drakonarius',
+        cost: 5,
+        playEffects: [],
+        cardType: CardType.champion,
+        shield: 5,
+      );
+      final p0 = game.players[0];
+      p0.championsInPlay.add(drak);
+      p0.staticModifiers.add(StaticModifier(
+        kind: StaticModifierKind.cannotBeAttacked,
+        sourceChampionId: drak.id,
+        cannotBeAttackedScope: CannotBeAttackedScope.selfChampion,
+        cannotBeAttackedCondition:
+            CannotBeAttackedCondition.controlsNamedChampion,
+        conditionCardName: 'General Decurion',
+      ));
+
+      // Read from the OPPONENT's view to prove the fields are public.
+      final view = redactFor(game, 'p1', stateVersion: 1);
+      final players = (view['players'] as List).cast<Map>();
+      final p0View = players.firstWhere((p) => p['id'] == 'p0');
+      final mods = (p0View['staticModifiers'] as List).cast<Map>();
+      final aura = mods.firstWhere(
+        (m) => m['kind'] == StaticModifierKind.cannotBeAttacked.name,
+        orElse: () => throw StateError('cannotBeAttacked modifier missing'),
+      );
+      expect(aura['cannotBeAttackedScope'],
+          CannotBeAttackedScope.selfChampion.name);
+      expect(aura['cannotBeAttackedCondition'],
+          CannotBeAttackedCondition.controlsNamedChampion.name);
+      expect(aura['conditionCardName'], 'General Decurion');
+    });
   });
 
   group('GameSession — action authorization', () {

@@ -675,8 +675,24 @@ enum StaticModifierKind {
   /// `recruitFromCenter`.
   cardCostReduction,
 
-  /// You cannot be attacked (zetta_the_encryptor). Consulted in `attackPlayer`
-  /// (and `attackChampion` targeting). `amount`/filters are ignored.
+  /// You (and/or a champion) cannot be attacked. Consulted in `attackPlayer`
+  /// (and `attackChampion` targeting). `amount`/faction/type filters are ignored;
+  /// instead this kind reads three cannotBeAttacked-specific fields:
+  /// [StaticModifier.cannotBeAttackedScope] (who is protected),
+  /// [StaticModifier.cannotBeAttackedCondition] (when the protection is active),
+  /// and [StaticModifier.conditionCardName] (for the named-champion condition).
+  ///
+  /// - zetta_the_encryptor: scope [CannotBeAttackedScope.playerAndOtherChampions]
+  ///   + condition [CannotBeAttackedCondition.always] (the default aura — protects
+  ///   the owner and their OTHER champions, but not Zetta itself).
+  /// - li_hin_the_shattered: scope [CannotBeAttackedScope.selfChampion] + `always`
+  ///   (protects only Li Hin from ATTACKS; a DestroyChampionEffect still kills it).
+  /// - drakonarius: scope [CannotBeAttackedScope.selfChampion] + condition
+  ///   [CannotBeAttackedCondition.controlsNamedChampion] (active only while the
+  ///   owner controls a champion named [conditionCardName], e.g. General Decurion).
+  /// - raidian_cloud_master: scope [CannotBeAttackedScope.selfChampion] + condition
+  ///   [CannotBeAttackedCondition.attackerMasteryLessThanOwner] (active only against
+  ///   an attacker whose mastery is strictly less than the owner's).
   cannotBeAttacked,
 
   /// Champions (optionally faction/type-filtered) you RECRUIT go to the top of
@@ -692,6 +708,41 @@ enum StaticModifierKind {
   /// `_effectiveHealth`. The modifier carries the owning champion's id in
   /// [StaticModifier.sourceChampionId].
   shieldPerCardUnder,
+}
+
+/// WHO a [StaticModifierKind.cannotBeAttacked] modifier protects.
+enum CannotBeAttackedScope {
+  /// Protects the OWNER player (direct `attackPlayer`) AND the owner's OTHER
+  /// champions — every champion the owner controls EXCEPT the one that sources
+  /// this modifier (which stays attackable). The zetta_the_encryptor aura and the
+  /// default for backward compatibility.
+  playerAndOtherChampions,
+
+  /// Protects ONLY the source champion (the champion whose id equals
+  /// [StaticModifier.sourceChampionId]). Never protects the owning player and
+  /// never protects the owner's other champions. Used for per-champion "this
+  /// can't be attacked" abilities (li_hin_the_shattered, drakonarius,
+  /// raidian_cloud_master).
+  selfChampion,
+}
+
+/// WHEN a [StaticModifierKind.cannotBeAttacked] modifier is active. Evaluated at
+/// attack time with the ATTACKER in context (so relative-mastery conditions can
+/// be judged per-attacker).
+enum CannotBeAttackedCondition {
+  /// Unconditional — always active (zetta_the_encryptor, li_hin_the_shattered).
+  always,
+
+  /// Active only while the OWNER controls a champion in play whose name equals
+  /// [StaticModifier.conditionCardName] (drakonarius — General Decurion). Matched
+  /// by NAME so it is robust to the per-copy id suffix (`<id>_<copy>`) instances
+  /// carry. When [conditionCardName] is null this degenerates to `always`.
+  controlsNamedChampion,
+
+  /// Active only against an ATTACKER whose mastery is STRICTLY LESS than the
+  /// owner's current mastery (raidian_cloud_master). An equal-or-higher-mastery
+  /// attacker is NOT blocked.
+  attackerMasteryLessThanOwner,
 }
 
 /// A persistent, board-wide modifier owned by a player. Carried in
@@ -714,6 +765,9 @@ class StaticModifier {
     this.sourceChampionId,
     this.masteryThreshold,
     this.masteryAmount = 0,
+    this.cannotBeAttackedScope = CannotBeAttackedScope.playerAndOtherChampions,
+    this.cannotBeAttackedCondition = CannotBeAttackedCondition.always,
+    this.conditionCardName,
   });
 
   final StaticModifierKind kind;
@@ -755,6 +809,21 @@ class StaticModifier {
   /// its source card. Null for every other kind.
   final String? sourceChampionId;
 
+  /// For [StaticModifierKind.cannotBeAttacked] ONLY: who the protection covers.
+  /// Defaults to [CannotBeAttackedScope.playerAndOtherChampions] (the Zetta aura).
+  /// Ignored by every other kind.
+  final CannotBeAttackedScope cannotBeAttackedScope;
+
+  /// For [StaticModifierKind.cannotBeAttacked] ONLY: when the protection is
+  /// active. Defaults to [CannotBeAttackedCondition.always]. Ignored by every
+  /// other kind.
+  final CannotBeAttackedCondition cannotBeAttackedCondition;
+
+  /// For [CannotBeAttackedCondition.controlsNamedChampion] ONLY: the NAME of the
+  /// champion the owner must control in play for the protection to be active
+  /// (drakonarius → "General Decurion"). Null for every other condition.
+  final String? conditionCardName;
+
   String get description {
     final f = faction != null ? '${faction!.name} ' : '';
     final t = cardType != null ? '${cardType!.name} ' : '';
@@ -766,7 +835,17 @@ class StaticModifier {
       case StaticModifierKind.cardCostReduction:
         return 'Your $f${t}cards cost $amount less';
       case StaticModifierKind.cannotBeAttacked:
-        return 'You cannot be attacked';
+        final who = cannotBeAttackedScope == CannotBeAttackedScope.selfChampion
+            ? 'This champion cannot be attacked'
+            : 'You cannot be attacked';
+        switch (cannotBeAttackedCondition) {
+          case CannotBeAttackedCondition.always:
+            return who;
+          case CannotBeAttackedCondition.controlsNamedChampion:
+            return '$who while you control ${conditionCardName ?? 'a specific champion'}';
+          case CannotBeAttackedCondition.attackerMasteryLessThanOwner:
+            return '$who by players with less mastery than you';
+        }
       case StaticModifierKind.recruitToTopOfDeck:
         return 'Recruited $f${t}cards go to the top of your deck';
       case StaticModifierKind.shieldPerCardUnder:

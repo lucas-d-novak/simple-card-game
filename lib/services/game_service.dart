@@ -863,9 +863,36 @@ class GameService {
     owner.staticModifiers.removeWhere((m) => m.sourceChampionId == championId);
   }
 
-  /// Whether [player] owns a [StaticModifierKind.cannotBeAttacked] modifier.
-  bool _hasCannotBeAttacked(PlayerState player) => player.staticModifiers
-      .any((m) => m.kind == StaticModifierKind.cannotBeAttacked);
+  /// Whether a cannotBeAttacked modifier [m] owned by [owner] is currently
+  /// ACTIVE against [attacker]. Evaluates the modifier's
+  /// [StaticModifier.cannotBeAttackedCondition] with the attacker in context so
+  /// per-attacker (relative-mastery) conditions resolve correctly. [attacker] is
+  /// only consulted by [CannotBeAttackedCondition.attackerMasteryLessThanOwner].
+  bool _cannotBeAttackedActive(
+      StaticModifier m, PlayerState owner, PlayerState attacker) {
+    switch (m.cannotBeAttackedCondition) {
+      case CannotBeAttackedCondition.always:
+        return true;
+      case CannotBeAttackedCondition.controlsNamedChampion:
+        final needed = m.conditionCardName;
+        if (needed == null) return true; // degenerate → always
+        return owner.championsInPlay.any((c) => c.name == needed);
+      case CannotBeAttackedCondition.attackerMasteryLessThanOwner:
+        return attacker.mastery < owner.mastery;
+    }
+  }
+
+  /// Whether [attacker] is barred from directly attacking [target] (the player)
+  /// by a [StaticModifierKind.cannotBeAttacked] modifier. Only a
+  /// [CannotBeAttackedScope.playerAndOtherChampions] modifier (e.g. Zetta's aura)
+  /// protects the PLAYER; a self-scoped per-champion protection (Li Hin, Raidian,
+  /// Drakonarius) shields only its champion, never the player.
+  bool _playerCannotBeAttacked(PlayerState target, PlayerState attacker) =>
+      target.staticModifiers.any((m) =>
+          m.kind == StaticModifierKind.cannotBeAttacked &&
+          m.cannotBeAttackedScope ==
+              CannotBeAttackedScope.playerAndOtherChampions &&
+          _cannotBeAttackedActive(m, target, attacker));
 
   /// [card]'s acquisition cost for [buyer] after applying every matching
   /// [StaticModifierKind.cardCostReduction] modifier, floored at 1 gem.
@@ -1350,16 +1377,28 @@ class GameService {
 
     final champion = target.championsInPlay[champIndex];
 
-    // zetta_the_encryptor: "You and your OTHER Champions can't be attacked."
-    // A cannotBeAttacked modifier protects the player and the owner's OTHER
-    // champions — but NOT the champion that SOURCES it (Zetta itself stays
-    // attackable). So block the attack only when the target champion is NOT the
-    // source of a cannotBeAttacked modifier the player owns. (Card-effect
-    // destruction via destroyChampion is a separate path, not gated here.)
-    final protectedByOther = target.staticModifiers.any((m) =>
-        m.kind == StaticModifierKind.cannotBeAttacked &&
-        m.sourceChampionId != champion.id);
-    if (protectedByOther) return false;
+    // Flexible conditional cannotBeAttacked (backlog §B3). A champion is shielded
+    // from a normal ATTACK when the owner holds a cannotBeAttacked modifier that
+    // (a) is currently ACTIVE against THIS attacker (currentPlayer) and (b) whose
+    // SCOPE covers this champion:
+    //   * playerAndOtherChampions (Zetta aura) protects every champion EXCEPT the
+    //     one that sources it — so the source champion (e.g. Zetta) stays
+    //     attackable while the owner's other champions are shielded.
+    //   * selfChampion (Li Hin / Raidian / Drakonarius) protects ONLY the champion
+    //     that sources it, and only while its condition holds (named-champion in
+    //     play, or attacker-mastery-less-than-owner).
+    // Card-effect destruction (destroyChampion / DestroyChampionEffect) is a
+    // SEPARATE path and is NOT gated here — so Li Hin can still be destroyed.
+    final protected = target.staticModifiers.any((m) {
+      if (m.kind != StaticModifierKind.cannotBeAttacked) return false;
+      if (!_cannotBeAttackedActive(m, target, currentPlayer)) return false;
+      final coversThisChampion =
+          m.cannotBeAttackedScope == CannotBeAttackedScope.selfChampion
+              ? m.sourceChampionId == champion.id
+              : m.sourceChampionId != champion.id;
+      return coversThisChampion;
+    });
+    if (protected) return false;
     // Owner combat model (backlog §E): a champion has HEALTH (its printed
     // `shield` value, plus any self-scoped shieldPerCardUnder term) and is
     // destroyed only by an attack with power >= that health — the existing
@@ -1402,9 +1441,10 @@ class GameService {
     if (target.id == currentPlayer.id) return false;
     if (target.isEliminated) return false;
 
-    // zetta_the_encryptor: a cannotBeAttacked static modifier makes the target
-    // untargetable by direct attacks.
-    if (_hasCannotBeAttacked(target)) return false;
+    // zetta_the_encryptor: a player-scoped cannotBeAttacked modifier makes the
+    // target untargetable by direct attacks. A self-scoped per-champion
+    // protection (Li Hin / Raidian / Drakonarius) does NOT shield the player.
+    if (_playerCannotBeAttacked(target, currentPlayer)) return false;
 
     // Guard check: target must have no guard champions
     final hasGuard = target.championsInPlay.any((c) => c.hasGuard);
@@ -2222,6 +2262,10 @@ class GameService {
                   sourceChampionId: sourceCard.id,
                   masteryThreshold: effect.modifier.masteryThreshold,
                   masteryAmount: effect.modifier.masteryAmount,
+                  cannotBeAttackedScope: effect.modifier.cannotBeAttackedScope,
+                  cannotBeAttackedCondition:
+                      effect.modifier.cannotBeAttackedCondition,
+                  conditionCardName: effect.modifier.conditionCardName,
                 )
               : effect.modifier;
           final alreadyApplied = stamped.sourceChampionId != null &&
@@ -2232,7 +2276,11 @@ class GameService {
                   m.faction == stamped.faction &&
                   m.cardType == stamped.cardType &&
                   m.masteryThreshold == stamped.masteryThreshold &&
-                  m.masteryAmount == stamped.masteryAmount);
+                  m.masteryAmount == stamped.masteryAmount &&
+                  m.cannotBeAttackedScope == stamped.cannotBeAttackedScope &&
+                  m.cannotBeAttackedCondition ==
+                      stamped.cannotBeAttackedCondition &&
+                  m.conditionCardName == stamped.conditionCardName);
           if (!alreadyApplied) {
             player.staticModifiers.add(stamped);
           }
