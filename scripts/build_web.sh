@@ -28,3 +28,31 @@ flutter build web --release
 printf '{ "build": "%s" }\n' "${SHA}" > build/web/version.json
 
 echo "Done. build/web is stamped with version ${SHA} — deploy it."
+
+# Purge the Cloudflare edge cache so the newly-built (NON-content-hashed) assets
+# — main.dart.js et al, which serve_web.py edge-caches via s-maxage — aren't
+# served stale from the edge after a deploy. Requires an owner-only
+# ~/.cloudflared/sharts-purge.env (CF_PURGE_TOKEN + CF_ZONE_ID); skipped
+# gracefully (never fails the build) if absent or on any API error.
+PURGE_ENV="${HOME}/.cloudflared/sharts-purge.env"
+if [ -f "$PURGE_ENV" ]; then
+  # shellcheck disable=SC1090
+  source "$PURGE_ENV"
+  if [ -n "${CF_PURGE_TOKEN:-}" ] && [ -n "${CF_ZONE_ID:-}" ]; then
+    echo "Purging Cloudflare edge cache…"
+    resp="$(curl -s -X POST \
+      "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/purge_cache" \
+      -H "Authorization: Bearer ${CF_PURGE_TOKEN}" \
+      -H "Content-Type: application/json" \
+      --data '{"purge_everything":true}' || true)"
+    if printf '%s' "$resp" | grep -q '"success":true'; then
+      echo "  edge cache purged."
+    else
+      echo "  WARN: CF purge failed (deploy still OK): ${resp:-<no response>}"
+    fi
+  else
+    echo "Skipping CF purge (env present but CF_PURGE_TOKEN/CF_ZONE_ID unset)."
+  fi
+else
+  echo "Skipping CF purge (no ${PURGE_ENV})."
+fi

@@ -55,8 +55,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         elif path.startswith(LONG_DIRS) or base.endswith(LONG_EXTS):
             self.send_header("Cache-Control", "public, max-age=86400")
         else:
-            # App code (main.dart.js, other .js/.json): revalidate every load.
-            self.send_header("Cache-Control", "public, max-age=0, must-revalidate")
+            # App code (main.dart.js, other .js/.json). Edge-cached long via
+            # s-maxage so Cloudflare serves it WITHOUT hitting the Pi; the
+            # browser still revalidates (max-age=0, must-revalidate) so a deploy
+            # is picked up immediately. build_web.sh purges the stale edge copy
+            # on every deploy (these files are not content-hashed).
+            self.send_header(
+                "Cache-Control",
+                "public, max-age=0, s-maxage=604800, must-revalidate",
+            )
         super().end_headers()
 
 
