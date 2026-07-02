@@ -58,6 +58,10 @@ Map<String, dynamic> cardModelToJson(CardModel c) {
       'masteryBonus': [for (final e in c.masteryBonus) encodeEffect(e)],
     if (c.masteryReplaces) 'masteryReplaces': true,
     if (c.countsAsAllFactions) 'countsAsAllFactions': true,
+    if (c.countsAsFactions.isNotEmpty)
+      'countsAsFactions': [for (final f in c.countsAsFactions) f.name],
+    if (c.countsAsFactionsMasteryThreshold != null)
+      'countsAsFactionsMasteryThreshold': c.countsAsFactionsMasteryThreshold,
     if (c.activatedAbility != null)
       'activatedAbility': encodeActivatedAbility(c.activatedAbility!),
     if (c.art != null) 'art': c.art,
@@ -81,7 +85,17 @@ CardModel cardModelFromJson(Map<String, dynamic> json) {
     masteryBonus: decodeEffectList(json['masteryBonus']),
     masteryReplaces: (json['masteryReplaces'] as bool?) ?? false,
     countsAsAllFactions: (json['countsAsAllFactions'] as bool?) ?? false,
+    countsAsFactions: _factionList(json['countsAsFactions']),
+    countsAsFactionsMasteryThreshold:
+        json['countsAsFactionsMasteryThreshold'] as int?,
     activatedAbility: decodeActivatedAbility(json['activatedAbility']),
     art: json['art'] as String?,
   );
+}
+
+/// Decodes a JSON array of faction names into a `List<Faction>`. Returns an
+/// empty list when [raw] is null/absent. Used for [CardModel.countsAsFactions].
+List<Faction> _factionList(dynamic raw) {
+  if (raw is! List) return const <Faction>[];
+  return [for (final f in raw) factionFromName(f as String?)];
 }

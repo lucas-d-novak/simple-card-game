@@ -140,6 +140,12 @@ class CardRecord {
         masteryBonus: decodeEffectList(json['masteryBonus']),
         masteryReplaces: (json['masteryReplaces'] as bool?) ?? false,
         countsAsAllFactions: (json['countsAsAllFactions'] as bool?) ?? false,
+        countsAsFactions: (json['countsAsFactions'] as List<dynamic>?)
+                ?.map((f) => _parseFaction(f as String?))
+                .toList() ??
+            const <Faction>[],
+        countsAsFactionsMasteryThreshold:
+            json['countsAsFactionsMasteryThreshold'] as int?,
         activatedAbility: decodeActivatedAbility(json['activatedAbility']),
         art: json['art'] as String?,
       ),

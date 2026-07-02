@@ -101,10 +101,17 @@ bool redactedConditionHolds(
 /// Base faction match honouring `countsAsAllFactions` on either side. Turn-scoped
 /// aliases (TreatFactionAs) are not in redacted data, so they are not applied —
 /// this matches the engine for the common (no-alias) case.
-bool _factionsMatch(Faction want, CardModel card) {
+bool _factionsMatch(Faction want, CardModel card, int mastery) {
   if (want == Faction.none) return false;
   if (card.countsAsAllFactions) return true;
-  return card.faction == want;
+  if (card.faction == want) return true;
+  // Mastery-gated multi-faction (Querry Monk): active only at/above its
+  // threshold, mirroring the engine's _extraFactions so the client glow agrees.
+  final thr = card.countsAsFactionsMasteryThreshold;
+  if (card.countsAsFactions.contains(want) && (thr == null || mastery >= thr)) {
+    return true;
+  }
+  return false;
 }
 
 /// Count cards played this turn matching [test], EXCLUDING one instance of the
@@ -142,7 +149,7 @@ bool _evaluate(
     case GameConditionKind.alliesOfFactionPlayed:
       final f = c.faction ?? source.faction;
       if (f == Faction.none) return false;
-      return _countPlayed(source, ctx, (card) => _factionsMatch(f, card)) >=
+      return _countPlayed(source, ctx, (card) => _factionsMatch(f, card, ctx.mastery)) >=
           c.threshold;
 
     case GameConditionKind.factionsPlayedAll:
@@ -173,7 +180,7 @@ bool _evaluate(
       final f = c.faction ?? source.faction;
       if (f == Faction.none) return false;
       final count =
-          ctx._champions.where((card) => _factionsMatch(f, card)).length;
+          ctx._champions.where((card) => _factionsMatch(f, card, ctx.mastery)).length;
       return count >= c.threshold;
 
     case GameConditionKind.masteryAtLeast:
@@ -187,7 +194,7 @@ bool _evaluate(
       if (f == Faction.none) return false;
       // Count ALL same-faction cards played this turn INCLUDING the source.
       final count =
-          ctx._played.where((card) => _factionsMatch(f, card)).length;
+          ctx._played.where((card) => _factionsMatch(f, card, ctx.mastery)).length;
       return count >= c.threshold;
 
     case GameConditionKind.unblockedDamageAtLeast:
@@ -196,14 +203,14 @@ bool _evaluate(
     case GameConditionKind.factionAllyPlayedOrInHand:
       final f = c.faction ?? source.faction;
       if (f == Faction.none) return false;
-      bool matches(CardModel card) => _factionsMatch(f, card);
+      bool matches(CardModel card) => _factionsMatch(f, card, ctx.mastery);
       if (_countPlayed(source, ctx, matches) >= c.threshold) return true;
       return ctx._hand.any(matches);
 
     case GameConditionKind.factionCardInDiscard:
       final f = c.faction ?? source.faction;
       if (f == Faction.none) return false;
-      return ctx._discard.any((card) => _factionsMatch(f, card));
+      return ctx._discard.any((card) => _factionsMatch(f, card, ctx.mastery));
 
     case GameConditionKind.oddCostCardsPlayed:
       return _countPlayed(source, ctx, (card) => card.cost.isOdd) >=

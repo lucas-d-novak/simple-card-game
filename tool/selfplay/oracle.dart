@@ -425,6 +425,8 @@ class Oracle {
         case ConditionalEffect():
         case ChooseOneEffect():
         case InfinityShardEffect():
+        case DoublePowerEffect():
+        case CopyAllPlayedCardsEffect():
           return null;
 
         // --- Deferred-selection / zone effects that DON'T change the actor's
@@ -447,6 +449,7 @@ class Oracle {
         case CenterDeckScryEffect():
         case TreatFactionAsEffect():
         case IgnoreShieldThisTurnEffect():
+        case IgnoreGuardThisTurnEffect():
         case AddStaticModifierEffect():
         case TuckUnderChampionEffect():
         case CopyUnderCardsEffect():

@@ -132,6 +132,19 @@ For EACH, also identify other cards where the same fix/mechanic applies.
   build ONE "if your character is X" condition and reuse across all of them (Rez / Tetra /
   Volos / Decima …). Ferrata Guard's Decima branch is currently left out entirely.
 
+## B4. Known gaps from Group 2 verification (deferred, LATENT — not triggerable today)
+- `_modifierApplies` (faction-filtered static buffs like phasic/healthBuff/cardCostReduction)
+  and `_recruitRedirectMatches` do NOT honor a card's mastery-gated `countsAsFactions`
+  (they lack the extra-factions/mastery context). No current card triggers this (querry_monk
+  is a regular; the faction-filtered redirect/recruit-top cards are champion-gated). Fixing
+  needs a signature change to thread the owner's mastery into `_modifierApplies` — do it if a
+  future multi-faction card must interact with those systems.
+- Distinct-faction COUNTING conditions (`factionsPlayedAll` / `distinctFactionsPlayed` /
+  `perFactionPlayedThisTurn`) count only a card's PRINTED faction — a `countsAsFactions` or
+  `countsAsAllFactions` card counts as ONE faction for "played all 4 factions"-style checks.
+  Consistent with existing all-factions handling; change only if the owner wants querry_monk
+  to single-handedly satisfy multi-faction counts.
+
 ## C. Ingeminex wire-up (owner: "in-scope, wire them up")
 - Flag the 6 Ingeminex cards in-scope (they still spawn as NEUTRAL entities via
   `spawnIngeminex`, NOT into the normal market — keep them out of the center supply,

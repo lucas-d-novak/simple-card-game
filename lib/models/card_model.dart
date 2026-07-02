@@ -62,6 +62,20 @@ class CardModel {
   /// (e.g. Universal Soldier).
   final bool countsAsAllFactions;
 
+  /// Extra factions this card ALSO counts as (in ADDITION to its own
+  /// [faction]) — a MULTI-faction card, distinct from the unconditional
+  /// [countsAsAllFactions]. When [countsAsFactionsMasteryThreshold] is non-null
+  /// the extra factions only apply while the owner's mastery is at/above that
+  /// threshold (querry_monk Mastery-10: "also counts as Homodeus, Undergrowth
+  /// and Wraethe"). Consulted by the engine's faction matching (ally-ability
+  /// triggers, faction-filtered conditions/scaling). Empty for ordinary cards.
+  final List<Faction> countsAsFactions;
+
+  /// Optional mastery gate for [countsAsFactions]. When non-null, the extra
+  /// factions apply only while the owner's mastery is at/above this value; when
+  /// null, they always apply. Ignored when [countsAsFactions] is empty.
+  final int? countsAsFactionsMasteryThreshold;
+
   /// An optional Exhaust-gated activated ability (champions only). Null for
   /// cards without one. This is DISTINCT from [playEffects]: [playEffects] are
   /// the card's normal effects (resolved on play, and re-resolvable each turn
@@ -90,7 +104,56 @@ class CardModel {
     this.masteryBonus = const <CardEffect>[],
     this.masteryReplaces = false,
     this.countsAsAllFactions = false,
+    this.countsAsFactions = const <Faction>[],
+    this.countsAsFactionsMasteryThreshold,
     this.activatedAbility,
     this.art,
   });
+
+  /// Returns a copy with the given overrides; any field left null keeps the
+  /// current value. The market-instance (`_instanceOf`) and relic-instance
+  /// (`_relicInstanceFor`) builders use this so a newly-added CardModel field
+  /// can never be silently dropped from a recruited/relic copy again.
+  CardModel copyWith({
+    String? id,
+    String? name,
+    int? cost,
+    List<CardEffect>? playEffects,
+    Faction? faction,
+    CardType? cardType,
+    int? shield,
+    bool? shieldEqualsMastery,
+    bool? hasGuard,
+    List<CardEffect>? allyAbility,
+    int? masteryThreshold,
+    List<CardEffect>? masteryBonus,
+    bool? masteryReplaces,
+    bool? countsAsAllFactions,
+    List<Faction>? countsAsFactions,
+    int? countsAsFactionsMasteryThreshold,
+    ActivatedAbility? activatedAbility,
+    String? art,
+  }) {
+    return CardModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      cost: cost ?? this.cost,
+      playEffects: playEffects ?? this.playEffects,
+      faction: faction ?? this.faction,
+      cardType: cardType ?? this.cardType,
+      shield: shield ?? this.shield,
+      shieldEqualsMastery: shieldEqualsMastery ?? this.shieldEqualsMastery,
+      hasGuard: hasGuard ?? this.hasGuard,
+      allyAbility: allyAbility ?? this.allyAbility,
+      masteryThreshold: masteryThreshold ?? this.masteryThreshold,
+      masteryBonus: masteryBonus ?? this.masteryBonus,
+      masteryReplaces: masteryReplaces ?? this.masteryReplaces,
+      countsAsAllFactions: countsAsAllFactions ?? this.countsAsAllFactions,
+      countsAsFactions: countsAsFactions ?? this.countsAsFactions,
+      countsAsFactionsMasteryThreshold: countsAsFactionsMasteryThreshold ??
+          this.countsAsFactionsMasteryThreshold,
+      activatedAbility: activatedAbility ?? this.activatedAbility,
+      art: art ?? this.art,
+    );
+  }
 }

@@ -566,23 +566,9 @@ class GameService {
   /// A concrete relic-card instance owned by [playerId], preserving every
   /// gameplay field of [template] with a per-player unique id.
   CardModel _relicInstanceFor(CardModel template, String playerId) {
-    return CardModel(
-      id: '${template.id}_relic_$playerId',
-      name: template.name,
-      cost: template.cost,
-      playEffects: template.playEffects,
-      faction: template.faction,
-      cardType: template.cardType,
-      shield: template.shield,
-      hasGuard: template.hasGuard,
-      allyAbility: template.allyAbility,
-      masteryThreshold: template.masteryThreshold,
-      masteryBonus: template.masteryBonus,
-      masteryReplaces: template.masteryReplaces,
-      countsAsAllFactions: template.countsAsAllFactions,
-      activatedAbility: template.activatedAbility,
-      art: template.art,
-    );
+    // copyWith carries EVERY gameplay field (e.g. Datic Robes' shieldEqualsMastery)
+    // — a manual field list here previously dropped them on the relic instance.
+    return template.copyWith(id: '${template.id}_relic_$playerId');
   }
 
   /// Recruit ONE of the current player's two set-aside Relics (Relics of the
@@ -1068,7 +1054,7 @@ class GameService {
     if (faction != null &&
         faction != Faction.none &&
         !_factionsMatch(faction, false, card.faction, card.countsAsAllFactions,
-            aliasPlayer: player)) {
+            aliasPlayer: player, extraB: _extraFactions(card, player))) {
       return false;
     }
 
@@ -1085,9 +1071,54 @@ class GameService {
     return true;
   }
 
+  /// Copy the play effects of EVERY card played this turn matching [filter] and
+  /// (optionally) [faction], in play order — the copy-ALL variant used by
+  /// general_decurion's Mastery-20 ("copy the effect of each Homodeus Ally you
+  /// played this turn"). Immediate (no target selection). [excludeSource] (the
+  /// in-flight champion resolving the ability) is never copied.
+  ///
+  /// RE-ENTRANCY GUARD (mirrors [copyPlayedCard]): a matched card that itself
+  /// contains any copy effect ([CopyPlayedCardEffect] / [CopyAllPlayedCardsEffect])
+  /// is skipped so a copy never recurses, and every [InfinityShardEffect] among a
+  /// matched card's effects is excluded from the re-resolved list so copying can
+  /// never grant mastery / trigger a spurious Infinity Shard win.
+  void _copyAllPlayedCards(
+    PlayerState player, {
+    CopyFilter filter = CopyFilter.nonChampion,
+    Faction? faction,
+    CardModel? excludeSource,
+  }) {
+    // Snapshot the play history first: re-resolving a card's effects can append
+    // to cardsPlayedThisTurn (rare), and we must not copy those newly-added
+    // cards nor iterate a mutating list.
+    final candidates = List<CardModel>.from(player.cardsPlayedThisTurn);
+    for (final card in candidates) {
+      if (excludeSource != null && identical(card, excludeSource)) continue;
+      if (filter == CopyFilter.nonChampion &&
+          card.cardType == CardType.champion) {
+        continue;
+      }
+      if (faction != null &&
+          faction != Faction.none &&
+          !_factionsMatch(faction, false, card.faction, card.countsAsAllFactions,
+              aliasPlayer: player, extraB: _extraFactions(card, player))) {
+        continue;
+      }
+      // Never re-resolve a card that itself copies (no copy-of-a-copy loop).
+      if (_containsCopyEffect(card.playEffects)) continue;
+
+      final copyable = [
+        for (final e in card.playEffects)
+          if (e is! InfinityShardEffect) e,
+      ];
+      _resolveEffects(copyable, player, sourceCard: card);
+    }
+  }
+
   bool _containsCopyEffect(List<CardEffect> effects) {
     for (final e in effects) {
       if (e is CopyPlayedCardEffect) return true;
+      if (e is CopyAllPlayedCardsEffect) return true;
       // Guard nested copies inside chooseOne / conditional too.
       if (e is ChooseOneEffect) {
         for (final group in e.choices) {
@@ -1446,8 +1477,10 @@ class GameService {
     // protection (Li Hin / Raidian / Drakonarius) does NOT shield the player.
     if (_playerCannotBeAttacked(target, currentPlayer)) return false;
 
-    // Guard check: target must have no guard champions
-    final hasGuard = target.championsInPlay.any((c) => c.hasGuard);
+    // Guard check: target must have no guard champions. rue_bo_vai's Mastery-10
+    // "you ignore Guard this turn" lets the attacker bypass this gate entirely.
+    final hasGuard = !currentPlayer.ignoresGuardThisTurn &&
+        target.championsInPlay.any((c) => c.hasGuard);
     if (hasGuard) {
       // Public-info-safe: guard champions and their owner are visible on the
       // board, so noting that a guard blocked the direct attack leaks nothing.
@@ -2239,6 +2272,25 @@ class GameService {
           // the destroy threshold this turn (see attackChampion). Cleared by
           // resetTurnResources.
           player.ignoresShieldThisTurn = true;
+        case IgnoreGuardThisTurnEffect():
+          // Turn-scoped: this player's direct attacks are not blocked by enemy
+          // Guard champions this turn (see attackPlayer). Cleared by
+          // resetTurnResources. rue_bo_vai_the_transcendent Mastery-10.
+          player.ignoresGuardThisTurn = true;
+        case DoublePowerEffect():
+          // Immediate: multiply the current power pool by two (a no-op at 0).
+          // Resolves AFTER any flat power gains earlier in the same list.
+          player.powerPool *= 2;
+        case CopyAllPlayedCardsEffect():
+          // Immediate: re-resolve the play effects of EVERY matching card played
+          // this turn (general_decurion Mastery-20). Excludes the in-flight
+          // source (the champion) and honours the re-entrancy / shard guards.
+          _copyAllPlayedCards(
+            player,
+            filter: effect.filter,
+            faction: effect.faction,
+            excludeSource: sourceCard,
+          );
         case AddStaticModifierEffect():
           // Immediate: append the persistent modifier to the player's list. It
           // stays for the rest of the game (wave-5a lifetime). Consulted by
@@ -2381,11 +2433,16 @@ class GameService {
   bool _hasAllyInPlay(CardModel card, PlayerState player) {
     final cardFaction = card.faction;
 
+    final extraCard = _extraFactions(card, player);
+
     // Check playedThisTurn for same-faction cards (excluding the card itself)
     for (final other in player.playedThisTurn) {
       if (other.id == card.id) continue;
       if (_factionsMatch(cardFaction, card.countsAsAllFactions,
-          other.faction, other.countsAsAllFactions, aliasPlayer: player)) {
+          other.faction, other.countsAsAllFactions,
+          aliasPlayer: player,
+          extraA: extraCard,
+          extraB: _extraFactions(other, player))) {
         return true;
       }
     }
@@ -2394,7 +2451,10 @@ class GameService {
     for (final other in player.championsInPlay) {
       if (other.id == card.id) continue;
       if (_factionsMatch(cardFaction, card.countsAsAllFactions,
-          other.faction, other.countsAsAllFactions, aliasPlayer: player)) {
+          other.faction, other.countsAsAllFactions,
+          aliasPlayer: player,
+          extraA: extraCard,
+          extraB: _extraFactions(other, player))) {
         return true;
       }
     }
@@ -2415,32 +2475,52 @@ class GameService {
     Faction factionA, bool allFactionsA,
     Faction factionB, bool allFactionsB, {
     PlayerState? aliasPlayer,
+    Set<Faction> extraA = const {},
+    Set<Faction> extraB = const {},
   }) {
-    // If either is factionless and doesn't count as all factions, no match.
-    // (countsAsAllFactions and the none-faction guard are evaluated on the
-    // RAW factions, before aliasing — an alias only redirects a real faction
-    // to another real faction, it never grants/removes "all factions".)
-    if (factionA == Faction.none && !allFactionsA) return false;
-    if (factionB == Faction.none && !allFactionsB) return false;
+    // The (pre-alias) set of real factions each side counts as: its own faction
+    // (when non-none) plus any mastery-gated multi-faction extras (querry_monk).
+    // countsAsAllFactions is handled separately below on the raw all-flags.
+    final setA = <Faction>{if (factionA != Faction.none) factionA, ...extraA};
+    final setB = <Faction>{if (factionB != Faction.none) factionB, ...extraB};
 
-    // If either counts as all factions, it matches any non-none faction
+    // A side has NO faction identity if it is factionless, not all-factions,
+    // and carries no extra factions — such a side never matches (mirrors the
+    // original none-guard). Empty extras is the common case (const {}).
+    if (setA.isEmpty && !allFactionsA) return false;
+    if (setB.isEmpty && !allFactionsB) return false;
+
+    // If either counts as ALL factions, it matches any side with an identity
+    // (the other side already passed the none-guard above).
     if (allFactionsA || allFactionsB) return true;
 
-    // Fast path: identical factions always match (also the common no-alias
-    // case), with zero allocation.
-    if (factionA == factionB) return true;
+    // Fast path: direct intersection (covers the common identical-faction case
+    // with zero further work).
+    if (setA.any(setB.contains)) return true;
 
     // Alias-aware path. A `from -> to` alias means a `from` card ALSO counts as
-    // `to` (it keeps its own faction too). Two factions therefore match when
-    // their alias-expanded faction sets intersect. With no alias player / no
-    // aliases this loop is skipped entirely and we've already returned for the
-    // equal-faction case, so behaviour is identical to the original.
+    // `to` (it keeps its own faction too). The two sides match when their
+    // alias-expanded faction sets intersect. With no alias player / no aliases
+    // this is skipped and behaviour matches the original.
     if (aliasPlayer == null || aliasPlayer.factionAliasesThisTurn.isEmpty) {
       return false;
     }
-    final setA = _aliasExpand(factionA, aliasPlayer);
-    final setB = _aliasExpand(factionB, aliasPlayer);
-    return setA.any(setB.contains);
+    final expA = {for (final f in setA) ..._aliasExpand(f, aliasPlayer)};
+    final expB = {for (final f in setB) ..._aliasExpand(f, aliasPlayer)};
+    return expA.any(expB.contains);
+  }
+
+  /// The EXTRA factions [card] counts as for [player] beyond its own
+  /// [CardModel.faction]: its mastery-gated multi-faction set
+  /// ([CardModel.countsAsFactions]), active only when the card's
+  /// [CardModel.countsAsFactionsMasteryThreshold] (if any) is met by [player]'s
+  /// current mastery. Empty (a shared const) for the vast majority of cards, so
+  /// the common faction-matching path allocates nothing. querry_monk Mastery-10.
+  Set<Faction> _extraFactions(CardModel card, PlayerState player) {
+    if (card.countsAsFactions.isEmpty) return const {};
+    final threshold = card.countsAsFactionsMasteryThreshold;
+    if (threshold != null && player.mastery < threshold) return const {};
+    return card.countsAsFactions.toSet();
   }
 
   /// The set of factions [faction] counts as given [player]'s turn-scoped
@@ -2685,7 +2765,7 @@ class GameService {
         return player.discardPile
             .where((c) => _factionsMatch(
                 f, false, c.faction, c.countsAsAllFactions,
-                aliasPlayer: player))
+                aliasPlayer: player, extraB: _extraFactions(c, player)))
             .length;
       case ScalingCondition.perFactionChampionControlled:
         final f = filterFaction ?? sourceCard?.faction;
@@ -2693,7 +2773,7 @@ class GameService {
         return player.championsInPlay
             .where((c) => _factionsMatch(
                 f, false, c.faction, c.countsAsAllFactions,
-                aliasPlayer: player))
+                aliasPlayer: player, extraB: _extraFactions(c, player)))
             .length;
       case ScalingCondition.perFactionCardPlayedThisTurn:
         final f = filterFaction ?? sourceCard?.faction;
@@ -2702,7 +2782,7 @@ class GameService {
           player,
           sourceCard,
           (c) => _factionsMatch(f, false, c.faction, c.countsAsAllFactions,
-              aliasPlayer: player),
+              aliasPlayer: player, extraB: _extraFactions(c, player)),
         );
       case ScalingCondition.perAllyWithShieldPlayedThisTurn:
         final f = filterFaction ?? sourceCard?.faction;
@@ -2713,7 +2793,7 @@ class GameService {
           (c) =>
               c.shield > 0 &&
               _factionsMatch(f, false, c.faction, c.countsAsAllFactions,
-                  aliasPlayer: player),
+                  aliasPlayer: player, extraB: _extraFactions(c, player)),
         );
     }
   }
@@ -2775,7 +2855,8 @@ class GameService {
           player,
           source,
           (card) => _factionsMatch(f, false, card.faction,
-              card.countsAsAllFactions, aliasPlayer: player),
+              card.countsAsAllFactions,
+              aliasPlayer: player, extraB: _extraFactions(card, player)),
         );
         return count >= c.threshold;
       case GameConditionKind.factionsPlayedAll:
@@ -2803,7 +2884,8 @@ class GameService {
           (card) => c.faction == null
               ? true
               : _factionsMatch(c.faction!, false, card.faction,
-                  card.countsAsAllFactions, aliasPlayer: player),
+                  card.countsAsAllFactions,
+                  aliasPlayer: player, extraB: _extraFactions(card, player)),
         );
         final isEven = count.isEven;
         return parity == GemParity.even ? isEven : !isEven;
@@ -2814,7 +2896,8 @@ class GameService {
           (card) {
             if (c.faction != null &&
                 !_factionsMatch(c.faction!, false, card.faction,
-                    card.countsAsAllFactions, aliasPlayer: player)) {
+                    card.countsAsAllFactions,
+                    aliasPlayer: player, extraB: _extraFactions(card, player))) {
               return false;
             }
             if (c.maxCost != null && card.cost > c.maxCost!) return false;
@@ -2830,7 +2913,7 @@ class GameService {
         final count = player.championsInPlay
             .where((card) => _factionsMatch(
                 f, false, card.faction, card.countsAsAllFactions,
-                aliasPlayer: player))
+                aliasPlayer: player, extraB: _extraFactions(card, player)))
             .length;
         return count >= c.threshold;
       case GameConditionKind.masteryAtLeast:
@@ -2844,7 +2927,7 @@ class GameService {
         final count = player.cardsPlayedThisTurn
             .where((card) => _factionsMatch(
                 f, false, card.faction, card.countsAsAllFactions,
-                aliasPlayer: player))
+                aliasPlayer: player, extraB: _extraFactions(card, player)))
             .length;
         return count >= c.threshold;
       case GameConditionKind.isCharacter:
@@ -2857,7 +2940,7 @@ class GameService {
         if (f == null || f == Faction.none) return false;
         bool matches(CardModel card) => _factionsMatch(
             f, false, card.faction, card.countsAsAllFactions,
-            aliasPlayer: player);
+            aliasPlayer: player, extraB: _extraFactions(card, player));
         // "played another <faction> ally this turn" (excludes the source via
         // _countPlayedThisTurn) ...
         final played = _countPlayedThisTurn(player, source, matches);
@@ -2869,7 +2952,7 @@ class GameService {
         if (f == null || f == Faction.none) return false;
         return player.discardPile.any((card) => _factionsMatch(
             f, false, card.faction, card.countsAsAllFactions,
-            aliasPlayer: player));
+            aliasPlayer: player, extraB: _extraFactions(card, player)));
       case GameConditionKind.oddCostCardsPlayed:
         final count = _countPlayedThisTurn(
             player, source, (card) => card.cost.isOdd);
@@ -2922,6 +3005,8 @@ class GameService {
             played.faction,
             played.countsAsAllFactions,
             aliasPlayer: player,
+            extraA: _extraFactions(sourceCard, player),
+            extraB: _extraFactions(played, player),
           )) {
             count++;
           }
@@ -3015,23 +3100,10 @@ class GameService {
   /// A concrete market-card instance for [copy], preserving every gameplay field
   /// of [template] but with a per-copy unique id (`<id>_<copy>`).
   CardModel _instanceOf(CardModel template, int copy) {
-    return CardModel(
-      id: '${template.id}_$copy',
-      name: template.name,
-      cost: template.cost,
-      playEffects: template.playEffects,
-      faction: template.faction,
-      cardType: template.cardType,
-      shield: template.shield,
-      hasGuard: template.hasGuard,
-      allyAbility: template.allyAbility,
-      masteryThreshold: template.masteryThreshold,
-      masteryBonus: template.masteryBonus,
-      masteryReplaces: template.masteryReplaces,
-      countsAsAllFactions: template.countsAsAllFactions,
-      activatedAbility: template.activatedAbility,
-      art: template.art,
-    );
+    // copyWith carries EVERY gameplay field (shieldEqualsMastery, countsAsFactions,
+    // etc.) — a manual field list here previously dropped newly-added fields on
+    // recruited market copies.
+    return template.copyWith(id: '${template.id}_$copy');
   }
 
   // -------------------------------------------------------------------------

@@ -76,6 +76,16 @@
       "type": "boolean",
       "description": "If true, satisfies the ally condition for any faction (e.g. Universal Soldier)."
     },
+    "countsAsFactions": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["homodeus", "wraethe", "order", "undergrowth", "none"] },
+      "description": "Extra factions this card ALSO counts as, in ADDITION to its own 'faction' (a MULTI-faction card, distinct from the unconditional countsAsAllFactions). Gated by 'countsAsFactionsMasteryThreshold' when present. querry_monk Mastery-10: ['homodeus','undergrowth','wraethe']. Consulted by ally-ability triggers and faction-filtered conditions/scaling."
+    },
+    "countsAsFactionsMasteryThreshold": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Optional mastery gate for 'countsAsFactions'. When set, the extra factions apply only while the owner's mastery is >= this value (querry_monk: 10). null/absent = the extra factions always apply. Ignored when 'countsAsFactions' is empty."
+    },
     "masteryThreshold": {
       "type": ["integer", "null"],
       "minimum": 0,
@@ -205,7 +215,10 @@
             "centerDeckScry",
             "tuckUnderChampion",
             "copyUnderCards",
-            "infinityShard"
+            "infinityShard",
+            "ignoreGuardThisTurn",
+            "doublePower",
+            "copyAllPlayedCards"
           ]
         },
         "amount": { "type": "integer", "description": "For gain*/opponentLosesHealth/allPlayersLoseHealth." },

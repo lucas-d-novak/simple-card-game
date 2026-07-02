@@ -45,6 +45,13 @@ class PlayerState {
   /// champion). Cleared each turn by [resetTurnResources].
   bool ignoresShieldThisTurn = false;
 
+  /// Turn-scoped flag set by [IgnoreGuardThisTurnEffect]
+  /// (rue_bo_vai_the_transcendent Mastery-10: "you ignore Guard this turn").
+  /// While true, this player's direct [GameService.attackPlayer] this turn is
+  /// NOT blocked by an opponent's Guard champions. Cleared each turn by
+  /// [resetTurnResources].
+  bool ignoresGuardThisTurn = false;
+
   /// Persistent board-wide modifiers this player owns (Engine Phase 2 wave 5a —
   /// [StaticModifier]). Added by [AddStaticModifierEffect]. LIFETIME: these are
   /// NOT cleared by [resetTurnResources] — a static modifier stays for the rest
@@ -212,6 +219,7 @@ class PlayerState {
     unblockedDamageThisTurn = 0;
     factionAliasesThisTurn.clear();
     ignoresShieldThisTurn = false;
+    ignoresGuardThisTurn = false;
     activatedChampions.clear();
     exhaustedChampions.clear();
     cardsPlayedThisTurn.clear();

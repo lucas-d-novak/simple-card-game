@@ -201,6 +201,17 @@ CardEffect decodeEffect(Map<String, dynamic> json) {
       );
     case 'ignoreShieldThisTurn':
       return const IgnoreShieldThisTurnEffect();
+    case 'ignoreGuardThisTurn':
+      return const IgnoreGuardThisTurnEffect();
+    case 'doublePower':
+      return const DoublePowerEffect();
+    case 'copyAllPlayedCards':
+      return CopyAllPlayedCardsEffect(
+        filter: _copyFilter(json['filter'] as String?),
+        faction: json['faction'] != null
+            ? _faction(json['faction'] as String?)
+            : null,
+      );
     case 'addStaticModifier':
       return AddStaticModifierEffect(StaticModifier(
         kind: _staticModifierKind(json['kind'] as String?),
@@ -368,6 +379,16 @@ Map<String, dynamic> encodeEffect(CardEffect effect) {
       };
     case IgnoreShieldThisTurnEffect():
       return {'type': 'ignoreShieldThisTurn'};
+    case IgnoreGuardThisTurnEffect():
+      return {'type': 'ignoreGuardThisTurn'};
+    case DoublePowerEffect():
+      return {'type': 'doublePower'};
+    case CopyAllPlayedCardsEffect():
+      return {
+        'type': 'copyAllPlayedCards',
+        'filter': effect.filter.name,
+        if (effect.faction != null) 'faction': effect.faction!.name,
+      };
     case AddStaticModifierEffect():
       final m = effect.modifier;
       return {

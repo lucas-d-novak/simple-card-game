@@ -644,6 +644,31 @@ final class IgnoreShieldThisTurnEffect extends CardEffect {
   String get description => 'You ignore shield this turn';
 }
 
+/// "You ignore Guard this turn" (rue_bo_vai_the_transcendent Mastery-10). A
+/// TURN-SCOPED modifier: its `_resolveEffects` case sets the current player's
+/// [PlayerState.ignoresGuardThisTurn] true, so this player's direct
+/// [GameService.attackPlayer] this turn is NOT blocked by an opponent's Guard
+/// champions (the guard gate is skipped). Distinct from
+/// [IgnoreShieldThisTurnEffect] (which ignores the target's per-hit damage
+/// reduction, not Guard). Cleared by [PlayerState.resetTurnResources].
+final class IgnoreGuardThisTurnEffect extends CardEffect {
+  const IgnoreGuardThisTurnEffect();
+
+  @override
+  String get description => 'You ignore Guard this turn';
+}
+
+/// "Double your current power" (fa_cu_tul_the_formless Mastery-20). Immediate:
+/// its `_resolveEffects` case multiplies the controlling player's power pool by
+/// two (a pool ×2 multiply, resolved AFTER any flat power gains earlier in the
+/// same effect list). A no-op when the pool is 0.
+final class DoublePowerEffect extends CardEffect {
+  const DoublePowerEffect();
+
+  @override
+  String get description => 'Double your power';
+}
+
 // ---------------------------------------------------------------------------
 // Static board-wide modifiers (Engine Phase 2, wave 5a — Family 11)
 //
@@ -983,6 +1008,44 @@ final class CopyPlayedCardEffect extends CardEffect {
         return 'Copy the effect of a ${f}card you played this turn';
       case CopyFilter.nonChampion:
         return 'Copy the effect of a ${f}non-champion card you played this turn';
+    }
+  }
+}
+
+/// "Copy the effect of EACH [filter] card (optionally of [faction]) you played
+/// this turn" (general_decurion Mastery-20: "copy the effect of each Homodeus
+/// Ally you played this turn"). The copy-ALL variant of [CopyPlayedCardEffect]:
+/// instead of one chosen card, it re-resolves the `playEffects` of EVERY card
+/// played this turn that matches the filter, in play order.
+///
+/// Immediate (NOT deferred): resolved inline in `_resolveEffects` via
+/// [GameService.copyAllPlayedCards] (no target selection). RE-ENTRANCY GUARD
+/// (enforced there, mirroring [CopyPlayedCardEffect]): a matched card that
+/// itself contains a [CopyPlayedCardEffect] or [CopyAllPlayedCardsEffect] is
+/// skipped (no recursive copy-of-a-copy), and any [InfinityShardEffect] among a
+/// matched card's effects is excluded (so copying never grants a spurious
+/// mastery/win). [CopyFilter.nonChampion] models "Ally" (a non-champion card).
+final class CopyAllPlayedCardsEffect extends CardEffect {
+  const CopyAllPlayedCardsEffect({
+    this.filter = CopyFilter.nonChampion,
+    this.faction,
+  });
+
+  final CopyFilter filter;
+
+  /// When set, only cards of this faction are copied (honours
+  /// `countsAsAllFactions` and the player's mastery-gated multi-faction /
+  /// turn-scoped aliases on the candidate card). null = any faction.
+  final Faction? faction;
+
+  @override
+  String get description {
+    final f = faction != null ? '${faction!.name} ' : '';
+    switch (filter) {
+      case CopyFilter.any:
+        return 'Copy the effect of each ${f}card you played this turn';
+      case CopyFilter.nonChampion:
+        return 'Copy the effect of each ${f}ally you played this turn';
     }
   }
 }

@@ -137,6 +137,7 @@ class GameStateCodec {
       'powerPool': p.powerPool,
       'unblockedDamageThisTurn': p.unblockedDamageThisTurn,
       'ignoresShieldThisTurn': p.ignoresShieldThisTurn,
+      'ignoresGuardThisTurn': p.ignoresGuardThisTurn,
       'focusedThisTurn': p.focusedThisTurn,
       if (p.pendingRecruitRedirect != null)
         'pendingRecruitRedirect': encodeEffect(p.pendingRecruitRedirect!),
@@ -188,6 +189,7 @@ class GameStateCodec {
     p.powerPool = (json['powerPool'] as int?) ?? 0;
     p.unblockedDamageThisTurn = (json['unblockedDamageThisTurn'] as int?) ?? 0;
     p.ignoresShieldThisTurn = (json['ignoresShieldThisTurn'] as bool?) ?? false;
+    p.ignoresGuardThisTurn = (json['ignoresGuardThisTurn'] as bool?) ?? false;
     p.focusedThisTurn = (json['focusedThisTurn'] as bool?) ?? false;
     final pendingRedirect = json['pendingRecruitRedirect'];
     if (pendingRedirect != null) {

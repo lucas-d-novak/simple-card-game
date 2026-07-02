@@ -251,6 +251,9 @@ class DeckService {
         case ConditionalEffect():
         case TreatFactionAsEffect():
         case IgnoreShieldThisTurnEffect():
+        case IgnoreGuardThisTurnEffect():
+        case DoublePowerEffect():
+        case CopyAllPlayedCardsEffect():
         case AddStaticModifierEffect():
         case OpponentDrawsEffect():
         case OpponentDiscardsEffect():
