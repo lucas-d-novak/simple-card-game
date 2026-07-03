@@ -264,6 +264,12 @@ class DeckService {
         case CenterDeckScryEffect():
         case TuckUnderChampionEffect():
         case CopyUnderCardsEffect():
+        case BanishRandomFromEachHandEffect():
+        case AllPlayersDiscardEffect():
+        case AllPlayersDestroyHighestChampionEffect():
+        case GrantExtraDestinyClaimEffect():
+        case RecruitRelicToHandEffect():
+        case BanishUpToFromAnyZoneEffect():
         case InfinityShardEffect():
           break; // Handled by GameService, not DeckService
       }

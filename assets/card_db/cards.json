@@ -3908,16 +3908,22 @@
       "faction": "none",
       "copies": 1,
       "playEffects": [],
+      "appearanceEffects": [
+        {"type": "allPlayersLoseHealth", "amount": 5}
+      ],
+      "rewardEffects": [
+        {"type": "gainHealth", "amount": 20}
+      ],
       "art": "brutality.jpg",
       "rawText": "Ingeminex. Attack: All players lose 5 (cannot be prevented by shield). Reward: Gain 20.",
       "verified": false,
-      "notes": "Faction group (non-player): Ingeminex. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 161: name='Brutality', faction='Ingeminex', amount=1. | art added from TTS spritesheet crop (effects pending verification). | Ingeminex co-op boss card. Attack/Reward co-op structure NOT modeled by engine; playEffects empty. Confirm. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false.",
+      "notes": "Faction group (non-player): Ingeminex. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 161: name='Brutality', faction='Ingeminex', amount=1. | art added from TTS spritesheet crop. | [owner-ruling 2026-07-02] Ingeminex wired up (§C): appearance=all players lose 5 health (bypass shield); reward=gain 20 HEALTH (owner-confirmed resource). In-scope as a NEUTRAL entity (spawnIngeminex), still kept OUT of the market/decks. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Ingeminex",
       "set": "unknown",
       "cardType": "regular",
       "cost": 10,
       "chapter": 4,
-      "outOfScope": true
+      "outOfScope": false
     },
     {
       "id": "corruption",
@@ -3925,14 +3931,20 @@
       "faction": "none",
       "copies": 1,
       "playEffects": [],
+      "appearanceEffects": [
+        {"type": "banishRandomFromEachHand"}
+      ],
+      "rewardEffects": [
+        {"type": "recruitRelicToHand"}
+      ],
       "art": "corruption.jpg",
-      "rawText": "Ingeminex. Attack: All players lose 3 and 1. This cannot be prevented by (Guard). Reward: Recruit an additional Relic and put it directly into your hand.",
+      "rawText": "Ingeminex. Attack: Banish a card from each player's hand at random. Reward: Recruit an additional Relic and put it directly into your hand.",
       "verified": false,
-      "notes": "Faction group (non-player): Ingeminex. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 162: name='Corruption', faction='Ingeminex', amount=1. | art added from TTS spritesheet crop (effects pending verification). | co-op card - out of multiplayer scope; not encoded. Ingeminex boss card with Attack/Reward structure (no versus play effects). | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false.",
+      "notes": "Faction group (non-player): Ingeminex. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 162: name='Corruption', faction='Ingeminex', amount=1. | art added from TTS spritesheet crop. | [owner-ruling 2026-07-02] Ingeminex wired up (§C): the owner's §C note attributes the 'banish a random card from each player's hand' attack to Corruption (authority over the prior 'lose 3 and 1' rawText transcription, now corrected to match); reward=recruit an additional Relic directly to hand. In-scope as a NEUTRAL entity, kept OUT of the market/decks. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Ingeminex",
       "set": "unknown",
       "chapter": 4,
-      "outOfScope": true
+      "outOfScope": false
     },
     {
       "id": "desolation",
@@ -3940,14 +3952,20 @@
       "faction": "none",
       "copies": 1,
       "playEffects": [],
+      "appearanceEffects": [
+        {"type": "banishRandomFromEachHand"}
+      ],
+      "rewardEffects": [
+        {"type": "banishUpToFromAnyZone", "count": 3}
+      ],
       "art": "desolation.jpg",
       "rawText": "Ingeminex\nAttack: Banish a card from each player's hand at random.\nReward: Banish up to three cards from your hand, deck and/or discard pile. Then, shuffle your deck.\n(Attack value 10)",
       "verified": false,
-      "notes": "Faction group (non-player): Ingeminex. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 163: name='Desolation', faction='Ingeminex', amount=1. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/desolation.jpg (original publisher, 2024); conf=high",
+      "notes": "Faction group (non-player): Ingeminex. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 163: name='Desolation', faction='Ingeminex', amount=1. | art added from Complete-Saga sheet (visually matched). | [owner-ruling 2026-07-02] Ingeminex wired up (§C): appearance=banish a random card from each player's hand; reward=deferred banish up to 3 from hand/deck/discard then shuffle. In-scope as a NEUTRAL entity, kept OUT of the market/decks. | [hunt] src=Local printed card art assets/cards/desolation.jpg (original publisher, 2024); conf=high",
       "group": "Ingeminex",
       "set": "unknown",
       "chapter": 4,
-      "outOfScope": true
+      "outOfScope": false
     },
     {
       "id": "torment",
@@ -3955,14 +3973,20 @@
       "faction": "none",
       "copies": 1,
       "playEffects": [],
+      "appearanceEffects": [
+        {"type": "allPlayersLoseHealth", "amount": 2}
+      ],
+      "rewardEffects": [
+        {"type": "gainMastery", "amount": 4}
+      ],
       "art": "torment.jpg",
       "rawText": "Ingeminex. Attack: All players lose 2. Reward: Gain 4.",
       "verified": false,
-      "notes": "Faction group (non-player): Ingeminex. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 164: name='Torment', faction='Ingeminex', amount=1. | art added from TTS spritesheet crop (effects pending verification). | co-op card - out of multiplayer scope; not encoded. Ingeminex boss card with Attack/Reward structure (no versus play effects). | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false.",
+      "notes": "Faction group (non-player): Ingeminex. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 164: name='Torment', faction='Ingeminex', amount=1. | art added from TTS spritesheet crop. | [owner-ruling 2026-07-02] Ingeminex wired up (§C): appearance=all players lose 2 health; reward=gain 4 MASTERY (owner-confirmed resource). In-scope as a NEUTRAL entity, kept OUT of the market/decks. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Ingeminex",
       "set": "unknown",
       "chapter": 4,
-      "outOfScope": true
+      "outOfScope": false
     },
     {
       "id": "lasav_tower_commander",
@@ -4140,14 +4164,21 @@
       "faction": "none",
       "copies": 1,
       "playEffects": [],
+      "appearanceEffects": [
+        {"type": "allPlayersDiscard", "count": 2}
+      ],
+      "rewardEffects": [
+        {"type": "drawCards", "count": 2},
+        {"type": "grantExtraDestinyClaim", "count": 1}
+      ],
       "art": "agony.jpg",
       "rawText": "Ingeminex. Attack: Each player discards 2 cards from their hand. Reward: Draw 2 cards and acquire an additional Destiny.",
       "verified": false,
-      "notes": "Faction group (non-player): Ingeminex. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 170: name='Agony', faction='Ingeminex', amount=1. | art added from TTS spritesheet crop (effects pending verification). | co-op card - out of multiplayer scope; not encoded. Ingeminex boss card with Attack/Reward structure (no versus play effects). | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false.",
+      "notes": "Faction group (non-player): Ingeminex. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 170: name='Agony', faction='Ingeminex', amount=1. | art added from TTS spritesheet crop. | [owner-ruling 2026-07-02] Ingeminex wired up (§C): appearance=each player discards 2; reward=draw 2 + acquire an additional Destiny (raises the killer's claim allowance by 1). In-scope as a NEUTRAL entity, kept OUT of the market/decks. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Ingeminex",
       "set": "unknown",
       "chapter": 5,
-      "outOfScope": true
+      "outOfScope": false
     },
     {
       "id": "malice",
@@ -4155,14 +4186,21 @@
       "faction": "none",
       "copies": 1,
       "playEffects": [],
+      "appearanceEffects": [
+        {"type": "allPlayersDestroyHighestChampion"}
+      ],
+      "rewardEffects": [
+        {"type": "returnFromDiscard", "filter": "champion"},
+        {"type": "grantExtraDestinyClaim", "count": 1}
+      ],
       "art": "malice.jpg",
       "rawText": "Ingeminex. Attack: Each player destroys their highest (gem) cost Champion. Reward: You may return a Champion from your discard pile to your hand and acquire an additional Destiny.",
       "verified": false,
-      "notes": "Faction group (non-player): Ingeminex. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 171: name='Malice', faction='Ingeminex', amount=1. | art added from TTS spritesheet crop (effects pending verification). | co-op card - out of multiplayer scope; not encoded. Ingeminex boss card with Attack/Reward structure (no versus play effects). | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. | EFFECTS PASS B: card image re-read and transcribed. Transcription/encoding confirmed accurate; unmodeled mechanic remains, verified:false.",
+      "notes": "Faction group (non-player): Ingeminex. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 171: name='Malice', faction='Ingeminex', amount=1. | art added from TTS spritesheet crop. | [owner-ruling 2026-07-02] Ingeminex wired up (§C): appearance=each player destroys their highest gem-cost Champion; reward=deferred return a Champion from discard to hand + acquire an additional Destiny. In-scope as a NEUTRAL entity, kept OUT of the market/decks. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation.",
       "group": "Ingeminex",
       "set": "unknown",
       "chapter": 5,
-      "outOfScope": true
+      "outOfScope": false
     },
     {
       "id": "datic_secrets",
@@ -4757,7 +4795,7 @@
       "art": "power_struggle.jpg",
       "rawText": "Power Struggle\nCost: 5\nExhaust: Destroy a Champion you control to gain [damage]5 (5 damage).",
       "verified": false,
-      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 192: name='Power Struggle', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/power_struggle.jpg; conf=high | [encode-gap] outOfScope: Exhaust ability's COST is 'Destroy a Champion you control' to gain 5 power. ActivationCost only supports gems/mastery/health — there is no self-champion-sacrifice cost. DestroyChampionEffect targets ENEMY champions only (single or all), never one you control, so it cannot model the cost either; encoding the 5 power without the sacrifice cost would be free unconditional power. Marked outOfScope rather than encoding the power unconditionally; was an empty-effect in-scope card before.",
+      "notes": "Faction group (non-player): Destiny. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 192: name='Power Struggle', faction='Destiny', amount=1. | set was 'ioh' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/power_struggle.jpg; conf=high | [encode-gap] outOfScope: Exhaust ability's COST is 'Destroy a Champion you control' to gain 5 power. ActivationCost only supports gems/mastery/health — there is no self-champion-sacrifice cost. DestroyChampionEffect targets ENEMY champions only (single or all), never one you control, so it cannot model the cost either; encoding the 5 power without the sacrifice cost would be free unconditional power. Marked outOfScope rather than encoding the power unconditionally; was an empty-effect in-scope card before. | [owner-ruling 2026-07-02] KEEP as the INERT 30th Destiny: included in the Destiny supply via market_deck.dart _inertDestinyIds despite outOfScope. Appears face-up/claimable but its ability is a safe no-op (empty playEffects + null activatedAbility; claimDestiny/useDestinyAbility tolerate both). Do NOT encode the 5 power unconditionally.",
       "group": "Destiny",
       "set": "unknown",
       "chapter": 5,

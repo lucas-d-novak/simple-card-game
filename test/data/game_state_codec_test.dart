@@ -120,6 +120,15 @@ void main() {
       expect(_gameSig(restored), before);
     });
 
+    test('the game seed is preserved across encode -> decode', () {
+      final game = GameService(playerCount: 2, seed: 0xBEEF, random: Random(7));
+      final restored = GameStateCodec.decode(
+        jsonDecode(jsonEncode(GameStateCodec.encode(game)))
+            as Map<String, dynamic>,
+      );
+      expect(restored.seed, 0xBEEF);
+    });
+
     test('mid-game state (plays, buys, champion, exhaust, end turn) round-trips',
         () {
       final game = GameService(playerCount: 3, random: Random(7));

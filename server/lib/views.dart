@@ -120,6 +120,21 @@ Map<String, dynamic> redactFor(
     // above); only the cascade DECK SIZE leaks (order is secret).
     'destinyRow': _ids(game.destinyRow),
     'destinyDeckCount': game.destinyDeck.length,
+    // Shared NEUTRAL Ingeminex bosses — fully PUBLIC (ownerless HP pools, no
+    // hidden info). Shipped inline (they are not CardModels in the `cards` dict).
+    // The board renders each as an attack target with a damage bar.
+    if (game.ingeminexRow.isNotEmpty)
+      'ingeminex': [
+        for (final e in game.ingeminexRow)
+          {
+            'id': e.id,
+            'name': e.name,
+            if (e.art != null) 'art': e.art,
+            'maxHealth': e.maxHealth,
+            'damageTaken': e.damageTaken,
+            'remainingHealth': e.remainingHealth,
+          },
+      ],
     // Public action log (no hidden info) — the recent tail, so players can review
     // what happened (e.g. "what did I do last turn") and the playback overlay can
     // show a mini card. Bounded for payload size.

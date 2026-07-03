@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:simple_card_game/data/database/effect_codec.dart';
+import 'package:simple_card_game/models/card_effect.dart';
 import 'package:simple_card_game/models/card_model.dart';
 import 'package:simple_card_game/models/card_type.dart';
 import 'package:simple_card_game/models/faction.dart';
@@ -77,6 +78,8 @@ class CardRecord {
     required this.ksOnly,
     required this.outOfScope,
     required this.model,
+    this.appearanceEffects = const [],
+    this.rewardEffects = const [],
   });
 
   final String id;
@@ -108,6 +111,15 @@ class CardRecord {
   /// The playable card definition projected from this record.
   final CardModel model;
 
+  /// Ingeminex "Attack:" effects — resolved against EVERY player when the
+  /// neutral entity appears (see [IngeminexEntity.appearanceEffects]). Empty for
+  /// ordinary cards; populated only for `group: Ingeminex` records.
+  final List<CardEffect> appearanceEffects;
+
+  /// Ingeminex "Reward:" effects — resolved for the player who lands the killing
+  /// blow (see [IngeminexEntity.rewardEffects]). Empty for ordinary cards.
+  final List<CardEffect> rewardEffects;
+
   factory CardRecord.fromJson(Map<String, dynamic> json) {
     final id = json['id'] as String;
     final name = (json['name'] as String?) ?? id;
@@ -125,6 +137,8 @@ class CardRecord {
       chapter: json['chapter'] as int?,
       ksOnly: (json['ksOnly'] as bool?) ?? false,
       outOfScope: (json['outOfScope'] as bool?) ?? false,
+      appearanceEffects: decodeEffectList(json['appearanceEffects']),
+      rewardEffects: decodeEffectList(json['rewardEffects']),
       model: CardModel(
         id: id,
         name: name,

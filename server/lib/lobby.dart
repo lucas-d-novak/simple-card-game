@@ -9,6 +9,7 @@ import 'package:simple_card_game/data/database/game_state_codec.dart';
 import 'package:simple_card_game/data/market_deck.dart';
 import 'package:simple_card_game/models/card_effect.dart' show Character;
 import 'package:simple_card_game/models/card_model.dart';
+import 'package:simple_card_game/models/ingeminex_entity.dart';
 import 'package:simple_card_game/services/game_service.dart';
 
 /// Characters with a confirmed relic pair (see character_relics.dart). Seats are
@@ -81,14 +82,21 @@ class Lobby {
     List<MarketCard>? marketDeck,
     List<CardModel>? destinySupply,
     Map<String, CardModel>? relicCards,
+    List<IngeminexEntity>? ingeminexCatalog,
     StatsStore? stats,
   })  : _marketDeck = marketDeck,
         _destinySupply = destinySupply,
         _relicCards = relicCards,
+        _ingeminexCatalog = ingeminexCatalog,
         _stats = stats ?? StatsStore.disabled();
 
   final List<MarketCard>? _marketDeck;
   final List<CardModel>? _destinySupply;
+
+  /// The six neutral Ingeminex boss templates (built from the DB). When
+  /// non-null, each session's engine can spawn them (`spawnIngeminexById`). Null
+  /// → no Ingeminex reachable (legacy behaviour).
+  final List<IngeminexEntity>? _ingeminexCatalog;
 
   /// Relic card lookup (id → CardModel), built once at startup. When non-null,
   /// each seat is assigned a Character and its two relics are set aside for the
@@ -221,6 +229,7 @@ class Lobby {
       marketDeck: _marketDeck,
       destinySupply: _destinySupply,
       relicCards: _relicCards,
+      ingeminexCatalog: _ingeminexCatalog,
     );
     // The engine names seats p0..pN (both PlayerState.id and .name are final);
     // GameSession owns the lobby-player-id <-> seat-id mapping for both
@@ -233,8 +242,14 @@ class Lobby {
     );
     g.session = session;
     g.status = GameStatus.started;
-    // TELEMETRY: record the game start (seat<->id roster + server-stamped ts).
-    _stats.recordGameStart(gameId: g.id, players: List.of(g.players));
+    // TELEMETRY: record the game start (seat<->id roster + server-stamped ts +
+    // the deterministic RNG seed, so a completed game is reconstructable from
+    // seed + action log).
+    _stats.recordGameStart(
+      gameId: g.id,
+      players: List.of(g.players),
+      seed: svc.seed,
+    );
     return session;
   }
 

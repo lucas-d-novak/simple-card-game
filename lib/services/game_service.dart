@@ -138,16 +138,51 @@ class LastDamageEvent {
 /// Orchestrates a Fragments of Boundlessness game: turn lifecycle, effect resolution,
 /// market management, and multi-player turn rotation.
 class GameService {
-  GameService({
+  /// Creates a new game.
+  ///
+  /// [seed] drives ALL randomness (deck / market shuffles, draws). When no
+  /// [random] is injected, the engine builds its OWN `Random(seed)` so the game
+  /// is fully reproducible from (seed + action log); [seed] is persisted by
+  /// [GameStateCodec] and exposed via [GameService.seed]. Omit [seed] and a
+  /// unique one is generated at construction. Injecting [random] (tests)
+  /// overrides the RNG directly; [seed] then only RECORDS a value and does not
+  /// necessarily correspond to that Random's internal state.
+  factory GameService({
     required int playerCount,
     Random? random,
+    int? seed,
     List<Character?>? characters,
     List<MarketCard>? marketDeck,
     Map<String, CardModel>? relicCards,
     List<CardModel>? destinySupply,
-  })  : _random = random ?? Random(),
+    List<IngeminexEntity>? ingeminexCatalog,
+  }) {
+    final resolvedSeed = seed ?? _newSeed();
+    return GameService._(
+      playerCount: playerCount,
+      seed: resolvedSeed,
+      random: random ?? Random(resolvedSeed),
+      characters: characters,
+      marketDeck: marketDeck,
+      relicCards: relicCards,
+      destinySupply: destinySupply,
+      ingeminexCatalog: ingeminexCatalog,
+    );
+  }
+
+  GameService._({
+    required int playerCount,
+    required this.seed,
+    required Random random,
+    List<Character?>? characters,
+    List<MarketCard>? marketDeck,
+    Map<String, CardModel>? relicCards,
+    List<CardModel>? destinySupply,
+    List<IngeminexEntity>? ingeminexCatalog,
+  })  : _random = random,
         _marketDeck = marketDeck,
         _relicCards = relicCards,
+        _ingeminexCatalog = ingeminexCatalog ?? const [],
         assert(playerCount >= 2 && playerCount <= 4),
         assert(characters == null || characters.length == playerCount,
             'characters, when provided, must have one entry per player') {
@@ -180,10 +215,24 @@ class GameService {
   /// model the server is the only place shuffles happen, so it is correct to
   /// resume from the already-shuffled concrete pile orders captured in the
   /// snapshot and reseed the RNG for any future shuffle.
-  GameService.restore({Random? random})
-      : _random = random ?? Random(),
+  GameService.restore({Random? random, int? seed})
+      : seed = seed ?? 0,
+        _random = random ?? Random(),
         _marketDeck = null,
-        _relicCards = null;
+        _relicCards = null,
+        _ingeminexCatalog = const [];
+
+  /// Generate a unique 32-bit game seed. Uses an ambient [Random] purely to
+  /// PICK the seed value; once chosen, that seed is the SOLE entropy source for
+  /// the game (a fresh `Random(seed)` drives every shuffle/draw), so a game is
+  /// reproducible from (seed + action log). Called only when no explicit seed
+  /// was supplied.
+  static int _newSeed() => Random().nextInt(0x100000000);
+
+  /// The seed that drives this game's randomness. Persisted with the game
+  /// record so a completed game can be reconstructed from (seed + action log).
+  /// See the factory constructor for the injected-[Random] caveat.
+  final int seed;
 
   final Random _random;
 
@@ -200,6 +249,17 @@ class GameService {
   /// loads these from the card DB and injects them; the pure-Dart engine does
   /// not load assets itself.
   final Map<String, CardModel>? _relicCards;
+
+  /// Template [IngeminexEntity] catalog (the six neutral co-op bosses), injected
+  /// via the constructor (built by `buildIngeminexCatalogFromDatabase`). Used by
+  /// [spawnIngeminexById] to bring a FRESH (damage 0) entity into play. Empty by
+  /// default, so games without Ingeminex behave exactly as before.
+  final List<IngeminexEntity> _ingeminexCatalog;
+
+  /// The Ingeminex catalog available to spawn (read-only view). Lets the server /
+  /// UI enumerate which bosses can appear.
+  List<IngeminexEntity> get ingeminexCatalog =>
+      List.unmodifiable(_ingeminexCatalog);
 
   final List<PlayerState> players = [];
   final List<CardModel> centerRow = [];
@@ -1118,6 +1178,88 @@ class GameService {
   }
 
   // -------------------------------------------------------------------------
+  // Ingeminex boss attack/reward helpers (co-op neutral entity — see
+  // IngeminexEntity + spawnIngeminex / attackIngeminex).
+  // -------------------------------------------------------------------------
+
+  /// APPEARANCE (Corruption/Desolation): EVERY player banishes one card from
+  /// their hand at random. Uses the seeded [_random] so the pick is deterministic
+  /// / replayable. Living or not, all seats are hit (a board event); a player
+  /// with an empty hand is skipped. Banished cards go to [removedFromGame].
+  void _banishRandomFromEachHand() {
+    for (final player in players) {
+      if (player.hand.isEmpty) continue;
+      final idx = _random.nextInt(player.hand.length);
+      removedFromGame.add(player.hand.removeAt(idx));
+    }
+  }
+
+  /// APPEARANCE (Agony): EVERY player (including the spawner) discards [count]
+  /// cards from the front of their hand (all they have if fewer).
+  void _allPlayersDiscard(int count) {
+    if (count <= 0) return;
+    for (final player in players) {
+      final n = count > player.hand.length ? player.hand.length : count;
+      for (var i = 0; i < n; i++) {
+        player.discardPile.add(player.hand.removeAt(0));
+      }
+    }
+  }
+
+  /// APPEARANCE (Malice): EVERY player destroys their OWN highest gem-cost
+  /// Champion in play (ties → first in play order). The champion goes to its
+  /// owner's discard, routed through the shared death disposition so a
+  /// Carmine-style salvage still fires. A player with no champions is unaffected.
+  void _allPlayersDestroyHighestChampion() {
+    for (final player in players) {
+      if (player.championsInPlay.isEmpty) continue;
+      var bestIdx = 0;
+      for (var i = 1; i < player.championsInPlay.length; i++) {
+        if (player.championsInPlay[i].cost > player.championsInPlay[bestIdx].cost) {
+          bestIdx = i;
+        }
+      }
+      final champion = player.championsInPlay.removeAt(bestIdx);
+      player.discardPile.add(champion);
+      _disposeUnderCardsOnDeath(player, champion);
+      _log('${player.id}\'s ${champion.name} was destroyed by Ingeminex',
+          playerId: player.id, cardId: champion.id);
+    }
+  }
+
+  /// REWARD (Corruption): put one of [player]'s remaining set-aside relic
+  /// options directly into their HAND (no Mastery-10 gate, no banish of the
+  /// other option). No-op if the player has no relic options left.
+  void _recruitRelicToHand(PlayerState player) {
+    if (player.relicOptions.isEmpty) return;
+    final relic = player.relicOptions.removeAt(0);
+    player.hand.add(relic);
+    _log('recruited an additional Relic (${relic.name}) to hand',
+        playerId: player.id, cardId: relic.id);
+  }
+
+  /// REWARD (Desolation, deferred-selection): banish up to N cards named by
+  /// [cardIds] from the current player's hand, deck, and/or discard, then shuffle
+  /// their deck. Fulfils a [BanishUpToFromAnyZoneEffect] after the player selects
+  /// targets. Silently ignores ids not found in any of the three zones; caps the
+  /// number banished at [limit]. Always shuffles the deck at the end (seeded
+  /// [_random]). Returns the number of cards actually banished.
+  int banishUpToFromAnyZone(List<String> cardIds, {int limit = 3}) {
+    final player = currentPlayer;
+    var banished = 0;
+    for (final id in cardIds) {
+      if (banished >= limit) break;
+      if (_banishFromZone(player.hand, id) ||
+          _banishFromZone(player.drawPile, id) ||
+          _banishFromZone(player.discardPile, id)) {
+        banished++;
+      }
+    }
+    player.drawPile.shuffle(_random);
+    return banished;
+  }
+
+  // -------------------------------------------------------------------------
   // Copy-effect (Engine Phase 2, wave 5a — Family 9)
   // -------------------------------------------------------------------------
 
@@ -1771,6 +1913,24 @@ class GameService {
   /// Ingeminex deck, a triggering card's effect, or scenario seeding) invokes to
   /// bring one into play. Not gated on the acting player, since an appearance is a
   /// board event, not a player turn-action. Returns the spawned entity.
+  /// Spawn a FRESH copy of the catalog Ingeminex named [id] (damage reset to 0),
+  /// resolving its appearance effects against every player. Returns the spawned
+  /// entity, or null when [id] is not in the injected [ingeminexCatalog]. This is
+  /// the reachable, id-based entry point the server/scenario uses (the raw
+  /// [spawnIngeminex] takes a pre-built entity).
+  IngeminexEntity? spawnIngeminexById(String id) {
+    final template = _ingeminexCatalog.where((e) => e.id == id).firstOrNull;
+    if (template == null) return null;
+    return spawnIngeminex(IngeminexEntity(
+      id: template.id,
+      name: template.name,
+      art: template.art,
+      maxHealth: template.maxHealth,
+      appearanceEffects: template.appearanceEffects,
+      rewardEffects: template.rewardEffects,
+    ));
+  }
+
   IngeminexEntity spawnIngeminex(IngeminexEntity entity) {
     ingeminexRow.add(entity);
     _log('Ingeminex ${entity.name} appeared — all players are hit',
@@ -2459,6 +2619,29 @@ class GameService {
           _applyOpponentMasteryLoss(player, effect.amount);
         case AllPlayersLoseHealthEffect():
           _applyAllPlayersHealthLoss(player, effect.amount);
+        case BanishRandomFromEachHandEffect():
+          // Ingeminex appearance (Corruption/Desolation): every player banishes
+          // one card from hand at random (seeded Random → deterministic).
+          _banishRandomFromEachHand();
+        case AllPlayersDiscardEffect():
+          // Ingeminex appearance (Agony): every player discards `count`.
+          _allPlayersDiscard(effect.count);
+        case AllPlayersDestroyHighestChampionEffect():
+          // Ingeminex appearance (Malice): every player destroys their own
+          // highest gem-cost champion in play.
+          _allPlayersDestroyHighestChampion();
+        case GrantExtraDestinyClaimEffect():
+          // Ingeminex reward (Agony/Malice): raise the killer's Destiny claim
+          // allowance so they may claim `count` more from the face-up row.
+          player.destinyClaimGrants += effect.count;
+        case RecruitRelicToHandEffect():
+          // Ingeminex reward (Corruption): put an available set-aside relic
+          // directly into the killer's hand (no Mastery-10 gate).
+          _recruitRelicToHand(player);
+        case BanishUpToFromAnyZoneEffect():
+          // Ingeminex reward (Desolation): deferred multi-zone banish — the
+          // player calls banishUpToFromAnyZone() with the chosen ids. No-op here.
+          break;
         case ChooseOneEffect():
           if (effect.choices.isEmpty) break;
           // Resolve `pick` DISTINCT choice groups. For pick==1 this is the

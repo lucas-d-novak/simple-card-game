@@ -225,7 +225,13 @@
             "infinityShard",
             "ignoreGuardThisTurn",
             "doublePower",
-            "copyAllPlayedCards"
+            "copyAllPlayedCards",
+            "banishRandomFromEachHand",
+            "allPlayersDiscard",
+            "allPlayersDestroyHighestChampion",
+            "grantExtraDestinyClaim",
+            "recruitRelicToHand",
+            "banishUpToFromAnyZone"
           ]
         },
         "amount": { "type": "integer", "description": "For gain*/opponentLosesHealth/allPlayersLoseHealth." },

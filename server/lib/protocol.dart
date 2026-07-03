@@ -107,6 +107,23 @@ ActionResult applyAction(
       ok = game.useDestinyAbility(s('cardId'));
     case 'recruitRelic':
       ok = game.recruitRelic(s('cardId'));
+    // ---- Ingeminex (neutral co-op boss entity) -------------------------------
+    case 'attackIngeminex':
+      // Any player may hit the shared neutral entity on their turn (spends
+      // power; the killing blow awards the reward). Turn gate above applies.
+      ok = game.attackIngeminex(s('ingeminexId'), i('amount'));
+    case 'spawnIngeminex':
+      // Versus-adaptation summon entry point: bring a catalog boss into play on
+      // your turn (its appearance hits ALL players, including you). Returns null
+      // when the id isn't in the injected catalog → surfaced as illegal.
+      ok = game.spawnIngeminexById(s('ingeminexId')) != null;
+    case 'banishUpToFromAnyZone':
+      // Desolation's deferred reward: banish up to 3 chosen cards from
+      // hand/deck/discard, then shuffle. Always "succeeds" (0 is a valid choice).
+      game.banishUpToFromAnyZone(
+        (action['cardIds'] as List?)?.cast<String>() ?? const <String>[],
+      );
+      ok = true;
     default:
       return ActionResult.reject('unknown action "$type"');
   }

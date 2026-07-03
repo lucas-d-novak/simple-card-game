@@ -112,6 +112,19 @@ CardEffect decodeEffect(Map<String, dynamic> json) {
       return OpponentLosesMasteryEffect(_int(json, 'amount'));
     case 'allPlayersLoseHealth':
       return AllPlayersLoseHealthEffect(_int(json, 'amount'));
+    case 'banishRandomFromEachHand':
+      return const BanishRandomFromEachHandEffect();
+    case 'allPlayersDiscard':
+      return AllPlayersDiscardEffect(_int(json, 'count'));
+    case 'allPlayersDestroyHighestChampion':
+      return const AllPlayersDestroyHighestChampionEffect();
+    case 'grantExtraDestinyClaim':
+      return GrantExtraDestinyClaimEffect(
+          json.containsKey('count') ? _int(json, 'count') : 1);
+    case 'recruitRelicToHand':
+      return const RecruitRelicToHandEffect();
+    case 'banishUpToFromAnyZone':
+      return BanishUpToFromAnyZoneEffect(_int(json, 'count'));
     case 'banishCard':
       return BanishCardEffect(_banishSource(json['source'] as String?));
     case 'scrapFromCenterRow':
@@ -307,6 +320,18 @@ Map<String, dynamic> encodeEffect(CardEffect effect) {
       return {'type': 'opponentLosesMastery', 'amount': effect.amount};
     case AllPlayersLoseHealthEffect():
       return {'type': 'allPlayersLoseHealth', 'amount': effect.amount};
+    case BanishRandomFromEachHandEffect():
+      return {'type': 'banishRandomFromEachHand'};
+    case AllPlayersDiscardEffect():
+      return {'type': 'allPlayersDiscard', 'count': effect.count};
+    case AllPlayersDestroyHighestChampionEffect():
+      return {'type': 'allPlayersDestroyHighestChampion'};
+    case GrantExtraDestinyClaimEffect():
+      return {'type': 'grantExtraDestinyClaim', 'count': effect.count};
+    case RecruitRelicToHandEffect():
+      return {'type': 'recruitRelicToHand'};
+    case BanishUpToFromAnyZoneEffect():
+      return {'type': 'banishUpToFromAnyZone', 'count': effect.count};
     case BanishCardEffect():
       return {'type': 'banishCard', 'source': effect.source.name};
     case ScrapFromCenterRowEffect():

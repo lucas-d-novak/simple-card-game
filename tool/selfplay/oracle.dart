@@ -427,6 +427,15 @@ class Oracle {
         case InfinityShardEffect():
         case DoublePowerEffect():
         case CopyAllPlayedCardsEffect():
+        // Ingeminex boss effects (Attack/Reward) — only ever resolve as an
+        // entity's appearance/reward, never in a card's playEffects, and they
+        // touch all players / actor zones in non-flat ways. Decline to assert.
+        case BanishRandomFromEachHandEffect():
+        case AllPlayersDiscardEffect():
+        case AllPlayersDestroyHighestChampionEffect():
+        case GrantExtraDestinyClaimEffect():
+        case RecruitRelicToHandEffect():
+        case BanishUpToFromAnyZoneEffect():
           return null;
 
         // --- Deferred-selection / zone effects that DON'T change the actor's

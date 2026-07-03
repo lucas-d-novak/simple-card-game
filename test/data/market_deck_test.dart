@@ -22,7 +22,9 @@ CardDatabase _db() => CardDatabase.fromJsonString('''
     {"id": "praetorian_01", "name": "Praetorian-01", "cost": 4, "copies": 1,
      "playEffects": [{"type": "gainPower", "amount": 3}]},
     {"id": "boss_thing", "name": "Boss", "outOfScope": true,
-     "playEffects": [{"type": "gainPower", "amount": 9}]}
+     "playEffects": [{"type": "gainPower", "amount": 9}]},
+    {"id": "power_struggle", "name": "Power Struggle", "group": "Destiny",
+     "outOfScope": true, "playEffects": []}
   ]
 }
 ''');
@@ -59,14 +61,39 @@ void main() {
       expect(relics.length, 1, reason: 'only the one relic in this test DB');
     });
 
-    test('the Destiny supply contains ONLY Destiny/DestinyDeck cards', () {
+    test('the Destiny supply contains Destiny/DestinyDeck cards + the inert 30th',
+        () {
       final supply = buildDestinySupplyFromDatabase(_db());
       final ids = supply.map((c) => c.id).toSet();
 
       expect(ids, containsAll(['datic_secrets', 'synthesis']));
       expect(ids, isNot(contains('kiln_drone')));
       expect(ids, isNot(contains('swyft')));
-      expect(ids.length, 2, reason: 'exactly the two Destiny-group cards');
+      expect(ids, contains('power_struggle'),
+          reason:
+              'power_struggle is included as the inert 30th Destiny despite '
+              'outOfScope (owner ruling)');
+      expect(ids.length, 3,
+          reason: 'the two normal Destinies plus the inert power_struggle');
+    });
+
+    test('other out-of-scope Destiny-group cards would still be excluded', () {
+      // The inert allow-list is a specific id, not a blanket "include OOS
+      // destinies" — a hypothetical other OOS Destiny must not leak in.
+      final db = CardDatabase.fromJsonString('''
+{
+  "cards": [
+    {"id": "power_struggle", "name": "Power Struggle", "group": "Destiny",
+     "outOfScope": true, "playEffects": []},
+    {"id": "some_other_oos_destiny", "name": "Other", "group": "Destiny",
+     "outOfScope": true, "playEffects": []}
+  ]
+}
+''');
+      final ids =
+          buildDestinySupplyFromDatabase(db).map((c) => c.id).toSet();
+      expect(ids, contains('power_struggle'));
+      expect(ids, isNot(contains('some_other_oos_destiny')));
     });
 
     test('market copies come from the database copies field', () {

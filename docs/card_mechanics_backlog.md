@@ -163,7 +163,34 @@ the Group-4 design agent output). Owner rulings:
   gate = controlling Swyft AND character==Rez; Carmine's mandatory tuck takes precedence
   over Swyft's optional recruit.
 
-## C. Ingeminex wire-up (owner: "in-scope, wire them up")
+## C. Ingeminex wire-up (owner: "in-scope, wire them up") — DONE 2026-07-02
+**Status: SHIPPED end-to-end.** Engine + data + server + UI, 20 tests. Notes:
+- 6 cards flagged in-scope (`outOfScope:false`), kept OUT of the market via
+  `_nonMarketGroups` ∋ `Ingeminex`; each has `appearanceEffects` (Attack) +
+  `rewardEffects` (Reward) encoded in cards.json. Built into a template catalog by
+  `buildIngeminexCatalogFromDatabase`, injected into `GameService`
+  (`ingeminexCatalog:`) and spawnable via `spawnIngeminexById`.
+- Owner reward rulings applied: **Brutality** = +20 HEALTH, **Torment** = +4
+  MASTERY (not gems). **Corruption** attack = banish a random card from each hand
+  (owner note over the "lose 3 and 1" rawText, which was corrected); reward =
+  recruit a Relic to hand. **Desolation** attack = banish random from each hand;
+  reward = deferred banish up to 3 (hand/deck/discard) then shuffle
+  (`banishUpToFromAnyZone`). **Agony** = each player discards 2 / draw 2 + extra
+  Destiny claim. **Malice** = each destroys their highest gem-cost champion /
+  return a Champion from discard + extra Destiny claim.
+- New effect types: `banishRandomFromEachHand`, `allPlayersDiscard`,
+  `allPlayersDestroyHighestChampion`, `grantExtraDestinyClaim`,
+  `recruitRelicToHand`, `banishUpToFromAnyZone` (+ schema + codec).
+- Server: `attackIngeminex` / `spawnIngeminex` / `banishUpToFromAnyZone` protocol
+  actions (current-player gated), `ingeminex` shipped PUBLIC in `redactFor`
+  (ownerless HP pool — no hidden info), undo/stats via the generic apply path.
+- UI: `_IngeminexTile` (name + red HP bar) renders a boss strip above the
+  opponent champions on the networked board; tap-to-attack commits your power.
+- OPEN (deliberate): no card in the current data TRIGGERS a spawn in a
+  competitive game — `spawnIngeminex` is a versus-adaptation summon entry point
+  (any player, on their turn) pending a final owner rule on how bosses appear.
+
+### Original spec (for reference)
 - Flag the 6 Ingeminex cards in-scope (they still spawn as NEUTRAL entities via
   `spawnIngeminex`, NOT into the normal market — keep them out of the center supply,
   but make them visible in the Card List and reachable by the mechanic).

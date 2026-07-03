@@ -926,6 +926,18 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
     _flash('Attacking ${champ.name}');
   }
 
+  /// Attack a shared NEUTRAL Ingeminex boss. Sends the player's whole current
+  /// power pool as the commit amount — the engine spends only what is needed to
+  /// reach the entity's remaining health (no overkill waste), and the killing
+  /// blow awards its reward.
+  void _onAttackIngeminex(_IngeminexView boss, int myPower) {
+    widget.client.sendAction('attackIngeminex', {
+      'ingeminexId': boss.id,
+      'amount': myPower,
+    });
+    _flash('Attacking ${boss.name}');
+  }
+
   /// Open the zoom modal for an ENEMY champion (mirrors [_zoomMyChampion] for
   /// your own champions), offering an "Attack" action bubble. Attack is enabled
   /// only on your turn AND when your power pool can pay the champion's shield —
@@ -1731,6 +1743,10 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
                 cardFor: _card,
                 canAttackChampions: myTurn && me.powerPool > 0,
                 onAttackChampion: _onOpponentChampionTap,
+                ingeminex: view.ingeminex,
+                canAttackIngeminex: myTurn && me.powerPool > 0,
+                onAttackIngeminex: (boss) =>
+                    _onAttackIngeminex(boss, me.powerPool),
                 onZoomEnemyChampion: (champ, ownerId) => _zoomEnemyChampion(
                     opponent?.champions ?? const [], champ, ownerId),
                 onZoomCard: _zoomOne,
@@ -1822,6 +1838,7 @@ class _GameView {
     required this.meId,
     required this.centerRow,
     required this.destinyRow,
+    required this.ingeminex,
     required this.currentPlayerIndex,
     required this.turnNumber,
     required this.isGameOver,
@@ -1838,6 +1855,10 @@ class _GameView {
   /// Ids of the shared face-up Destiny row (claimable at Mastery 5+). Empty when
   /// no Destiny supply is in play. The cards are in the state's `cards` dict.
   final List<String> destinyRow;
+
+  /// Shared NEUTRAL Ingeminex bosses in play (public HP pools). Empty when none
+  /// has appeared. Rendered as attack targets with a damage bar.
+  final List<_IngeminexView> ingeminex;
   final int currentPlayerIndex;
   final int turnNumber;
   final bool isGameOver;
@@ -1885,6 +1906,10 @@ class _GameView {
       meId: meId,
       centerRow: (state['centerRow'] as List? ?? const []).cast<String>(),
       destinyRow: (state['destinyRow'] as List? ?? const []).cast<String>(),
+      ingeminex: [
+        for (final e in (state['ingeminex'] as List? ?? const []))
+          _IngeminexView.parse((e as Map).cast<String, dynamic>()),
+      ],
       currentPlayerIndex: (state['currentPlayerIndex'] as int?) ?? 0,
       turnNumber: (state['turnNumber'] as int?) ?? 1,
       isGameOver: state['isGameOver'] == true,
@@ -1909,6 +1934,34 @@ class _GameView {
     }
     return playerId;
   }
+}
+
+/// A parsed shared NEUTRAL Ingeminex boss from the redacted state's `ingeminex`.
+/// Fully public (ownerless HP pool) — no hidden info.
+@immutable
+class _IngeminexView {
+  const _IngeminexView({
+    required this.id,
+    required this.name,
+    required this.maxHealth,
+    required this.damageTaken,
+    required this.remainingHealth,
+  });
+
+  final String id;
+  final String name;
+  final int maxHealth;
+  final int damageTaken;
+  final int remainingHealth;
+
+  static _IngeminexView parse(Map<String, dynamic> j) => _IngeminexView(
+        id: (j['id'] as String?) ?? '',
+        name: (j['name'] as String?) ?? 'Ingeminex',
+        maxHealth: (j['maxHealth'] as int?) ?? 10,
+        damageTaken: (j['damageTaken'] as int?) ?? 0,
+        remainingHealth:
+            (j['remainingHealth'] as int?) ?? ((j['maxHealth'] as int?) ?? 10),
+      );
 }
 
 /// A parsed direct-damage event from the redacted state's `lastDamage`.
@@ -2932,6 +2985,103 @@ class _GreyedPlayTile extends StatelessWidget {
   }
 }
 
+/// A shared NEUTRAL Ingeminex boss tile: name + a red HP bar (remaining / max)
+/// and a damage readout. Tappable to attack when [canAttack]; a blue action glow
+/// signals it's a live target. Ownerless and fully public — see IngeminexEntity.
+class _IngeminexTile extends StatelessWidget {
+  const _IngeminexTile({
+    required this.boss,
+    required this.width,
+    required this.canAttack,
+    required this.onTap,
+  });
+
+  final _IngeminexView boss;
+  final double width;
+  final bool canAttack;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    // Compact (short, slightly wider than a card) so the boss strip fits above
+    // the champions row without overflowing the height-constrained play field.
+    final tileWidth = width * 1.4;
+    final frac = boss.maxHealth <= 0
+        ? 0.0
+        : (boss.remainingHealth / boss.maxHealth).clamp(0.0, 1.0);
+    return GestureDetector(
+      key: ValueKey('ingeminex_${boss.id}'),
+      onTap: canAttack ? onTap : null,
+      child: Container(
+        width: tileWidth,
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF3A0D14), Color(0xFF17060A)],
+          ),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: canAttack ? const Color(0xFF4FC3F7) : const Color(0xFF7A2230),
+            width: canAttack ? 2 : 1,
+          ),
+          boxShadow: canAttack
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF4FC3F7).withValues(alpha: 0.5),
+                    blurRadius: 8,
+                  ),
+                ]
+              : null,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.dangerous, color: Color(0xFFE0808A), size: 11),
+                const SizedBox(width: 3),
+                Flexible(
+                  child: Text(
+                    boss.name,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 3),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(3),
+              child: LinearProgressIndicator(
+                value: frac,
+                minHeight: 6,
+                backgroundColor: const Color(0xFF2A0A10),
+                valueColor: const AlwaysStoppedAnimation(Color(0xFFE23B4E)),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '${boss.remainingHealth}/${boss.maxHealth} HP',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Color(0xFFE0808A), fontSize: 8),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Play field — opponent champions (top) + my champions / played cards.
 class _NetworkPlayField extends StatelessWidget {
   const _NetworkPlayField({
@@ -2942,6 +3092,9 @@ class _NetworkPlayField extends StatelessWidget {
     required this.cardFor,
     required this.canAttackChampions,
     required this.onAttackChampion,
+    required this.ingeminex,
+    required this.canAttackIngeminex,
+    required this.onAttackIngeminex,
     required this.onZoomEnemyChampion,
     required this.onZoomCard,
     required this.myChampions,
@@ -2963,6 +3116,16 @@ class _NetworkPlayField extends StatelessWidget {
   final CardModel Function(String id) cardFor;
   final bool canAttackChampions;
   final void Function(CardModel champ, String ownerId) onAttackChampion;
+
+  /// Shared NEUTRAL Ingeminex bosses in play (public HP pools). Rendered as a
+  /// strip above the opponent champions row; each is an attack target.
+  final List<_IngeminexView> ingeminex;
+
+  /// True when the viewer may hit an Ingeminex right now (their turn + power).
+  final bool canAttackIngeminex;
+
+  /// Tap an Ingeminex boss → commit an attack against it.
+  final void Function(_IngeminexView boss) onAttackIngeminex;
 
   /// Tap / long-press an ENEMY champion → open its zoom modal, which offers an
   /// "Attack" action bubble (mirrors your own champion's Activate/Exhaust zoom).
@@ -3009,6 +3172,31 @@ class _NetworkPlayField extends StatelessWidget {
     final playColumn = Column(
       mainAxisSize: isPortraitPhone ? MainAxisSize.min : MainAxisSize.max,
       children: [
+            // Shared NEUTRAL Ingeminex bosses — a strip above the opponent
+            // champions. Tap to attack (any player may hit them on their turn).
+            if (ingeminex.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Center(
+                  child: _EdgeFadeScroll(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (final boss in ingeminex)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 4),
+                            child: _IngeminexTile(
+                              boss: boss,
+                              width: cardWidth,
+                              canAttack: canAttackIngeminex,
+                              onTap: () => onAttackIngeminex(boss),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             // Opponent champions row (just under the center row).
             if (opponentChampions.isNotEmpty && opponentId != null)
               Padding(

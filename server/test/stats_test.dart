@@ -61,7 +61,7 @@ void main() {
     test('recordGameEnd backfills playerWon (winner=1, loser=0) and the export '
         'view flattens self state', () {
       final s = StatsStore.inMemory();
-      s.recordGameStart(gameId: 'g', players: ['alice', 'bob']);
+      s.recordGameStart(gameId: 'g', players: ['alice', 'bob'], seed: 0xC0FFEE);
       // Two decisions: one by the eventual winner, one by the loser.
       s.recordDecision(
         gameId: 'g', turn: 1, seat: 0, playerId: 'alice',
@@ -102,6 +102,8 @@ void main() {
       expect(game['winnerId'], 'alice');
       expect(game['winType'], 'elimination');
       expect(game['turns'], 5);
+      expect(game['seed'], 0xC0FFEE,
+          reason: 'the deterministic RNG seed is recorded for reconstruction');
       expect(game['startedTs'], isA<int>());
       expect(game['endedTs'], isA<int>());
 

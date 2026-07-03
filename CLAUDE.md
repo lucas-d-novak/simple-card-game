@@ -165,8 +165,20 @@ server/                                  # Authoritative multiplayer (pure-Dart,
   shield of a champion. `spawnIngeminex` resolves its `appearanceEffects` against
   EVERY player on appearance; `attackIngeminex` lets any player hit it, and the
   killing blow awards that player its `rewardEffects`. Round-tripped by
-  `GameStateCodec` (`ingeminex` key). Tests: `test/services/ingeminex_test.dart`,
-  `test/data/ingeminex_codec_test.dart`.
+  `GameStateCodec` (`ingeminex` key). The **six boss cards are now wired up**
+  (backlog §C): `group: Ingeminex` records are in-scope, kept out of the market,
+  carry `appearanceEffects`/`rewardEffects` in `cards.json`, and are built into a
+  template catalog by `buildIngeminexCatalogFromDatabase` (injected via
+  `GameService(ingeminexCatalog:)`, spawned by id with `spawnIngeminexById`). New
+  boss effects: `banishRandomFromEachHand`, `allPlayersDiscard`,
+  `allPlayersDestroyHighestChampion`, `grantExtraDestinyClaim`,
+  `recruitRelicToHand`, `banishUpToFromAnyZone`. The server ships the row PUBLIC in
+  `redactFor` (`ingeminex` key — ownerless HP pool, no hidden info) and exposes
+  `attackIngeminex` / `spawnIngeminex` / `banishUpToFromAnyZone` protocol actions;
+  the networked board renders an `_IngeminexTile` boss strip (red HP bar,
+  tap-to-attack). Tests: `test/services/ingeminex_test.dart` +
+  `ingeminex_wireup_test.dart`, `test/data/ingeminex_codec_test.dart`,
+  `server/test/ingeminex_server_test.dart`, `test/ui/network_ingeminex_test.dart`.
 - **Action log** — `GameService.actionLog` (`List<GameLogEntry>`{turn, playerId?,
   message, cardId?, grants}) recorded via the `_log()` helper for public events
   (play / recruit / attack / focus / destroy / turn / win); bounded. Now also
@@ -309,6 +321,9 @@ server/                                  # Authoritative multiplayer (pure-Dart,
 | Owner combat model (in-hand shield reduction, champion HEALTH, 50-HP cap) | Done | `game_service.dart` (`_playerDamageReduction`/`_effectiveHealth`), `player_state.dart` (`maxHealth`/`heal`) |
 | Mastery-scaled + dynamic buffs (`healthBuff`, `shieldPerCardUnder`, `shieldEqualsMastery`, `StaticModifier.masteryThreshold`) | Done | `card_effect.dart`, `card_model.dart`, `game_service.dart` |
 | Ingeminex neutral entities (shared boss, HP pool, appearance/kill rewards) | Done | `ingeminex_entity.dart`, `game_service.dart` (`spawnIngeminex`/`attackIngeminex`) |
+| Ingeminex 6-boss wire-up (§C: effects + catalog + server action + board UI) | Done | `market_deck.dart` (`buildIngeminexCatalogFromDatabase`), `game_service.dart` (`spawnIngeminexById`), `server/lib/protocol.dart`, `network_game_screen.dart` (`_IngeminexTile`) |
+| Deterministic per-game RNG seed (§F: generated + persisted + serialized) | Done | `game_service.dart` (`seed`), `game_state_codec.dart`, `server/lib/stats_store.dart` (`games.seed`) |
+| Inert 30th Destiny (§D: power_struggle safe no-op in the supply) | Done | `market_deck.dart` (`_inertDestinyIds`) |
 | New effects (opponent-mastery-loss, mill, recruit-to-hand, return-to-deck-top, return-self-on-champion, redirect-next-recruit) | Done | `card_effect.dart`, `game_service.dart` |
 | Game-state serialization (multiplayer snapshot) | Done | `game_state_codec.dart` |
 | Authoritative multiplayer server (Phase 0/1) | Done | `server/` |

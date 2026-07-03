@@ -9,9 +9,11 @@
 //   row, under-card map, …) then references cards by id. This keeps the payload
 //   small (no repeated effect trees) while remaining faithful to synthetic
 //   starter-deck cards (e.g. `p0_crystal_3`) that are not in CardDatabase.
-// - RNG is NOT serialized. In the authoritative-server model the server is the
-//   sole engine; restoring from the concrete (already-shuffled) pile orders with
-//   a fresh Random is correct. See GameService.restore.
+// - The game SEED is serialized (so the record stays reconstructable from
+//   seed + action log), but RNG STATE is not. In the authoritative-server model
+//   the server is the sole engine; restoring from the concrete (already-shuffled)
+//   pile orders with a fresh Random is correct for an in-progress game. See
+//   GameService.restore / GameService.seed.
 
 import 'package:simple_card_game/data/database/card_serialization.dart';
 import 'package:simple_card_game/data/database/effect_codec.dart';
@@ -48,6 +50,7 @@ class GameStateCodec {
 
     return {
       'version': 1,
+      'seed': game.seed,
       'cards': dict.toJson(),
       'players': players,
       'centerRow': _refs(dict, game.centerRow),
@@ -109,7 +112,10 @@ class GameStateCodec {
     List<CardModel> zone(dynamic ids) =>
         [for (final id in (ids as List? ?? const [])) lookup(id as String)];
 
-    final game = GameService.restore();
+    // Preserve the game's original seed so the record stays reconstructable
+    // (older snapshots without a seed default to 0 — the restore path uses a
+    // fresh Random for future shuffles regardless).
+    final game = GameService.restore(seed: json['seed'] as int?);
 
     for (final raw in (json['players'] as List)) {
       game.players.add(_decodePlayer((raw as Map).cast<String, dynamic>(), zone));

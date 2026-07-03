@@ -30,6 +30,7 @@ import 'package:shards_server/stats_store.dart';
 import 'package:simple_card_game/data/database/card_database.dart';
 import 'package:simple_card_game/data/market_deck.dart';
 import 'package:simple_card_game/models/card_model.dart';
+import 'package:simple_card_game/models/ingeminex_entity.dart';
 
 /// The lobby is built in [main] once the authoritative card database has loaded
 /// from disk, so all games use the real market deck (per-card copy counts).
@@ -124,15 +125,18 @@ void main(List<String> args) async {
   List<MarketCard>? marketDeck;
   List<CardModel>? destinySupply;
   Map<String, CardModel>? relicCards;
+  List<IngeminexEntity>? ingeminexCatalog;
   if (dbFile.existsSync()) {
     final db = CardDatabase.fromJsonString(dbFile.readAsStringSync());
     marketDeck = buildMarketDeckFromDatabase(db);
     destinySupply = buildDestinySupplyFromDatabase(db);
     relicCards = buildRelicCardsFromDatabase(db);
+    ingeminexCatalog = buildIngeminexCatalogFromDatabase(db);
     stdout.writeln('Loaded card DB: ${db.records.length} records, '
         '${marketDeck.length} unique market cards, '
         '${destinySupply.length} Destinies (separate supply), '
-        '${relicCards.length} relics.');
+        '${relicCards.length} relics, '
+        '${ingeminexCatalog.length} Ingeminex bosses.');
   } else {
     stdout.writeln('WARNING: ${dbFile.path} not found — '
         'falling back to the legacy hardcoded market.');
@@ -149,6 +153,7 @@ void main(List<String> args) async {
     marketDeck: marketDeck,
     destinySupply: destinySupply,
     relicCards: relicCards,
+    ingeminexCatalog: ingeminexCatalog,
     stats: _stats,
   );
 

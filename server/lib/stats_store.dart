@@ -6,7 +6,8 @@
 //   * `decisions` — rich (state -> choice) ML records snapshotted from the
 //                   ACTOR'S OWN information set at each real decision point, with
 //                   `playerWon` joined in at game end (the supervised label). (§4b)
-//   * `games`     — one row per game (start/end metadata + winner + winType).
+//   * `games`     — one row per game (start/end metadata + winner + winType +
+//                   the deterministic RNG `seed` for post-hoc reconstruction).
 //
 // HIDDEN-INFO RULE (hard, mirrors server/lib/views.dart): a decision is captured
 // from the deciding player's legal information set ONLY — their own hand is known
@@ -129,6 +130,7 @@ class StatsStore {
         winnerId  TEXT,
         winType   TEXT,
         turns     INTEGER,
+        seed      INTEGER, -- the game's deterministic RNG seed (reconstruct from seed + actions)
         players   TEXT    -- JSON array of {seat, playerId}
       );
     ''');
@@ -253,6 +255,7 @@ class StatsStore {
   void recordGameStart({
     required String gameId,
     required List<String> players,
+    int? seed,
   }) {
     if (!_enabled) return;
     _guarded(() {
@@ -262,11 +265,11 @@ class StatsStore {
       ]);
       final stmt = _db!.prepare(
         'INSERT OR REPLACE INTO games '
-        '(gameId, startedTs, endedTs, winnerId, winType, turns, players) '
-        'VALUES (?,?,NULL,NULL,NULL,NULL,?)',
+        '(gameId, startedTs, endedTs, winnerId, winType, turns, seed, players) '
+        'VALUES (?,?,NULL,NULL,NULL,NULL,?,?)',
       );
       try {
-        stmt.execute([gameId, _now(), playersJson]);
+        stmt.execute([gameId, _now(), seed, playersJson]);
       } finally {
         stmt.close();
       }

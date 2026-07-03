@@ -1719,3 +1719,82 @@ final class InfinityShardEffect extends CardEffect {
   @override
   String get description => '+1 mastery, power scales with mastery';
 }
+
+// ---------------------------------------------------------------------------
+// Ingeminex boss effects (co-op neutral entity — see IngeminexEntity)
+// ---------------------------------------------------------------------------
+// These author the "Attack:" (appearance) and "Reward:" (kill) text of the six
+// Ingeminex cards. Attack effects are ALL-PLAYERS-scoped (resolved once against
+// every seat on appearance); reward effects resolve for the killer only. They
+// are decoded into IngeminexEntity.appearanceEffects / .rewardEffects, not into
+// a normal card's playEffects.
+
+/// APPEARANCE: banish ONE card at random from EVERY player's hand (Corruption,
+/// Desolation). Uses the engine's seeded Random so it is deterministic /
+/// replayable. A player with an empty hand is skipped.
+final class BanishRandomFromEachHandEffect extends CardEffect {
+  const BanishRandomFromEachHandEffect();
+
+  @override
+  String get description => 'Each player banishes a card from hand at random';
+}
+
+/// APPEARANCE: EVERY player discards [count] cards from their hand (Agony).
+/// Discards from the front of the hand (deterministic); a player with fewer
+/// cards discards all they have.
+final class AllPlayersDiscardEffect extends CardEffect {
+  const AllPlayersDiscardEffect(this.count);
+
+  final int count;
+
+  @override
+  String get description => 'Each player discards $count';
+}
+
+/// APPEARANCE: EVERY player destroys their OWN highest gem-cost Champion in play
+/// (Malice). Ties break toward the first such champion in play order. A player
+/// with no champions is unaffected. The destroyed champion goes to its owner's
+/// discard (its under-cards released per the normal death path).
+final class AllPlayersDestroyHighestChampionEffect extends CardEffect {
+  const AllPlayersDestroyHighestChampionEffect();
+
+  @override
+  String get description => 'Each player destroys their highest-cost Champion';
+}
+
+/// REWARD: grant the killer [count] ADDITIONAL Destiny claim(s) — raises their
+/// per-game claim allowance (PlayerState.destinyClaimGrants). "Acquire an
+/// additional Destiny" (Agony, Malice): the player may then claim one more
+/// Destiny of their choosing from the face-up row.
+final class GrantExtraDestinyClaimEffect extends CardEffect {
+  const GrantExtraDestinyClaimEffect(this.count);
+
+  final int count;
+
+  @override
+  String get description => 'Acquire $count additional Destiny';
+}
+
+/// REWARD: recruit an additional Relic directly into the killer's HAND
+/// (Corruption). Takes one of the player's remaining set-aside relic options and
+/// puts it in hand (no Mastery-10 gate, no banish of the other). A no-op if the
+/// player has no relic options left.
+final class RecruitRelicToHandEffect extends CardEffect {
+  const RecruitRelicToHandEffect();
+
+  @override
+  String get description => 'Recruit an additional Relic to hand';
+}
+
+/// REWARD (deferred-selection): banish up to [count] cards from the killer's
+/// hand, deck, and/or discard, then shuffle their deck (Desolation). Resolves to
+/// a no-op inline; the UI/AI calls [GameService.banishUpToFromAnyZone] with the
+/// chosen ids. The shuffle uses the engine's seeded Random.
+final class BanishUpToFromAnyZoneEffect extends CardEffect {
+  const BanishUpToFromAnyZoneEffect(this.count);
+
+  final int count;
+
+  @override
+  String get description => 'Banish up to $count from hand/deck/discard';
+}

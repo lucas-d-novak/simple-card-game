@@ -51,6 +51,29 @@ void main() {
       expect(game.players[1].mastery, 1);
     });
 
+    test('same seed → identical opening deal (deterministic per-game RNG)', () {
+      final a = GameService(playerCount: 2, seed: 0x51ED);
+      final b = GameService(playerCount: 2, seed: 0x51ED);
+
+      expect(a.seed, 0x51ED);
+      expect(b.seed, 0x51ED);
+      expect(
+        b.players[0].hand.map((c) => c.id).toList(),
+        a.players[0].hand.map((c) => c.id).toList(),
+        reason: 'the opening hand is fully determined by the seed',
+      );
+      expect(
+        b.centerRow.map((c) => c.id).toList(),
+        a.centerRow.map((c) => c.id).toList(),
+        reason: 'the market deal is fully determined by the seed',
+      );
+    });
+
+    test('omitting the seed generates a recorded 32-bit game seed', () {
+      final g = GameService(playerCount: 2);
+      expect(g.seed, inInclusiveRange(0, 0xFFFFFFFF));
+    });
+
     test('starting Mastery is staggered by seat (0,1,2,3) in a 4-player game',
         () {
       final game = GameService(playerCount: 4, random: Random(7));
@@ -4293,6 +4316,36 @@ void main() {
       expect(p.staticModifiers, hasLength(1));
       expect(p.staticModifiers.single.kind, StaticModifierKind.shieldBuff);
       expect(p.staticModifiers.single.amount, 2);
+    });
+
+    test('an INERT destiny (power_struggle) claims + uses as a safe no-op', () {
+      // power_struggle has an unmodellable Exhaust cost, so it ships with empty
+      // playEffects and no activatedAbility — but it IS in the supply as the
+      // inert 30th Destiny. Claiming and invoking it must never crash.
+      const inert = CardModel(
+        id: 'power_struggle',
+        name: 'Power Struggle',
+        cost: 5,
+        playEffects: [],
+      );
+      final game = GameService(
+        playerCount: 2,
+        random: Random(7),
+        destinySupply: [inert],
+      );
+      final p = game.currentPlayer;
+      p.mastery = 5;
+      final gemsBefore = p.gemPool;
+
+      expect(game.claimDestiny('power_struggle'), isTrue);
+      expect(p.claimedDestinies.map((c) => c.id), ['power_struggle']);
+      // Claiming resolves nothing (no passive) — resources untouched.
+      expect(p.gemPool, gemsBefore);
+      expect(p.staticModifiers, isEmpty);
+
+      // The activated-ability path safely refuses (no ability), no throw.
+      expect(game.canUseDestinyAbility('power_struggle'), isFalse);
+      expect(game.useDestinyAbility('power_struggle'), isFalse);
     });
 
     test('only one destiny per game (base allowance)', () {
