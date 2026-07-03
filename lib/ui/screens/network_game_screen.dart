@@ -1435,6 +1435,12 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
   Widget build(BuildContext context) {
     final client = widget.client;
     final state = client.gameState;
+    // Parse the redacted state ONCE per frame. _GameView.parse allocates a
+    // _PlayerView (+ champion/log/ingeminex lists) per player, so re-parsing it
+    // for each Stack child (the board, the playback ticker, the damage-flash
+    // guard) was doing that work ~6× on every setState. Thread this single
+    // instance through instead.
+    final view = state == null ? null : _GameView.parse(state, client.playerId);
 
     return Scaffold(
       body: BoardAnimatorScope(
@@ -1445,7 +1451,7 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
             child: CustomPaint(painter: BoardBackdropPainter()),
           ),
           SafeArea(
-            child: state == null
+            child: view == null
                 ? const Center(
                     child: Text(
                       'Waiting for game state…',
@@ -1454,7 +1460,6 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
                   )
                 : LayoutBuilder(
                     builder: (context, constraints) {
-                      final view = _GameView.parse(state, client.playerId);
                       if (view.isGameOver) {
                         if (view.winType == 'mastery' && !_shardWinShown) {
                           final winner = view.players
@@ -1487,7 +1492,7 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
           // down over the board read like an intrusive status bar when you played
           // a card) — opponent moves still animate in. Landscape/desktop keep the
           // full ticker.
-          if (state != null && !(_GameView.parse(state, client.playerId).isGameOver))
+          if (view != null && !view.isGameOver)
             Positioned(
               top: 4,
               left: 12,
@@ -1496,7 +1501,7 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
                 bottom: false,
                 child: ActionPlaybackOverlay(
                   entries: _playbackEntries(
-                    _GameView.parse(state, client.playerId),
+                    view,
                     excludeOwnPlays: Responsive.isMobile(
                             MediaQuery.of(context).size.width) &&
                         MediaQuery.of(context).orientation ==
@@ -1511,14 +1516,13 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
           // server ships a single structured `lastDamage`); the caption reads
           // "… hit YOU for N" for the victim. Suppressed once the game is over so
           // it never overlaps the win flourish.
-          if (state != null &&
-              !(_GameView.parse(state, client.playerId).isGameOver) &&
-              _GameView.parse(state, client.playerId).lastDamage != null)
+          if (view != null &&
+              !view.isGameOver &&
+              view.lastDamage != null)
             Positioned.fill(
               child: SafeArea(
                 child: Builder(
                   builder: (context) {
-                    final view = _GameView.parse(state, client.playerId);
                     final dmg = view.lastDamage!;
                     return DamageFlashOverlay(
                       seq: dmg.seq,

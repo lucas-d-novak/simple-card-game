@@ -79,6 +79,11 @@ Map<String, dynamic> redactFor(
     if (p.id == recipientId) registerAll(p.relicOptions);
   }
 
+  // Precompile the seat-id → username substitutions ONCE per view (they're the
+  // same for every log line), instead of rebuilding a RegExp per seat id per
+  // message inside _namifyMessage. The 80-entry action-log tail below reuses it.
+  final nameSubs = _buildNameSubs(names);
+
   return {
     'stateVersion': stateVersion,
     'you': recipientId,
@@ -157,7 +162,7 @@ Map<String, dynamic> redactFor(
               ? (e.toJson()..remove('cardId'))
               : e.toJson();
           if (j['message'] is String) {
-            j['message'] = _namifyMessage(j['message'] as String, names);
+            j['message'] = _applyNameSubs(j['message'] as String, nameSubs);
           }
           return j;
         }(),
@@ -171,23 +176,36 @@ Map<String, dynamic> redactFor(
   };
 }
 
-/// Replace engine seat ids (`p0`, `p1`, …) with lobby usernames in a log
-/// message, so lines that embed a target/winner seat name ("destroyed p0's
-/// champion", "p0 wins!") read with real names. Word-boundary matched so a seat
-/// id is only swapped as a standalone token (e.g. never inside another word).
-/// Longer ids are replaced first so `p10` isn't partially matched by `p1`.
-String _namifyMessage(String message, Map<String, String> names) {
-  if (names.isEmpty) return message;
+/// One precompiled seat-id → username substitution (word-boundary matched so a
+/// seat id is only swapped as a standalone token, never inside another word).
+typedef _NameSub = ({RegExp pattern, String name});
+
+/// Build the seat-id → username substitution list ONCE (sorted longest-id-first
+/// so `p10` isn't partially matched by `p1`, and skipping identity mappings), so
+/// the whole action-log tail can reuse the compiled RegExps rather than
+/// recompiling per message. See [_applyNameSubs].
+List<_NameSub> _buildNameSubs(Map<String, String> names) {
+  if (names.isEmpty) return const [];
   final seatIds = names.keys.toList()
     ..sort((a, b) => b.length.compareTo(a.length));
+  return [
+    for (final seatId in seatIds)
+      if (names[seatId] != seatId)
+        (
+          pattern:
+              RegExp('(?<![A-Za-z0-9])${RegExp.escape(seatId)}(?![A-Za-z0-9])'),
+          name: names[seatId]!,
+        ),
+  ];
+}
+
+/// Apply precompiled [subs] to a log [message] so lines that embed a
+/// target/winner seat name ("destroyed p0's champion", "p0 wins!") read with
+/// real names.
+String _applyNameSubs(String message, List<_NameSub> subs) {
   var out = message;
-  for (final seatId in seatIds) {
-    final name = names[seatId]!;
-    if (name == seatId) continue;
-    out = out.replaceAllMapped(
-      RegExp('(?<![A-Za-z0-9])${RegExp.escape(seatId)}(?![A-Za-z0-9])'),
-      (_) => name,
-    );
+  for (final sub in subs) {
+    out = out.replaceAllMapped(sub.pattern, (_) => sub.name);
   }
   return out;
 }

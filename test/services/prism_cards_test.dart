@@ -3,7 +3,6 @@ import 'dart:math';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:simple_card_game/models/card_effect.dart';
 import 'package:simple_card_game/models/card_model.dart';
-import 'package:simple_card_game/models/card_type.dart';
 import 'package:simple_card_game/services/game_service.dart';
 
 /// §A Prism cards: Stricture (Exhaust reveal → play-or-banish, Chroma play+banish)
@@ -88,22 +87,22 @@ void main() {
   group('Shard Cultist — banishPairAndRecruit', () {
     /// Play a shard_cultist so it sits in playedThisTurn, and stock the hand +
     /// center row. Returns the game with p0 as the actor.
-    GameService _setUp() {
+    GameService buildGame() {
       final game = GameService(playerCount: 2, random: Random(7));
       final p = game.currentPlayer;
       p.hand.add(_card('shard_cultist',
           cost: 4, effects: const [BanishPairRecruitEffect()]));
       game.playCard('shard_cultist');
       p.hand.add(_card('other', cost: 2));
-      game.centerRow.add(CardModel(
-          id: 'target6', name: 'T6', cost: 6, playEffects: const []));
-      game.centerRow.add(CardModel(
-          id: 'target7', name: 'T7', cost: 7, playEffects: const []));
+      game.centerRow.add(const CardModel(
+          id: 'target6', name: 'T6', cost: 6, playEffects: []));
+      game.centerRow.add(const CardModel(
+          id: 'target7', name: 'T7', cost: 7, playEffects: []));
       return game;
     }
 
     test('banishes this + the chosen card, free-recruits within summed cost', () {
-      final game = _setUp();
+      final game = buildGame();
       final p = game.currentPlayer;
 
       // budget = 4 (cultist) + 2 (other) = 6 → target6 is legal, FREE.
@@ -123,7 +122,7 @@ void main() {
     });
 
     test('a recruit above the summed budget is rejected (all-or-nothing)', () {
-      final game = _setUp();
+      final game = buildGame();
       final p = game.currentPlayer;
 
       // target7 (cost 7) > budget 6 → whole action refused, nothing banished.
@@ -137,7 +136,7 @@ void main() {
     });
 
     test('Chroma may DISCARD this instead of banishing it', () {
-      final game = _setUp();
+      final game = buildGame();
       final p = game.currentPlayer..character = Character.chroma;
 
       expect(

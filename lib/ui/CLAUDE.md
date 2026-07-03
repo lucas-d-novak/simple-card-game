@@ -27,7 +27,6 @@ ui/
 │   ├── card_fan.dart               # Fan-of-cards hand display
 │   ├── card_art.dart               # Procedural canvas art (faction patterns) fallback
 │   ├── scrollable_board.dart       # Landscape scrollable board container
-│   ├── resource_bar.dart           # Health/mastery/gems/power bar (+ optional fly anchors)
 │   ├── resource_icons.dart         # Custom-painted gem/power/mastery/health/shield icons
 │   ├── board_animator.dart         # Overlay-based fly-animation system (BoardAnimator façade)
 │   ├── fly_overlay.dart            # FlyingWidget primitive (source→dest rect tween)
@@ -316,8 +315,9 @@ their counters, a recruited card flying market→discard, a Focus gem→mastery 
   boards know which pips to fly. Conditional/scaling/choose-one effects are
   skipped (they need live state) — never a WRONG pip, just no pip.
 - **Anchors** — `GlobalKey`s tag the resource counters, deck/discard piles, the
-  center row and the play area (via `KeyedSubtree`). `ResourceBar` and the boards'
-  bottom zones take optional anchor-key params; null = un-anchored (no-op).
+  center row and the play area (via `KeyedSubtree`). The boards' bottom zones take
+  optional anchor-key params; null = un-anchored (no-op). (The resource bar is
+  inlined in each board — there is no standalone `ResourceBar` widget.)
 - **Instant mode** — `BoardAnimator.of` resolves `AnimationTiming.of(context)`;
   when instant (tests / reduced-motion / `instant` speed) or no scope is present,
   the animator is a **no-op**: it spawns NOTHING and calls each `onComplete`

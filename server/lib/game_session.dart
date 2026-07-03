@@ -265,8 +265,10 @@ class GameSession {
         names: _seatNames(),
       );
 
-  /// The redacted view a specific lobby player is allowed to see.
-  Map<String, dynamic> viewFor(String lobbyPlayerId) {
+  /// The redacted view a specific lobby player is allowed to see. [names] lets
+  /// [broadcastViews] pass a single precomputed seat→username map shared across
+  /// all recipients (it's the same for everyone), avoiding an N× rebuild.
+  Map<String, dynamic> viewFor(String lobbyPlayerId, {Map<String, String>? names}) {
     final seatId = _seatIdFor(lobbyPlayerId);
     // Unknown viewers get a spectator-style view (no private hand).
     return redactFor(
@@ -274,7 +276,10 @@ class GameSession {
       seatId ?? '',
       stateVersion: _stateVersion,
       canUndo: canUndoFor(lobbyPlayerId),
-      names: _seatNames(),
+      // Reuse a caller-supplied seat→name map when broadcasting to many players
+      // (it's identical for all recipients); compute it here only for a
+      // standalone single-player view (resync).
+      names: names ?? _seatNames(),
     );
   }
 
@@ -291,7 +296,10 @@ class GameSession {
 
   /// Redacted views for every connected player, keyed by LOBBY id — what the
   /// server broadcasts after each accepted action.
-  Map<String, Map<String, dynamic>> broadcastViews() => {
-        for (final id in playerIds) id: viewFor(id),
-      };
+  Map<String, Map<String, dynamic>> broadcastViews() {
+    // The seat→username map is identical for every recipient — compute it ONCE
+    // per broadcast instead of once per player inside each viewFor.
+    final names = _seatNames();
+    return {for (final id in playerIds) id: viewFor(id, names: names)};
+  }
 }

@@ -81,7 +81,6 @@ lib/
     │   ├── card_art.dart                # Procedural card art (faction patterns) fallback
     │   ├── resource_icons.dart          # Custom-painted gem/power/mastery/health/shield icons
     │   ├── beveled_button.dart          # Beveled-teal chrome buttons
-    │   ├── resource_bar.dart            # Health/mastery/gems/power display
     │   └── playing_card_widget.dart     # Legacy card widget
     └── theme/
         ├── game_theme.dart              # Dark board theme
@@ -310,7 +309,7 @@ server/                                  # Authoritative multiplayer (pure-Dart,
 | Opponent plays visible on networked board | Done | `network_game_screen.dart` |
 | Landscape scrollable board + web PWA meta | Done | `scrollable_board.dart`, `web/manifest.json` |
 | Multiplayer target selection | Done | `game_screen.dart` |
-| Mastery progress indicator (bar to 30) | Done | `resource_bar.dart` |
+| Mastery progress indicator (bar to 30) | Done | inlined in the board screens (`network_game_screen.dart` / `game_screen.dart`) |
 | Rematch flow (game over → replay) | Done | `game_screen.dart` |
 | Card play animations (scale + highlight) | Done | `game_screen.dart` |
 | Board fly-animations (deck→market, resource pips, recruit→discard) | Done | `board_animator.dart`, `fly_overlay.dart` |

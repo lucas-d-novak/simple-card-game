@@ -1486,11 +1486,7 @@ class GameService {
     pendingDeckReveal.clear();
     for (final player in players) {
       if (player.isEliminated) continue;
-      if (player.drawPile.isEmpty && player.discardPile.isNotEmpty) {
-        player.drawPile.addAll(player.discardPile);
-        player.discardPile.clear();
-        player.drawPile.shuffle(_random);
-      }
+      _reshuffleDiscardIfNeeded(player);
       if (player.drawPile.isEmpty) continue; // no cards to reveal — skip
       pendingDeckReveal
           .add((ownerId: player.id, card: player.drawPile.last));
@@ -2418,11 +2414,7 @@ class GameService {
   /// that would be drawn is element 0).
   List<CardModel> scryReveal({int count = 1}) {
     final player = currentPlayer;
-    if (player.drawPile.isEmpty && player.discardPile.isNotEmpty) {
-      player.drawPile.addAll(player.discardPile);
-      player.discardPile.clear();
-      player.drawPile.shuffle(_random);
-    }
+    _reshuffleDiscardIfNeeded(player);
     final revealed = <CardModel>[];
     // Top of deck (next draw) is the END of drawPile; iterate from the end.
     for (int i = player.drawPile.length - 1;
@@ -3219,11 +3211,7 @@ class GameService {
   /// available. Top of the draw pile is the END of the list (removeLast).
   void _millTopCards(PlayerState player, int count) {
     for (int i = 0; i < count; i++) {
-      if (player.drawPile.isEmpty && player.discardPile.isNotEmpty) {
-        player.drawPile.addAll(player.discardPile);
-        player.discardPile.clear();
-        player.drawPile.shuffle(_random);
-      }
+      _reshuffleDiscardIfNeeded(player);
       if (player.drawPile.isEmpty) break;
       player.discardPile.add(player.drawPile.removeLast());
     }
@@ -3624,13 +3612,22 @@ class GameService {
   // Drawing
   // -------------------------------------------------------------------------
 
+  /// Rules-critical reshuffle: when [player]'s draw pile is empty and there are
+  /// cards in their discard, tip the discard back in and reshuffle it with the
+  /// seeded [_random] (so the order stays deterministic + hidden — the anti-scry
+  /// invariant). No-op if the draw pile is non-empty or nothing to reshuffle.
+  /// Centralised so every draw / reveal / mill site shares ONE implementation.
+  void _reshuffleDiscardIfNeeded(PlayerState player) {
+    if (player.drawPile.isEmpty && player.discardPile.isNotEmpty) {
+      player.drawPile.addAll(player.discardPile);
+      player.discardPile.clear();
+      player.drawPile.shuffle(_random);
+    }
+  }
+
   void _drawCards(PlayerState player, int count) {
     for (int i = 0; i < count; i++) {
-      if (player.drawPile.isEmpty && player.discardPile.isNotEmpty) {
-        player.drawPile.addAll(player.discardPile);
-        player.discardPile.clear();
-        player.drawPile.shuffle(_random);
-      }
+      _reshuffleDiscardIfNeeded(player);
       if (player.drawPile.isEmpty) break;
       player.hand.add(player.drawPile.removeLast());
     }
