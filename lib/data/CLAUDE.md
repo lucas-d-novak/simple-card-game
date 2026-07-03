@@ -71,22 +71,28 @@ Builds the game's live supplies **from the authoritative database**, not the
 cost-bucket formula and not the legacy hardcoded catalog:
 
 - `buildMarketDeckFromDatabase(db)` → `List<MarketCard>` — the center-deck
-  (market) supply. **88 unique in-scope cards** (155 total copies), each carrying
+  (market) supply. **107 unique in-scope cards** (180 total copies), each carrying
   its REAL printed `copies` count from `cards.json`. Excludes starters,
-  out-of-scope cards, cards with no modellable effect, and the separate Destiny /
-  Aion-group supplies. Injected into `GameService` (constructor `marketDeck:`),
-  which expands one card instance per copy in `_buildInfinityDeck()`.
+  out-of-scope cards, cards with no modellable effect, and the separate Destiny
+  and **Ingeminex** supplies (`_nonMarketGroups`). NOTE: **Aion/Prism are now IN
+  the market** — they were un-parked in Batch 14 (§A) once their mechanics were
+  modelled, so those cards are recruitable like any faction. Injected into
+  `GameService` (constructor `marketDeck:`), which expands one card instance per
+  copy in `_buildInfinityDeck()`.
 - `buildDestinySupplyFromDatabase(db)` → `List<CardModel>` — the SEPARATE Destiny
-  supply (29 cards, the `Destiny` / `DestinyDeck` groups). One copy each (unique).
-  Injected via `GameService` constructor `destinySupply:`; the engine deals six
-  face-up into `destinyRow` and the rest into the cascade `destinyDeck`. Never
-  part of the market.
+  supply (30 cards, the `Destiny` / `DestinyDeck` groups, incl. the inert 30th
+  `power_struggle`). One copy each (unique). Injected via `GameService`
+  constructor `destinySupply:`; the engine deals six face-up into `destinyRow` and
+  the rest into the cascade `destinyDeck`. Never part of the market.
+- `buildIngeminexCatalogFromDatabase(db)` → `List<IngeminexEntity>` — the six
+  NEUTRAL co-op boss templates (`group: Ingeminex`), carrying their
+  appearance/reward effects. Injected via `GameService` constructor
+  `ingeminexCatalog:` and spawned by `spawnIngeminexById`. Never in the market.
 - `buildRelicCardsFromDatabase(db)` → `Map<String, CardModel>` — the Relics-of-
   the-Future lookup (id → model for the 8 relic ids in `characterRelicIds`).
   Injected via `GameService` constructor `relicCards:`. These relics are
   recruited one-of-two for free at Mastery 10 — they are **excluded from the
-  market** (`buildMarketDeckFromDatabase` skips the relic ids), which is why the
-  market is **88 unique / 155 copies**, not 96/163. The Flutter setup screen and
+  market** (`buildMarketDeckFromDatabase` skips the relic ids). The Flutter setup screen and
   the multiplayer server both inject this (and assign each seat a Character with a
   relic pair) so the Mastery-10 relic popup actually appears.
 

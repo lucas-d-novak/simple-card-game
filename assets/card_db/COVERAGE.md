@@ -11,9 +11,9 @@ dart run tool/gen_coverage_readme.dart
 | Dimension | Covered | Total | % |
 |-----------|--------:|------:|--:|
 | Art on disk | 183 | 183 | 100% |
-| Effects encoded | 89 | 183 | 49% |
+| Effects encoded | 96 | 183 | 52% |
 | Raw text captured | 183 | 183 | 100% |
-| **Verified** | **104** | **183** | **57%** |
+| **Verified** | **115** | **183** | **63%** |
 
 Legend: **Art** = card image present · **Eff** = `playEffects` encoded · **Raw** = printed text transcribed · **Ver** = human-confirmed against the physical card.
 
@@ -21,22 +21,22 @@ Legend: **Art** = card image present · **Eff** = `playEffects` encoded · **Raw
 
 | Set | Cards | Art | Eff | Raw | Ver |
 |-----|------:|----:|----:|----:|----:|
-| `base` | 53 | 53 (100%) | 39 (74%) | 53 (100%) | 42 (79%) |
-| `ioh` | 12 | 12 (100%) | 9 (75%) | 12 (100%) | 7 (58%) |
-| `rotf` | 16 | 16 (100%) | 14 (88%) | 16 (100%) | 8 (50%) |
+| `base` | 53 | 53 (100%) | 43 (81%) | 53 (100%) | 49 (92%) |
+| `ioh` | 12 | 12 (100%) | 9 (75%) | 12 (100%) | 8 (67%) |
+| `rotf` | 16 | 16 (100%) | 15 (94%) | 16 (100%) | 11 (69%) |
 | `saga` | 13 | 13 (100%) | 8 (62%) | 13 (100%) | 9 (69%) |
 | `sos` | 2 | 2 (100%) | 1 (50%) | 2 (100%) | 2 (100%) |
-| `unknown` | 87 | 87 (100%) | 18 (21%) | 87 (100%) | 36 (41%) |
+| `unknown` | 87 | 87 (100%) | 20 (23%) | 87 (100%) | 36 (41%) |
 
 ## By faction
 
 | Faction | Cards | Art | Eff | Raw | Ver |
 |---------|------:|----:|----:|----:|----:|
-| `homodeus` | 23 | 23 (100%) | 13 (57%) | 23 (100%) | 17 (74%) |
-| `none` | 87 | 87 (100%) | 18 (21%) | 87 (100%) | 36 (41%) |
-| `order` | 26 | 26 (100%) | 23 (88%) | 26 (100%) | 16 (62%) |
-| `undergrowth` | 23 | 23 (100%) | 18 (78%) | 23 (100%) | 22 (96%) |
-| `wraethe` | 24 | 24 (100%) | 17 (71%) | 24 (100%) | 13 (54%) |
+| `homodeus` | 23 | 23 (100%) | 16 (70%) | 23 (100%) | 20 (87%) |
+| `none` | 87 | 87 (100%) | 20 (23%) | 87 (100%) | 36 (41%) |
+| `order` | 26 | 26 (100%) | 24 (92%) | 26 (100%) | 19 (73%) |
+| `undergrowth` | 23 | 23 (100%) | 18 (78%) | 23 (100%) | 23 (100%) |
+| `wraethe` | 24 | 24 (100%) | 18 (75%) | 24 (100%) | 17 (71%) |
 
 ## Per-card matrix
 
@@ -47,24 +47,24 @@ Ordered by set, then id. ✓ = present, · = missing.
 | `additri_gaiamancer` | base | undergrowth | champion | ✓ | · | ✓ | ✓ |
 | `aetherbreaker` | base | wraethe | mercenary | ✓ | ✓ | ✓ | ✓ |
 | `arach_devotees` | base | undergrowth | regular | ✓ | ✓ | ✓ | ✓ |
-| `axia` | base | homodeus | champion | ✓ | · | ✓ | · |
+| `axia` | base | homodeus | champion | ✓ | ✓ | ✓ | ✓ |
 | `cache_warden` | base | order | mercenary | ✓ | ✓ | ✓ | ✓ |
 | `cloud_oracles` | base | order | regular | ✓ | ✓ | ✓ | ✓ |
 | `command_seer` | base | order | regular | ✓ | ✓ | ✓ | ✓ |
 | `cryptofist_monk` | base | order | regular | ✓ | ✓ | ✓ | ✓ |
 | `data_heretic` | base | order | mercenary | ✓ | ✓ | ✓ | ✓ |
-| `drakonarius` | base | homodeus | champion | ✓ | · | ✓ | · |
+| `drakonarius` | base | homodeus | champion | ✓ | ✓ | ✓ | ✓ |
 | `evokatus` | base | homodeus | champion | ✓ | ✓ | ✓ | ✓ |
-| `fa_cu_tul_the_formless` | base | wraethe | champion | ✓ | · | ✓ | · |
+| `fa_cu_tul_the_formless` | base | wraethe | champion | ✓ | · | ✓ | ✓ |
 | `fungal_hermit` | base | undergrowth | mercenary | ✓ | ✓ | ✓ | ✓ |
 | `furrowing_elemental` | base | undergrowth | regular | ✓ | ✓ | ✓ | ✓ |
-| `general_decurion` | base | homodeus | champion | ✓ | · | ✓ | · |
+| `general_decurion` | base | homodeus | champion | ✓ | · | ✓ | ✓ |
 | `ghostwillow_avenger` | base | undergrowth | mercenary | ✓ | ✓ | ✓ | ✓ |
 | `giga_source_adept` | base | order | champion | ✓ | ✓ | ✓ | · |
 | `kiln_drone` | base | homodeus | regular | ✓ | ✓ | ✓ | ✓ |
 | `korvus_legionnaire` | base | homodeus | regular | ✓ | ✓ | ✓ | ✓ |
 | `leshai_knight` | base | undergrowth | mercenary | ✓ | ✓ | ✓ | ✓ |
-| `li_hin_the_shattered` | base | wraethe | champion | ✓ | · | ✓ | · |
+| `li_hin_the_shattered` | base | wraethe | champion | ✓ | ✓ | ✓ | ✓ |
 | `limiter_drones` | base | homodeus | regular | ✓ | ✓ | ✓ | ✓ |
 | `mining_drones` | base | homodeus | regular | ✓ | ✓ | ✓ | ✓ |
 | `nil_assassin` | base | wraethe | mercenary | ✓ | ✓ | ✓ | ✓ |
@@ -76,10 +76,10 @@ Ordered by set, then id. ✓ = present, · = missing.
 | `pall_shades` | base | wraethe | regular | ✓ | ✓ | ✓ | ✓ |
 | `portal_monk` | base | order | regular | ✓ | ✓ | ✓ | ✓ |
 | `primus_pilus` | base | homodeus | champion | ✓ | · | ✓ | ✓ |
-| `raidian_cloud_master` | base | order | champion | ✓ | · | ✓ | · |
+| `raidian_cloud_master` | base | order | champion | ✓ | ✓ | ✓ | ✓ |
 | `reactor_drone` | base | homodeus | regular | ✓ | ✓ | ✓ | ✓ |
 | `root_of_the_forest` | base | undergrowth | mercenary | ✓ | ✓ | ✓ | ✓ |
-| `rue_bo_vai_the_transcendent` | base | wraethe | champion | ✓ | · | ✓ | · |
+| `rue_bo_vai_the_transcendent` | base | wraethe | champion | ✓ | · | ✓ | ✓ |
 | `scion_of_nothingness` | base | wraethe | mercenary | ✓ | ✓ | ✓ | ✓ |
 | `shadebound_sentry` | base | wraethe | regular | ✓ | ✓ | ✓ | ✓ |
 | `shadow_apostle` | base | wraethe | mercenary | ✓ | ✓ | ✓ | ✓ |
@@ -100,7 +100,7 @@ Ordered by set, then id. ✓ = present, · = missing.
 | `anomaly_cleric` | ioh | order | regular | ✓ | ✓ | ✓ | ✓ |
 | `carnivorous_vine` | ioh | undergrowth | mercenary | ✓ | ✓ | ✓ | ✓ |
 | `cinder_scars` | ioh | wraethe | mercenary | ✓ | ✓ | ✓ | · |
-| `duplication_fabricator` | ioh | order | regular | ✓ | ✓ | ✓ | · |
+| `duplication_fabricator` | ioh | order | regular | ✓ | ✓ | ✓ | ✓ |
 | `g_48` | ioh | homodeus | champion | ✓ | · | ✓ | ✓ |
 | `legion_carrier` | ioh | homodeus | regular | ✓ | ✓ | ✓ | · |
 | `oblivion_gatekeeper` | ioh | wraethe | champion | ✓ | · | ✓ | ✓ |
@@ -110,19 +110,19 @@ Ordered by set, then id. ✓ = present, · = missing.
 | `the_rotten` | ioh | undergrowth | mercenary | ✓ | ✓ | ✓ | ✓ |
 | `torian_commandos` | ioh | homodeus | regular | ✓ | ✓ | ✓ | ✓ |
 | `datic_robes` | rotf | order | regular | ✓ | ✓ | ✓ | · |
-| `entropic_talons` | rotf | undergrowth | regular | ✓ | ✓ | ✓ | · |
-| `ferrata_guard` | rotf | homodeus | champion | ✓ | · | ✓ | · |
+| `entropic_talons` | rotf | undergrowth | regular | ✓ | ✓ | ✓ | ✓ |
+| `ferrata_guard` | rotf | homodeus | champion | ✓ | ✓ | ✓ | · |
 | `gian_shard_wyrm` | rotf | undergrowth | champion | ✓ | · | ✓ | ✓ |
 | `hounds_of_volos` | rotf | undergrowth | mercenary | ✓ | ✓ | ✓ | ✓ |
 | `mainframe_abbot` | rotf | order | regular | ✓ | ✓ | ✓ | ✓ |
 | `panconscious_crown` | rotf | undergrowth | regular | ✓ | ✓ | ✓ | ✓ |
 | `praetorian_01` | rotf | homodeus | regular | ✓ | ✓ | ✓ | · |
 | `praetorian_02` | rotf | homodeus | champion | ✓ | ✓ | ✓ | ✓ |
-| `querry_monk` | rotf | order | regular | ✓ | ✓ | ✓ | · |
+| `querry_monk` | rotf | order | regular | ✓ | ✓ | ✓ | ✓ |
 | `spirit_leech` | rotf | wraethe | mercenary | ✓ | ✓ | ✓ | ✓ |
 | `subversion_elders` | rotf | order | regular | ✓ | ✓ | ✓ | ✓ |
 | `terminal_crescents` | rotf | order | regular | ✓ | ✓ | ✓ | · |
-| `the_heart_of_nothing` | rotf | wraethe | regular | ✓ | ✓ | ✓ | · |
+| `the_heart_of_nothing` | rotf | wraethe | regular | ✓ | ✓ | ✓ | ✓ |
 | `the_lost` | rotf | wraethe | mercenary | ✓ | ✓ | ✓ | ✓ |
 | `the_world_piercer` | rotf | wraethe | regular | ✓ | ✓ | ✓ | · |
 | `aedifex_deus_engineer` | saga | homodeus | champion | ✓ | · | ✓ | ✓ |
@@ -193,7 +193,7 @@ Ordered by set, then id. ✓ = present, · = missing.
 | `red_fortune` | unknown | none | regular | ✓ | ✓ | ✓ | ✓ |
 | `sagittari` | unknown | none | champion | ✓ | · | ✓ | · |
 | `scarlet_slayer` | unknown | none | mercenary | ✓ | ✓ | ✓ | ✓ |
-| `shard_cultist` | unknown | none | regular | ✓ | · | ✓ | · |
+| `shard_cultist` | unknown | none | regular | ✓ | ✓ | ✓ | · |
 | `shard_extractor` | unknown | none | champion | ✓ | · | ✓ | ✓ |
 | `shard_horrors` | unknown | none | champion | ✓ | · | ✓ | · |
 | `shard_spiders` | unknown | none | champion | ✓ | · | ✓ | · |
@@ -207,7 +207,7 @@ Ordered by set, then id. ✓ = present, · = missing.
 | `stranglevines` | unknown | none | — | ✓ | · | ✓ | · |
 | `strategic_mastermind` | unknown | none | regular | ✓ | · | ✓ | ✓ |
 | `stricture` | unknown | none | champion | ✓ | · | ✓ | · |
-| `swyft` | unknown | none | champion | ✓ | · | ✓ | · |
+| `swyft` | unknown | none | champion | ✓ | ✓ | ✓ | · |
 | `synthesis` | unknown | none | regular | ✓ | · | ✓ | ✓ |
 | `system_shock` | unknown | none | — | ✓ | · | ✓ | · |
 | `the_agony_of_choice` | unknown | none | regular | ✓ | · | ✓ | ✓ |

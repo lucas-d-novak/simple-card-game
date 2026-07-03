@@ -1,5 +1,14 @@
 # Engine Phase 3 — Final coverage push
 
+> **(HISTORICAL PLAN — 2026-07-02.)** This is the ORIGINAL Phase-3 roadmap. Most
+> of the F-families below have since SHIPPED (Batches 1–14): the `CardEffect`
+> vocabulary is now **50 subtypes**, and present-tense "there's no X" / "the
+> vocabulary can't express" statements here are largely obsolete — cross-check
+> `lib/models/card_effect.dart` and the `_resolveEffects` switch in
+> `game_service.dart` for current reality. A few items may remain genuinely
+> unbuilt (e.g. an `OpponentLosesGems` effect); grep before assuming. Kept as the
+> design record, not a current-state description.
+
 Phase 2 took the `CardEffect` vocabulary from 14 → 31 subtypes and lifted
 verified coverage from 19 → 63 cards. After re-encoding the 66 Phase-2 gap
 cards, **22 cards remain blocked** by mechanics the vocabulary still can't

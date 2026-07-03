@@ -54,7 +54,7 @@ lib/
 │       └── game_state_codec.dart       # GameStateCodec: full GameService/PlayerState snapshot ⇄ JSON
 ├── models/
 │   ├── card_model.dart                 # CardModel with faction, type, shield, guard, art, etc.
-│   ├── card_effect.dart                # Sealed class hierarchy (37 effect types)
+│   ├── card_effect.dart                # Sealed class hierarchy (50 effect types)
 │   ├── ingeminex_entity.dart           # Neutral, shared Ingeminex boss entity (ownerless, HP pool)
 │   ├── card_type.dart                  # regular | champion | mercenary
 │   ├── faction.dart                    # homodeus | wraethe | order | undergrowth | none
@@ -317,7 +317,7 @@ server/                                  # Authoritative multiplayer (pure-Dart,
 | Legacy demo catalog (55 unique cards) | Done | `card_definitions.dart` |
 | Authoritative card DB (183 cards, 102/142 in-scope verified, 41 out-of-scope) | In progress | `assets/card_db/cards.json` |
 | Card-verify adversarial re-check (41 unverified re-audited, 0 flipped) | Done | `assets/card_db/cards.json` |
-| Engine Phase 2 + 3 (37 effect types) | Done | `card_effect.dart`, `game_service.dart` |
+| Engine Phase 2 + 3 (50 effect types) | Done | `card_effect.dart`, `game_service.dart` |
 | Owner combat model (in-hand shield reduction, champion HEALTH, 50-HP cap) | Done | `game_service.dart` (`_playerDamageReduction`/`_effectiveHealth`), `player_state.dart` (`maxHealth`/`heal`) |
 | Mastery-scaled + dynamic buffs (`healthBuff`, `shieldPerCardUnder`, `shieldEqualsMastery`, `StaticModifier.masteryThreshold`) | Done | `card_effect.dart`, `card_model.dart`, `game_service.dart` |
 | Ingeminex neutral entities (shared boss, HP pool, appearance/kill rewards) | Done | `ingeminex_entity.dart`, `game_service.dart` (`spawnIngeminex`/`attackIngeminex`) |
@@ -366,7 +366,7 @@ cd server && dart test                    # 64 server tests (redaction + auth + 
 - **791 engine tests** (+ 8 goldens, + 64 server tests) across game mechanics,
   models, data, codecs/serialization, AI, widgets, and the multiplayer server
 - Tests use deterministic `Random` injection (`Random(7)`, `ZeroRandom`)
-- Game service tests cover: initialization, all 37 effect types, buying, turn cycling, champions, guard, ally abilities, mastery thresholds (additive + replace), banish/scrap, infinity shard scaling, combat, win conditions, Character Focus, Destiny (claim/use/cascade) and Relics, Phase 2/3 board conditions, and integration scenarios. Serialization tests round-trip a full mid-game snapshot (including the action log). Server tests assert hidden-info redaction (including draw-pile contents sorted/order-hidden and the action-log tail), action authorization, per-turn undo, reconnect/resync/multi-game lobby flow, JSON/SQLite persistence across a restart, and the player-stats/telemetry capture.
+- Game service tests cover: initialization, all 50 effect types, buying, turn cycling, champions, guard, ally abilities, mastery thresholds (additive + replace), banish/scrap, infinity shard scaling, combat, win conditions, Character Focus, Destiny (claim/use/cascade) and Relics, Phase 2/3 board conditions, and integration scenarios. Serialization tests round-trip a full mid-game snapshot (including the action log). Server tests assert hidden-info redaction (including draw-pile contents sorted/order-hidden and the action-log tail), action authorization, per-turn undo, reconnect/resync/multi-game lobby flow, JSON/SQLite persistence across a restart, and the player-stats/telemetry capture.
 
 ## CI
 
@@ -382,7 +382,7 @@ See [`test/CLAUDE.md`](test/CLAUDE.md).
 ## Key files to read first
 
 1. `lib/services/game_service.dart` — all game mechanics (the brain)
-2. `lib/models/card_effect.dart` — sealed effect hierarchy, 37 types (the vocabulary)
+2. `lib/models/card_effect.dart` — sealed effect hierarchy, 50 types (the vocabulary)
 3. `assets/card_db/cards.json` — authoritative 183-card DB (the content; 102/142 in-scope verified, 41 out-of-scope). Legacy `lib/data/card_definitions.dart` (55 cards) still drives the live demo.
 4. `test/services/game_service_test.dart` — mechanic tests (the spec)
 5. `lib/ui/screens/game_screen.dart` — game board UI
@@ -402,7 +402,7 @@ Cross-referenced. The mechanics doc is source of truth for game rules.
 - [`ai-docs/responsive_ui_design.md`](ai-docs/responsive_ui_design.md) — Design (5 iterations) behind the responsive breakpoints (`lib/ui/theme/responsive.dart`).
 - [`ai-docs/bug_patterns.md`](ai-docs/bug_patterns.md) — **Field guide to the recurring bug SHAPES** from the alpha bug-bash (resource-icon transcription errors, deferred-effect pickers, seat-id-vs-username leaks, stale deploy, rules-model gaps) and how to catch each class proactively. Read this before fixing a card-data or "nothing happened when I clicked" bug.
 - [`ai-docs/bug_fix_workflow.md`](ai-docs/bug_fix_workflow.md) — **Our principal METHOD for card/mechanic bugs:** the parallel find-and-stamp-out loop (find root cause → fix → confirm → identify other affected cards/mechanics → investigate → review → iterate). Parallel workflows per bug, grouped when fixes could conflict. The method paired with `bug_patterns.md`'s shapes; the in-repo sibling of `discord_bug_pipeline.md`.
-- [`ai-docs/engine_gaps.md`](ai-docs/engine_gaps.md) — **(Historical)** Catalogue of unmodeled card mechanics the ORIGINAL 14-effect vocabulary couldn't express, plus the phased plan to extend the engine. Phases 1–3 have largely landed (37 effect types now) — see `card_effect.dart` + [`engine_phase2_plan.md`](ai-docs/engine_phase2_plan.md)/[`engine_phase3_plan.md`](ai-docs/engine_phase3_plan.md) for what shipped.
+- [`ai-docs/engine_gaps.md`](ai-docs/engine_gaps.md) — **(Historical)** Catalogue of unmodeled card mechanics the ORIGINAL 14-effect vocabulary couldn't express, plus the phased plan to extend the engine. Phases 1–3 have largely landed (50 effect types now) — see `card_effect.dart` + [`engine_phase2_plan.md`](ai-docs/engine_phase2_plan.md)/[`engine_phase3_plan.md`](ai-docs/engine_phase3_plan.md) for what shipped.
 - [`ai-docs/engine_phase2_plan.md`](ai-docs/engine_phase2_plan.md) / [`ai-docs/engine_phase3_plan.md`](ai-docs/engine_phase3_plan.md) — the Phase 2 (14→31 effect types) and Phase 3 (final gap families) engine-extension designs.
 - [`ai-docs/multiplayer_architecture.md`](ai-docs/multiplayer_architecture.md) — **Authoritative-server multiplayer design** (transport, action protocol, hidden-info redaction, access-token auth + origin allowlist, status probe, wss `/ws` routing, lobby, Pi/Cloudflare-Tunnel deploy, phased rollout). Phase 0/1 implemented in `server/`.
 - [`ai-docs/player_stats_design.md`](ai-docs/player_stats_design.md) — design of the hidden-info-safe player-stats / ML-decision telemetry SQLite store (`server/lib/stats_store.dart`).

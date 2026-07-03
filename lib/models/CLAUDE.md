@@ -21,7 +21,7 @@ Immutable data classes and enums for the Fragments of Boundlessness card game.
 All fields have defaults for backward compatibility with legacy DeckService.
 
 ### card_effect.dart
-`CardEffect` — sealed class hierarchy, **37 subtypes** (the full Engine Phase 2/3 vocabulary; the `_resolveEffects` switch in `GameService` is exhaustive over them):
+`CardEffect` — sealed class hierarchy, **50 subtypes** (the full Engine Phase 2/3 + Batches 1–14 vocabulary; the `_resolveEffects` switch in `GameService` is exhaustive over them):
 - **Resource effects:** `GainGemsEffect`, `GainPowerEffect`, `GainMasteryEffect`, `GainHealthEffect`, `GainMoneyEffect` (legacy)
 - **Draw / mill:** `DrawCardsEffect`, `MillEffect` (mill top N of your own deck to discard)
 - **Opponent interaction:** `OpponentLosesHealthEffect`, `OpponentLosesMasteryEffect` (raw mastery subtraction, floored at 0), `AllPlayersLoseHealthEffect`, `OpponentDrawsEffect`, `OpponentDiscardsEffect`

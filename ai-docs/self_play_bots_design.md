@@ -23,7 +23,7 @@ into (all already present):
 
 - **`GameService`** (`lib/services/game_service.dart`) — pure-Dart engine, runs
   headlessly. Single effect-dispatch point `_resolveEffects()` (the switch over
-  all 31 `CardEffect` types) — the anchor for the semantic oracle (§3).
+  all 50 `CardEffect` types) — the anchor for the semantic oracle (§3).
 - **`AiService`** (`lib/services/ai_service.dart`) — pure-Dart heuristic player;
   `takeTurn()` drives a full turn against a `GameService`. Reusable as a bot brain.
 - **`GameSession.apply()`** (`server/lib/game_session.dart`) — transport-agnostic

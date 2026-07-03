@@ -133,27 +133,31 @@ See `schema.json` `definitions.effect` for the full list. Quick reference:
 | `opponentDraws` / `opponentDiscards` | `count` | each OTHER player draws / discards N |
 | `infinityShard` | — | the Infinity Shard's mastery scaling |
 
-> The list above is a subset. There are **31 `CardEffect` subtypes** in total —
+> The list above is a subset. There are **50 `CardEffect` subtypes** in total —
 > see `schema.json` `definitions.effect` and
 > [`lib/data/CLAUDE.md`](../../lib/data/CLAUDE.md) for the complete `type`
 > vocabulary and parameters, plus the Exhaust `activatedAbility` encoding.
 
-> `cards.json` currently holds **183 entries**, of which **142 are in-scope** and
-> **41** are out-of-scope co-op/boss cards flagged `outOfScope: true` (excluded
-> from the verification target). **All 102 verified entries are in-scope**
-> (`verified: true`); the remaining in-scope cards still need their fields
-> confirmed against the physical cards before flipping `verified: true`. No
-> in-scope card is left blank — every in-scope entry is encoded.
+> `cards.json` currently holds **183 entries**, of which **150 are in-scope** and
+> **33** are out-of-scope cards flagged `outOfScope: true` (excluded from the
+> verification target). The Ingeminex bosses, `power_struggle`, and the Prism
+> cards Stricture / Shard Cultist were brought in-scope in Batches 13–14. **All
+> 115 verified entries are in-scope** (`verified: true`); the remaining in-scope
+> cards still need their fields confirmed against the physical cards before
+> flipping `verified: true`. No in-scope card is left blank — every in-scope entry
+> is encoded.
 
-> **Verification status (why 102/142, not higher).** The 40 remaining unverified
-> in-scope cards were adversarially re-checked against their card art:
-> **0 flipped to `verified: true`.** Each carries a genuinely **unmodellable**
-> mechanic the current `CardEffect` vocabulary can't express (variable shields,
-> reveal-from-hand, per-resource scaling, etc.); their encodings already capture
-> the modellable portion, but they can't be honestly marked verified while a
-> piece of the printed card has no representation. So **raising verified coverage
-> requires ENGINE work — new effect types — not more data entry.** A few cosmetic
-> data gaps were also noted (`the_shard_defiant` / `unconditional_conscription` /
-> `stolen_future` lack a `cost` field; `dash` lacks a `shield` field). See
-> [`ai-docs/engine_gaps.md`](../../ai-docs/engine_gaps.md) for the unmodelled-mechanic
-> catalogue.
+> **Verification status.** This block is a HISTORICAL snapshot from the
+> adversarial re-check pass. Its claim that the remaining unverified cards carry
+> **unmodellable** mechanics "requiring engine work, not data entry" is now
+> **STALE** — the engine grew from ~14 to **50 `CardEffect` subtypes** (Phases
+> 2/3 + Batches 1–14), and the examples it cited are all modelled: **variable
+> shields** → `CardModel.shieldEqualsMastery` / mastery-scaled `StaticModifier` /
+> `shieldPerCardUnder`; **per-resource scaling** → `ScalingResourceEffect`;
+> **reveal-from-hand** → the `factionAllyPlayedOrInHand` condition. The remaining
+> unverified in-scope cards now mostly need **data-entry verification against the
+> physical card**, not new effect types. (A few cosmetic data gaps were also noted:
+> `the_shard_defiant` / `unconditional_conscription` / `stolen_future` lack a
+> `cost` field; `dash` lacks a `shield` field.) See
+> [`ai-docs/engine_gaps.md`](../../ai-docs/engine_gaps.md) — itself marked
+> Historical — for the original unmodelled-mechanic catalogue.

@@ -239,7 +239,7 @@ The `android/`, `ios/`, and `web/` folders are the main product targets. The des
 The authoritative source of card data is the JSON database in
 [`assets/card_db/`](assets/card_db/README.md):
 
-- [`cards.json`](assets/card_db/cards.json) — the 183-card database (142 in-scope, 102 verified; 41 out-of-scope co-op/boss), one entry per unique card. The 40 remaining unverified in-scope cards were adversarially re-checked against art and **0 flipped** — each has a genuinely unmodellable mechanic (variable shields, reveal-from-hand, per-resource scaling, etc.), so raising coverage now requires **engine work** (new effect types), not data entry.
+- [`cards.json`](assets/card_db/cards.json) — the 183-card database (150 in-scope, 115 verified; 33 out-of-scope), one entry per unique card. The engine now models **50 `CardEffect` subtypes**; the mechanics once called "unmodellable" (variable shields via `shieldEqualsMastery`, per-resource scaling via `ScalingResourceEffect`, reveal-from-hand, Ingeminex boss effects, the Aion/Prism subsystems) have since shipped, so the remaining unverified in-scope cards now mostly need **data-entry verification against the physical card**, not new effect types.
 - [`schema.json`](assets/card_db/schema.json) — the per-field contract (`set`, `faction`, `group`, `cardType`, `cost`, `playEffects`, `art`, `verified`, and more).
 - [`README.md`](assets/card_db/README.md) — the data-entry workflow (phone photos + OCR → structured fields).
 
