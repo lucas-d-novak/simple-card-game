@@ -612,6 +612,13 @@ enum ScryDisposition {
   /// Used by oblivion_gatekeeper's Mastery-20 replacement of the base Exhaust.
   /// Resolves INLINE in `_resolveEffects` (mandatory; ignores Guard).
   toHandOpponentsLoseHealthEqualToCost,
+
+  /// Reveal the top card of YOUR OWN deck; you may PLAY it or BANISH it
+  /// (stricture). Deferred: keep → the revealed card is played immediately (its
+  /// effects resolve, champions enter play); else → it is banished. A Chroma
+  /// controller may additionally play AND banish it (`banishAfterPlay` in
+  /// [GameService.scryResolve]) to thin their deck.
+  playOrBanish,
 }
 
 /// "Look at the top [count] card(s) of your deck; you may act on them, then
@@ -648,6 +655,8 @@ final class ScryEffect extends CardEffect {
       case ScryDisposition.toHandOpponentsLoseHealthEqualToCost:
         return 'Reveal the top of your deck, take it to hand; all opponents '
             'lose health equal to its cost (ignores Guard)';
+      case ScryDisposition.playOrBanish:
+        return 'Reveal the top of your deck; you may play it or banish it';
     }
   }
 }
@@ -1718,6 +1727,19 @@ final class InfinityShardEffect extends CardEffect {
 
   @override
   String get description => '+1 mastery, power scales with mastery';
+}
+
+/// SHARD CULTIST (Prism): "Banish this and another card in your hand. Recruit a
+/// card of gem cost ≤ the TOTAL cost of both cards banished this way." A Chroma
+/// controller may DISCARD this instead of banishing it. Deferred-selection: a
+/// no-op in `_resolveEffects`; the player picks the other hand card + the recruit
+/// target, then the engine resolves it via [GameService.banishPairAndRecruit].
+final class BanishPairRecruitEffect extends CardEffect {
+  const BanishPairRecruitEffect();
+
+  @override
+  String get description =>
+      'Banish this + another hand card; recruit a card costing ≤ their total';
 }
 
 // ---------------------------------------------------------------------------

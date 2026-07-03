@@ -1780,17 +1780,19 @@
       "name": "Shard Cultist",
       "faction": "none",
       "copies": 2,
-      "playEffects": [],
+      "playEffects": [
+        {"type": "banishPairRecruit"}
+      ],
       "art": "shard_cultist.jpg",
       "rawText": "Prism Ally\nBanish this and another card in your hand. Recruit a card of [gem] cost equal to or less than the total [gem] cost of both cards banished this way.\nIf you are Chroma, instead of banishing this, you may discard it instead.",
       "verified": false,
-      "notes": "Faction group (non-player): Prism. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 60: name='Shard Cultist', faction='Prism', amount=2. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/shard_cultist.jpg (original publisher, 2024); conf=high | [encode-gap] outOfScope: the recruit's maxCost is DYNAMIC (= total gem cost of this card plus a second hand card the player banishes). recruitFromCenter only supports a FIXED maxCost; no effect derives maxCost from the combined cost of banished cards. The Chroma branch ('discard instead of banishing this') is also character-conditional and unmodellable. Marked outOfScope rather than encoding a wrong fixed-cost recruit; was an empty-effect in-scope card before.",
+      "notes": "Faction group (non-player): Prism. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 60: name='Shard Cultist', faction='Prism', amount=2. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed. | art added from Complete-Saga sheet (visually matched). | [owner-ruling 2026-07-02 §A] MODELLED + in-scope: playEffects=banishPairRecruit — a deferred effect (GameService.banishPairAndRecruit) that banishes this + another chosen hand card, then FREE-recruits a center card of cost <= the summed gem cost of the two banished cards; a Chroma controller may DISCARD this instead of banishing it (discardSelf). Aion/Prism are now un-parked into the market. | [hunt] src=Local printed card art assets/cards/shard_cultist.jpg (original publisher, 2024); conf=high",
       "group": "Prism",
       "set": "unknown",
       "chapter": 2,
       "cost": 4,
       "cardType": "regular",
-      "outOfScope": true
+      "outOfScope": false
     },
     {
       "id": "stricture",
@@ -1799,17 +1801,22 @@
       "faction": "none",
       "copies": 1,
       "playEffects": [],
+      "activatedAbility": {
+        "effects": [
+          {"type": "scry", "disposition": "playOrBanish"}
+        ]
+      },
       "art": "stricture.jpg",
       "rawText": "Prism Champion\nExhaust: Reveal the top card of your deck. You may play or banish the revealed card.\nIf you are Chroma, you may play and then banish the revealed card.",
       "verified": false,
-      "notes": "Faction group (non-player): Prism. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 61: name='Stricture', faction='Prism', amount=1. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed. | set was 'saga' from chapter-run backfill but is unreliable for grouped/co-op/Destiny/saved cards; set to unknown pending confirmation. art added from Complete-Saga sheet (visually matched) | [hunt] src=Local printed card art assets/cards/stricture.jpg (original publisher, 2024); conf=high | [encode-gap] outOfScope: Exhaust ability reveals the top of YOUR OWN deck and lets you PLAY (resolve in place) OR banish it. No scry disposition models 'play the revealed card' — scry only routes the card to hand/discard/banish (drawOrDiscard/drawOrBanish/toHand/toHandLosePowerEqualToCost). Encoding it as drawOrBanish would change 'play it now' into 'draw it to hand', a materially different effect. The Chroma 'play and then banish' branch is also character-conditional. Marked outOfScope rather than faking the play. activatedAbility left unencoded; was an empty-effect in-scope champion before.",
+      "notes": "Faction group (non-player): Prism. set/chapter/back pending — scaffolded from BGG Names/Amounts/Factions columns only BGG source row 61: name='Stricture', faction='Prism', amount=1. | rulebook lists 5 Ch2 KS-only cards; specific ones unconfirmed. | art added from Complete-Saga sheet (visually matched). | [owner-ruling 2026-07-02 §A] MODELLED + in-scope: Exhaust activatedAbility = scry with the NEW playOrBanish disposition — reveal the top of your deck, then PLAY it (keep → resolved via GameService.scryResolve, which plays the card) or BANISH it. A Chroma controller may additionally play AND banish it (scryResolve banishAfterPlay, honoured only when character==chroma). Aion/Prism are now un-parked into the market. | [hunt] src=Local printed card art assets/cards/stricture.jpg (original publisher, 2024); conf=high",
       "group": "Prism",
       "set": "unknown",
       "chapter": 2,
       "cost": 3,
       "cardType": "champion",
       "shield": 5,
-      "outOfScope": true
+      "outOfScope": false
     },
     {
       "id": "chlorophyte_guardian",

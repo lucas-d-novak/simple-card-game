@@ -91,7 +91,15 @@ ActionResult applyAction(
     case 'copyPlayedCard':
       ok = game.copyPlayedCard(s('cardId'));
     case 'scryResolve':
-      ok = game.scryResolve(s('cardId'), keep: b('keep'));
+      // The client sends the disposition it read off the card's ScryEffect (it
+      // knows which scry is pending). Defaults to drawOrDiscard when absent.
+      // `banishAfterPlay` is stricture/Chroma's "play and then banish" option.
+      ok = game.scryResolve(
+        s('cardId'),
+        keep: b('keep'),
+        disposition: _scryDisposition(s('disposition')),
+        banishAfterPlay: b('banishAfterPlay'),
+      );
     case 'centerDeckScryResolve':
       ok = game.centerDeckScryResolve(s('cardId'));
     case 'tuckUnderChampion':
@@ -124,6 +132,15 @@ ActionResult applyAction(
         (action['cardIds'] as List?)?.cast<String>() ?? const <String>[],
       );
       ok = true;
+    case 'banishPairRecruit':
+      // shard_cultist: banish this + a chosen hand card, recruit a center card
+      // within their summed cost (Chroma may discardSelf instead of banishing).
+      ok = game.banishPairAndRecruit(
+        s('selfCardId'),
+        s('otherCardId'),
+        s('recruitCardId'),
+        discardSelf: b('discardSelf'),
+      );
     default:
       return ActionResult.reject('unknown action "$type"');
   }
@@ -136,4 +153,11 @@ BanishSource _banishSource(String raw) {
     if (v.name == raw) return v;
   }
   return BanishSource.handOrDiscard;
+}
+
+ScryDisposition _scryDisposition(String raw) {
+  for (final v in ScryDisposition.values) {
+    if (v.name == raw) return v;
+  }
+  return ScryDisposition.drawOrDiscard;
 }

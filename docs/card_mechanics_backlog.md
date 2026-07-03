@@ -13,7 +13,26 @@ agent currently owns `game_service.dart`. Read each card's `rawText` in
 `assets/card_db/cards.json` for the authoritative ability text; the notes below are
 the product owner's callouts of what is MISSING or WRONG today.
 
-## A. Aion / Prism subsystem build (owner said "start the build now")
+## A. Aion / Prism subsystem build (owner said "start the build now") — DONE 2026-07-02
+**Status: Aion/Prism UN-PARKED into the market; the last two unmodelled cards are
+now modelled.** Aion/Prism removed from `_nonMarketGroups` (owner ruling: "Model +
+unpark"), so all their in-scope cards enter the market like any faction. The two
+remaining Prism cards:
+- **Stricture** — Exhaust `activatedAbility` = `scry` with the NEW `playOrBanish`
+  disposition: reveal top of your deck, then PLAY it (resolved via `scryResolve`)
+  or BANISH it. Chroma may play AND banish (`scryResolve(banishAfterPlay:)`,
+  honoured only when `character==chroma`).
+- **Shard Cultist** — new deferred `banishPairRecruit` effect →
+  `GameService.banishPairAndRecruit(self, other, recruit, {discardSelf})`: banish
+  this + a chosen hand card, then FREE-recruit a center card of cost ≤ the summed
+  gem cost of the two banished (all-or-nothing). Chroma may `discardSelf` instead
+  of banishing. Server `banishPairRecruit` action added.
+
+The Aion cards (Carmine/Dash/Scarlet Slayer/Swyft/Breaker/Skry-77 etc.) were
+already modelled in Batches 9–12; un-parking makes them recruitable. Tests:
+`test/services/prism_cards_test.dart`.
+
+### Original spec (for reference)
 The live market currently PARKS all `group: Aion` and `group: Prism` cards out of the
 market (unmodeled). Goal: model their mechanics and bring them into the market.
 

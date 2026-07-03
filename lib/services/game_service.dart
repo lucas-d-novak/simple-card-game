@@ -2448,6 +2448,7 @@ class GameService {
     String cardId, {
     required bool keep,
     ScryDisposition disposition = ScryDisposition.drawOrDiscard,
+    bool banishAfterPlay = false,
   }) {
     if (!_currentPlayerCanAct) return false;
     final player = currentPlayer;
@@ -2503,7 +2504,72 @@ class GameService {
         player.hand.add(card);
         if (card.cost > 0) _applyOpponentHealthLoss(player, card.cost);
         return true;
+      case ScryDisposition.playOrBanish:
+        // stricture: keep → PLAY the revealed card (via hand → playCard, so its
+        // effects resolve and champions enter play); else → BANISH it. A Chroma
+        // controller may additionally banish it AFTER playing (deck-thinning).
+        final card = player.drawPile.removeAt(index);
+        if (!keep) {
+          removedFromGame.add(card);
+          return true;
+        }
+        player.hand.add(card);
+        playCard(card.id);
+        if (banishAfterPlay && player.character == Character.chroma) {
+          // "play and then banish": remove the just-played card from the game
+          // (from playedThisTurn / championsInPlay) instead of discarding it.
+          banishCard(card.id, BanishSource.playedThisTurn);
+        }
+        return true;
     }
+  }
+
+  /// SHARD CULTIST (Prism), deferred: banish this card ([selfCardId]) AND
+  /// [otherCardId] from hand, then recruit [recruitCardId] from the center row
+  /// FREE provided its cost ≤ the TOTAL gem cost of the two banished cards.
+  ///
+  /// A Chroma controller may [discardSelf] (discard this card) instead of
+  /// banishing it. [selfCardId] is the shard_cultist just played (found in
+  /// playedThisTurn); [otherCardId] must be in hand. Returns false (no state
+  /// change) unless BOTH source cards are found AND the recruit is legal — the
+  /// banishes and the recruit commit together (all-or-nothing).
+  bool banishPairAndRecruit(
+    String selfCardId,
+    String otherCardId,
+    String recruitCardId, {
+    bool discardSelf = false,
+  }) {
+    if (!_currentPlayerCanAct) return false;
+    final player = currentPlayer;
+
+    // Locate the source card (shard_cultist, played this turn) and the chosen
+    // hand card WITHOUT mutating yet, so we can validate the whole action first.
+    final selfIdx = player.playedThisTurn.indexWhere((c) => c.id == selfCardId);
+    if (selfIdx == -1) return false;
+    final otherIdx = player.hand.indexWhere((c) => c.id == otherCardId);
+    if (otherIdx == -1 || otherCardId == selfCardId) return false;
+
+    final selfCard = player.playedThisTurn[selfIdx];
+    final otherCard = player.hand[otherIdx];
+    final budget = selfCard.cost + otherCard.cost;
+
+    // Validate the recruit is present + affordable under the summed budget
+    // BEFORE committing the banishes (all-or-nothing).
+    final recruit = centerRow.where((c) => c.id == recruitCardId).firstOrNull;
+    if (recruit == null || recruit.cost > budget) return false;
+
+    // Commit: remove the self card (discard for Chroma's option, else banish),
+    // banish the other hand card, then recruit for free within budget.
+    player.playedThisTurn.removeAt(selfIdx);
+    if (discardSelf && player.character == Character.chroma) {
+      player.discardPile.add(selfCard);
+    } else {
+      removedFromGame.add(selfCard);
+    }
+    player.hand.removeAt(otherIdx);
+    removedFromGame.add(otherCard);
+
+    return recruitFromCenter(recruitCardId, free: true, maxCost: budget);
   }
 
   /// Destroy every enemy champion (the [DestroyChampionEffect.all] variant).
@@ -2724,6 +2790,10 @@ class GameService {
           // Requires card selection — auto-banish not possible without target.
           // The player should call banishCard() separately after this effect.
           break;
+        case BanishPairRecruitEffect():
+          // shard_cultist: deferred — the player picks the other hand card to
+          // banish + the recruit target; resolved via banishPairAndRecruit().
+          break;
         case ScrapFromCenterRowEffect():
           // Requires card selection — the player should call
           // scrapFromCenterRow() separately after this effect.
@@ -2766,6 +2836,7 @@ class GameService {
             case ScryDisposition.drawOrBanish:
             case ScryDisposition.toHand:
             case ScryDisposition.toHandLosePowerEqualToCost:
+            case ScryDisposition.playOrBanish:
               break;
           }
         case TreatFactionAsEffect():
@@ -3233,6 +3304,7 @@ class GameService {
       case ScryDisposition.drawOrBanish:
       case ScryDisposition.toHand:
       case ScryDisposition.toHandLosePowerEqualToCost:
+      case ScryDisposition.playOrBanish:
         break;
     }
   }

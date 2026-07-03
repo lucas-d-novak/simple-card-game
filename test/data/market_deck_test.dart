@@ -31,8 +31,8 @@ CardDatabase _db() => CardDatabase.fromJsonString('''
 
 void main() {
   group('market vs Destiny supply separation', () {
-    test('the market EXCLUDES Destinies, starters, off-scope, and Aion/Prism',
-        () {
+    test('the market EXCLUDES Destinies, starters, off-scope (but INCLUDES '
+        'un-parked Aion/Prism)', () {
       final market = buildMarketDeckFromDatabase(_db());
       final ids = market.map((m) => m.template.id).toSet();
 
@@ -42,8 +42,8 @@ void main() {
           reason: 'Destinies must NOT be in the center deck');
       expect(ids, isNot(contains('synthesis')),
           reason: 'DestinyDeck cards must NOT be in the center deck');
-      expect(ids, isNot(contains('swyft')),
-          reason: 'Aion-group cards are a separate supply, not the market');
+      expect(ids, contains('swyft'),
+          reason: 'Aion/Prism are now un-parked into the market (§A)');
       expect(ids, isNot(contains('crystal')),
           reason: 'starter cards are never in the market');
       expect(ids, isNot(contains('praetorian_01')),

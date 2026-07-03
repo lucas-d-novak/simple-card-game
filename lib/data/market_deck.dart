@@ -30,12 +30,15 @@ const _starterIds = {
 /// supplies — they must NOT be shuffled into the central market deck:
 ///  - `Destiny` / `DestinyDeck`: the Into-the-Horizon Destiny supply (its own
 ///    face-up row; claimed at Mastery 5). Built by [buildDestinySupplyFromDatabase].
-///  - `Aion` / `Prism`: other expansion subsystems the engine does not yet model
-///    as a playable supply; excluded so they don't pollute the center deck.
 ///  - `Ingeminex`: neutral co-op boss cards — they spawn as shared ownerless
 ///    entities (`GameService.spawnIngeminex`), never bought/recruited, so they
 ///    are kept out of the center deck even though they are now in-scope.
-const _nonMarketGroups = {'Destiny', 'DestinyDeck', 'Aion', 'Prism', 'Ingeminex'};
+///
+/// `Aion` / `Prism` are NO LONGER parked (owner ruling 2026-07-02, §A): their
+/// mechanics are modelled, so their in-scope cards enter the market like any
+/// other faction. The usual filters (outOfScope / empty-effects) still exclude
+/// any unmodelled stragglers.
+const _nonMarketGroups = {'Destiny', 'DestinyDeck', 'Ingeminex'};
 
 /// Relic card ids (Relics of the Future). Relics are set aside beside each
 /// player and recruited ONE-of-two for free at Mastery 10 — they are a separate

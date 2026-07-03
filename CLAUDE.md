@@ -324,6 +324,7 @@ server/                                  # Authoritative multiplayer (pure-Dart,
 | Ingeminex 6-boss wire-up (§C: effects + catalog + server action + board UI) | Done | `market_deck.dart` (`buildIngeminexCatalogFromDatabase`), `game_service.dart` (`spawnIngeminexById`), `server/lib/protocol.dart`, `network_game_screen.dart` (`_IngeminexTile`) |
 | Deterministic per-game RNG seed (§F: generated + persisted + serialized) | Done | `game_service.dart` (`seed`), `game_state_codec.dart`, `server/lib/stats_store.dart` (`games.seed`) |
 | Inert 30th Destiny (§D: power_struggle safe no-op in the supply) | Done | `market_deck.dart` (`_inertDestinyIds`) |
+| Aion/Prism un-parked into market + Stricture/Shard Cultist modelled (§A) | Done | `market_deck.dart` (`_nonMarketGroups`), `game_service.dart` (`playOrBanish` scry, `banishPairAndRecruit`) |
 | New effects (opponent-mastery-loss, mill, recruit-to-hand, return-to-deck-top, return-self-on-champion, redirect-next-recruit) | Done | `card_effect.dart`, `game_service.dart` |
 | Game-state serialization (multiplayer snapshot) | Done | `game_state_codec.dart` |
 | Authoritative multiplayer server (Phase 0/1) | Done | `server/` |

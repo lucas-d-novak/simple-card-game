@@ -270,6 +270,7 @@ class DeckService {
         case GrantExtraDestinyClaimEffect():
         case RecruitRelicToHandEffect():
         case BanishUpToFromAnyZoneEffect():
+        case BanishPairRecruitEffect():
         case InfinityShardEffect():
           break; // Handled by GameService, not DeckService
       }

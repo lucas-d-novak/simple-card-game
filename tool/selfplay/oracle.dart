@@ -467,6 +467,7 @@ class Oracle {
         case CopyPlayedCardEffect():
         case RevealAndCopyTopOfDecksEffect():
         case RedirectNextRecruitEffect():
+        case BanishPairRecruitEffect():
           // No actor flat-resource delta at play time. BUT some of these move
           // cards between the actor's own zones (return-from-discard adds to
           // hand on a follow-up call; recruit/fast-play affect center). At PLAY

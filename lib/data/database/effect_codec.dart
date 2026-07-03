@@ -125,6 +125,8 @@ CardEffect decodeEffect(Map<String, dynamic> json) {
       return const RecruitRelicToHandEffect();
     case 'banishUpToFromAnyZone':
       return BanishUpToFromAnyZoneEffect(_int(json, 'count'));
+    case 'banishPairRecruit':
+      return const BanishPairRecruitEffect();
     case 'banishCard':
       return BanishCardEffect(_banishSource(json['source'] as String?));
     case 'scrapFromCenterRow':
@@ -332,6 +334,8 @@ Map<String, dynamic> encodeEffect(CardEffect effect) {
       return {'type': 'recruitRelicToHand'};
     case BanishUpToFromAnyZoneEffect():
       return {'type': 'banishUpToFromAnyZone', 'count': effect.count};
+    case BanishPairRecruitEffect():
+      return {'type': 'banishPairRecruit'};
     case BanishCardEffect():
       return {'type': 'banishCard', 'source': effect.source.name};
     case ScrapFromCenterRowEffect():
@@ -756,6 +760,8 @@ ScryDisposition _scryDisposition(String? raw) {
       return ScryDisposition.toHandLoseHealthEqualToCost;
     case 'toHandOpponentsLoseHealthEqualToCost':
       return ScryDisposition.toHandOpponentsLoseHealthEqualToCost;
+    case 'playOrBanish':
+      return ScryDisposition.playOrBanish;
     default:
       throw FormatException('unknown scry disposition: $raw');
   }

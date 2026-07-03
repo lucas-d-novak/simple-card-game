@@ -231,7 +231,8 @@
             "allPlayersDestroyHighestChampion",
             "grantExtraDestinyClaim",
             "recruitRelicToHand",
-            "banishUpToFromAnyZone"
+            "banishUpToFromAnyZone",
+            "banishPairRecruit"
           ]
         },
         "amount": { "type": "integer", "description": "For gain*/opponentLosesHealth/allPlayersLoseHealth." },
@@ -277,7 +278,7 @@
         },
         "disposition": {
           "type": "string",
-          "enum": ["drawOrDiscard", "drawOrBanish", "toHand", "acquire", "toHandLosePowerEqualToCost", "toHandLoseHealthEqualToCost", "toHandOpponentsLoseHealthEqualToCost"],
+          "enum": ["drawOrDiscard", "drawOrBanish", "toHand", "acquire", "toHandLosePowerEqualToCost", "toHandLoseHealthEqualToCost", "toHandOpponentsLoseHealthEqualToCost", "playOrBanish"],
           "description": "For scry (top of YOUR deck): drawOrDiscard=keep draws to hand else discards; drawOrBanish=keep draws to hand else banishes; toHand=keep takes to hand else leaves on top; toHandLosePowerEqualToCost=mandatorily take it to hand and lose power equal to its gem cost (ignores Guard); toHandLoseHealthEqualToCost=mandatorily take it to hand and the CONTROLLER loses health equal to its gem cost (ignores Guard; oblivion_gatekeeper base); toHandOpponentsLoseHealthEqualToCost=mandatorily take it to hand and ALL OPPONENTS lose health equal to its gem cost (ignores Guard; oblivion_gatekeeper Mastery-20 replacement). For centerDeckScry (top of the CENTER/infinity deck): acquire=take revealed card to discard; toHandLosePowerEqualToCost=take it to hand and lose power equal to its gem cost."
         },
         "filter": {
