@@ -9,8 +9,9 @@ Immutable data classes and enums for the Fragments of Boundlessness card game.
 - `id`, `name`, `cost`, `playEffects` — core identity
 - `faction` (Faction enum) — which of the 4 factions (or none)
 - `cardType` (CardType enum) — regular, champion, or mercenary
-- `shield` (int) — a champion's base HEALTH (power needed to destroy, via `GameService._effectiveHealth`); on a card in HAND it contributes to the owner's per-hit damage reduction (owner combat model)
-- `shieldEqualsMastery` (bool, default false) — dynamic shield: the card's shield equals the owner's CURRENT mastery instead of a fixed value (Datic Robes)
+- `shield` (int) — the card's IN-HAND damage reduction: while the card is in HAND it contributes to the owner's per-hit damage reduction (owner combat model). Carried by shield-bearing allies and a few champions (e.g. Zetta). INDEPENDENT of `health`; 0 for cards that offer no in-hand shield.
+- `health` (int) — a champion's in-play toughness: power an attacker must meet-or-exceed to destroy it in one attack (via `GameService._effectiveHealth`). Champions only; 0 otherwise. INDEPENDENT of `shield` — a champion may have both (Zetta: health 5 in play, shield 5 in hand).
+- `shieldEqualsMastery` (bool, default false) — dynamic in-hand shield: the card's shield equals the owner's CURRENT mastery instead of a fixed value (Datic Robes)
 - `hasGuard` (bool) — must destroy before attacking player
 - `allyAbility` (List\<CardEffect\>) — triggers when same-faction card in play
 - `masteryThreshold` / `masteryBonus` — bonus effects at mastery level

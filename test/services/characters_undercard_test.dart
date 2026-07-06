@@ -132,7 +132,7 @@ void main() {
       cost: 2,
       playEffects: [],
       cardType: CardType.champion,
-      shield: 6,
+      health: 6,
     );
 
     CardModel ally(String id) => CardModel(
@@ -226,7 +226,7 @@ void main() {
           )),
         ],
         cardType: CardType.champion,
-        shield: 6,
+        health: 6,
       );
       player.hand.add(carmine);
       game.playCard('carmine2'); // champion → in play, effect resolves
@@ -277,7 +277,7 @@ void main() {
         name: 'Self-Banish Champ',
         cost: 2,
         cardType: CardType.champion,
-        shield: 4,
+        health: 4,
         playEffects: [SelfBanishEffect()],
       );
       player.hand.add(sbChamp);
@@ -313,7 +313,7 @@ void main() {
         cost: 6,
         playEffects: [],
         cardType: CardType.champion,
-        shield: 5,
+        health: 5,
       );
       player.championsInPlay.add(paradigm);
       player.cardsUnderChampion['paradigm'] = const [
@@ -338,7 +338,7 @@ void main() {
         cost: 6,
         playEffects: [],
         cardType: CardType.champion,
-        shield: 5,
+        health: 5,
       );
       player.championsInPlay.add(paradigm);
       player.cardsUnderChampion['paradigm'] = const [
@@ -361,7 +361,7 @@ void main() {
         cost: 6,
         playEffects: [],
         cardType: CardType.champion,
-        shield: 5,
+        health: 5,
       );
       player.championsInPlay.add(paradigm);
       expect(game.copyUnderCards('paradigm'), false);
@@ -378,7 +378,7 @@ void main() {
           TuckUnderChampionEffect(source: TuckSource.centerDeck),
         ],
         cardType: CardType.champion,
-        shield: 8,
+        health: 8,
       );
       final beforeDeck = game.infinityDeck.length;
       player.hand.add(gene);

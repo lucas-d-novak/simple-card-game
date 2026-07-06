@@ -16,14 +16,26 @@ class CardModel {
   /// Whether this is a regular card, champion, or mercenary.
   final CardType cardType;
 
-  /// Champion HEALTH (champions only): the amount of power an attacker must
-  /// spend to destroy this champion. The destroy threshold is MEET-OR-EXCEED —
-  /// power >= shield destroys it (see GameService.attackChampion). This number
-  /// is NOT a buff to the owner's life total; it is purely the cost to remove
-  /// the champion. (Named `shield` for historical reasons.)
+  /// SHIELD — the in-hand damage reduction this card offers its owner. While
+  /// this card is in the owner's HAND, its [shield] is subtracted from every
+  /// direct attack against that player (summed across the hand; passive, never
+  /// consumed — see GameService._playerDamageReduction). It does NOT reduce
+  /// damage dealt to champions, and it has NO effect once the card leaves the
+  /// hand. This is INDEPENDENT of [health]: allies carry only a shield, most
+  /// champions carry only health, and a few champions (e.g. Zetta, The
+  /// Encryptor) carry BOTH — a shield that protects while Zetta is in hand and a
+  /// health value that is its toughness once it is played out. Defaults to 0.
   final int shield;
 
-  /// When true, this card's IN-HAND shield is DYNAMIC and equals the owner's
+  /// HEALTH — a champion's in-play toughness: the amount of power an attacker
+  /// must spend to destroy this champion in a SINGLE attack (meet-or-exceed:
+  /// power >= health destroys it; no partial/chip damage, no carry-over across
+  /// turns — see GameService.attackChampion / _effectiveHealth). Champions only;
+  /// 0 for non-champions. This is NOT a buff to the owner's life total and NOT a
+  /// hand shield — it is INDEPENDENT of [shield] (a champion may have both).
+  final int health;
+
+  /// When true, this card's IN-HAND [shield] is DYNAMIC and equals the owner's
   /// CURRENT mastery, rather than the static [shield] value (datic_robes: "this
   /// has shield equal to your mastery"). Consulted only by the player
   /// damage-reduction path (GameService._playerDamageReduction) — it has no
@@ -108,6 +120,7 @@ class CardModel {
     this.faction = Faction.none,
     this.cardType = CardType.regular,
     this.shield = 0,
+    this.health = 0,
     this.shieldEqualsMastery = false,
     this.hasGuard = false,
     this.allyAbility = const <CardEffect>[],
@@ -134,6 +147,7 @@ class CardModel {
     Faction? faction,
     CardType? cardType,
     int? shield,
+    int? health,
     bool? shieldEqualsMastery,
     bool? hasGuard,
     List<CardEffect>? allyAbility,
@@ -155,6 +169,7 @@ class CardModel {
       faction: faction ?? this.faction,
       cardType: cardType ?? this.cardType,
       shield: shield ?? this.shield,
+      health: health ?? this.health,
       shieldEqualsMastery: shieldEqualsMastery ?? this.shieldEqualsMastery,
       hasGuard: hasGuard ?? this.hasGuard,
       allyAbility: allyAbility ?? this.allyAbility,

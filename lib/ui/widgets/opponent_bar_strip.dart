@@ -12,7 +12,8 @@ import 'package:simple_card_game/ui/widgets/resource_icons.dart';
 /// per-player view into these, and tests can construct them directly.
 ///
 /// All fields here are already board-visible for opponents (no hidden info):
-/// name, champion COUNT, mastery, health, and a derived guard-[shield] figure.
+/// name, champion COUNT, mastery, health, and the opponent's last-revealed
+/// in-hand [shield] total.
 class OpponentBarData {
   const OpponentBarData({
     required this.id,
@@ -20,7 +21,7 @@ class OpponentBarData {
     required this.championCount,
     required this.mastery,
     required this.health,
-    this.guardShield,
+    this.revealedShield,
     this.eliminated = false,
   });
 
@@ -35,10 +36,10 @@ class OpponentBarData {
   final int mastery;
   final int health;
 
-  /// The toughest guard the opponent presents (derived from their champions'
-  /// shields by the caller), or null when they have no champion worth flagging.
-  /// When non-null the strip renders a shield chip.
-  final int? guardShield;
+  /// The opponent's in-hand SHIELD total as last REVEALED by attacking them
+  /// (hidden info until an attack exposes it), or null until they have been
+  /// attacked. When non-null the strip renders a shield chip showing it.
+  final int? revealedShield;
 
   /// Defensive: eliminated opponents render greyed/struck (they are not normally
   /// passed to the strip, which only lists living opponents).
@@ -47,7 +48,7 @@ class OpponentBarData {
 
 /// A condensed, read-only strip of opponent "bars" across the top of the
 /// networked board. Each bar shows one living opponent's name plus their
-/// champion count, mastery, health and (when present) a guard-shield chip.
+/// champion count, mastery, health and (when revealed) their in-hand-shield chip.
 ///
 /// PHASE A is display-only: [selectedId] highlights a bar and tapping fires
 /// [onSelect], but the networked board currently passes a no-op (target
@@ -169,11 +170,11 @@ class _OpponentBar extends StatelessWidget {
       _BarStat(resourceIcon: ResourceIcon.mastery, value: data.mastery, dim: elim),
       const SizedBox(width: 6),
       _BarStat(resourceIcon: ResourceIcon.health, value: data.health, dim: elim),
-      if (data.guardShield != null) ...[
+      if (data.revealedShield != null) ...[
         const SizedBox(width: 6),
         _BarStat(
           resourceIcon: ResourceIcon.shield,
-          value: data.guardShield!,
+          value: data.revealedShield!,
           dim: elim,
         ),
       ],

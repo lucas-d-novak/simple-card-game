@@ -147,6 +147,7 @@ class CardRecord {
         faction: _parseFaction(json['faction'] as String?),
         cardType: _parseCardType(json['cardType'] as String?),
         shield: (json['shield'] as int?) ?? 0,
+        health: (json['health'] as int?) ?? 0,
         shieldEqualsMastery: (json['shieldEqualsMastery'] as bool?) ?? false,
         hasGuard: (json['hasGuard'] as bool?) ?? false,
         allyAbility: decodeEffectList(json['allyAbility']),

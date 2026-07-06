@@ -959,7 +959,7 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
       index < 0 ? 0 : index,
       actionFor: (card) => CardDetailAction(
         label: 'Attack',
-        enabled: myTurn && power >= card.shield,
+        enabled: myTurn && power >= card.health,
         onPressed: () => _onOpponentChampionTap(card, ownerId),
       ),
     );
@@ -970,7 +970,7 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
     // warn before spending it all on the face — the player may have meant to
     // clear a champion first. Cancel returns them to the board (so they can tap
     // a champion to attack); "End Turn" commits the direct attack.
-    final killable = opponent.champions.any((c) => power >= _card(c.id).shield);
+    final killable = opponent.champions.any((c) => power >= _card(c.id).health);
     if (killable) {
       _confirmDirectAttack(opponent, power);
       return;
@@ -1591,11 +1591,12 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
 
     // ---- Condensed opponent-bar strip (Phase A: read-only display) ----------
     // One bar per LIVING opponent (skip me + eliminated). Stats are all already
-    // board-visible for opponents. guardShield is derived from the opponent's
-    // champions: the MAX shield among them (the toughest guard the player must
-    // punch through), null when they have no champion with a shield. Selection
-    // wiring is Phase B — for now the strip highlights the current single
-    // `opponent` and its onSelect is a no-op stub.
+    // board-visible for opponents. revealedShield is the in-hand SHIELD total
+    // this opponent was last revealed to have when they were attacked (hidden
+    // info until an attack exposes it) — null until they have been attacked, so
+    // the shield chip only appears once it has been revealed. Selection wiring is
+    // Phase B — for now the strip highlights the current single `opponent` and
+    // its onSelect is a no-op stub.
     final opponentBars = <OpponentBarData>[
       for (final p in view.players)
         if (p.id != view.meId && !p.eliminated)
@@ -1605,14 +1606,7 @@ class _NetworkGameScreenState extends State<NetworkGameScreen> {
             championCount: p.champions.length,
             mastery: p.mastery,
             health: p.health,
-            guardShield: () {
-              var maxShield = 0;
-              for (final c in p.champions) {
-                final s = _card(c.id).shield;
-                if (s > maxShield) maxShield = s;
-              }
-              return maxShield > 0 ? maxShield : null;
-            }(),
+            revealedShield: p.lastRevealedShield,
           ),
     ];
 
@@ -2022,6 +2016,7 @@ class _PlayerView {
     required this.relicOptions,
     required this.relicRecruited,
     required this.unblockedDamageThisTurn,
+    required this.lastRevealedShield,
     required this.character,
   });
 
@@ -2061,6 +2056,12 @@ class _PlayerView {
   /// Unblocked damage this player has dealt to opponents this turn (redacted
   /// scalar). Used by the client-side `unblockedDamageAtLeast` condition.
   final int unblockedDamageThisTurn;
+
+  /// The in-hand SHIELD total this player was last REVEALED to have when an
+  /// opponent attacked them (public intel — the reveal is board-visible). Null
+  /// until this player has been attacked at least once. Drives the opponent-bar
+  /// shield chip.
+  final int? lastRevealedShield;
 
   /// Ids of Destinies this player has claimed (public, face-up beside them).
   final List<String> claimedDestinies;
@@ -2113,6 +2114,7 @@ class _PlayerView {
       eliminated: p['eliminated'] == true,
       focusedThisTurn: p['focusedThisTurn'] == true,
       unblockedDamageThisTurn: (p['unblockedDamageThisTurn'] as int?) ?? 0,
+      lastRevealedShield: p['lastRevealedShield'] as int?,
       hand: hand,
       handCount: (p['handCount'] as int?) ?? hand.length,
       drawPileCount: (p['drawPileCount'] as int?) ?? 0,

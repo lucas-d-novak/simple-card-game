@@ -223,6 +223,11 @@ Map<String, dynamic> _redactPlayer(
     'gemPool': p.gemPool,
     'powerPool': p.powerPool,
     'unblockedDamageThisTurn': p.unblockedDamageThisTurn,
+    // PUBLIC: the in-hand shield total this player was revealed to have the last
+    // time an opponent attacked them (null until first attacked). The reveal is
+    // board-visible, so this leaks no NEW hidden info — the opponent-bar shield
+    // chip renders it.
+    if (p.lastRevealedShield != null) 'lastRevealedShield': p.lastRevealedShield,
     'ignoresShieldThisTurn': p.ignoresShieldThisTurn,
     'focusedThisTurn': p.focusedThisTurn,
     'eliminated': p.isEliminated,

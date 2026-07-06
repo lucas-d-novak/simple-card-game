@@ -8,12 +8,14 @@ import 'package:simple_card_game/models/card_type.dart';
 import 'package:simple_card_game/models/player_state.dart';
 import 'package:simple_card_game/services/game_service.dart';
 
-/// Owner combat model (backlog §E): PLAYER damage reduction each hit =
-/// Σ(shield of cards in HAND) + Σ(shieldBuff from champions in play). A card's
-/// own shield only protects while in hand; a champion in play contributes only
-/// an explicit shieldBuff it grants (its own value is HEALTH). Global 50-HP cap.
+/// Owner combat model (backlog §E, 2026-07-06 rulings): HEALTH and SHIELD are
+/// INDEPENDENT stats. PLAYER damage reduction each hit = Σ(`shield` of cards in
+/// HAND) + Σ(`shieldBuff` from champions in play). A card's own shield only
+/// protects while in hand; a champion in play contributes only an explicit
+/// shieldBuff it grants. A champion's HEALTH is its in-play destroy threshold
+/// (never an in-hand shield). A champion may carry BOTH (Zetta). Global 50-HP cap.
 CardModel _shieldCard(String id, int shield,
-        {CardType type = CardType.regular}) =>
+        {CardType type = CardType.regular, int health = 0}) =>
     CardModel(
       id: id,
       name: id,
@@ -21,6 +23,7 @@ CardModel _shieldCard(String id, int shield,
       playEffects: const [],
       cardType: type,
       shield: shield,
+      health: health,
     );
 
 void main() {
@@ -64,13 +67,15 @@ void main() {
       final attacker = game.currentPlayer;
       final target = game.players[1];
 
-      final champ = _shieldCard('bulwark', 4, type: CardType.champion);
+      // A Zetta-like champion carrying BOTH a shield (in-hand) and health.
+      final champ =
+          _shieldCard('bulwark', 4, type: CardType.champion, health: 6);
       target.hand
         ..clear()
         ..add(champ);
       attacker.powerPool = 40;
 
-      // In hand: shield 4 reduces the hit.
+      // In hand: shield 4 reduces the hit (its health does NOT).
       var before = target.health;
       expect(game.attackPlayer('p1', 10), true);
       expect(target.health, before - 6);
@@ -108,7 +113,8 @@ void main() {
       final game = GameService(playerCount: 2, random: Random(7));
       final attacker = game.currentPlayer;
       final target = game.players[1];
-      target.championsInPlay.add(_shieldCard('c', 5, type: CardType.champion));
+      target.championsInPlay
+          .add(_shieldCard('c', 0, type: CardType.champion, health: 5));
 
       attacker.powerPool = 4;
       expect(game.attackChampion('c', 'p1'), false);
@@ -129,7 +135,7 @@ void main() {
         cost: 0,
         playEffects: [],
         cardType: CardType.champion,
-        shield: 1,
+        health: 1,
         hasGuard: true,
       ));
       attacker.powerPool = 20;
@@ -151,6 +157,47 @@ void main() {
       final before = target.health;
       expect(game.attackPlayer('p1', 5), false);
       expect(target.health, before);
+    });
+  });
+
+  group('Revealed in-hand shield (opponent-bar intel)', () {
+    test('null until attacked, then records the target\'s shield total', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final attacker = game.currentPlayer;
+      final target = game.players[1];
+      target.hand
+        ..clear()
+        ..addAll([_shieldCard('a', 2), _shieldCard('b', 3)]); // total 5
+
+      expect(target.lastRevealedShield, isNull,
+          reason: 'not revealed until attacked');
+
+      attacker.powerPool = 20;
+      expect(game.attackPlayer('p1', 4), true);
+      expect(target.lastRevealedShield, 5,
+          reason: 'the attack reveals the 2+3 in-hand shield total');
+    });
+
+    test('records the total even when the attacker ignores shields', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final attacker = game.currentPlayer;
+      final target = game.players[1];
+      target.hand
+        ..clear()
+        ..add(_shieldCard('wall', 6));
+      attacker.powerPool = 20;
+      attacker.ignoresShieldThisTurn = true;
+
+      expect(game.attackPlayer('p1', 10), true);
+      expect(target.lastRevealedShield, 6,
+          reason: 'the shield they hold is exposed by the attack');
+    });
+
+    test('round-trips through the game-state codec', () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      game.players[1].lastRevealedShield = 7;
+      final restored = GameStateCodec.decode(GameStateCodec.encode(game));
+      expect(restored.players[1].lastRevealedShield, 7);
     });
   });
 
@@ -211,7 +258,7 @@ void main() {
         ..clear()
         ..add(_shieldCard('h', 2));
       target.championsInPlay
-          .add(_shieldCard('prae', 3, type: CardType.champion));
+          .add(_shieldCard('prae', 0, type: CardType.champion, health: 3));
       target.staticModifiers.add(const StaticModifier(
         kind: StaticModifierKind.shieldBuff,
         amount: 3,

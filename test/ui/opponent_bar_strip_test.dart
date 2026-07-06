@@ -13,7 +13,7 @@ void main() {
       championCount: 2,
       mastery: 12,
       health: 20,
-      guardShield: 4,
+      revealedShield: 4,
     ),
     OpponentBarData(
       id: 'p2',
@@ -59,7 +59,7 @@ void main() {
     await tester.pump();
   }
 
-  /// The number of shield glyphs rendered (one per bar with a guardShield).
+  /// The number of shield glyphs rendered (one per bar with a revealedShield).
   int shieldChipCount(WidgetTester tester) => tester
       .widgetList<ResourceIconWidget>(find.byType(ResourceIconWidget))
       .where((w) => w.icon == ResourceIcon.shield)
@@ -91,13 +91,13 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('shield chip appears only for bars with a guardShield',
+  testWidgets('shield chip appears only for bars with a revealedShield',
       (tester) async {
     await pumpStrip(tester, physicalSize: const Size(1200, 800));
 
-    // Only Alice (guardShield: 4) has a shield glyph; Bob & Cara are null.
+    // Only Alice (revealedShield: 4) has a shield glyph; Bob & Cara are null.
     expect(shieldChipCount(tester), 1);
-    expect(find.text('4'), findsOneWidget); // Alice guard shield value
+    expect(find.text('4'), findsOneWidget); // Alice revealed-shield value
   });
 
   testWidgets('lays out 3 bars on a ~390px phone without overflow',

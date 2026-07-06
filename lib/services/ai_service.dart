@@ -148,7 +148,7 @@ class AiService {
       final guardChampions =
           opponent.championsInPlay.where((c) => c.hasGuard).toList();
       for (final champion in guardChampions) {
-        if (game.currentPlayer.powerPool >= champion.shield) {
+        if (game.currentPlayer.powerPool >= champion.health) {
           game.attackChampion(champion.id, opponent.id);
         }
       }
@@ -156,7 +156,7 @@ class AiService {
       final otherChampions = List<CardModel>.from(
           opponent.championsInPlay.where((c) => !c.hasGuard));
       for (final champion in otherChampions) {
-        if (game.currentPlayer.powerPool >= champion.shield) {
+        if (game.currentPlayer.powerPool >= champion.health) {
           game.attackChampion(champion.id, opponent.id);
         }
       }

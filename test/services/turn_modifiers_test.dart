@@ -211,7 +211,7 @@ void main() {
         playEffects: [],
         faction: Faction.wraethe,
         cardType: CardType.champion,
-        shield: 1,
+        health: 1,
       );
       player.championsInPlay.add(champ);
 
@@ -282,7 +282,7 @@ void main() {
         cost: 0,
         playEffects: [],
         cardType: CardType.champion,
-        shield: 6, // = HEALTH
+        health: 6, // = HEALTH
       );
       target.championsInPlay.add(champion);
 
@@ -306,7 +306,7 @@ void main() {
         cost: 0,
         playEffects: [],
         cardType: CardType.champion,
-        shield: 6,
+        health: 6,
       );
       target.championsInPlay.add(champion);
 
@@ -359,7 +359,7 @@ void main() {
         cost: 0,
         playEffects: [],
         cardType: CardType.champion,
-        shield: 3,
+        health: 3,
       );
       target.championsInPlay.add(champion);
       attacker.powerPool = 5;

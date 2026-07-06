@@ -849,21 +849,25 @@ class GameService {
     return true;
   }
 
-  /// The effective HEALTH of [champion] owned by [owner]: the printed `shield`
-  /// field value (reinterpreted as the champion's health pips per the owner's
-  /// combat model, backlog §E) plus — for a [StaticModifierKind.shieldPerCardUnder]
-  /// modifier whose [StaticModifier.sourceChampionId] is THIS champion —
-  /// `amount` per card currently tucked under it (carmine_eclipse; FLAGGED for
-  /// owner confirmation of how "+shield per card under" maps to health).
+  /// The effective HEALTH of [champion] owned by [owner]: the printed
+  /// [CardModel.health] value (the champion's in-play toughness) plus — for a
+  /// [StaticModifierKind.shieldPerCardUnder] modifier whose
+  /// [StaticModifier.sourceChampionId] is THIS champion — `amount` per card
+  /// currently tucked under it (carmine_eclipse), plus any
+  /// [StaticModifierKind.healthBuff] that applies (one_mind_one_army).
+  ///
+  /// This is INDEPENDENT of [CardModel.shield] (the card's in-hand damage
+  /// reduction): a champion's health is its toughness in play, while its shield
+  /// — if any, e.g. Zetta — only protects the player while the card is in hand.
   ///
   /// A champion is destroyed only by an attack whose power is >= this value (the
   /// existing one-shot lethal gate, unchanged). NOTE: [StaticModifierKind.shieldBuff]
-  /// is NO LONGER folded in here — a shield buff granted by a champion in play
+  /// is NOT folded in here — a shield buff granted by a champion in play
   /// (e.g. praetorian_02) is a standing buff to the PLAYER's per-hit damage
   /// reduction (see [_playerDamageReduction]), not to any champion's kill
   /// threshold. A champion's own value never protects the player.
   int _effectiveHealth(CardModel champion, PlayerState owner) {
-    var health = champion.shield;
+    var health = champion.health;
     for (final mod in owner.staticModifiers) {
       if (mod.kind == StaticModifierKind.shieldPerCardUnder &&
           mod.sourceChampionId == champion.id) {
@@ -1852,11 +1856,16 @@ class GameService {
     // BEFORE it lands. spirit_leech / ignoresShieldThisTurn on the ATTACKER lets
     // this attack ignore that per-hit reduction. lastDamage / the flash and
     // unblockedDamageThisTurn all reflect the POST-reduction number.
-    final reduction =
-        currentPlayer.ignoresShieldThisTurn ? 0 : _playerDamageReduction(target);
+    final shieldTotal = _playerDamageReduction(target);
+    final reduction = currentPlayer.ignoresShieldThisTurn ? 0 : shieldTotal;
     final dealt = amount - reduction < 0 ? 0 : amount - reduction;
 
     target.takeDamage(dealt);
+    // Being attacked REVEALS the target's in-hand shield total to the table
+    // (public intel — the defensive value is now observed). Drives the
+    // opponent-bar shield chip. Recorded even when the attacker ignored the
+    // shield (the value they hold is still what the attack exposed).
+    target.lastRevealedShield = shieldTotal;
     _log('dealt $dealt damage to ${target.id}', playerId: attackerId);
 
     // Publish a structured "last damage" event so every client (attacker AND

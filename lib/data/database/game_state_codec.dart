@@ -171,6 +171,8 @@ class GameStateCodec {
       'unblockedDamageThisTurn': p.unblockedDamageThisTurn,
       if (p.healthGainedThisTurn != 0)
         'healthGainedThisTurn': p.healthGainedThisTurn,
+      if (p.lastRevealedShield != null)
+        'lastRevealedShield': p.lastRevealedShield,
       if (p.nextTurnDrawBonus != 0) 'nextTurnDrawBonus': p.nextTurnDrawBonus,
       'ignoresShieldThisTurn': p.ignoresShieldThisTurn,
       'ignoresGuardThisTurn': p.ignoresGuardThisTurn,
@@ -225,6 +227,7 @@ class GameStateCodec {
     p.powerPool = (json['powerPool'] as int?) ?? 0;
     p.unblockedDamageThisTurn = (json['unblockedDamageThisTurn'] as int?) ?? 0;
     p.healthGainedThisTurn = (json['healthGainedThisTurn'] as int?) ?? 0;
+    p.lastRevealedShield = json['lastRevealedShield'] as int?;
     p.nextTurnDrawBonus = (json['nextTurnDrawBonus'] as int?) ?? 0;
     p.ignoresShieldThisTurn = (json['ignoresShieldThisTurn'] as bool?) ?? false;
     p.ignoresGuardThisTurn = (json['ignoresGuardThisTurn'] as bool?) ?? false;

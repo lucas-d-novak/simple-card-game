@@ -207,12 +207,28 @@ class GameCardWidget extends StatelessWidget {
                 ),
               ),
 
-              // ---- Shield badge (champions), lower-left of art ---------
-              if (card.cardType == CardType.champion && card.shield > 0)
+              // ---- Shield badge (any card), lower-left of art ----------
+              if (card.shield > 0)
                 Positioned(
                   left: 4 * scale,
                   top: cardHeight * 0.30,
-                  child: _ShieldBadge(shield: card.shield, scale: scale),
+                  child: _StatBadge(
+                    icon: ResourceIcon.shield,
+                    value: card.shield,
+                    scale: scale,
+                  ),
+                ),
+
+              // ---- Health badge (champions), lower-right of art --------
+              if (card.cardType == CardType.champion && card.health > 0)
+                Positioned(
+                  right: 4 * scale,
+                  top: cardHeight * 0.30,
+                  child: _StatBadge(
+                    icon: ResourceIcon.health,
+                    value: card.health,
+                    scale: scale,
+                  ),
                 ),
 
               // ---- MERCENARY tab ---------------------------------------
@@ -414,9 +430,14 @@ class _CostTeardrop extends StatelessWidget {
   }
 }
 
-class _ShieldBadge extends StatelessWidget {
-  const _ShieldBadge({required this.shield, required this.scale});
-  final int shield;
+class _StatBadge extends StatelessWidget {
+  const _StatBadge({
+    required this.icon,
+    required this.value,
+    required this.scale,
+  });
+  final ResourceIcon icon;
+  final int value;
   final double scale;
 
   @override
@@ -428,9 +449,9 @@ class _ShieldBadge extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          ResourceIconWidget(ResourceIcon.shield, size: size),
+          ResourceIconWidget(icon, size: size),
           Text(
-            '$shield',
+            '$value',
             style: TextStyle(
               color: Colors.white,
               fontSize: size * 0.45,

@@ -26,7 +26,7 @@ void main() {
         cost: 0,
         playEffects: [],
         cardType: CardType.champion,
-        shield: 2,
+        health: 2,
       );
       const praetorian = CardModel(
         id: 'praetorian',
@@ -34,7 +34,7 @@ void main() {
         cost: 0,
         playEffects: [],
         cardType: CardType.champion,
-        shield: 5,
+        health: 5,
       );
       target.championsInPlay.addAll([champion, praetorian]);
       // Praetorian grants a +3 shield buff to the PLAYER while in play.
@@ -63,7 +63,7 @@ void main() {
         cost: 0,
         playEffects: [],
         cardType: CardType.champion,
-        shield: 3,
+        health: 3,
       );
       target.championsInPlay.add(praetorian);
       target.staticModifiers.add(const StaticModifier(
@@ -94,7 +94,7 @@ void main() {
         name: 'One Mind One Army',
         cost: 0,
         cardType: CardType.champion,
-        shield: 4,
+        health: 4,
         playEffects: [
           AddStaticModifierEffect(StaticModifier(
             kind: StaticModifierKind.shieldBuff,
@@ -121,7 +121,7 @@ void main() {
         name: 'Buff Champ',
         cost: 0,
         cardType: CardType.champion,
-        shield: 4,
+        health: 4,
         playEffects: [
           AddStaticModifierEffect(StaticModifier(
             kind: StaticModifierKind.shieldBuff,
@@ -255,7 +255,7 @@ void main() {
         cost: 0,
         playEffects: [],
         cardType: CardType.champion,
-        shield: 1,
+        health: 1,
       );
       target.championsInPlay.add(champ);
       target.staticModifiers.add(
@@ -278,7 +278,7 @@ void main() {
         cost: 5,
         playEffects: [],
         cardType: CardType.champion,
-        shield: 1,
+        health: 1,
       );
       const other = CardModel(
         id: 'other_champ',
@@ -286,7 +286,7 @@ void main() {
         cost: 0,
         playEffects: [],
         cardType: CardType.champion,
-        shield: 1,
+        health: 1,
       );
       target.championsInPlay.addAll([zetta, other]);
       // Zetta's modifier is stamped with its own champion id (as the engine does
@@ -317,7 +317,7 @@ void main() {
         cost: 5,
         playEffects: [],
         cardType: CardType.champion,
-        shield: 1,
+        health: 1,
       );
       const other = CardModel(
         id: 'other_champ',
@@ -325,7 +325,7 @@ void main() {
         cost: 0,
         playEffects: [],
         cardType: CardType.champion,
-        shield: 1,
+        health: 1,
       );
       target.championsInPlay.addAll([zetta, other]);
       target.staticModifiers.add(const StaticModifier(
@@ -377,7 +377,7 @@ void main() {
         cost: 0,
         playEffects: [],
         cardType: CardType.champion,
-        shield: 0,
+        health: 0,
       );
       target.championsInPlay.add(auraChamp);
       target.staticModifiers.add(const StaticModifier(
@@ -412,7 +412,7 @@ void main() {
         name: 'Zetta the Encryptor',
         cost: 5,
         cardType: CardType.champion,
-        shield: 2,
+        health: 2,
         playEffects: [
           AddStaticModifierEffect(
               StaticModifier(kind: StaticModifierKind.cannotBeAttacked)),
@@ -447,7 +447,7 @@ void main() {
         playEffects: [],
         faction: Faction.homodeus,
         cardType: CardType.champion,
-        shield: 1,
+        health: 1,
       );
       game.centerRow.insert(0, champ);
       player.staticModifiers.add(const StaticModifier(

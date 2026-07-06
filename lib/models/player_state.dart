@@ -36,6 +36,15 @@ class PlayerState {
   /// each turn by [resetTurnResources].
   int healthGainedThisTurn = 0;
 
+  /// The in-hand SHIELD total this player was last REVEALED to have when an
+  /// opponent attacked them (owner combat model). A player's hand shields are
+  /// hidden info, but a direct attack makes their defensive value observable to
+  /// the table, so this is public intel. Null until this player has been
+  /// attacked at least once; persists across turns (it is the LAST reveal, not a
+  /// per-turn counter — [resetTurnResources] does NOT clear it). Set by
+  /// [GameService.attackPlayer]; drives the opponent-bar shield chip.
+  int? lastRevealedShield;
+
   /// Extra cards to draw at the END of THIS player's turn (the draw that deals
   /// their NEXT hand) — a "draw more next turn" bonus armed this turn. Set at
   /// [GameService.endTurn] when a played card's

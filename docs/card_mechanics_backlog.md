@@ -246,31 +246,57 @@ Product owner's stated model:
 
 This is FOUNDATIONAL — Aion/Prism/Ingeminex card mechanics depend on it.
 
-### OWNER RULINGS (2026-07-01) — implement to these:
-- **Player shield (damage reduction) = PASSIVE, SUM of all shielded cards currently in
+### OWNER RULINGS (2026-07-06, CURRENT — supersede the 2026-07-01 rulings below):
+HEALTH and SHIELD are **two INDEPENDENT stats**. A card may have EITHER, BOTH, or NEITHER.
+They never interact — health never reduces damage in hand, a shield never changes a
+champion's kill threshold. In the data model these are now SEPARATE fields:
+`CardModel.health` (champion toughness) and `CardModel.shield` (in-hand damage reduction).
+- **SHIELD = in-hand damage reduction (PASSIVE).** While a card with a `shield` value is
+  in your HAND, its shield subtracts from every direct attack against YOU (the player).
+  All in-hand shields SUM, are NOT consumed (passive while held), and floor incoming
+  damage at 0. Only cards that actually carry a shield contribute — the shield-bearing
+  ALLIES (backfilled in cards.json from printed [shield] icons) and the few CHAMPIONS
+  that print a shield in ADDITION to their health. A shield does NOT reduce damage dealt
+  to champions, and it stops contributing the moment the card leaves your hand.
+- **HEALTH = a champion's in-play toughness.** A champion is destroyed only by a SINGLE
+  attack with power >= its health — NO partial/chip damage, NO accumulating pool for
+  regular champions, NO carry-over across turns (this differs from Ingeminex, which DOES
+  accumulate). The "need power >= value to destroy" gate STAYS; the value is HEALTH
+  (`CardModel.health`, plus `healthBuff` / self-scoped `shieldPerCardUnder`). Champions
+  stay in play until destroyed. A champion's health is NOT an in-hand shield: holding a
+  champion in hand gives you NO damage reduction from its health.
+- **Champions with BOTH — e.g. ZETTA, THE ENCRYPTOR.** Zetta has a HEALTH value (its
+  toughness once played out) AND a SHIELD value (which reduces damage to you while Zetta
+  is in your HAND). The two are stored and used independently: `health` gates its
+  destruction in play; `shield` sums into your in-hand damage reduction while held. This
+  is the case the ruling language MUST accommodate — a champion is not "health-only".
+  (Zetta is migrated as health:5 / shield:5 — its shield 5 matches the owner's own JOB-1
+  shield-value data in `test/services/owner_shield_data_test.dart`.)
+- **Champions that GRANT you a standing shield (e.g. Praetorian-02 / -01)** are a DIFFERENT
+  mechanism: a constant shield buff to YOUR damage reduction that lasts WHILE THAT CHAMPION
+  IS IN PLAY (removed when it leaves), modelled as `StaticModifierKind.shieldBuff`. This is
+  NOT an in-hand contribution and NOT the champion's own `shield` field.
+- Net: PLAYER damage reduction each hit = Σ(`shield` of cards in HAND) + Σ(`shieldBuff`
+  from champions in play). Champion kill = one-shot, power >= `health`. Defaults confirmed:
+  ignoreShield/Spirit-Leech = ignore the per-hit shield (not instakill); DestroyChampion
+  effects = instant-kill bypassing the gate.
+
+### OWNER RULINGS (2026-07-01) — SUPERSEDED, kept for history:
+> NOTE: these earlier rulings CONFLATED health and shield into a single `shield` field
+> whose meaning changed by zone (in-hand shield vs. in-play health), and stated that ANY
+> champion card in hand contributes its value as a shield. That is NO LONGER the model —
+> see the 2026-07-06 rulings above. A champion's health does NOT protect you in hand; only
+> a card's own `shield` field does.
+- ~~**Player shield (damage reduction) = PASSIVE, SUM of all shielded cards currently in
   your HAND.** Every card in hand with a `shield` value contributes; they sum to reduce
   each incoming attack on you; NOT consumed (passive while held). This applies to ANY
-  card in hand with a shield — allies AND champion cards while still in hand.
-- **A card's own `shield` only reduces damage while it is IN HAND, not while in play.**
+  card in hand with a shield — allies AND champion cards while still in hand.~~
+- ~~**A card's own `shield` only reduces damage while it is IN HAND, not while in play.**
   E.g. Zetta's shield contributes to your defense while Zetta is in your hand; once
   played out it no longer contributes its in-hand shield (it's now a champion with
-  HEALTH in play).
-- **Champions in play have HEALTH** (the current `shield` field value = printed health
-  pips → reinterpret/relabel as HEALTH). Destroyed when attacked. **You may only ATTACK a
-  champion if you have enough power to KILL it outright** (power >= remaining health) —
-  NO partial/chip damage, NO accumulating pool for regular champions (this differs from
-  Ingeminex, which DOES accumulate). So the current "need power >= value to destroy" gate
-  STAYS; the value is HEALTH. Champions stay in play until destroyed.
-- **Champions that GRANT you shields (e.g. Praetorian-02 / -01) = a CONSTANT shield
-  increase to your damage-reduction that lasts while that champion is in play, until it
-  is destroyed** (a standing shield buff, NOT an in-hand contribution). So
-  `StaticModifierKind.shieldBuff` from a champion in play adds to PLAYER damage reduction,
-  removed when the champion leaves play.
-- Net: PLAYER damage reduction each hit = Σ(shield of cards in hand) + Σ(shieldBuff from
-  champions in play). Champion kill = one-shot, power >= HEALTH. Backfill the missing
-  ally shield values in cards.json from printed [shield] icons; relabel champion value as
-  health in schema/UI. Defaults confirmed: ignoreShield/Spirit-Leech = ignore the per-hit
-  shield (not instakill); DestroyChampion effects = instant-kill bypassing the gate.
+  HEALTH in play).~~
+- ~~**Champions in play have HEALTH** (the current `shield` field value = printed health
+  pips → reinterpret/relabel as HEALTH).~~ (Now a separate `health` field.)
 
 ## F. FOUNDATIONAL — deterministic RNG seed per game (investigate FIRST)
 Product owner: every game should start from a UNIQUE random seed that is SAVED with the

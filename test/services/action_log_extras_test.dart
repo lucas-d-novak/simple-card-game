@@ -18,6 +18,7 @@ CardModel _card({
   Faction faction = Faction.none,
   CardType cardType = CardType.regular,
   int shield = 0,
+  int health = 0,
   bool guard = false,
   List<CardEffect> playEffects = const [],
 }) =>
@@ -28,6 +29,7 @@ CardModel _card({
       faction: faction,
       cardType: cardType,
       shield: shield,
+      health: health,
       hasGuard: guard,
       playEffects: playEffects,
     );
@@ -58,7 +60,7 @@ void main() {
       final defender = game.players.firstWhere((p) => p.id != attacker.id);
 
       defender.championsInPlay
-          .add(_card(id: 'wall', cardType: CardType.champion, shield: 4));
+          .add(_card(id: 'wall', cardType: CardType.champion, health: 4));
       attacker.powerPool = 4;
 
       final ok = game.attackChampion('wall', defender.id);

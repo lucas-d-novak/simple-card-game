@@ -454,8 +454,12 @@ class _GameScreenState extends State<GameScreen>
               if (card.cost > 0)
                 _DetailRow(label: 'Cost', value: '${card.cost} gems'),
 
-              // Shield (champions only)
-              if (card.cardType == CardType.champion && card.shield > 0)
+              // Health (champions only)
+              if (card.cardType == CardType.champion && card.health > 0)
+                _DetailRow(label: 'Health', value: '${card.health}'),
+
+              // Shield (any card offering in-hand damage reduction)
+              if (card.shield > 0)
                 _DetailRow(label: 'Shield', value: '${card.shield}'),
 
               // Guard badge
@@ -721,10 +725,10 @@ class _GameScreenState extends State<GameScreen>
     setState(() {
       if (_game.attackChampion(champion.id, ownerId)) {
         _actionMessage =
-            'Destroyed ${champion.name}! (cost ${champion.shield} power)';
+            'Destroyed ${champion.name}! (cost ${champion.health} power)';
       } else {
         _actionMessage =
-            'Need ${champion.shield} power to destroy ${champion.name}';
+            'Need ${champion.health} power to destroy ${champion.name}';
       }
     });
   }

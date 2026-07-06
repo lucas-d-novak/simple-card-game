@@ -698,7 +698,7 @@ void main() {
         cost: 0,
         playEffects: [],
         cardType: CardType.champion,
-        shield: 2,
+        health: 2,
       );
       target.hand.add(extraCard);
       target.championsInPlay.add(champCard);
@@ -811,7 +811,7 @@ void main() {
         cost: 0,
         playEffects: [GainPowerEffect(2)],
         cardType: CardType.champion,
-        shield: 3,
+        health: 3,
       );
       player.hand.add(champion);
 
@@ -832,7 +832,7 @@ void main() {
         cost: 0,
         playEffects: [GainPowerEffect(3), GainMasteryEffect(1)],
         cardType: CardType.champion,
-        shield: 2,
+        health: 2,
       );
       player.hand.add(champion);
 
@@ -852,7 +852,7 @@ void main() {
         cost: 0,
         playEffects: [GainPowerEffect(1)],
         cardType: CardType.champion,
-        shield: 2,
+        health: 2,
       );
       player.hand.add(champion);
       game.playCard('test_persist_champ');
@@ -878,7 +878,7 @@ void main() {
         cost: 0,
         playEffects: [GainPowerEffect(1)],
         cardType: CardType.champion,
-        shield: 2,
+        health: 2,
       );
       player.hand.add(champion);
       game.playCard('test_no_discard_champ');
@@ -905,7 +905,7 @@ void main() {
         cost: 0,
         playEffects: [GainPowerEffect(2)],
         cardType: CardType.champion,
-        shield: 2,
+        health: 2,
       );
       player.hand.add(champion);
       game.playCard('test_retrigger_champ');
@@ -934,7 +934,7 @@ void main() {
         cost: 0,
         playEffects: [GainPowerEffect(3)],
         cardType: CardType.champion,
-        shield: 2,
+        health: 2,
       );
       player.hand.add(champion);
       game.playCard('test_double_activate');
@@ -962,7 +962,7 @@ void main() {
         cost: 0,
         playEffects: [GainPowerEffect(1)],
         cardType: CardType.champion,
-        shield: 2,
+        health: 2,
       );
       const champ2 = CardModel(
         id: 'test_multi_champ_2',
@@ -970,7 +970,7 @@ void main() {
         cost: 0,
         playEffects: [GainGemsEffect(3)],
         cardType: CardType.champion,
-        shield: 2,
+        health: 2,
       );
       player.hand.addAll([champ1, champ2]);
       game.playCard('test_multi_champ_1');
@@ -1005,7 +1005,7 @@ void main() {
         cost: 0,
         playEffects: [GainPowerEffect(1)],
         cardType: CardType.champion,
-        shield: 3,
+        health: 3,
       );
       target.championsInPlay.add(champion);
       attacker.powerPool = 5;
@@ -1029,7 +1029,7 @@ void main() {
         cost: 0,
         playEffects: [],
         cardType: CardType.champion,
-        shield: 5,
+        health: 5,
       );
       target.championsInPlay.add(champion);
       attacker.powerPool = 3;
@@ -1056,7 +1056,7 @@ void main() {
         cost: 0,
         playEffects: [],
         cardType: CardType.champion,
-        shield: 2,
+        health: 2,
       );
       player.championsInPlay.add(champion);
       player.powerPool = 10;
@@ -1085,7 +1085,7 @@ void main() {
         cost: 0,
         playEffects: [],
         cardType: CardType.champion,
-        shield: 3,
+        health: 3,
         hasGuard: true,
       );
       game.players[1].championsInPlay.add(guard);
@@ -1104,7 +1104,7 @@ void main() {
         cost: 0,
         playEffects: [],
         cardType: CardType.champion,
-        shield: 3,
+        health: 3,
         hasGuard: true,
       );
       game.players[1].championsInPlay.add(guard);
@@ -1177,7 +1177,7 @@ void main() {
         cost: 0,
         playEffects: [],
         cardType: CardType.champion,
-        shield: 3,
+        health: 3,
         hasGuard: false,
       );
       game.players[1].championsInPlay.add(nonGuard);
@@ -1262,7 +1262,7 @@ void main() {
         playEffects: [GainPowerEffect(1)],
         faction: Faction.order,
         cardType: CardType.champion,
-        shield: 2,
+        health: 2,
       );
       player.championsInPlay.add(champion);
 
@@ -1296,7 +1296,7 @@ void main() {
         cost: 0,
         playEffects: [GainPowerEffect(1)],
         cardType: CardType.champion,
-        shield: 2,
+        health: 2,
         countsAsAllFactions: true,
       );
       player.championsInPlay.add(universal);
@@ -1872,7 +1872,7 @@ void main() {
           cost: 0,
           playEffects: [],
           cardType: CardType.champion,
-          shield: 1,
+          health: 1,
         ));
       }
 
@@ -1923,7 +1923,7 @@ void main() {
         cost: 0,
         playEffects: [GainPowerEffect(2)],
         cardType: CardType.champion,
-        shield: 3,
+        health: 3,
         masteryThreshold: 5,
         masteryBonus: [GainPowerEffect(3)],
       );
@@ -1960,7 +1960,7 @@ void main() {
         playEffects: [GainGemsEffect(1)],
         faction: Faction.homodeus,
         cardType: CardType.champion,
-        shield: 2,
+        health: 2,
         allyAbility: [GainMasteryEffect(1)],
       );
       const champ2 = CardModel(
@@ -1970,7 +1970,7 @@ void main() {
         playEffects: [GainPowerEffect(1)],
         faction: Faction.homodeus,
         cardType: CardType.champion,
-        shield: 2,
+        health: 2,
         allyAbility: [GainMasteryEffect(1)],
       );
       player.hand.addAll([champ1, champ2]);
@@ -2005,7 +2005,7 @@ void main() {
         cost: 0,
         playEffects: [],
         cardType: CardType.champion,
-        shield: 3,
+        health: 3,
         hasGuard: true,
       );
       target.championsInPlay.add(guard);
@@ -2040,7 +2040,7 @@ void main() {
         playEffects: [GainPowerEffect(1)],
         faction: Faction.wraethe,
         cardType: CardType.champion,
-        shield: 2,
+        health: 2,
         allyAbility: [GainPowerEffect(2)],
       );
       const champ2 = CardModel(
@@ -2050,7 +2050,7 @@ void main() {
         playEffects: [GainPowerEffect(1)],
         faction: Faction.wraethe,
         cardType: CardType.champion,
-        shield: 2,
+        health: 2,
         allyAbility: [GainPowerEffect(2)],
       );
       player.hand.addAll([champ1, champ2]);
@@ -2077,14 +2077,14 @@ void main() {
   });
 
   group('DestroyChampionEffect (Phase 1)', () {
-    CardModel champ(String id, {int shield = 3, bool guard = false}) =>
+    CardModel champ(String id, {int health = 3, bool guard = false}) =>
         CardModel(
           id: id,
           name: id,
           cost: 0,
           playEffects: const [],
           cardType: CardType.champion,
-          shield: shield,
+          health: health,
           hasGuard: guard,
         );
 
@@ -2093,7 +2093,7 @@ void main() {
       final me = game.currentPlayer;
       final opp = game.players.firstWhere((p) => p.id != me.id);
       me.powerPool = 0;
-      opp.championsInPlay.add(champ('enemy_champ', shield: 5));
+      opp.championsInPlay.add(champ('enemy_champ', health: 5));
 
       final result = game.destroyChampion('enemy_champ', opp.id);
 
@@ -2398,7 +2398,7 @@ void main() {
         cost: 0,
         playEffects: playEffects,
         cardType: CardType.champion,
-        shield: 3,
+        health: 3,
         activatedAbility: ability,
       );
     }
@@ -2456,7 +2456,7 @@ void main() {
         cost: 0,
         playEffects: [GainPowerEffect(2)],
         cardType: CardType.champion,
-        shield: 3,
+        health: 3,
       ));
 
       expect(game.useActivatedAbility('plain_champ'), false);
@@ -2645,7 +2645,7 @@ void main() {
           cost: 0,
           playEffects: [DrawCardsEffect(1)],
           cardType: CardType.champion,
-          shield: 4,
+          health: 4,
           activatedAbility: ActivatedAbility(effects: [GainMasteryEffect(3)]),
         );
 
@@ -2824,7 +2824,7 @@ void main() {
         name: 'Replace Champ',
         cost: 0,
         cardType: CardType.champion,
-        shield: 3,
+        health: 3,
         playEffects: [GainGemsEffect(2)],
         masteryThreshold: 15,
         masteryBonus: [GainPowerEffect(5)],
@@ -2855,7 +2855,7 @@ void main() {
           name: 'Shard Wyrm',
           cost: 0,
           cardType: CardType.champion,
-          shield: 4,
+          health: 4,
           playEffects: const [GainGemsEffect(1)],
           activatedAbility: ActivatedAbility(
             effects: const [GainPowerEffect(2), GainMasteryEffect(2)],
@@ -2914,7 +2914,7 @@ void main() {
         name: 'Plain Exhaust',
         cost: 0,
         cardType: CardType.champion,
-        shield: 2,
+        health: 2,
         playEffects: [GainGemsEffect(1)],
         activatedAbility: ActivatedAbility(effects: [GainPowerEffect(3)]),
       );
@@ -2936,7 +2936,7 @@ void main() {
           faction: Faction.wraethe,
           cost: 4,
           cardType: CardType.champion,
-          shield: 5,
+          health: 5,
           masteryThreshold: 20,
           playEffects: [],
           activatedAbility: ActivatedAbility(
@@ -3067,7 +3067,7 @@ void main() {
         name: 'Ghost Champion',
         cost: 0,
         cardType: CardType.champion,
-        shield: 2,
+        health: 2,
         playEffects: [GainGemsEffect(1), SelfBanishEffect()],
       );
       player.hand.add(champ);
@@ -3086,7 +3086,7 @@ void main() {
           cost: 0,
           playEffects: const [],
           cardType: CardType.champion,
-          shield: 3,
+          health: 3,
           activatedAbility:
               const ActivatedAbility(effects: [GainPowerEffect(1)]),
         );

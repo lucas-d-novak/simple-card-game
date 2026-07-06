@@ -62,7 +62,12 @@
     "shield": {
       "type": "integer",
       "minimum": 0,
-      "description": "Dual meaning by zone (owner combat model, backlog E). ON A CHAMPION IN PLAY this is its HEALTH: an attack destroys the champion only when its power is >= this value (the one-shot lethal gate; no chip/accumulating damage). WHILE A CARD IS IN HAND this same value is a passive SHIELD that reduces each direct attack on YOU (the player) by its amount; all in-hand shields sum, are not consumed, and floor incoming damage at 0. A champion in play does NOT contribute its own value to player damage reduction (only an explicit shieldBuff it grants does). 0 for cards with neither role. Historically named 'shield'."
+      "description": "SHIELD — the in-hand damage reduction this card offers its owner (owner combat model, backlog E). WHILE THIS CARD IS IN HAND its shield reduces each direct attack on YOU (the player) by its amount; all in-hand shields sum, are not consumed, and floor incoming damage at 0. It does NOT reduce damage dealt to champions and has NO effect once the card leaves the hand. INDEPENDENT of 'health': allies carry only a shield, most champions carry only health, and a few champions (e.g. Zetta, The Encryptor) carry BOTH. 0 for cards that offer no in-hand shield."
+    },
+    "health": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "HEALTH — a champion's in-play toughness (owner combat model, backlog E). An attack destroys the champion only when its power is >= this value (the one-shot lethal gate; no chip/accumulating damage, no carry-over across turns). Champions only; 0 for non-champions. INDEPENDENT of 'shield' — a champion's health never reduces damage while the card is in hand, and its shield (if any) never affects this kill threshold."
     },
     "shieldEqualsMastery": {
       "type": "boolean",

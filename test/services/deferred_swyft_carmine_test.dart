@@ -33,7 +33,7 @@ void main() {
         name: 'Swyft',
         cost: 5,
         cardType: CardType.champion,
-        shield: 3,
+        health: 3,
         playEffects: [
           AddStaticModifierEffect(
               StaticModifier(kind: StaticModifierKind.fastPlayRecruit)),
@@ -45,7 +45,7 @@ void main() {
         name: 'Carmine Eclipse',
         cost: 2,
         cardType: CardType.champion,
-        shield: 6,
+        health: 6,
         recruitUnderCardsOnDeath: true,
         activatedAbility: activated,
         playEffects: const [
@@ -316,7 +316,7 @@ void main() {
         name: 'Paradigm',
         cost: 6,
         cardType: CardType.champion,
-        shield: 5,
+        health: 5,
         playEffects: [],
       );
       owner.championsInPlay.add(paradigm);

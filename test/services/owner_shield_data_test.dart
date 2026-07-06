@@ -28,10 +28,68 @@ CardModel _champ(String id, int health) => CardModel(
       cost: 0,
       playEffects: const [],
       cardType: CardType.champion,
-      shield: health,
+      health: health,
     );
 
 void main() {
+  // Zetta, The Encryptor — the champion the owner flagged as having BOTH stats.
+  // health (in-play toughness) and shield (in-hand reduction) are INDEPENDENT:
+  // holding Zetta reduces damage by its shield; playing it out gives no in-hand
+  // reduction and it needs power >= its health to destroy.
+  group('Zetta — a champion with BOTH health and shield (independent)', () {
+    test('the DB carries both: health 5 (toughness) and shield 5 (in-hand)', () {
+      final z = _model('zetta_the_encryptor');
+      expect(z.cardType, CardType.champion);
+      expect(z.health, 5, reason: 'in-play toughness');
+      expect(z.shield, 5, reason: 'in-hand damage reduction');
+    });
+
+    test('in HAND: Zetta reduces the player\'s incoming damage by its shield',
+        () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final attacker = game.currentPlayer;
+      final target = game.players[1];
+      target.hand
+        ..clear()
+        ..add(_model('zetta_the_encryptor'));
+      attacker.powerPool = 20;
+      final before = target.health;
+      // 10 - 5 (Zetta's in-hand shield) = 5 lands.
+      expect(game.attackPlayer('p1', 10), true);
+      expect(target.health, before - 5);
+    });
+
+    test('in PLAY: Zetta needs power >= its HEALTH and gives NO in-hand reduction',
+        () {
+      final game = GameService(playerCount: 2, random: Random(7));
+      final attacker = game.currentPlayer;
+      final target = game.players[1];
+      // NOTE: play it out via championsInPlay directly; Zetta's own aura makes it
+      // (and its owner) unattackable, so use a plain copy without that modifier
+      // to isolate the health-threshold behaviour.
+      target.championsInPlay.add(const CardModel(
+        id: 'zetta_the_encryptor',
+        name: 'Zetta, The Encryptor',
+        cost: 5,
+        playEffects: [],
+        cardType: CardType.champion,
+        health: 5,
+        shield: 5,
+      ));
+      target.hand.clear();
+
+      // Its shield does NOT reduce damage while in play: attack the player is
+      // gated only by nothing here (no guard), full damage lands.
+      attacker.powerPool = 4;
+      // 4 < health 5 → cannot destroy.
+      expect(game.attackChampion('zetta_the_encryptor', 'p1'), false);
+      attacker.powerPool = 5;
+      expect(game.attackChampion('zetta_the_encryptor', 'p1'), true,
+          reason: 'power == health 5 destroys it');
+      expect(target.championsInPlay, isEmpty);
+    });
+  });
+
   group('JOB 1 — static shield values (from cards.json)', () {
     const expected = {
       'dash': 2,
